@@ -14,7 +14,16 @@ Encoding: UTF-8
 Depends: R (>= 4.3.0)
 Imports: S7 (>= 0.2.0), data.table (>= 1.15.0), yaml (>= 2.3.0), logger (>= 0.3.0),
         stats
-Suggests: testthat (>= 3.0.0), covr, lintr, renv, roxygen2, rcmdcheck, here
+Suggests: 
+    testthat (>= 3.0.0),
+    covr,
+    lintr,
+    renv,
+    roxygen2,
+    rcmdcheck,
+    here,
+    knitr,
+    rmarkdown
 Config/testthat/edition: 3
 Roxygen: list(markdown = TRUE)
 Collate: 'utils.R' 'distributions.R' 'distributions_part3.R' 'distributions_part2.R'
@@ -24,3 +33,4 @@ Collate: 'utils.R' 'distributions.R' 'distributions_part3.R' 'distributions_part
         'sim_pdm.R' 'read_pdm_config.R' 'zzz.R'
 Config/roxygen2/version: 8.1.0
 RoxygenNote: 7.3.3
+VignetteBuilder: knitr
