@@ -1,0 +1,26 @@
+# Illustrative starting parameters. Calibrate to the target catchment.
+# Internal time unit: hours. Rainfall/PET inputs: mm per interval.
+distribution:
+  type: pareto
+  cmin: 0.0
+  cmax: 140.0
+  b: 0.4
+recharge:
+  type: standard
+  kg: 24.0
+  bg: 1.0
+  st: 0.0
+surface:
+  type: cascade
+  k1: 2.0
+  k2: 4.0
+groundwater:
+  type: cubic
+  kb: 10000.0
+  solver: adaptive
+be: 1.0
+fc: 1.0
+td: 0.0
+qc: 0.0
+area_km2: 1.0
+dt: 1.0

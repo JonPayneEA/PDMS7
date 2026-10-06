@@ -1,0 +1,10 @@
+name: Flode Tier 3 checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  ci:
+    uses: JonPayneEA/flode_code_styles/.github/workflows/r-package-ci.yaml@028eae437bddce685a8e436312d31f290c3de715
+    with:
+      tier: 3
+      coverage-threshold: 70

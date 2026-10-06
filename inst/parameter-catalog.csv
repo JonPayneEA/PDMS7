@@ -1,0 +1,45 @@
+component,parameter,paper_symbol,units,domain,example,reference,provenance
+model,fc,fc,1,>=0,1,Table 1,illustrative
+model,td,td,h,>=0,0,Table 1; output-lag convention in source notes,illustrative
+model,qc,qc,m3/s,finite signed,0,Table 1,illustrative
+model,area_km2,A,km2,>0,1,Eq 3; unit conversion,user supplied
+model,dt,Delta t,h,>0,1,Eq 5; constant interval,user supplied
+model,be,be,1,>0,1,Eq 8; usual values 1 and 2,paper common choice
+pareto,cmin,cmin,mm,0<=cmin<cmax,0,Appendix A; Figure 5,paper Figure 5
+pareto,cmax,cmax,mm,>cmin,140,Appendix A; Figure 5,paper Figure 5
+pareto,b,b,1,>=0,0.4,Eq 18-20; Figure 5,paper Figure 5
+rectangular,cmin,cmin,mm,0<=cmin<cmax,0,Appendix A; corrected uniform law,illustrative
+rectangular,cmax,cmax,mm,>cmin,200,Appendix A; corrected uniform law,illustrative
+triangular,cmin,cmin,mm,0<=cmin<cmax,0,Appendix A; symmetric triangular,illustrative
+triangular,cmax,cmax,mm,>cmin,200,Appendix A,illustrative
+exponential_capacity,mean,cbar,mm,>0,100,Appendix A,illustrative
+lognormal,meanlog,zeta,log(mm),finite,4.105170186,Appendix A,illustrative
+lognormal,sdlog,sigma,1,>0; finite positive implied mean,1,Appendix A,illustrative
+standard_recharge,kg,kg,h mm^(bg-1),>0,24,Eq 10; Table 1,illustrative
+standard_recharge,bg,bg,1,>0,1,Eq 10; usually 1,paper common choice
+standard_recharge,st,St,mm,0<=st<=Smax,0,Eq 10,illustrative
+demand_recharge,alpha,alpha,1,0<alpha<=1,0.5,Eq 11-13,illustrative
+demand_recharge,beta,beta,1,>0,1,Eq 12,illustrative
+demand_recharge,qsat,qsat,mm/h,>0; qsat*dt<=Smax; Sgmax>0,1,Eq 13; Sgmax derived from routing,illustrative
+split_recharge,alpha,alpha,1,0<=alpha<=1,0.7,p486 split of direct runoff,illustrative
+cascade,k1,k1,h,>0,2,Eq 26-27,illustrative
+cascade,k2,k2,h,>0,4,Eq 26-27,illustrative
+power,k,k,mm^(1-m)/h,>0,0.0001,Eq 23; k=1/kb,illustrative
+power,m,m,1,>0,3,Eq 23; 1 linear / 2 quadratic / 3 cubic,paper common choice
+power,kb,kb,h mm^(m-1),>0,10000,Table 1; convenience constructor maps to k=1/kb,illustrative
+power,solver,NA,choice,adaptive or smith; smith requires m=3,adaptive,Eq 24 for smith; numerical integration otherwise,implementation choice
+power,rtol,NA,1,>0,1e-8,Adaptive RK4 step doubling,implementation choice
+power,atol,NA,mm,>0,1e-10,Adaptive RK4 step doubling,implementation choice
+exponential_routing,a,a,1/mm,>0,0.05,Moore and Bell 2002 Appendix A.6-A.7,illustrative
+exponential_routing,gamma,gamma,log(mm/h),finite,-5,Moore and Bell 2002 Appendix A.6-A.7,illustrative
+state_updating,gb,gb,1,>=0,1,Eq 28a,exact-correction gain
+state_updating,gs,gs,1,>=0,1,Eq 28b,exact-correction gain
+state_updating,gg,gg,h,>=0,0,Eq 28c; epsilon internally mm/h,illustrative disabled soil correction
+state_updating,beta1,beta1,1,>0,10,Eq 30,paper suggested
+state_updating,beta2,beta2,1,>=1,1.1,Eq 30,paper suggested
+state_updating,scheme,NA,choice,proportional / super_proportional / non_proportional,proportional,Eq 28-30,paper option
+state_updating,soil_proportional,NA,logical,TRUE or FALSE,TRUE,Eq 28c; FALSE sets weight to 1,paper option
+error_updating,ar,-phi,1,finite vector,0.7,Eq 35-40; R sign convention,illustrative
+error_updating,ma,theta,1,finite vector,empty,Eq 36-40,illustrative
+error_updating,scale,NA,choice,additive or log,additive,Eq 31-42,paper option
+error_updating,offset,NA,m3/s,>=0; positive transformed log flows,0,Optional extension; zero matches paper,implementation choice

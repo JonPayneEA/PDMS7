@@ -1,0 +1,26 @@
+Package: pdmS7
+Type: Package
+Title: Configurable Probability Distributed Rainfall Runoff Model
+Version: 0.2.0
+Authors@R: person("PDM", "Contributors", role = c("aut", "cre"), email =
+        "pdm@example.org")
+Description: An independent, configurable implementation of the Probability Distributed
+        Model described by Moore (2007) <doi:10.5194/hess-11-483-2007>. S7 components
+        provide five capacity distributions, three recharge schemes, reservoir routing,
+        calibration, and forecast updating. Explicit water accounting and source notes
+        distinguish numerical choices from the paper.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Depends: R (>= 4.3.0)
+Imports: S7 (>= 0.2.0), data.table (>= 1.15.0), yaml (>= 2.3.0), logger (>= 0.3.0),
+        stats
+Suggests: testthat (>= 3.0.0), covr, lintr, renv, roxygen2, rcmdcheck, here
+Config/testthat/edition: 3
+Roxygen: list(markdown = TRUE)
+Collate: 'utils.R' 'distributions.R' 'distributions_part3.R' 'distributions_part2.R'
+        'distributions_2.R' 'routing.R' 'routing_part3.R' 'routing_part2.R' 'routing_2.R'
+        'recharge.R' 'model.R' 'model_part2.R' 'model_2.R' 'configuration.R'
+        'configuration_part2.R' 'updating.R' 'updating_part2.R' 'compatibility.R'
+        'sim_pdm.R' 'read_pdm_config.R' 'zzz.R'
+Config/roxygen2/version: 8.1.0
+RoxygenNote: 7.3.3

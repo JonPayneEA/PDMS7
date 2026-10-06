@@ -1,0 +1,315 @@
+# Illustrative templates; calibrate before use. No catchment calibration implied.
+standard:
+  distribution:
+    type: pareto
+    cmin: 0.0
+    cmax: 140.0
+    b: 0.4
+  recharge:
+    type: standard
+    kg: 24.0
+    bg: 1.0
+    st: 0.0
+  surface:
+    type: cascade
+    k1: 2.0
+    k2: 4.0
+  groundwater:
+    type: cubic
+    kb: 10000.0
+    solver: adaptive
+  be: 1.0
+  fc: 1.0
+  td: 0.0
+  qc: 0.0
+  area_km2: 1.0
+  dt: 1.0
+paper_cubic:
+  distribution:
+    type: pareto
+    cmin: 0.0
+    cmax: 140.0
+    b: 0.4
+  recharge:
+    type: standard
+    kg: 24.0
+    bg: 1.0
+    st: 0.0
+  surface:
+    type: cascade
+    k1: 2.0
+    k2: 4.0
+  groundwater:
+    type: cubic
+    kb: 10000.0
+    solver: smith
+  be: 1.0
+  fc: 1.0
+  td: 0.0
+  qc: 0.0
+  area_km2: 1.0
+  dt: 1.0
+figure5:
+  distribution:
+    type: pareto
+    cmin: 0.0
+    cmax: 140.0
+    b: 0.4
+  recharge:
+    type: split
+    alpha: 1
+  surface:
+    type: cascade
+    k1: 2.0
+    k2: 4.0
+  groundwater:
+    type: cubic
+    kb: 10000.0
+    solver: adaptive
+  be: 1.0
+  fc: 1.0
+  td: 0.0
+  qc: 0.0
+  area_km2: 1.0
+  dt: 1.0
+rectangular:
+  distribution:
+    type: rectangular
+    cmin: 0
+    cmax: 200
+  recharge:
+    type: standard
+    kg: 24.0
+    bg: 1.0
+    st: 0.0
+  surface:
+    type: cascade
+    k1: 2.0
+    k2: 4.0
+  groundwater:
+    type: cubic
+    kb: 10000.0
+    solver: adaptive
+  be: 1.0
+  fc: 1.0
+  td: 0.0
+  qc: 0.0
+  area_km2: 1.0
+  dt: 1.0
+triangular:
+  distribution:
+    type: triangular
+    cmin: 0
+    cmax: 200
+  recharge:
+    type: standard
+    kg: 24.0
+    bg: 1.0
+    st: 0.0
+  surface:
+    type: cascade
+    k1: 2.0
+    k2: 4.0
+  groundwater:
+    type: cubic
+    kb: 10000.0
+    solver: adaptive
+  be: 1.0
+  fc: 1.0
+  td: 0.0
+  qc: 0.0
+  area_km2: 1.0
+  dt: 1.0
+exponential:
+  distribution:
+    type: exponential
+    mean: 100
+  recharge:
+    type: standard
+    kg: 24.0
+    bg: 1.0
+    st: 0.0
+  surface:
+    type: cascade
+    k1: 2.0
+    k2: 4.0
+  groundwater:
+    type: cubic
+    kb: 10000.0
+    solver: adaptive
+  be: 1.0
+  fc: 1.0
+  td: 0.0
+  qc: 0.0
+  area_km2: 1.0
+  dt: 1.0
+lognormal:
+  distribution:
+    type: lognormal
+    meanlog: 4.105170185988092
+    sdlog: 1
+  recharge:
+    type: standard
+    kg: 24.0
+    bg: 1.0
+    st: 0.0
+  surface:
+    type: cascade
+    k1: 2.0
+    k2: 4.0
+  groundwater:
+    type: cubic
+    kb: 10000.0
+    solver: adaptive
+  be: 1.0
+  fc: 1.0
+  td: 0.0
+  qc: 0.0
+  area_km2: 1.0
+  dt: 1.0
+demand:
+  distribution:
+    type: pareto
+    cmin: 0.0
+    cmax: 140.0
+    b: 0.4
+  recharge:
+    type: demand
+    alpha: 0.5
+    beta: 1
+    qsat: 1
+  surface:
+    type: cascade
+    k1: 2.0
+    k2: 4.0
+  groundwater:
+    type: cubic
+    kb: 10000.0
+    solver: adaptive
+  be: 1.0
+  fc: 1.0
+  td: 0.0
+  qc: 0.0
+  area_km2: 1.0
+  dt: 1.0
+split:
+  distribution:
+    type: pareto
+    cmin: 0.0
+    cmax: 140.0
+    b: 0.4
+  recharge:
+    type: split
+    alpha: 0.7
+  surface:
+    type: cascade
+    k1: 2.0
+    k2: 4.0
+  groundwater:
+    type: cubic
+    kb: 10000.0
+    solver: adaptive
+  be: 1.0
+  fc: 1.0
+  td: 0.0
+  qc: 0.0
+  area_km2: 1.0
+  dt: 1.0
+linear_groundwater:
+  distribution:
+    type: pareto
+    cmin: 0.0
+    cmax: 140.0
+    b: 0.4
+  recharge:
+    type: standard
+    kg: 24.0
+    bg: 1.0
+    st: 0.0
+  surface:
+    type: cascade
+    k1: 2.0
+    k2: 4.0
+  groundwater:
+    type: linear
+    kb: 24
+  be: 1.0
+  fc: 1.0
+  td: 0.0
+  qc: 0.0
+  area_km2: 1.0
+  dt: 1.0
+quadratic_groundwater:
+  distribution:
+    type: pareto
+    cmin: 0.0
+    cmax: 140.0
+    b: 0.4
+  recharge:
+    type: standard
+    kg: 24.0
+    bg: 1.0
+    st: 0.0
+  surface:
+    type: cascade
+    k1: 2.0
+    k2: 4.0
+  groundwater:
+    type: quadratic
+    kb: 1000
+  be: 1.0
+  fc: 1.0
+  td: 0.0
+  qc: 0.0
+  area_km2: 1.0
+  dt: 1.0
+general_power:
+  distribution:
+    type: pareto
+    cmin: 0.0
+    cmax: 140.0
+    b: 0.4
+  recharge:
+    type: standard
+    kg: 24.0
+    bg: 1.0
+    st: 0.0
+  surface:
+    type: cascade
+    k1: 2.0
+    k2: 4.0
+  groundwater:
+    type: power
+    k: 0.0001
+    m: 2.5
+  be: 1.0
+  fc: 1.0
+  td: 0.0
+  qc: 0.0
+  area_km2: 1.0
+  dt: 1.0
+exponential_routing:
+  distribution:
+    type: pareto
+    cmin: 0.0
+    cmax: 140.0
+    b: 0.4
+  recharge:
+    type: standard
+    kg: 24.0
+    bg: 1.0
+    st: 0.0
+  surface:
+    type: cascade
+    k1: 2.0
+    k2: 4.0
+  groundwater:
+    type: exponential
+    a: 0.05
+    gamma: -5
+  be: 1.0
+  fc: 1.0
+  td: 0.0
+  qc: 0.0
+  area_km2: 1.0
+  dt: 1.0
