@@ -1,0 +1,226 @@
+---
+title: "PDM explained: from rainfall to river flow"
+author: "pdmS7 documentation"
+vignette: >
+  %\VignetteIndexEntry{PDM explained: from rainfall to river flow}
+  %\VignetteEngine{knitr::knitr}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+library(pdmS7)
+knitr::opts_chunk$set(
+  error = FALSE, collapse = TRUE, comment = "#>", fig.width = 7,
+  fig.height = 4.5, dpi = 120
+)
+source("diagram.R")
+```
+
+# The idea in plain English
+
+PDM treats a catchment as many small soil stores with different capacities.
+Shallow stores fill first. As rain continues, more of the catchment becomes
+saturated and produces runoff. The model then delays that water through fast
+and slow routing stores before reporting river flow.
+
+It does **not** map individual fields or hillslopes. A probability distribution
+describes how storage capacity varies across the catchment. The S7 components
+let you exchange that distribution, the recharge rule and the routing rule
+without rewriting the simulation.
+
+```{r pdm-diagram, echo=FALSE, fig.height=5.5, fig.cap="Default pathway: soil runoff feeds fast routing; recharge feeds groundwater. Split recharge instead divides runoff between both paths."}
+draw_process("pdm")
+```
+
+# Units and symbols
+
+| Symbol | Meaning | Unit |
+|---|---|---|
+| $p$, $e$, $d$, $v$ | Rain, actual evaporation, recharge and runoff **depths per interval** | mm |
+| $s$ | Catchment-average soil water | mm |
+| $c$ | A local store's capacity | mm |
+| $C$ | Common filling level used by the capacity distribution | mm |
+| $F(c)$ | Fraction of catchment with capacity no greater than $c$ | fraction |
+| $X$, $u$, $q$ | Routing storage, inflow rate and outflow rate | mm; mm/h; mm/h |
+| $\Delta t$ | Model interval | hours internally |
+| $A$ | Catchment area | km² |
+
+`sim_pdm()` takes integer **minutes**, while component functions take hours.
+Rain and PET are interval totals, not mm/hour rates. `qsim_cms` is an interval
+average in m³/s; `qsim_end_cms` is flow at the interval end. Use the series that
+matches the observations. A factor or coefficient calibrated hourly is not
+automatically a daily coefficient.
+
+# 1. How the soil distribution works
+
+For a filling level $C$, the mean water stored across the catchment is
+
+$$s(C)=\int_0^C [1-F(c)]\,dc, \qquad s_{\max}=E[c].$$
+
+In words: integrate the fraction of stores that can still hold water at each
+depth. `capacity_mean()` returns $s_{\max}$, **not** the largest local capacity.
+`storage_from_capacity()` evaluates $s(C)$; `capacity_from_storage()` reverses it.
+`capacity_cdf()` returns $F(C)$, the saturated area fraction.
+
+## Five configurable capacity families
+
+Outside bounded supports, CDFs are zero below the lower limit and one above the
+upper limit. Let $a=c_{\min}$, $z=c_{\max}$ and $w=z-a$.
+
+| Family / configuration type | CDF inside its support | Mean capacity |
+|---|---|---|
+| Pareto / `pareto` | $1-[(z-c)/w]^b$ | $a+w/(b+1)$ |
+| Rectangular / `rectangular` | $(c-a)/w$ | $(a+z)/2$ |
+| Symmetric triangular / `triangular` | $2(c-a)^2/w^2$ below midpoint; $1-2(z-c)^2/w^2$ above | $(a+z)/2$ |
+| Exponential / `exponential` | $1-\exp(-c/\mu)$ for $c\geq0$ | $\mu$ |
+| Lognormal / `lognormal` | $\Phi((\log c-\mu_L)/\sigma_L)$ for $c>0$ | $\exp(\mu_L+\sigma_L^2/2)$ |
+
+$\Phi$ is the standard normal CDF. Pareto with `b=0` is a point mass at
+`cmax`, not an ordinary density; `capacity_pdf()` deliberately rejects that
+case. Infinite filling level is a valid saturated limit for unbounded families.
+The implementation corrects apparent normalization/printing errors in the
+paper's Appendix A; see `docs/source-notes.md` in the full project.
+
+```{r capacity-example}
+soil <- FlodeParetoCapacity(cmin = 0, cmax = 140, b = 0.4)
+capacity_mean(soil) # 100 mm, not 140 mm
+storage_from_capacity(soil, c(0, 50, 100, 140))
+```
+
+```{r capacity-figure, echo=FALSE, fig.cap="For the example Pareto distribution, mean soil storage grows more slowly than the common filling level as more stores saturate."}
+level <- seq(0, 140, length.out = 101)
+plot(level, storage_from_capacity(soil, level),
+  type = "l", lwd = 2,
+  col = "#236b83", xlab = "Common filling level C (mm)", ylab = "Mean soil water s (mm)"
+)
+abline(h = capacity_mean(soil), lty = 2, col = "#896022")
+```
+
+# 2. Evaporation, recharge and runoff
+
+Rain is first multiplied by `fc`. With current soil storage $s$ and PET depth
+$e_p$, the requested actual evaporation is
+
+$$e_{\mathrm{req}}=e_p\left[1-\left(1-\frac{s}{s_{\max}}\right)^{b_e}\right].$$
+
+Wet soil supplies more of the potential demand. Requests are evaluated at the
+start of the interval. To prevent overdrawing the store, this implementation
+allocates available water to evaporation first and recharge second:
+
+$$p=f_c p_{\mathrm{input}},\quad e=\min(e_{\mathrm{req}},s+p),\quad
+d=\min(d_{\mathrm{req}},\max(0,s+p-e)).$$
+
+The remaining net depth is $n=p-e-d$. When $n>0$:
+
+$$C=s^{-1}(s_{\mathrm{old}}),\quad
+s_{\mathrm{new}}=s(C+n),\quad v=n-(s_{\mathrm{new}}-s_{\mathrm{old}}).$$
+
+Whatever cannot increase storage becomes runoff. For $n\leq0$, storage decreases
+and runoff is zero. The complete model's water-limiting rules prevent negative
+storage; standalone `soil_step()` clips a requested excessive deficit at zero,
+so do not interpret an impossible standalone withdrawal as an actual flux.
+
+```{r soil-step}
+soil_step(soil, storage = 50, net_depth = 20)
+```
+
+## Three recharge choices
+
+**Standard:** water drains only above threshold $s_t$:
+
+$$d_{\mathrm{req}}=\frac{\max(0,s-s_t)^{b_g}}{k_g}\Delta t.$$
+
+`kg` has units consistent with the exponent: h·mm$^{b_g-1}$, not always hours.
+
+**Demand:** groundwater deficit controls soil drainage. Let $X_{\max}$ be the
+groundwater storage giving `qsat`, and clip $g=(X_{\max}-X)/X_{\max}$ to [0,1].
+Then, with $d_{\mathrm{sat}}=q_{\mathrm{sat}}\Delta t$,
+
+$$d_{\mathrm{req}}=\left[d_{\mathrm{sat}}+(s_{\max}-d_{\mathrm{sat}})
+\min\left(1,(g/\alpha)^\beta\right)\right]\frac{s}{s_{\max}}.$$
+
+This is an interval-depth rule: it is timestep-sensitive and requires
+$q_{\mathrm{sat}}\Delta t\leq s_{\max}$. It also requires a single groundwater
+store with a positive implied $X_{\max}$; it cannot use the two-store cascade.
+
+**Split:** no separate soil drainage. Divide generated runoff into fast
+$\alpha v$ and slow $(1-\alpha)v$ inputs. This changes the diagram's connections,
+not just a coefficient in the standard drainage equation.
+
+# 3. Routing and the reported discharge
+
+Routing answers “when does generated water reach the outlet?”
+
+$$\frac{dX}{dt}=u-q(X).$$
+
+| Routing option | Flow law / structure | Main configuration |
+|---|---|---|
+| Linear | $q=X/k_b$ | `linear(kb)` |
+| Quadratic | $q=X^2/k_b$ | `quadratic(kb)` |
+| Cubic | $q=X^3/k_b$ | `cubic(kb, solver)` |
+| General power | $q=kX^m$ | `power(k, m, solver, rtol, atol)` |
+| Cascade | $dX_1/dt=u-X_1/k_1$; $dX_2/dt=X_1/k_1-X_2/k_2$ | `cascade(k1, k2)` |
+| Exponential | $q=\exp(\gamma+aX)$ | `exponential(a, gamma)` |
+
+Here the notation `linear(kb)` denotes a configuration choice, not an R function
+call; the constructor is `linear_routing(kb)`. The exponential model's $X$ is a
+**signed log-storage coordinate**, not an ordinary nonnegative tank.
+Power routing uses exact solutions where available and adaptive integration
+otherwise; the cubic `smith` option reproduces the report's approximate recurrence.
+`route_step()` returns a new state, discharged depth and both mean and endpoint
+rates. Inputs are treated as constant rates during each routing interval.
+
+After a common outlet delay `td`, conversion to m³/s is
+
+$$Q_{\mathrm{mean}}=\frac{A}{3.6}\frac{V_{\mathrm{fast}}+V_{\mathrm{slow}}}{\Delta t}+q_c.$$
+
+Fractional delays split water conservatively between neighbouring intervals.
+Delay queues are part of the stored restart state. `qc` is an external signed
+outlet adjustment, not a withdrawal from the model stores.
+
+# Function map and a short run
+
+| Task | Public functions |
+|---|---|
+| Configure | `pdm_presets()`, `parameter_catalog()`, `read_pdm_config()`, `load_pdm_model()`, `pdm_from_config()`, `pdm_model()` |
+| Inspect soil | `capacity_cdf()`, `capacity_pdf()`, `capacity_mean()`, `storage_from_capacity()`, `capacity_from_storage()`, `soil_step()` |
+| Inspect pathways | `recharge_depth()`, `routing_flow()`, `storage_for_flow()`, `route_step()`, `transfer_coefficients()` |
+| Run and restart | `initial_state()`, `pdm_step()`, `run_pdm()`, `sim_pdm()`, `spin_up()` |
+| Fit and evaluate | `calibrate_pdm()`, `calibrate_pdm_multi()`, `pdm_objectives()`, `pareto_front()` |
+| Existing updating | `state_updater()`, `correct_state()`, `error_updater()`, `fit_error_updater()`, `update_forecast()` |
+
+```{r short-run}
+config <- pdm_presets("standard")
+config$area_km2 <- 44
+flow <- sim_pdm(c(0, 10, 5, 0), rep(0.05, 4), config, timestep_min = 60L)
+flow[, c("qsim_cms", "soil_moisture_mm", "balance_error_mm"), with = FALSE]
+attr(flow, "water_balance")
+```
+
+Presets other than identified paper examples are illustrative, not calibrated
+catchments. `sim_pdm()` initializes half-full soil by default; explicit states
+or an adequate spin-up period may be needed. `spin_up()` repeats forcing; it does
+not automatically prove convergence. Do not change structure/timestep while
+reusing a checkpoint.
+
+The existing updating functions alter model states or forecast errors; state
+correction needs zero outlet delay and reports added/removed water. They are
+not a river-network or ensemble-assimilation system. Those extensions remain
+future work.
+
+# What the balance check does, and does not, prove
+
+The per-step residual is
+
+$$\epsilon=\text{old storage}+p-e-\text{natural outflow}-\text{new storage}.$$
+
+“Storage” includes soil, routing states and water in delay queues. A near-zero
+residual checks accounting. It does **not** establish good forecasts, correct
+forcing, a calibrated parameter set, or operational approval.
+
+## Source
+
+Moore, R. J. (2007), *The PDM rainfall-runoff model*, HESS 11, 483–499,
+[doi:10.5194/hess-11-483-2007](https://doi.org/10.5194/hess-11-483-2007).
+Equations above describe this library's implementation; its source notes identify
+the Appendix A corrections and additional numerical conventions.

@@ -1,0 +1,28 @@
+# User image parameter file interpreted as hourly coefficients, not verified IMFS metadata.
+image_hourly:
+  precipitation_factor: 1
+  lower_rate_h: 0.00677
+  upper_rate_h: 0.27095
+  retention_fraction: 0.04
+  melt_factor_mmh_c: 0.16667
+  adc_alpha: 0.25
+  adc_depth_mm: 100
+  melt_threshold_c: 1
+  snow_threshold_c: 0
+  drain_threshold_c: 0
+  areal_depletion: true
+  max_step_min: 60
+# Report Table 2.1: rates converted from day^-1 and melt from mm/day/C.
+report_daily:
+  precipitation_factor: 1
+  lower_rate_h: 0.00625
+  upper_rate_h: 0.03541666666666667
+  retention_fraction: 0.04
+  melt_factor_mmh_c: 0.1666666666666667
+  adc_alpha: 0.25
+  adc_depth_mm: 100
+  melt_threshold_c: 0
+  snow_threshold_c: 1
+  drain_threshold_c: 0
+  areal_depletion: true
+  max_step_min: 60

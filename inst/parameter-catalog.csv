@@ -43,3 +43,15 @@ error_updating,ar,-phi,1,finite vector,0.7,Eq 35-40; R sign convention,illustrat
 error_updating,ma,theta,1,finite vector,empty,Eq 36-40,illustrative
 error_updating,scale,NA,choice,additive or log,additive,Eq 31-42,paper option
 error_updating,offset,NA,m3/s,>=0; positive transformed log flows,0,Optional extension; zero matches paper,implementation choice
+snow,precipitation_factor,c,1,>=0,1,PACK input transformation,user image
+snow,lower_rate_h,k1,h^-1,>=0,0.00677,PACK Eq 2.4-2.6,user image; hourly units assumed
+snow,upper_rate_h,k2,h^-1,>=0,0.27095,PACK Eq 2.4-2.6,user image; hourly units assumed
+snow,retention_fraction,Sc_star,1,>=0 and <1,0.04,PACK Eq 2.5,user image
+snow,melt_factor_mmh_c,f,mm/h/C,>=0,0.16667,PACK Eq 2.1,user image; hourly units assumed
+snow,adc_alpha,alpha,1,>0 and <=1,0.25,PACK Figure 2.2,user image
+snow,adc_depth_mm,theta_c,mm,>0,100,PACK Eq 2.8,user image
+snow,melt_threshold_c,Tm,C,finite,1,PACK Eq 2.1,user image; differs from report typical
+snow,snow_threshold_c,Ts,C,finite,0,PACK input transformation,user image; differs from report typical
+snow,drain_threshold_c,Tc,C,finite,0,PACK cold-period rule,report fixed value; configurable extension
+snow,areal_depletion,F,logical,TRUE or FALSE,TRUE,PACK Eq 2.8,implementation switch
+snow,max_step_min,NA,min,>0,60,Conservative internal accounting,implementation control

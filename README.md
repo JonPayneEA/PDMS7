@@ -1,6 +1,6 @@
 # pdmS7 — configurable PDM for Flode conventions
 
-Version 0.2.0 targets **Tier 3 engineering checks** for pseudo-operational use.
+Version 0.3.1 targets **Tier 3 engineering checks** for pseudo-operational use.
 It remains a standalone package, with `reach.hydro` as its proposed Flode home.
 Human maintainer attribution, independent review and catchment validation are
 outstanding; this is not a declaration of operational approval.
@@ -15,12 +15,46 @@ R >= 4.3 is required. For users of the installable source archive:
 
 ```r
 install.packages(c("S7", "data.table", "yaml", "logger"))
-install.packages("pdmS7_0.2.0.tar.gz", repos = NULL, type = "source")
+install.packages("pdmS7_0.3.1.tar.gz", repos = NULL, type = "source")
 ```
 
 For developers, extract the full project, open R in `pdmS7/`, and use
 `renv::restore()`. The lockfile also records the testing and documentation tools.
 Do not copy the previous machine's `renv/library` directory.
+
+## Illustrated vignettes
+
+**Plain Markdown copies are included in the project:**
+
+- [PDM explained](docs/vignettes/pdm-explained.md)
+- [PACK snowpack explained](docs/vignettes/snowpack-explained.md)
+- [Example workflow](docs/vignettes/example-workflow.md)
+
+Start with [the guide index and PACK file map](docs/vignettes/README.md).
+Diagrams are included in `docs/vignettes/figures/`; no documentation build is
+needed to read the `.md` guides. The PACK implementation is in `R/pack_model.R`,
+`R/pack_step.R` and `R/sim_pack.R`, with defaults in `inst/config/pack.yml`.
+
+The source archive includes built HTML vignettes. After installation:
+
+```r
+browseVignettes("pdmS7")
+vignette("pdm-explained", package = "pdmS7")
+vignette("snowpack-explained", package = "pdmS7")
+vignette("example-workflow", package = "pdmS7")
+```
+
+Editable R Markdown sources live in `vignettes/`. They explain the equations,
+component functions, units and assumptions in plain English, with process diagrams
+and executable examples. The workflow uses synthetic forcing and observations;
+it demonstrates calibration, held-out validation and checkpoint restart, not
+field performance. Rebuild with `R CMD build pdmS7` after restoring development
+dependencies. No numerical APIs changed in this documentation release.
+
+The full project download also provides standalone HTML readers in
+`read-vignettes/`, with embedded figures and native MathML for modern browsers.
+These readers work offline. The normal knitr-built package pages use the
+markdown renderer's online KaTeX assets for maths display.
 
 ## Quick start
 
@@ -152,6 +186,23 @@ volume. It requires `td=0`. `fit_error_updater()` and `update_forecast()` implem
 additive or logarithmic ARMA correction. Use training history available at the
 forecast origin, never future observations. AR coefficients use R's sign
 convention (`ar=-phi` in the paper).
+
+## Snow and multi-objective calibration
+
+`sim_pack()` implements PACK's dry/wet stores, two drainage outlets, temperature
+thresholds and areal depletion. `sim_snow_pdm()` couples its effective rainfall
+to PDM and returns both restart states. Defaults transcribe the supplied image's
+parameter file, with **hourly rate units assumed**; the report's daily typical
+set is separately available. See the [snow guide](docs/snow-model.md) for equations,
+parameter mapping, the unit uncertainty and numerical interpretations.
+
+`calibrate_pdm_multi()` can vary snow and PDM parameters jointly, returning
+an approximate Pareto front and a weighted compromise. Metrics include NSE/KGE
+loss, RMSE, log-RMSE, volume bias and peak-magnitude error. Explicit scales and
+weights control trade-offs. See the [calibration guide](docs/multi-objective.md).
+
+River-network routing and additional state assimilation are deferred in the
+[roadmap](docs/roadmap.md). Existing updating APIs remain available.
 
 ## Limitations that matter in pseudo-operations
 

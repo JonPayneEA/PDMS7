@@ -9,8 +9,11 @@ The shared workflow is pinned to that commit. No code was pushed or published.
 
 ## Scope and interpretation
 
-The numerical formulation, available distributions/recharge/routing options,
-parameter domains and conservation conventions remain those of version 0.1.0.
+The original PDM distributions/recharge/routing options, parameter domains and
+conservation conventions remain those of version 0.1.0. Version 0.3.0 adds optional
+PACK snow processing and multi-objective calibration. The snow guide documents
+the assumed image parameter units and explicit choices where the report leaves
+discrete event logic unspecified; these need independent scientific review.
 The refactor adds the team's data.table/UTC interface, S7 naming, YAML settings,
 roxygen documentation, testthat layout, lint configuration, reproducible tooling,
 and shared CI. Existing APIs remain available; see README migration notes for
@@ -18,7 +21,7 @@ serialized S7 objects.
 
 Runtime dependencies are S7 (required typed model components), data.table
 (tabular assembly/CSV input), yaml (declarative configuration), logger
-(structured standalone logging), and R's stats/utils. No tidyverse runtime
+(structured standalone logging), and R's stats. No tidyverse runtime
 packages are used. Development tools may depend transitively on tidyverse
 packages; they are not used for model data processing.
 

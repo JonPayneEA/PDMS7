@@ -1,10 +1,15 @@
 <urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
 <url><loc>/404.html</loc></url>
+<url><loc>/articles/example-workflow.html</loc></url>
+<url><loc>/articles/index.html</loc></url>
+<url><loc>/articles/pdm-explained.html</loc></url>
+<url><loc>/articles/snowpack-explained.html</loc></url>
 <url><loc>/authors.html</loc></url>
 <url><loc>/index.html</loc></url>
 <url><loc>/LICENSE-text.html</loc></url>
 <url><loc>/news/index.html</loc></url>
 <url><loc>/reference/calibrate_pdm.html</loc></url>
+<url><loc>/reference/calibrate_pdm_multi.html</loc></url>
 <url><loc>/reference/CapacityDistribution.html</loc></url>
 <url><loc>/reference/capacity_cdf.html</loc></url>
 <url><loc>/reference/capacity_from_storage.html</loc></url>
@@ -26,6 +31,8 @@
 <url><loc>/reference/FlodeExponentialCapacity.html</loc></url>
 <url><loc>/reference/FlodeExponentialRouting.html</loc></url>
 <url><loc>/reference/FlodeLognormalCapacity.html</loc></url>
+<url><loc>/reference/FlodePackModel.html</loc></url>
+<url><loc>/reference/FlodePackState.html</loc></url>
 <url><loc>/reference/FlodeParetoCapacity.html</loc></url>
 <url><loc>/reference/FlodePdmModel.html</loc></url>
 <url><loc>/reference/FlodePdmState.html</loc></url>
@@ -42,12 +49,17 @@
 <url><loc>/reference/linear_routing.html</loc></url>
 <url><loc>/reference/load_pdm_model.html</loc></url>
 <url><loc>/reference/LognormalCapacity.html</loc></url>
+<url><loc>/reference/pack_from_config.html</loc></url>
+<url><loc>/reference/pack_presets.html</loc></url>
+<url><loc>/reference/pack_step.html</loc></url>
 <url><loc>/reference/parameter_catalog.html</loc></url>
 <url><loc>/reference/ParetoCapacity.html</loc></url>
+<url><loc>/reference/pareto_front.html</loc></url>
 <url><loc>/reference/PDMModel.html</loc></url>
 <url><loc>/reference/PDMState.html</loc></url>
 <url><loc>/reference/pdm_from_config.html</loc></url>
 <url><loc>/reference/pdm_model.html</loc></url>
+<url><loc>/reference/pdm_objectives.html</loc></url>
 <url><loc>/reference/pdm_presets.html</loc></url>
 <url><loc>/reference/pdm_step.html</loc></url>
 <url><loc>/reference/PowerRouting.html</loc></url>
@@ -61,7 +73,9 @@
 <url><loc>/reference/Routing.html</loc></url>
 <url><loc>/reference/routing_flow.html</loc></url>
 <url><loc>/reference/run_pdm.html</loc></url>
+<url><loc>/reference/sim_pack.html</loc></url>
 <url><loc>/reference/sim_pdm.html</loc></url>
+<url><loc>/reference/sim_snow_pdm.html</loc></url>
 <url><loc>/reference/soil_step.html</loc></url>
 <url><loc>/reference/spin_up.html</loc></url>
 <url><loc>/reference/SplitRecharge.html</loc></url>

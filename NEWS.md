@@ -1,3 +1,20 @@
+# pdmS7 0.3.1
+
+- Added three executable vignettes: PDM equations and functions, PACK snow
+  accounting and defaults, and a synthetic calibration/validation/restart workflow.
+- Added reproducible process diagrams, soil/cover curves and workflow hydrographs.
+- No changes to the numerical model APIs or equations.
+
+# pdmS7 0.3.0
+
+- Added optional PACK S7 snow components, conservative substep accounting,
+  areal depletion, fresh-snow memory and coupled PDM restart.
+- Added the image parameter preset (explicit hourly-unit assumption) and a
+  distinct report-typical preset, with full parameter mapping and source notes.
+- Added multi-objective metrics, weighted multi-start calibration, evaluated
+  Pareto trade-offs, configurable scales and joint snow/PDM parameter paths.
+- Documented river networks and additional state assimilation as future work.
+
 # pdmS7 0.2.0
 
 ## Flode Tier 3 engineering target

@@ -17,7 +17,7 @@
       </button>
       <span class="navbar-brand">
         <a class="navbar-link" href="../index.html">pdmS7</a>
-        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.2.0</span>
+        <span class="version label label-default" data-toggle="tooltip" data-placement="bottom" title="">0.3.1</span>
       </span>
     </div>
 
@@ -25,6 +25,22 @@
       <ul class="nav navbar-nav"><li>
   <a href="../reference/index.html">Reference</a>
 </li>
+<li class="dropdown">
+  <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+    Articles
+
+    <span class="caret"></span>
+  </a>
+  <ul class="dropdown-menu" role="menu"><li>
+      <a href="../articles/example-workflow.html">Worked example: snow, flow, calibration and restart</a>
+    </li>
+    <li>
+      <a href="../articles/pdm-explained.html">PDM explained: from rainfall to river flow</a>
+    </li>
+    <li>
+      <a href="../articles/snowpack-explained.html">PACK explained: storing snow and releasing meltwater</a>
+    </li>
+  </ul></li>
 <li>
   <a href="../news/index.html">Changelog</a>
 </li>
@@ -48,6 +64,10 @@
           <p><code><a href="calibrate_pdm.html">calibrate_pdm()</a></code> </p>
         </td>
         <td><p>Calibrate pdm</p></td>
+      </tr><tr><td>
+          <p><code><a href="calibrate_pdm_multi.html">calibrate_pdm_multi()</a></code> </p>
+        </td>
+        <td><p>Calibrate PDM or coupled snow-PDM against multiple objectives</p></td>
       </tr><tr><td>
           <p><code><a href="CapacityDistribution.html">CapacityDistribution()</a></code> </p>
         </td>
@@ -133,6 +153,14 @@
         </td>
         <td><p>Create FlodeLognormalCapacity</p></td>
       </tr><tr><td>
+          <p><code><a href="FlodePackModel.html">FlodePackModel()</a></code> </p>
+        </td>
+        <td><p>PACK snow model</p></td>
+      </tr><tr><td>
+          <p><code><a href="FlodePackState.html">FlodePackState()</a></code> </p>
+        </td>
+        <td><p>PACK state including fresh-snow cover memory</p></td>
+      </tr><tr><td>
           <p><code><a href="FlodeParetoCapacity.html">FlodeParetoCapacity()</a></code> </p>
         </td>
         <td><p>Create FlodeParetoCapacity</p></td>
@@ -193,6 +221,18 @@
         </td>
         <td><p>Compatibility alias for FlodeLognormalCapacity</p></td>
       </tr><tr><td>
+          <p><code><a href="pack_from_config.html">pack_from_config()</a></code> </p>
+        </td>
+        <td><p>Build PACK from a configuration</p></td>
+      </tr><tr><td>
+          <p><code><a href="pack_presets.html">pack_presets()</a></code> </p>
+        </td>
+        <td><p>PACK parameter presets</p></td>
+      </tr><tr><td>
+          <p><code><a href="pack_step.html">pack_step()</a></code> </p>
+        </td>
+        <td><p>Advance a PACK snow state</p></td>
+      </tr><tr><td>
           <p><code><a href="parameter_catalog.html">parameter_catalog()</a></code> </p>
         </td>
         <td><p>Parameter catalog</p></td>
@@ -200,6 +240,10 @@
           <p><code><a href="ParetoCapacity.html">ParetoCapacity()</a></code> </p>
         </td>
         <td><p>Compatibility alias for FlodeParetoCapacity</p></td>
+      </tr><tr><td>
+          <p><code><a href="pareto_front.html">pareto_front()</a></code> </p>
+        </td>
+        <td><p>Identify nondominated loss vectors</p></td>
       </tr><tr><td>
           <p><code><a href="PDMModel.html">PDMModel()</a></code> </p>
         </td>
@@ -216,6 +260,10 @@
           <p><code><a href="pdm_model.html">pdm_model()</a></code> </p>
         </td>
         <td><p>Pdm model</p></td>
+      </tr><tr><td>
+          <p><code><a href="pdm_objectives.html">pdm_objectives()</a></code> </p>
+        </td>
+        <td><p>Evaluate hydrological calibration losses</p></td>
       </tr><tr><td>
           <p><code><a href="pdm_presets.html">pdm_presets()</a></code> </p>
         </td>
@@ -269,9 +317,17 @@
         </td>
         <td><p>Run a forcing sequence</p></td>
       </tr><tr><td>
+          <p><code><a href="sim_pack.html">sim_pack()</a></code> </p>
+        </td>
+        <td><p>Simulate PACK snow</p></td>
+      </tr><tr><td>
           <p><code><a href="sim_pdm.html">sim_pdm()</a></code> </p>
         </td>
         <td><p>Sim pdm</p></td>
+      </tr><tr><td>
+          <p><code><a href="sim_snow_pdm.html">sim_snow_pdm()</a></code> </p>
+        </td>
+        <td><p>Simulate coupled PACK and PDM</p></td>
       </tr><tr><td>
           <p><code><a href="soil_step.html">soil_step()</a></code> </p>
         </td>
