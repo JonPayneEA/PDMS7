@@ -1,0 +1,460 @@
+# pdmS7 — configurable PDM for Flode conventions
+
+Version 0.3.1 targets **Tier 3 engineering checks** for
+pseudo-operational use. It remains a standalone package, with
+`reach.hydro` as its proposed Flode home. Human maintainer attribution,
+independent review and catchment validation are outstanding; this is not
+a declaration of operational approval.
+
+The model implements Moore (2007),
+[doi:10.5194/hess-11-483-2007](https://doi.org/10.5194/hess-11-483-2007),
+with all five Appendix A capacity distributions, three recharge schemes,
+six routing choices, calibration, restartable states, and forecast
+updating.
+
+## Install
+
+R \>= 4.3 is required. For users of the installable source archive:
+
+``` r
+install.packages(c("S7", "data.table", "yaml", "logger"))
+install.packages("pdmS7_0.3.1.tar.gz", repos = NULL, type = "source")
+```
+
+For developers, extract the full project, open R in `pdmS7/`, and use
+[`renv::restore()`](https://rstudio.github.io/renv/reference/restore.html).
+The lockfile also records the testing and documentation tools. Do not
+copy the previous machine’s `renv/library` directory.
+
+## Illustrated vignettes
+
+**Plain Markdown copies are included in the project:**
+
+- [PDM
+  explained](https://jonpayneea.github.io/PDMS7/docs/vignettes/pdm-explained.md)
+- [PACK snowpack
+  explained](https://jonpayneea.github.io/PDMS7/docs/vignettes/snowpack-explained.md)
+- [Example
+  workflow](https://jonpayneea.github.io/PDMS7/docs/vignettes/example-workflow.md)
+
+Start with [the guide index and PACK file
+map](https://jonpayneea.github.io/PDMS7/docs/vignettes/README.md).
+Diagrams are included in `docs/vignettes/figures/`; no documentation
+build is needed to read the `.md` guides. The PACK implementation is in
+`R/pack_model.R`, `R/pack_step.R` and `R/sim_pack.R`, with defaults in
+`inst/config/pack.yml`.
+
+The source archive includes built HTML vignettes. After installation:
+
+``` r
+browseVignettes("pdmS7")
+vignette("pdm-explained", package = "pdmS7")
+vignette("snowpack-explained", package = "pdmS7")
+vignette("example-workflow", package = "pdmS7")
+```
+
+Editable R Markdown sources live in `vignettes/`. They explain the
+equations, component functions, units and assumptions in plain English,
+with process diagrams and executable examples. The workflow uses
+synthetic forcing and observations; it demonstrates calibration,
+held-out validation and checkpoint restart, not field performance.
+Rebuild with `R CMD build pdmS7` after restoring development
+dependencies. No numerical APIs changed in this documentation release.
+
+The full project download also provides standalone HTML readers in
+`read-vignettes/`, with embedded figures and native MathML for modern
+browsers. These readers work offline. The normal knitr-built package
+pages use the markdown renderer’s online KaTeX assets for maths display.
+
+## Quick start
+
+``` r
+library(pdmS7)
+
+config <- read_pdm_config(
+  system.file("config", "standard.yml", package = "pdmS7")
+)
+config$area_km2 <- 44  # supply your catchment area
+
+datetime <- seq(
+  as.POSIXct("2026-10-01 00:00:00", tz = "UTC"),
+  by = "hour", length.out = 4
+)
+flow_dt <- sim_pdm(
+  rainfall_mm = c(0, 10, 5, 0),
+  pet_mm = rep(0.05, 4),
+  params = config,
+  timestep_min = 60L,
+  datetime = datetime
+)
+flow_dt[, c("datetime", "qsim_cms", "soil_moisture_mm"), with = FALSE]
+attr(flow_dt, "water_balance")
+```
+
+Rainfall and PET are **depths in mm per interval**, not rates.
+`timestep_min` is an integer number of minutes. Discharge is m³/s.
+Timestamps are converted to UTC while preserving instants; missing or
+irregular supplied timestamps are errors. If no timestamps are supplied,
+the `datetime` column contains UTC `NA` values, not invented dates.
+
+## Configuration
+
+[`pdm_presets()`](https://jonpayneea.github.io/PDMS7/reference/pdm_presets.md)
+lists 13 templates. The templates live in `inst/config/presets.yml`, and
+`inst/config/standard.yml` is a standalone example. YAML is declarative:
+unknown keys and `!expr` expressions are rejected.
+
+``` r
+config <- pdm_presets("standard")
+config$distribution <- list(type = "lognormal", meanlog = log(100) - 0.5, sdlog = 1)
+config$recharge <- list(type = "demand", alpha = 0.5, beta = 1, qsat = 1)
+config$groundwater <- list(type = "quadratic", kb = 1000)
+model <- pdm_from_config(config)
+```
+
+| Component | Choices and parameters |
+|----|----|
+| Capacity | `pareto(cmin,cmax,b)`; `rectangular(cmin,cmax)`; `triangular(cmin,cmax)`; `exponential(mean)`; `lognormal(meanlog,sdlog)` |
+| Recharge | `standard(kg,bg,st)`; `demand(alpha,beta,qsat)`; `split(alpha)` |
+| Either routing pathway | `linear(kb)`; `quadratic(kb)`; `cubic(kb,solver)`; `power(k,m,solver,rtol,atol)`; `cascade(k1,k2)`; `exponential(a,gamma)` |
+| Catchment controls | `be`, `fc`, `td`, `qc`, `area_km2`, `dt` |
+
+[`parameter_catalog()`](https://jonpayneea.github.io/PDMS7/reference/parameter_catalog.md)
+gives units, valid domains, equations and provenance. The Figure 5
+Pareto parameters are `cmin=0`, `cmax=140`, `b=0.4` (Smax=100 mm). Other
+full parameter sets are **illustrative templates, not calibrated
+catchment sets**. No published Beverley Brook calibration is implied.
+
+The new
+[`sim_pdm()`](https://jonpayneea.github.io/PDMS7/reference/sim_pdm.md)
+interface converts minutes to the **hours** used by the paper and the
+component APIs. A configuration list’s `dt` is replaced by
+`timestep_min / 60`; a supplied model must already match that interval.
+Coefficients such as `kg`, `kb`, `k1`, `k2`, `td` retain their
+documented hour-based units.
+
+## S7 objects and compatibility
+
+``` r
+model <- pdm_model(
+  distribution = FlodeParetoCapacity(cmin = 0, cmax = 140, b = 0.4),
+  recharge = FlodeStandardRecharge(kg = 24, bg = 1, st = 0),
+  surface = FlodeCascadeRouting(k1 = 2, k2 = 4),
+  groundwater = cubic_routing(kb = 10000)
+)
+S7::S7_inherits(model, FlodePdmModel)
+```
+
+All canonical classes carry the `Flode` prefix. Previous constructor
+names such as `ParetoCapacity`, `PDMModel` and `PDMState` remain
+aliases. The legacy `run_pdm(model, forcing, state)` API retains
+`rain`/`pet` inputs and its list of results, including a data.frame with
+`q_m3s` and `q_end_m3s` columns.
+
+The unchanged mathematical component names mirror the paper and
+conventional probability APIs (e.g. `capacity_cdf`). Their units are
+documented in help and the parameter catalog. No implicit unit
+conversion is introduced into these APIs.
+
+**Saved 0.1.0 S7 objects:** rebuild from the saved configuration under
+0.2.0; canonical class identity has changed. Newly saved states restart
+within 0.2.0. Do not change model structure or timestep without
+transforming/reinitializing states. No compatibility claim is made for
+0.1.0 serialized state objects.
+
+## Water balance, warm-up and restart
+
+`qsim_cms` is interval-average flow; `qsim_end_cms` is endpoint flow.
+Compare observations with the correct series. Balance diagnostics use
+interval volumes, including water pending in delay queues. Signed `qc`
+is an external outlet addition/removal, excluded from the internal
+storage balance.
+
+``` r
+first_dt <- sim_pdm(c(0, 10), c(0.05, 0.05), config, 60L, warmup_steps = 1L)
+second_dt <- sim_pdm(c(5, 0), c(0.05, 0.05), config, 60L,
+  state = attr(first_dt, "final_state"))
+# Warm-up rows are retained and flagged; exclude is_warmup rows when scoring.
+```
+
+[`initial_state()`](https://jonpayneea.github.io/PDMS7/reference/initial_state.md)
+allows explicit soil/routing states.
+[`spin_up()`](https://jonpayneea.github.io/PDMS7/reference/spin_up.md)
+repeats a representative forcing period; inspect state convergence.
+Store checkpoint objects with
+[`saveRDS()`](https://rdrr.io/r/base/readRDS.html) and
+[`readRDS()`](https://rdrr.io/r/base/readRDS.html), using a
+caller-configured path.
+
+## Calibration and updating
+
+The legacy calibration API is retained:
+
+``` r
+config <- pdm_presets("standard")
+# fit <- calibrate_pdm(config, forcing, observed_cms,
+#   lower = c(distribution.b = 0.05, surface.k1 = 0.1),
+#   upper = c(distribution.b = 3, surface.k1 = 10),
+#   warmup = 24, objective = "rmse", flow = "q_m3s")
+```
+
+These bounds are illustrative. Missing observations are excluded;
+missing forcing is rejected. Inspect convergence and validate on
+independent periods. Debug logs for rejected parameter trials use
+[`logger::log_debug()`](https://daroczig.github.io/logger/reference/log_level.html);
+ordinary simulations produce no operational console messages. A calling
+script can configure logger thresholds/appenders. Runtime code has no
+tidyverse dependency.
+
+[`correct_state()`](https://jonpayneea.github.io/PDMS7/reference/correct_state.md)
+implements proportional, super-proportional, and non-proportional
+endpoint state correction, with explicit external correction volume. It
+requires `td=0`.
+[`fit_error_updater()`](https://jonpayneea.github.io/PDMS7/reference/fit_error_updater.md)
+and
+[`update_forecast()`](https://jonpayneea.github.io/PDMS7/reference/update_forecast.md)
+implement additive or logarithmic ARMA correction. Use training history
+available at the forecast origin, never future observations. AR
+coefficients use R’s sign convention (`ar=-phi` in the paper).
+
+## Snow and multi-objective calibration
+
+[`sim_pack()`](https://jonpayneea.github.io/PDMS7/reference/sim_pack.md)
+implements PACK’s dry/wet stores, two drainage outlets, temperature
+thresholds and areal depletion.
+[`sim_snow_pdm()`](https://jonpayneea.github.io/PDMS7/reference/sim_snow_pdm.md)
+couples its effective rainfall to PDM and returns both restart states.
+Defaults transcribe the supplied image’s parameter file, with **hourly
+rate units assumed**; the report’s daily typical set is separately
+available. See the [snow
+guide](https://jonpayneea.github.io/PDMS7/docs/snow-model.md) for
+equations, parameter mapping, the unit uncertainty and numerical
+interpretations.
+
+[`calibrate_pdm_multi()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm_multi.md)
+can vary snow and PDM parameters jointly, returning an approximate
+Pareto front and a weighted compromise. Metrics include NSE/KGE loss,
+RMSE, log-RMSE, volume bias and peak-magnitude error. Explicit scales
+and weights control trade-offs. See the [calibration
+guide](https://jonpayneea.github.io/PDMS7/docs/multi-objective.md).
+
+River-network routing and additional state assimilation are deferred in
+the [roadmap](https://jonpayneea.github.io/PDMS7/docs/roadmap.md).
+Existing updating APIs remain available.
+
+## Limitations that matter in pseudo-operations
+
+- Maintainer name/email and Steward/peer approval have not been
+  supplied.
+- Presets need catchment calibration, held-out validation and
+  forcing-quality checks.
+- This remains an independent implementation, not proprietary UKCEH PDM
+  software.
+- Demand recharge follows the paper’s interval-depth formula and can
+  depend strongly on timestep. Check timestep sensitivity.
+- Exponential routing uses a signed log-storage coordinate; it is not a
+  finite nonnegative tank. Groundwater abstractions/well-level
+  extensions are not included.
+- Fractional `td` uses a conservative outlet-delay convention. Delayed
+  observation state smoothing is not implemented.
+- Evaporation is capped before recharge when available water is
+  insufficient. Requested and actual losses are both reported.
+
+See [source
+notes](https://jonpayneea.github.io/PDMS7/docs/source-notes.md) for
+equations, apparent Appendix A corrections, numerical methods and exact
+scope.
+
+## Development and verification
+
+From the project root after restoring dependencies:
+
+``` r
+roxygen2::roxygenise()
+testthat::test_local()
+cov <- covr::package_coverage()
+stopifnot(covr::percent_coverage(cov) >= 70)
+pkgload::load_all()
+stopifnot(length(lintr::lint_package()) == 0)
+renv::status()
+rcmdcheck::rcmdcheck(args = c("--no-manual"), error_on = "warning")
+```
+
+The shared Flode CI workflow is pinned to the style repository commit
+recorded in [the
+review](https://jonpayneea.github.io/PDMS7/docs/tier3-review.md), with
+`tier: 3`. CI configuration is provided; remote CI has not been run in a
+hosted repository. The review distinguishes completed local checks from
+outstanding human governance requirements.
+
+# Package index
+
+## All functions
+
+- [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md)
+  : Calibrate pdm
+- [`calibrate_pdm_multi()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm_multi.md)
+  : Calibrate PDM or coupled snow-PDM against multiple objectives
+- [`CapacityDistribution()`](https://jonpayneea.github.io/PDMS7/reference/CapacityDistribution.md)
+  : Compatibility alias for FlodeCapacityDistribution
+- [`capacity_cdf()`](https://jonpayneea.github.io/PDMS7/reference/capacity_cdf.md)
+  : Capacity cdf
+- [`capacity_from_storage()`](https://jonpayneea.github.io/PDMS7/reference/capacity_from_storage.md)
+  : Capacity from storage
+- [`capacity_mean()`](https://jonpayneea.github.io/PDMS7/reference/capacity_mean.md)
+  : Capacity mean
+- [`capacity_pdf()`](https://jonpayneea.github.io/PDMS7/reference/capacity_pdf.md)
+  : Capacity pdf
+- [`CascadeRouting()`](https://jonpayneea.github.io/PDMS7/reference/CascadeRouting.md)
+  : Compatibility alias for FlodeCascadeRouting
+- [`correct_state()`](https://jonpayneea.github.io/PDMS7/reference/correct_state.md)
+  : Correct state
+- [`cubic_routing()`](https://jonpayneea.github.io/PDMS7/reference/cubic_routing.md)
+  : Cubic routing
+- [`DemandRecharge()`](https://jonpayneea.github.io/PDMS7/reference/DemandRecharge.md)
+  : Compatibility alias for FlodeDemandRecharge
+- [`ErrorUpdater()`](https://jonpayneea.github.io/PDMS7/reference/ErrorUpdater.md)
+  : Compatibility alias for FlodeErrorUpdater
+- [`error_updater()`](https://jonpayneea.github.io/PDMS7/reference/error_updater.md)
+  : Error updater
+- [`ExponentialCapacity()`](https://jonpayneea.github.io/PDMS7/reference/ExponentialCapacity.md)
+  : Compatibility alias for FlodeExponentialCapacity
+- [`ExponentialRouting()`](https://jonpayneea.github.io/PDMS7/reference/ExponentialRouting.md)
+  : Compatibility alias for FlodeExponentialRouting
+- [`fit_error_updater()`](https://jonpayneea.github.io/PDMS7/reference/fit_error_updater.md)
+  : Fit error updater
+- [`FlodeCapacityDistribution()`](https://jonpayneea.github.io/PDMS7/reference/FlodeCapacityDistribution.md)
+  : Create FlodeCapacityDistribution
+- [`FlodeCascadeRouting()`](https://jonpayneea.github.io/PDMS7/reference/FlodeCascadeRouting.md)
+  : Create FlodeCascadeRouting
+- [`FlodeDemandRecharge()`](https://jonpayneea.github.io/PDMS7/reference/FlodeDemandRecharge.md)
+  : Create FlodeDemandRecharge
+- [`FlodeErrorUpdater()`](https://jonpayneea.github.io/PDMS7/reference/FlodeErrorUpdater.md)
+  : Create FlodeErrorUpdater
+- [`FlodeExponentialCapacity()`](https://jonpayneea.github.io/PDMS7/reference/FlodeExponentialCapacity.md)
+  : Create FlodeExponentialCapacity
+- [`FlodeExponentialRouting()`](https://jonpayneea.github.io/PDMS7/reference/FlodeExponentialRouting.md)
+  : Create FlodeExponentialRouting
+- [`FlodeLognormalCapacity()`](https://jonpayneea.github.io/PDMS7/reference/FlodeLognormalCapacity.md)
+  : Create FlodeLognormalCapacity
+- [`FlodePackModel()`](https://jonpayneea.github.io/PDMS7/reference/FlodePackModel.md)
+  : PACK snow model
+- [`FlodePackState()`](https://jonpayneea.github.io/PDMS7/reference/FlodePackState.md)
+  : PACK state including fresh-snow cover memory
+- [`FlodeParetoCapacity()`](https://jonpayneea.github.io/PDMS7/reference/FlodeParetoCapacity.md)
+  : Create FlodeParetoCapacity
+- [`FlodePdmModel()`](https://jonpayneea.github.io/PDMS7/reference/FlodePdmModel.md)
+  : Create FlodePdmModel
+- [`FlodePdmState()`](https://jonpayneea.github.io/PDMS7/reference/FlodePdmState.md)
+  : Create FlodePdmState
+- [`FlodePowerRouting()`](https://jonpayneea.github.io/PDMS7/reference/FlodePowerRouting.md)
+  : Create FlodePowerRouting
+- [`FlodeRecharge()`](https://jonpayneea.github.io/PDMS7/reference/FlodeRecharge.md)
+  : Create FlodeRecharge
+- [`FlodeRectangularCapacity()`](https://jonpayneea.github.io/PDMS7/reference/FlodeRectangularCapacity.md)
+  : Create FlodeRectangularCapacity
+- [`FlodeRouting()`](https://jonpayneea.github.io/PDMS7/reference/FlodeRouting.md)
+  : Create FlodeRouting
+- [`FlodeSplitRecharge()`](https://jonpayneea.github.io/PDMS7/reference/FlodeSplitRecharge.md)
+  : Create FlodeSplitRecharge
+- [`FlodeStandardRecharge()`](https://jonpayneea.github.io/PDMS7/reference/FlodeStandardRecharge.md)
+  : Create FlodeStandardRecharge
+- [`FlodeStateUpdater()`](https://jonpayneea.github.io/PDMS7/reference/FlodeStateUpdater.md)
+  : Create FlodeStateUpdater
+- [`FlodeTriangularCapacity()`](https://jonpayneea.github.io/PDMS7/reference/FlodeTriangularCapacity.md)
+  : Create FlodeTriangularCapacity
+- [`initial_state()`](https://jonpayneea.github.io/PDMS7/reference/initial_state.md)
+  : Initial state
+- [`linear_routing()`](https://jonpayneea.github.io/PDMS7/reference/linear_routing.md)
+  : Linear routing
+- [`load_pdm_model()`](https://jonpayneea.github.io/PDMS7/reference/load_pdm_model.md)
+  : Load pdm model
+- [`LognormalCapacity()`](https://jonpayneea.github.io/PDMS7/reference/LognormalCapacity.md)
+  : Compatibility alias for FlodeLognormalCapacity
+- [`pack_from_config()`](https://jonpayneea.github.io/PDMS7/reference/pack_from_config.md)
+  : Build PACK from a configuration
+- [`pack_presets()`](https://jonpayneea.github.io/PDMS7/reference/pack_presets.md)
+  : PACK parameter presets
+- [`pack_step()`](https://jonpayneea.github.io/PDMS7/reference/pack_step.md)
+  : Advance a PACK snow state
+- [`parameter_catalog()`](https://jonpayneea.github.io/PDMS7/reference/parameter_catalog.md)
+  : Parameter catalog
+- [`ParetoCapacity()`](https://jonpayneea.github.io/PDMS7/reference/ParetoCapacity.md)
+  : Compatibility alias for FlodeParetoCapacity
+- [`pareto_front()`](https://jonpayneea.github.io/PDMS7/reference/pareto_front.md)
+  : Identify nondominated loss vectors
+- [`PDMModel()`](https://jonpayneea.github.io/PDMS7/reference/PDMModel.md)
+  : Compatibility alias for FlodePdmModel
+- [`PDMState()`](https://jonpayneea.github.io/PDMS7/reference/PDMState.md)
+  : Compatibility alias for FlodePdmState
+- [`pdm_from_config()`](https://jonpayneea.github.io/PDMS7/reference/pdm_from_config.md)
+  : Pdm from config
+- [`pdm_model()`](https://jonpayneea.github.io/PDMS7/reference/pdm_model.md)
+  : Pdm model
+- [`pdm_objectives()`](https://jonpayneea.github.io/PDMS7/reference/pdm_objectives.md)
+  : Evaluate hydrological calibration losses
+- [`pdm_presets()`](https://jonpayneea.github.io/PDMS7/reference/pdm_presets.md)
+  : Pdm presets
+- [`pdm_step()`](https://jonpayneea.github.io/PDMS7/reference/pdm_step.md)
+  : Pdm step
+- [`PowerRouting()`](https://jonpayneea.github.io/PDMS7/reference/PowerRouting.md)
+  : Compatibility alias for FlodePowerRouting
+- [`power_routing()`](https://jonpayneea.github.io/PDMS7/reference/power_routing.md)
+  : Power routing
+- [`quadratic_routing()`](https://jonpayneea.github.io/PDMS7/reference/quadratic_routing.md)
+  : Quadratic routing
+- [`read_pdm_config()`](https://jonpayneea.github.io/PDMS7/reference/read_pdm_config.md)
+  : Read pdm config
+- [`Recharge()`](https://jonpayneea.github.io/PDMS7/reference/Recharge.md)
+  : Compatibility alias for FlodeRecharge
+- [`recharge_depth()`](https://jonpayneea.github.io/PDMS7/reference/recharge_depth.md)
+  : Recharge depth
+- [`RectangularCapacity()`](https://jonpayneea.github.io/PDMS7/reference/RectangularCapacity.md)
+  : Compatibility alias for FlodeRectangularCapacity
+- [`route_step()`](https://jonpayneea.github.io/PDMS7/reference/route_step.md)
+  : Route step
+- [`Routing()`](https://jonpayneea.github.io/PDMS7/reference/Routing.md)
+  : Compatibility alias for FlodeRouting
+- [`routing_flow()`](https://jonpayneea.github.io/PDMS7/reference/routing_flow.md)
+  : Routing flow
+- [`run_pdm()`](https://jonpayneea.github.io/PDMS7/reference/run_pdm.md)
+  : Run a forcing sequence
+- [`sim_pack()`](https://jonpayneea.github.io/PDMS7/reference/sim_pack.md)
+  : Simulate PACK snow
+- [`sim_pdm()`](https://jonpayneea.github.io/PDMS7/reference/sim_pdm.md)
+  : Sim pdm
+- [`sim_snow_pdm()`](https://jonpayneea.github.io/PDMS7/reference/sim_snow_pdm.md)
+  : Simulate coupled PACK and PDM
+- [`soil_step()`](https://jonpayneea.github.io/PDMS7/reference/soil_step.md)
+  : Soil step
+- [`spin_up()`](https://jonpayneea.github.io/PDMS7/reference/spin_up.md)
+  : Spin up
+- [`SplitRecharge()`](https://jonpayneea.github.io/PDMS7/reference/SplitRecharge.md)
+  : Compatibility alias for FlodeSplitRecharge
+- [`StandardRecharge()`](https://jonpayneea.github.io/PDMS7/reference/StandardRecharge.md)
+  : Compatibility alias for FlodeStandardRecharge
+- [`StateUpdater()`](https://jonpayneea.github.io/PDMS7/reference/StateUpdater.md)
+  : Compatibility alias for FlodeStateUpdater
+- [`state_updater()`](https://jonpayneea.github.io/PDMS7/reference/state_updater.md)
+  : State updater
+- [`storage_for_flow()`](https://jonpayneea.github.io/PDMS7/reference/storage_for_flow.md)
+  : Storage for flow
+- [`storage_from_capacity()`](https://jonpayneea.github.io/PDMS7/reference/storage_from_capacity.md)
+  : Storage from capacity
+- [`transfer_coefficients()`](https://jonpayneea.github.io/PDMS7/reference/transfer_coefficients.md)
+  : Transfer coefficients
+- [`TriangularCapacity()`](https://jonpayneea.github.io/PDMS7/reference/TriangularCapacity.md)
+  : Compatibility alias for FlodeTriangularCapacity
+- [`update_forecast()`](https://jonpayneea.github.io/PDMS7/reference/update_forecast.md)
+  : Update forecast
+
+# Articles
+
+### All vignettes
+
+- [Worked example: snow, flow, calibration and
+  restart](https://jonpayneea.github.io/PDMS7/articles/example-workflow.md):
+- [PDM explained: from rainfall to river
+  flow](https://jonpayneea.github.io/PDMS7/articles/pdm-explained.md):
+- [PACK explained: storing snow and releasing
+  meltwater](https://jonpayneea.github.io/PDMS7/articles/snowpack-explained.md):
