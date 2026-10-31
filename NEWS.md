@@ -1,3 +1,15 @@
+# pdmS7 (development version)
+
+- `calibrate_pdm()` gains opt-in multi-start calibration through `starts` and `seed`.
+  Start 1 is the configured point; extra starts are drawn uniformly inside the bounds, all
+  are optimised, and the best objective is returned. The result gains `start_results`, a
+  table of per-start objective, convergence code, evaluation count and fitted parameters.
+  The default `starts = 1L` returns exactly the values of earlier versions.
+- Added `inst/benchmarks/time_solvers.R` and a report at `docs/benchmarks/solver-timing.md`
+  timing the adaptive and Smith cubic groundwater solvers on a 10,600-step daily series.
+- A C++ port of the routing code and a peak timing objective are deferred pending the
+  timing report.
+
 # pdmS7 0.3.1
 
 - Added three executable vignettes: PDM equations and functions, PACK snow

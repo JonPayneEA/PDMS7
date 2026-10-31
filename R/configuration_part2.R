@@ -30,9 +30,20 @@
 #' second.
 #' @param control Named control list forwarded to stats::optim.
 #' @param soil_fraction Initial fraction of basin capacity between zero and one.
+#' @param starts Positive integer number of L-BFGS-B starts. The default, 1, runs a single
+#' start from the values in config and is identical to earlier versions. With more than one,
+#' the first start is still the values in config and the others are drawn uniformly inside
+#' lower and upper. Every start is optimised and the best objective is returned.
+#' @param seed Optional finite number that seeds the random starting points. The caller's
+#' random number state is restored on exit. It has no effect when starts is 1.
 #'
-#' @return A list of config, model, parameters, objective, convergence, message, and optim
-#' diagnostics.
+#' @return A list of config, model, parameters, objective, convergence, message, optim
+#' diagnostics, and start_results. The first six describe the best start; optim is its
+#' stats::optim result. start_results is a data.table with one row per start: start (1 is the
+#' configured point), objective (on the scale given by objective_name, 1e+30 if no valid
+#' evaluation), convergence (the stats::optim code), evaluations (objective function calls),
+#' best (TRUE for the returned start), and one column per calibrated parameter holding the
+#' fitted value, which always lies within lower and upper.
 #'
 #' @examples
 #' config <- pdm_presets('standard')
@@ -40,6 +51,8 @@
 #' q <- run_pdm(pdm_from_config(config), f)$output$q_m3s
 #' calibrate_pdm(config, f, q, lower = c(fc = 0.8), upper = c(fc = 1.2),
 #'   control = list(maxit = 2))
+#' calibrate_pdm(config, f, q, lower = c(fc = 0.8), upper = c(fc = 1.2),
+#'   control = list(maxit = 2), starts = 3L, seed = 1)$start_results
 #'
 #' @references Moore (2007), doi:10.5194/hess-11-483-2007.
 #' @export
@@ -47,7 +60,7 @@ calibrate_pdm <- function(
   config, forcing, observed, lower, upper, warmup = 0, objective = c("rmse", "nse", "log_rmse"),
   flow = c("q_m3s", "q_end_m3s"),
   log_offset = 0.01, control = list(maxit = 200),
-  soil_fraction = 0.5
+  soil_fraction = 0.5, starts = 1L, seed = NULL
 ) {
   objective <- match.arg(objective)
   flow <- match.arg(flow)
@@ -90,6 +103,14 @@ calibrate_pdm <- function(
   .check(
     all(initial >= lower & initial <= upper),
     "Initial parameters outside bounds"
+  )
+  .check(
+    .scalar(starts, 1) && starts == floor(starts),
+    "starts must be a positive whole number"
+  )
+  .check(
+    is.null(seed) || .scalar(seed),
+    "seed must be NULL or a finite number"
   )
   keep <- is.finite(observed) &
     seq_along(observed) >
@@ -154,13 +175,52 @@ calibrate_pdm <- function(
     )
   }
   # Unit-box scaling helps parameters with very different physical units.
-  fit <- stats::optim(
-    (initial - lower) / (upper - lower), loss,
-    method = "L-BFGS-B", lower = rep(0, length(lower)),
-    upper = rep(1, length(upper)),
-    control = control
+  z0 <- (initial - lower) / (upper - lower)
+  starts <- as.integer(starts)
+  z_start <- list(z0)
+  if (starts > 1L) {
+    if (!is.null(seed)) {
+      if (exists(".Random.seed", envir = globalenv(), inherits = FALSE)) {
+        old_seed <- get(".Random.seed", envir = globalenv(), inherits = FALSE)
+        on.exit(assign(".Random.seed", old_seed, envir = globalenv()), add = TRUE)
+      } else {
+        on.exit(rm(list = ".Random.seed", envir = globalenv()), add = TRUE)
+      }
+      set.seed(seed)
+    }
+    extra <- lapply(seq_len(starts - 1L), function(i) stats::runif(length(z0)))
+    z_start <- c(z_start, extra)
+  }
+  fits <- lapply(
+    z_start,
+    function(z) {
+      stats::optim(
+        z, loss,
+        method = "L-BFGS-B", lower = rep(0, length(lower)),
+        upper = rep(1, length(upper)),
+        control = control
+      )
+    }
   )
+  values <- vapply(fits, function(f) f$value, numeric(1))
+  best_index <- which.min(values)
+  fit <- fits[[best_index]]
   .check(fit$value < 1e+29, "No valid calibration evaluation; inspect configuration and bounds")
+  fitted <- t(
+    vapply(
+      fits, function(f) lower + f$par * (upper - lower),
+      numeric(length(lower))
+    )
+  )
+  colnames(fitted) <- names(lower)
+  start_results <- data.table::data.table(
+    start = seq_along(fits),
+    objective = values,
+    convergence = vapply(fits, function(f) as.integer(f$convergence), integer(1)),
+    evaluations = vapply(fits, function(f) as.integer(f$counts[["function"]]), integer(1)),
+    best = seq_along(fits) == best_index
+  )
+  start_results <- cbind(start_results, data.table::as.data.table(fitted))
   parameters <- lower + fit$par * (upper - lower)
   best <- build(parameters)
   list(
@@ -169,6 +229,7 @@ calibrate_pdm <- function(
     objective = fit$value,
     objective_name = if (objective == "nse") "1-NSE" else objective,
 
-    convergence = fit$convergence, message = fit$message, optim = fit
+    convergence = fit$convergence, message = fit$message, optim = fit,
+    start_results = start_results
   )
 }
