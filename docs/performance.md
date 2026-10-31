@@ -315,19 +315,26 @@ counts from its `start_results`.
 
 ## For maintainers: extending the engine
 
+The model arithmetic lives in `src/pdm_core.cpp`, behind the C interface in `src/pdm_core.h`.
+It has no R dependency, so other languages can call it; `tools/core/README.md` explains how.
+`src/pdm_engine.cpp` is only the R wrapper.
+
 To port another component:
 
-1. Add its step to `src/pdm_engine.cpp`, mirroring the R expression in the same evaluation
+1. Add its step to `src/pdm_core.cpp`, mirroring the R expression in the same evaluation
    order. Use `rpow()` for `^` and the long-double helpers for `sum()`.
-2. Pass its parameters through `.engine_run()` in `R/engine.R`.
-3. Add its class to `.engine_supported()`. Matching is by exact class, so subclasses stay on
+2. Add its parameters to `pdm_params` in `src/pdm_core.h`, with validation rules no stricter
+   than the S7 validator, and raise `PDM_CORE_ABI_VERSION`. Other languages' bindings must
+   follow the new layout.
+3. Pass its parameters through `.engine_run()` in `R/engine.R` and `src/pdm_engine.cpp`.
+4. Add its class to `.engine_supported()`. Matching is by exact class, so subclasses stay on
    the R loop until they are added deliberately.
-4. Add a configuration using it to `engine_models()` in `tests/testthat/test-engine.R`. The
-   test requires both engines to agree within 1e-12.
-5. Run `cpp11::cpp_register()` if a function signature changed, then `roxygen2::roxygenise()`.
+5. Add a configuration using it to `engine_models()` in `tests/testthat/test-engine.R`, and a
+   case to `inst/golden/generate_golden.R`. Regenerate the golden files and review the diff.
+6. Run `cpp11::cpp_register()` if a function signature changed, then `roxygen2::roxygenise()`.
 
-Any change to the model equations in R must be repeated in C++. The equivalence tests will
-fail until both agree.
+Any change to the model equations in R must be repeated in C++. The equivalence and golden
+tests will fail until both agree.
 
 ## Files
 
@@ -335,7 +342,10 @@ fail until both agree.
 |---|---|
 | `R/configuration_part2.R` | `calibrate_pdm()`, including multi-start |
 | `R/engine.R` | Engine dispatch, the calibration path and the Smith warning |
-| `src/pdm_engine.cpp` | Compiled time loop |
+| `src/pdm_core.h`, `src/pdm_core.cpp` | Compiled time loop behind a C interface |
+| `src/pdm_engine.cpp` | R wrapper for the core |
+| `inst/golden/` | Golden test files for every language binding |
+| `tools/core/` | Building and checking the core without R |
 | `R/model_2.R` | `run_pdm()`, which chooses the engine |
 | `tests/testthat/test-calibrate_multistart.R` | Multi-start tests |
 | `tests/testthat/test-engine.R` | Engine equivalence and Smith warning tests |

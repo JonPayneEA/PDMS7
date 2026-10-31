@@ -20,6 +20,14 @@
   step and reaches 60 to 100 per cent of peak flow at a daily step. Results are unchanged; the
   default adaptive solver is unaffected. `inst/benchmarks/smith_step_error.R` reproduces the
   evidence.
+- The compiled time loop now sits behind a language-neutral C interface (`src/pdm_core.h`), so
+  other languages can call the same model code. `src/pdm_engine.cpp` is a thin R wrapper over
+  it, and results are unchanged. The core validates its own inputs and leaves the caller's
+  state untouched on error. `tools/core/README.md` covers building it without R.
+- Golden test files in `inst/golden/` hold inputs and expected outputs from the R reference,
+  for checking any binding of the core. `tools/core/check_golden.c` checks them from plain C.
+- Fixed: the compiled engine rejected an initial state whose values were all stored as
+  integers, for example one read with `read.csv()`. The R loop accepted it.
 - A peak timing objective is deferred.
 
 # pdmS7 0.3.1

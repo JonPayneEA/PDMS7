@@ -113,6 +113,24 @@ test_that(
 )
 
 test_that(
+  "compiled engine accepts a state held as integers",
+  {
+    model <- pdm_model()
+    # Every value an integer, as read.csv() returns for whole numbers.
+    state <- FlodePdmState(
+      soil = 50L, surface = c(3L, 4L), groundwater = 20L, step = 0L,
+      delay_surface = 0L, delay_groundwater = 0L,
+      delay_surface_end = 0L, delay_groundwater_end = 0L
+    )
+    forcing <- engine_forcing(50)
+    expect_engines_agree(
+      run_pdm(model, forcing, state)$output,
+      with_engine("r", run_pdm(model, forcing, state))$output
+    )
+  }
+)
+
+test_that(
   "unsupported models and the r option use the R loop",
   {
     check(!pdmS7:::.engine_supported(pdm_model(recharge = FlodeSplitRecharge(0.7))))

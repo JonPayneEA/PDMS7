@@ -53,7 +53,7 @@ NULL
     state@delay_surface, state@delay_groundwater,
     state@delay_surface_end, state@delay_groundwater_end
   )
-  res <- pdm_engine_run(as.double(rain), as.double(pet), as.double(par), packed, full)
+  res <- pdm_engine_run(as.double(rain), as.double(pet), as.double(par), as.double(packed), full)
   out <- res$state
   n <- length(state@delay_surface)
   pending <- function(j) out[5L + (j - 1L) * n + seq_len(n)]
