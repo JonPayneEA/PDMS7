@@ -68,8 +68,10 @@ row <- function(label, elapsed, steps) {
 cat("# Solver and engine timing\n\n")
 cat(sprintf("Machine: %s, %d logical cores, R %s, %s\n", Sys.info()[["machine"]],
             parallel::detectCores(), getRversion(), format(Sys.time(), "%Y-%m-%d", tz = "UTC")))
-cat(sprintf("Daily: %d steps. 15-minute: %d steps (%g years). Standard preset, cubic groundwater.\n\n",
-            n_steps, n_quarter, years))
+cat(sprintf(
+  "Daily: %d steps. 15-minute: %d steps (%g years). Standard preset, cubic groundwater.\n\n",
+  n_steps, n_quarter, years
+))
 cat("| Run | Repeats (s) | Median s per simulation | Microseconds per step |\n|---|---|---|---|\n")
 
 t_daily <- list()

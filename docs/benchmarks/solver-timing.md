@@ -1,4 +1,4 @@
-# Cubic groundwater solver timing
+# Solver and engine timing
 
 These figures were measured on one machine and apply to it alone: an x86_64 virtual machine
 (Intel Xeon at 2.10 GHz, 4 logical cores), R 4.3.3, run on 2026-10-31. Other hardware will
@@ -8,74 +8,76 @@ Reproduce with `Rscript inst/benchmarks/time_solvers.R` from the package root.
 
 ## Method
 
-- Input: 10,600 synthetic daily steps, fixed seed 20261031. Rainfall is intermittent gamma
-  (40 per cent wet days); PET is a seasonal curve. Basin area 100 km2.
-- Model: `pdm_presets("standard")` with cubic groundwater, timestep 1440 minutes.
+- Input: synthetic forcing from fixed seeds. Daily: 10,600 steps. 15-minute: 29 years, which
+  is 1,016,856 steps. Rainfall is intermittent gamma (40 per cent wet intervals); PET is a
+  seasonal curve. Basin area 100 km2.
+- Model: `pdm_presets("standard")` (Pareto capacity, standard recharge, two-store cascade,
+  cubic groundwater, no snow).
 - Timing: `sim_pdm()` with `solver = "adaptive"` and `solver = "smith"`. One untimed warm-up
-  run, then three timed repeats each. The table reports the median.
-- Calibration count: one `calibrate_pdm()` run, default control (`maxit = 200`), three
-  parameters (`fc`, `recharge.kg`, `groundwater.kb`), synthetic observations from a perturbed
-  parameter set. **This run used the first 1,000 steps, not the full 10,600.** A first attempt
-  on the full series ran for over an hour without finishing and was stopped. The evaluation
-  count is a property of the optimiser, but it may differ on a longer series.
+  run, then three timed repeats each. Tables report the median.
+- Engines: the compiled engine (the default for this model since this change) and the R loop
+  (`options(pdmS7.engine = "r")`), which remains the reference implementation. The two give
+  bit-identical output; `tests/testthat/test-engine.R` checks this on eight model
+  configurations.
+- Calibration: one `calibrate_pdm()` run on the full daily series, default control
+  (`maxit = 200`), three parameters (`fc`, `recharge.kg`, `groundwater.kb`), synthetic
+  observations from a perturbed parameter set.
 
 ## Results
 
-| Solver | Repeats (s) | Median s per simulation |
-|---|---|---|
-| adaptive | 22.147, 22.652, 21.862 | 22.147 |
-| smith | 20.565, 20.609, 21.330 | 20.609 |
+| Run | Repeats (s) | Median s per simulation | Microseconds per step |
+|---|---|---|---|
+| daily, compiled, adaptive | 0.195, 0.048, 0.055 | 0.055 | 5.2 |
+| daily, compiled, smith | 0.018, 0.018, 0.016 | 0.018 | 1.7 |
+| daily, R loop, adaptive | 23.51, 23.92, 21.80 | 23.51 | 2,220 |
+| 15-minute, compiled, adaptive | 3.275, 2.240, 2.539 | 2.539 | 2.5 |
+| 15-minute, compiled, smith | 1.911, 2.383, 1.396 | 1.911 | 1.9 |
+| 15-minute, compiled, adaptive, flow only | 1.225, 1.135, 1.178 | 1.178 | 1.2 |
 
-- Speed-up of Smith over adaptive: 1.1 times.
-- Maximum absolute flow difference between the solvers: 40.64 m3/s. The maximum adaptive flow
-  on the same series is 63.35 m3/s.
-- Calibration: `optim` reported 97 function evaluations, 1,775 s, convergence code 0,
-  1,000 steps. That count leaves out the finite-difference gradient calls (two per parameter
-  per gradient). Each of the 97 iterations also computed one gradient, so the true number of
-  simulations was about 97 x (1 + 2 x 3) = 679. The time agrees: 1,775 s / 679 = 2.6 s per
-  simulation of 1,000 steps, which matches a separate profile of `run_pdm()` at 1.9 to 2.8 s
-  across the corners of the bounds. `calibrate_pdm()` now counts every objective call in
-  `start_results$evaluations`, so a re-run will report the true figure directly.
+"Flow only" is the path `calibrate_pdm()` uses: it returns the scored flow series without
+building the 24-column flux table.
+
+- **Engine speed-up:** about 430 times on the daily series (23.5 s against 0.055 s).
+- **Solver agreement:** daily, the maximum absolute difference between adaptive and Smith is
+  40.64 m3/s against a 63.35 m3/s peak. At 15 minutes it is 0.0041 m3/s against a 24.95 m3/s
+  peak.
+- **Calibration:** 938 objective evaluations, including the finite-difference gradient calls
+  that `optim` leaves out of its own count of 134. It took 59.7 s, with convergence code 0.
+  The R loop would have needed about six hours for the same run.
 
 ## Extrapolation to 60 basins x 20 starts
 
-That is 60 x 20 x 679 = about 814,800 simulations. The 15-minute column scales the 10,600-step
-daily timing linearly to 29 years of 15-minute steps (about 1,017,000 steps, 96 times longer);
-it is derived, not measured.
+That is 60 x 20 x 938 = 1,125,600 evaluations. The daily column uses the measured calibration
+time per evaluation. The 15-minute column uses the measured flow-only time and assumes the same
+number of evaluations per calibration; it is derived, not measured.
 
-| Cores | Daily, adaptive (hours) | Daily, smith (hours) | 15-minute, adaptive (hours) |
-|---|---|---|---|
-| 1 | 5,010 | 4,660 | 481,000 |
-| 4 | 1,250 | 1,170 | 120,000 |
-| 16 | 313 | 292 | 30,100 |
-| 64 | 78 | 73 | 7,520 |
+| Cores | Daily (hours) | 15-minute (hours) |
+|---|---|---|
+| 1 | 19.9 | 368 |
+| 4 | 4.98 | 92.1 |
+| 16 | 1.24 | 23.0 |
+| 64 | 0.311 | 5.76 |
 
-An earlier version of this report used the 97 count directly and understated these figures
-about sevenfold.
-
-## Profile of one simulation
-
-`Rprof` on `run_pdm()` over 1,000 daily steps puts nearly all the time in per-step R overhead:
-S7 property access and object construction (`@`, `new_object`), validation (`.check`,
-`.validate_state`, `isTRUE`), and building a data.table on every step
-(`data.table::data.table`, `as.data.table.list`, about 30 per cent). The groundwater
-integration itself (`.rk4`) is under 10 per cent. Cost does not depend much on parameter
-values: 1.9 to 2.8 s per 1,000 steps across all eight corners of the calibration bounds.
+Under the R loop the 15-minute job would have taken about 7,500 hours on 64 cores. An earlier
+version of this report also used `optim`'s function count directly, which understated
+calibration cost about sevenfold.
 
 ## Reading the results
 
-1. **The solver is not the bottleneck.** Smith saves about 7 per cent and the RK4 integration
-   is under a tenth of the profile. The time goes on interpreter and object overhead in the R
-   time loop, at about 2 ms per step.
-2. **15-minute calibration is not feasible in R.** About 7,500 hours on 64 cores. Trimming the
-   R loop (one table at the end, lighter validation) might gain two or three times. Only a
-   compiled time loop can close a gap of this size.
-3. **Smith and adaptive disagree materially on this series.** A 40.6 m3/s maximum difference
-   against a 63.3 m3/s peak is not a rounding effect. The existing tests cover Smith only on
-   small cases. If Smith is considered as a faster option, validate it against adaptive on
-   realistic forcing first. No model code was changed here.
+1. **The R loop was the bottleneck, not the solver.** A profile of `run_pdm()` put most of the
+   time in per-step S7 object handling, validation and data.table construction; the RK4
+   integration was under 10 per cent. The compiled engine removes that overhead.
+2. **15-minute calibration is now practical.** About a day on 16 cores, or under six hours on
+   64, for 60 basins with 20 starts each.
+3. **Smith is unsafe at a daily step and accurate at 15 minutes.** Its linearisation holds over
+   a short interval and fails over 24 hours. At 15 minutes it agrees with adaptive to about
+   0.02 per cent of peak flow and is roughly a quarter faster. Adaptive remains the default.
+4. **Evaluation counts depend on the problem.** 938 evaluations here; real basins and other
+   parameter sets will differ. Read `start_results$evaluations` from a pilot run before
+   budgeting.
 
 ## Decision
 
-A peak timing objective stays deferred. Porting the time loop to compiled code is now
-justified by items 1 and 2 and is the next step.
+The compiled engine covers the default configuration only. Other distributions, recharge
+schemes and routing types still run in R and can be ported one at a time against the same
+equivalence tests. A peak timing objective stays deferred.

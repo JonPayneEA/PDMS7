@@ -5,10 +5,15 @@
   are optimised, and the best objective is returned. The result gains `start_results`, a
   table of per-start objective, convergence code, evaluation count and fitted parameters.
   The default `starts = 1L` returns exactly the values of earlier versions.
+- `run_pdm()`, and so `sim_pdm()` and `calibrate_pdm()`, now run a compiled time loop for
+  Pareto capacity, standard recharge, cascade surface routing and power-law groundwater
+  routing (the default configuration). Output is bit-identical to the R loop and about 430
+  times faster. Other models use the R loop as before. `options(pdmS7.engine = "r")` forces
+  the R loop, which remains the reference implementation. Building from source now needs a
+  C++ compiler (Rtools on Windows); cpp11 is a build-time dependency only.
 - Added `inst/benchmarks/time_solvers.R` and a report at `docs/benchmarks/solver-timing.md`
-  timing the adaptive and Smith cubic groundwater solvers on a 10,600-step daily series.
-- A C++ port of the routing code and a peak timing objective are deferred pending the
-  timing report.
+  timing both solvers and both engines on daily and 15-minute series.
+- A peak timing objective is deferred.
 
 # pdmS7 0.3.1
 
