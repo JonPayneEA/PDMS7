@@ -20,7 +20,7 @@ run_pdm <- function(model, forcing, state = initial_state(model)) {
   .check_forcing(model, forcing)
   initial <- state
   if (.engine_supported(model)) {
-    # Compiled loop; results are identical to the R loop below (see R/engine.R).
+    # Compiled loop; results agree with the R loop below to rounding (see R/engine.R).
     res <- .engine_run(model, forcing$rain, forcing$pet, state, full = TRUE)
     state <- res$state
     output <- res$output

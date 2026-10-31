@@ -40,9 +40,10 @@ test_that(
       control = list(maxit = 4), starts = 1L, seed = 99
     )
     # Reference: the original algorithm written out without calibrate_pdm.
-    calls <- 0L
+    counter <- new.env()
+    counter$calls <- 0L
     loss <- function(z) {
-      calls <<- calls + 1L
+      counter$calls <- counter$calls + 1L
       par <- s$lower + z * (s$upper - s$lower)
       cfg <- s$config
       cfg$fc <- par[["fc"]]
@@ -61,8 +62,8 @@ test_that(
     expect_identical(explicit$parameters, fit$parameters)
     expect_identical(explicit$objective, fit$objective)
     expect_equal(nrow(fit$start_results), 1L)
-    expect_equal(fit$start_results$evaluations, calls)
-    expect_gt(calls, ref$counts[["function"]])
+    expect_equal(fit$start_results$evaluations, counter$calls)
+    expect_gt(counter$calls, ref$counts[["function"]])
   }
 )
 
@@ -136,5 +137,20 @@ test_that(
     for (bad in list(NA, Inf, "1", c(1, 2))) {
       expect_error(do.call(calibrate_pdm, c(args, list(seed = bad))), "seed")
     }
+  }
+)
+
+test_that(
+  "multi-start works with a single calibrated parameter",
+  {
+    s <- ms_setup()
+    fit <- calibrate_pdm(
+      s$config, s$forcing, s$observed, c(fc = 0.5), c(fc = 2),
+      control = list(maxit = 3), starts = 3L, seed = 1
+    )
+    tab <- fit$start_results
+    expect_equal(nrow(tab), 3L)
+    expect_true(all(tab$fc >= 0.5 & tab$fc <= 2))
+    expect_identical(fit$objective, min(tab$objective))
   }
 )

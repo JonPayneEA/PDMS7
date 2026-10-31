@@ -16,8 +16,8 @@ Reproduce with `Rscript inst/benchmarks/time_solvers.R` from the package root.
 - Timing: `sim_pdm()` with `solver = "adaptive"` and `solver = "smith"`. One untimed warm-up
   run, then three timed repeats each. Tables report the median.
 - Engines: the compiled engine (the default for this model since this change) and the R loop
-  (`options(pdmS7.engine = "r")`), which remains the reference implementation. The two give
-  bit-identical output; `tests/testthat/test-engine.R` checks this on eight model
+  (`options(pdmS7.engine = "r")`), which remains the reference implementation. The two agree to rounding
+  (bit-identical on R 4.3); `tests/testthat/test-engine.R` checks this on eight model
   configurations.
 - Calibration: one `calibrate_pdm()` run on the full daily series, default control
   (`maxit = 200`), three parameters (`fc`, `recharge.kg`, `groundwater.kb`), synthetic
