@@ -18,6 +18,10 @@ install.packages(c("S7", "data.table", "yaml", "logger"))
 install.packages("pdmS7_0.3.1.tar.gz", repos = NULL, type = "source")
 ```
 
+The package contains C++ code, so installing from source needs a compiler: Rtools on
+Windows, the Xcode command line tools on macOS, or the usual build tools on Linux. The cpp11
+package is needed at build time only.
+
 For developers, extract the full project, open R in `pdmS7/`, and use
 `renv::restore()`. The lockfile also records the testing and documentation tools.
 Do not copy the previous machine's `renv/library` directory.
@@ -186,6 +190,16 @@ volume. It requires `td=0`. `fit_error_updater()` and `update_forecast()` implem
 additive or logarithmic ARMA correction. Use training history available at the
 forecast origin, never future observations. AR coefficients use R's sign
 convention (`ar=-phi` in the paper).
+
+## Fast, fair calibration
+
+`calibrate_pdm(..., starts = 20L, seed = 42)` runs L-BFGS-B from several starting points and
+returns the best, with a per-start table in `start_results`. The default configuration
+(Pareto capacity, standard recharge, cascade surface routing, power-law groundwater) runs on
+a compiled engine about 430 times faster than the R loop, with bit-identical output. The
+Smith groundwater solver is inaccurate above a 1-hour step and now warns. See the
+[performance guide](docs/performance.md) for how these work, parallel runs across basins,
+and budgeting a large calibration.
 
 ## Snow and multi-objective calibration
 
