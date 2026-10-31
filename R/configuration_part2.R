@@ -216,13 +216,11 @@ calibrate_pdm <- function(
   best_index <- which.min(values)
   fit <- fits[[best_index]]
   .check(fit$value < 1e+29, "No valid calibration evaluation; inspect configuration and bounds")
-  fitted <- t(
-    vapply(
-      fits, function(f) lower + f$par * (upper - lower),
-      numeric(length(lower))
-    )
+  # One row per start and one column per parameter, including the single-parameter case.
+  fitted <- matrix(
+    unlist(lapply(fits, function(f) lower + f$par * (upper - lower)), use.names = FALSE),
+    nrow = length(fits), byrow = TRUE, dimnames = list(NULL, names(lower))
   )
-  colnames(fitted) <- names(lower)
   start_results <- data.table::data.table(
     start = seq_along(fits),
     objective = values,

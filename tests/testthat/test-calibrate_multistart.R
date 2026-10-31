@@ -138,3 +138,18 @@ test_that(
     }
   }
 )
+
+test_that(
+  "multi-start works with a single calibrated parameter",
+  {
+    s <- ms_setup()
+    fit <- calibrate_pdm(
+      s$config, s$forcing, s$observed, c(fc = 0.5), c(fc = 2),
+      control = list(maxit = 3), starts = 3L, seed = 1
+    )
+    tab <- fit$start_results
+    expect_equal(nrow(tab), 3L)
+    expect_true(all(tab$fc >= 0.5 & tab$fc <= 2))
+    expect_identical(fit$objective, min(tab$objective))
+  }
+)
