@@ -40,7 +40,9 @@ test_that(
       control = list(maxit = 4), starts = 1L, seed = 99
     )
     # Reference: the original algorithm written out without calibrate_pdm.
+    calls <- 0L
     loss <- function(z) {
+      calls <<- calls + 1L
       par <- s$lower + z * (s$upper - s$lower)
       cfg <- s$config
       cfg$fc <- par[["fc"]]
@@ -59,7 +61,8 @@ test_that(
     expect_identical(explicit$parameters, fit$parameters)
     expect_identical(explicit$objective, fit$objective)
     expect_equal(nrow(fit$start_results), 1L)
-    expect_equal(fit$start_results$evaluations, ref$counts[["function"]])
+    expect_equal(fit$start_results$evaluations, calls)
+    expect_gt(calls, ref$counts[["function"]])
   }
 )
 

@@ -41,7 +41,8 @@
 #' diagnostics, and start_results. The first six describe the best start; optim is its
 #' stats::optim result. start_results is a data.table with one row per start: start (1 is the
 #' configured point), objective (on the scale given by objective_name, 1e+30 if no valid
-#' evaluation), convergence (the stats::optim code), evaluations (objective function calls),
+#' evaluation), convergence (the stats::optim code), evaluations (every objective call,
+#' including the finite-difference gradient calls that stats::optim counts leave out),
 #' best (TRUE for the returned start), and one column per calibrated parameter holding the
 #' fitted value, which always lies within lower and upper.
 #'
@@ -141,7 +142,11 @@ calibrate_pdm <- function(
     }
     out
   }
+  # Counts every objective call, including the finite-difference gradient calls that
+  # stats::optim leaves out of its own function count.
+  calls <- 0L
   loss <- function(z) {
+    calls <<- calls + 1L
     par <- lower + z * (upper - lower)
     tryCatch(
       {
@@ -191,15 +196,20 @@ calibrate_pdm <- function(
     extra <- lapply(seq_len(starts - 1L), function(i) stats::runif(length(z0)))
     z_start <- c(z_start, extra)
   }
+  eval_counts <- integer(length(z_start))
   fits <- lapply(
-    z_start,
-    function(z) {
-      stats::optim(
+    seq_along(z_start),
+    function(i) {
+      z <- z_start[[i]]
+      calls <<- 0L
+      out <- stats::optim(
         z, loss,
         method = "L-BFGS-B", lower = rep(0, length(lower)),
         upper = rep(1, length(upper)),
         control = control
       )
+      eval_counts[i] <<- calls
+      out
     }
   )
   values <- vapply(fits, function(f) f$value, numeric(1))
@@ -217,7 +227,7 @@ calibrate_pdm <- function(
     start = seq_along(fits),
     objective = values,
     convergence = vapply(fits, function(f) as.integer(f$convergence), integer(1)),
-    evaluations = vapply(fits, function(f) as.integer(f$counts[["function"]]), integer(1)),
+    evaluations = eval_counts,
     best = seq_along(fits) == best_index
   )
   start_results <- cbind(start_results, data.table::as.data.table(fitted))

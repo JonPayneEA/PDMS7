@@ -61,7 +61,8 @@ A list of config, model, parameters, objective, convergence, message, optim
 diagnostics, and start_results. The first six describe the best start; optim is its
 stats::optim result. start_results is a data.table with one row per start: start (1 is the
 configured point), objective (on the scale given by objective_name, 1e+30 if no valid
-evaluation), convergence (the stats::optim code), evaluations (objective function calls),
+evaluation), convergence (the stats::optim code), evaluations (every objective call,
+including the finite-difference gradient calls that stats::optim counts leave out),
 best (TRUE for the returned start), and one column per calibrated parameter holding the
 fitted value, which always lies within lower and upper.
 }
