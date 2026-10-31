@@ -12,7 +12,7 @@
 # ============================================================ #
 
 ms_setup <- function() {
-  forcing <- make_forcing()
+  forcing <- make_forcing() # nolint: object_usage_linter.
   truth <- pdm_presets("split")
   truth$fc <- 1.3
   truth$recharge$alpha <- 0.6
