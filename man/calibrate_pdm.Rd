@@ -15,7 +15,9 @@ calibrate_pdm(
   flow = c("q_m3s", "q_end_m3s"),
   log_offset = 0.01,
   control = list(maxit = 200),
-  soil_fraction = 0.5
+  soil_fraction = 0.5,
+  starts = 1L,
+  seed = NULL
 )
 }
 \arguments{
@@ -45,10 +47,24 @@ second.}
 \item{control}{Named control list forwarded to stats::optim.}
 
 \item{soil_fraction}{Initial fraction of basin capacity between zero and one.}
+
+\item{starts}{Positive integer number of L-BFGS-B starts. The default, 1, runs a single
+start from the values in config and is identical to earlier versions. With more than one,
+the first start is still the values in config and the others are drawn uniformly inside
+lower and upper. Every start is optimised and the best objective is returned.}
+
+\item{seed}{Optional finite number that seeds the random starting points. The caller's
+random number state is restored on exit. It has no effect when starts is 1.}
 }
 \value{
-A list of config, model, parameters, objective, convergence, message, and optim
-diagnostics.
+A list of config, model, parameters, objective, convergence, message, optim
+diagnostics, and start_results. The first six describe the best start; optim is its
+stats::optim result. start_results is a data.table with one row per start: start (1 is the
+configured point), objective (on the scale given by objective_name, 1e+30 if no valid
+evaluation), convergence (the stats::optim code), evaluations (every objective call,
+including the finite-difference gradient calls that stats::optim counts leave out),
+best (TRUE for the returned start), and one column per calibrated parameter holding the
+fitted value, which always lies within lower and upper.
 }
 \description{
 Component of the configurable Moore (2007) rainfall-runoff framework.
@@ -59,6 +75,8 @@ f <- data.frame(rain = c(0, 10, 2, 0), pet = rep(0.05, 4))
 q <- run_pdm(pdm_from_config(config), f)$output$q_m3s
 calibrate_pdm(config, f, q, lower = c(fc = 0.8), upper = c(fc = 1.2),
   control = list(maxit = 2))
+calibrate_pdm(config, f, q, lower = c(fc = 0.8), upper = c(fc = 1.2),
+  control = list(maxit = 2), starts = 3L, seed = 1)$start_results
 
 }
 \references{

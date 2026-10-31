@@ -1,3 +1,25 @@
+# pdmS7 (development version)
+
+- `calibrate_pdm()` gains opt-in multi-start calibration through `starts` and `seed`.
+  Start 1 is the configured point; extra starts are drawn uniformly inside the bounds, all
+  are optimised, and the best objective is returned. The result gains `start_results`, a
+  table of per-start objective, convergence code, evaluation count and fitted parameters.
+  The default `starts = 1L` returns exactly the values of earlier versions.
+- `run_pdm()`, and so `sim_pdm()` and `calibrate_pdm()`, now run a compiled time loop for
+  Pareto capacity, standard recharge, cascade surface routing and power-law groundwater
+  routing (the default configuration). Output is bit-identical to the R loop and about 430
+  times faster. Other models use the R loop as before. `options(pdmS7.engine = "r")` forces
+  the R loop, which remains the reference implementation. Building from source now needs a
+  C++ compiler (Rtools on Windows); cpp11 is a build-time dependency only.
+- Added `inst/benchmarks/time_solvers.R` and a report at `docs/benchmarks/solver-timing.md`
+  timing both solvers and both engines on daily and 15-minute series.
+- `pdm_model()` (and so `pdm_from_config()` and `sim_pdm()`) warns, once per session, when the
+  Smith cubic solver is used with a step above 1 hour. Its error grows with the square of the
+  step and reaches 60 to 100 per cent of peak flow at a daily step. Results are unchanged; the
+  default adaptive solver is unaffected. `inst/benchmarks/smith_step_error.R` reproduces the
+  evidence.
+- A peak timing objective is deferred.
+
 # pdmS7 0.3.1
 
 - Added three executable vignettes: PDM equations and functions, PACK snow

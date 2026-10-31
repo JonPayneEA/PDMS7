@@ -17,6 +17,32 @@
 #' @return A list containing output, final state, initial state, model and water balance.
 #' @export
 run_pdm <- function(model, forcing, state = initial_state(model)) {
+  .check_forcing(model, forcing)
+  initial <- state
+  if (.engine_supported(model)) {
+    # Compiled loop; results are identical to the R loop below (see R/engine.R).
+    res <- .engine_run(model, forcing$rain, forcing$pet, state, full = TRUE)
+    state <- res$state
+    output <- res$output
+  } else {
+    rows <- vector("list", nrow(forcing))
+    for (i in seq_len(nrow(forcing))) {
+      step <- pdm_step(model, state, forcing$rain[i], forcing$pet[i])
+      state <- step$state
+      rows[[i]] <- step$flux
+    }
+    output <- data.table::setDF(data.table::rbindlist(rows))
+  }
+  if ("time" %in% names(forcing)) {
+    datetime <- as.POSIXct(as.numeric(forcing$time), origin = "1970-01-01", tz = "UTC")
+    output <- cbind(time = datetime, output)
+  }
+  list(output = output, state = state, initial_state = initial, model = model,
+       water_balance = c(residual_mm = sum(output$balance_error_mm),
+                         max_abs_step_mm = max(abs(output$balance_error_mm))))
+}
+
+.check_forcing <- function(model, forcing) {
   .check(is.data.frame(forcing) && all(c("rain", "pet") %in% names(forcing)),
          "forcing must be a data.frame with rain and pet columns (mm per interval)")
   .check(nrow(forcing) > 0L, "forcing must have at least one row")
@@ -30,21 +56,7 @@ run_pdm <- function(model, forcing, state = initial_state(model)) {
              "time spacing must equal model@dt hours")
     }
   }
-  initial <- state
-  rows <- vector("list", nrow(forcing))
-  for (i in seq_len(nrow(forcing))) {
-    step <- pdm_step(model, state, forcing$rain[i], forcing$pet[i])
-    state <- step$state
-    rows[[i]] <- step$flux
-  }
-  output <- data.table::setDF(data.table::rbindlist(rows))
-  if ("time" %in% names(forcing)) {
-    datetime <- as.POSIXct(as.numeric(forcing$time), origin = "1970-01-01", tz = "UTC")
-    output <- cbind(time = datetime, output)
-  }
-  list(output = output, state = state, initial_state = initial, model = model,
-       water_balance = c(residual_mm = sum(output$balance_error_mm),
-                         max_abs_step_mm = max(abs(output$balance_error_mm))))
+  invisible(TRUE)
 }
 
 # Spin-up uses complete forcing cycles; caller selects duration/convergence.
