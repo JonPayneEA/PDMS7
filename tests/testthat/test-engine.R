@@ -130,3 +130,23 @@ test_that(
     expect_error(pdmS7:::.run_flow(model, bad, initial_state(model), "q_m3s"))
   }
 )
+
+test_that(
+  "Smith with a step above one hour warns once per session",
+  {
+    flags <- pdmS7:::.engine_flags
+    flags$smith_warned <- NULL
+    on.exit(flags$smith_warned <- NULL)
+    expect_silent(pdm_model(groundwater = cubic_routing(solver = "smith"), dt = 1))
+    expect_silent(pdm_model(dt = 24))
+    expect_warning(
+      pdm_model(groundwater = cubic_routing(solver = "smith"), dt = 24),
+      "Smith solver is inaccurate"
+    )
+    expect_silent(pdm_model(groundwater = cubic_routing(solver = "smith"), dt = 24))
+    flags$smith_warned <- NULL
+    cfg <- pdm_presets("paper_cubic")
+    cfg$dt <- 3
+    expect_warning(pdm_from_config(cfg), "Smith solver is inaccurate")
+  }
+)

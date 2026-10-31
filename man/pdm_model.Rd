@@ -46,6 +46,12 @@ A validated FlodePdmModel.
 \description{
 Component of the configurable Moore (2007) rainfall-runoff framework.
 }
+\details{
+The Smith closed-form cubic solver loses accuracy as the time step grows: its
+error scales with the square of dt. pdm_model() warns, once per R session, when a Smith
+solver is combined with dt above 1 hour, where errors can exceed 1 per cent of peak flow.
+Use solver = "adaptive" (the default) for longer steps.
+}
 \examples{
 pdm_model(area_km2 = 44, dt = 0.25)
 

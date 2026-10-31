@@ -13,6 +13,11 @@
   C++ compiler (Rtools on Windows); cpp11 is a build-time dependency only.
 - Added `inst/benchmarks/time_solvers.R` and a report at `docs/benchmarks/solver-timing.md`
   timing both solvers and both engines on daily and 15-minute series.
+- `pdm_model()` (and so `pdm_from_config()` and `sim_pdm()`) warns, once per session, when the
+  Smith cubic solver is used with a step above 1 hour. Its error grows with the square of the
+  step and reaches 60 to 100 per cent of peak flow at a daily step. Results are unchanged; the
+  default adaptive solver is unaffected. `inst/benchmarks/smith_step_error.R` reproduces the
+  evidence.
 - A peak timing objective is deferred.
 
 # pdmS7 0.3.1

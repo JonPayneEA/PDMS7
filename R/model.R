@@ -164,6 +164,11 @@ FlodePdmState <- S7::new_class(
 #'
 #' @return A validated FlodePdmModel.
 #'
+#' @details The Smith closed-form cubic solver loses accuracy as the time step grows: its
+#' error scales with the square of dt. pdm_model() warns, once per R session, when a Smith
+#' solver is combined with dt above 1 hour, where errors can exceed 1 per cent of peak flow.
+#' Use solver = "adaptive" (the default) for longer steps.
+#'
 #' @examples
 #' pdm_model(area_km2 = 44, dt = 0.25)
 #'
@@ -175,10 +180,12 @@ pdm_model <- function(
   surface = FlodeCascadeRouting(k1 = 2, k2 = 4),
   groundwater = cubic_routing(), be = 1, fc = 1, td = 0, qc = 0, area_km2 = 1, dt = 1
 ) {
-  FlodePdmModel(
+  model <- FlodePdmModel(
     distribution = distribution, recharge = recharge, surface = surface, groundwater = groundwater,
     be = be, fc = fc, td = td, qc = qc, area_km2 = area_km2, dt = dt
   )
+  .warn_smith_step(model)
+  model
 }
 #' Initial state
 #'

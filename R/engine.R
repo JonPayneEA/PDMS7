@@ -81,3 +81,32 @@ NULL
   .check_forcing(model, forcing)
   .engine_run(model, forcing$rain, forcing$pet, state, full = FALSE)$output[[flow]]
 }
+
+# The Smith cubic solver's error grows with the square of dt. Measured against a tight
+# adaptive reference (docs/benchmarks/solver-timing.md), it stays within about 1 per cent of
+# peak flow up to a 1-hour step for kb of 1,000 or more, and reaches 60 to 100 per cent at a
+# daily step. Warn once per session so calibration loops do not repeat the message.
+.smith_max_dt <- 1
+.engine_flags <- new.env(parent = emptyenv())
+.warn_smith_step <- function(model) {
+  uses_smith <- function(route) {
+    class(route)[1L] == "pdmS7::FlodePowerRouting" && route@solver == "smith"
+  }
+  if (model@dt > .smith_max_dt &&
+        (uses_smith(model@surface) || uses_smith(model@groundwater)) &&
+        !isTRUE(.engine_flags$smith_warned)) {
+    .engine_flags$smith_warned <- TRUE
+    warning(
+      sprintf(
+        paste0(
+          "The Smith solver is inaccurate above a %g-hour step (dt = %g hours here); ",
+          "errors can exceed 1 per cent of peak flow and reach 100 per cent at a daily step. ",
+          "Use solver = \"adaptive\". This warning is shown once per session."
+        ),
+        .smith_max_dt, model@dt
+      ),
+      call. = FALSE
+    )
+  }
+  invisible(NULL)
+}

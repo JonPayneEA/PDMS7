@@ -72,9 +72,31 @@ calibration cost about sevenfold.
 3. **Smith is unsafe at a daily step and accurate at 15 minutes.** Its linearisation holds over
    a short interval and fails over 24 hours. At 15 minutes it agrees with adaptive to about
    0.02 per cent of peak flow and is roughly a quarter faster. Adaptive remains the default.
+   See the step sweep below; `pdm_model()` now warns when Smith runs above a 1-hour step.
 4. **Evaluation counts depend on the problem.** 938 evaluations here; real basins and other
    parameter sets will differ. Read `start_results$evaluations` from a pilot run before
    budgeting.
+
+## Smith error by time step
+
+`inst/benchmarks/smith_step_error.R` runs three years of synthetic 15-minute forcing,
+aggregated to each step, and compares both solvers against adaptive with `rtol = 1e-12`. Values
+are the maximum absolute flow error as a percentage of peak flow.
+
+| dt (hours) | Smith, kb 1,000 | Smith, kb 10,000 | Smith, kb 50,000 | Adaptive, worst |
+|---|---|---|---|---|
+| 0.25 | 0.064 | 0.016 | 0.0066 | 0.000001 |
+| 0.5 | 0.25 | 0.065 | 0.027 | 0.00001 |
+| 1 | 1.0 | 0.26 | 0.11 | 0.00001 |
+| 2 | 4.0 | 1.0 | 0.43 | 0.00002 |
+| 3 | 5.5 | 2.2 | 0.98 | 0.00001 |
+| 6 | 25 | 5.7 | 3.9 | 0.00001 |
+| 12 | 80 | 28 | 11 | 0.00001 |
+| 24 | 100 | 100 | 62 | 0.00001 |
+
+Smith's error grows roughly with the square of the step and is worse for faster stores
+(smaller kb). Up to a 1-hour step it stays within about 1 per cent of peak for kb of 1,000 or
+more, so 1 hour is the warning threshold. Adaptive is accurate at every step tested.
 
 ## Decision
 
