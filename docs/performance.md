@@ -120,7 +120,14 @@ The result has the same fields as before, describing the best start, plus `start
 ### How many starts?
 
 Twenty is a cautious default, not a rule. Run a pilot on three to five representative basins
-with 20 starts, then check where the best objective first appears:
+with 20 starts, then check where the best objective first appears.
+
+`inst/examples/pilot_calibration.R` does this for you. It reads one CSV per basin, calibrates
+the basins in parallel, and reports for each basin the start that first reached the best
+objective, the spread across starts, convergence and any parameter on a bound. It then
+budgets the full run from the measured cost. `PILOT_SYNTHETIC=1` gives a dry run on synthetic
+basins. Run the pilot with the same `maxit` as the full run, because evaluation counts, and
+so the budget, depend on it. To check a single fit by hand:
 
 ```r
 tab <- fit$start_results
