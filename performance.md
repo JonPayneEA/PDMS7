@@ -300,8 +300,6 @@ counts from its `start_results`.
 - The compiled engine covers the default configuration only. Other components run at R speed.
 - Evaluation counts depend on the basin, the objective, the bounds and the number of
   parameters.
-- `renv.lock` has not yet been updated to record cpp11. Run `renv::snapshot()` before relying
-  on the lockfile.
 
 ## For maintainers: extending the engine
 
