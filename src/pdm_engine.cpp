@@ -4,7 +4,7 @@
 // Flode Module: standalone; target reach.hydro
 // Author:       Claude Code (AI-generated); human maintainer attribution not supplied
 // Created:      2026-10-31
-// Modified:     2026-10-31 - Reduced to a thin wrapper over the C interface in pdm_core.h
+// Modified:     2026-10-31 - Interface version 2 parameter layout
 // Tier:         3
 // Inputs:       Rain and PET depths in mm per interval; parameters in R/engine.R order
 // Outputs:      Flux columns equal to pdm_step() to rounding; final state vector
@@ -23,21 +23,40 @@
 
 using cpp11::doubles;
 
-// Runs the time loop. par holds, in order: cmin, cmax, b, kg, bg, st, k1, k2, k, m, rtol,
-// atol, be, fc, td, qc, area_km2, dt, smith (0 or 1). state uses the layout documented in
-// pdm_core.h. With full = FALSE only q_m3s and q_end_m3s are filled; the flux columns are
-// returned empty.
+namespace {
+
+void fill_route(pdm_route& r, const doubles& par, int at) {
+  r.type = static_cast<int32_t>(par[at]);
+  r.smith = static_cast<int32_t>(par[at + 1]);
+  r.k1 = par[at + 2];
+  r.k2 = par[at + 3];
+  r.k = par[at + 4];
+  r.m = par[at + 5];
+  r.rtol = par[at + 6];
+  r.atol = par[at + 7];
+  r.a = par[at + 8];
+  r.gamma = par[at + 9];
+}
+
+}  // namespace
+
+// Runs the time loop. par holds the 38 fields of pdm_params in struct order, as built by
+// .engine_params() in R/engine.R. state uses the layout documented in pdm_core.h. With
+// full = FALSE only q_m3s and q_end_m3s are filled; the flux columns are returned empty.
 [[cpp11::register]]
 cpp11::list pdm_engine_run(doubles rain, doubles pet, doubles par, doubles state, bool full) {
-  if (par.size() != 19) cpp11::stop("pdm_engine_run expects 19 parameters");
+  if (par.size() != 38) cpp11::stop("pdm_engine_run expects 38 parameters");
   if (rain.size() != pet.size()) cpp11::stop("rain and pet must have equal length");
   pdm_params p;
-  p.cmin = par[0]; p.cmax = par[1]; p.b = par[2]; p.kg = par[3]; p.bg = par[4];
-  p.st = par[5]; p.k1 = par[6]; p.k2 = par[7]; p.k = par[8]; p.m = par[9];
-  p.rtol = par[10]; p.atol = par[11]; p.be = par[12]; p.fc = par[13]; p.td = par[14];
-  p.qc = par[15]; p.area_km2 = par[16]; p.dt = par[17];
-  p.smith = par[18] != 0 ? 1 : 0;
-  p.reserved = 0;
+  p.distribution = static_cast<int32_t>(par[0]);
+  p.recharge = static_cast<int32_t>(par[1]);
+  p.cmin = par[2]; p.cmax = par[3]; p.b = par[4]; p.mean = par[5];
+  p.kg = par[6]; p.bg = par[7]; p.st = par[8];
+  p.alpha = par[9]; p.beta = par[10]; p.qsat = par[11];
+  fill_route(p.surface, par, 12);
+  fill_route(p.groundwater, par, 22);
+  p.be = par[32]; p.fc = par[33]; p.td = par[34]; p.qc = par[35]; p.area_km2 = par[36];
+  p.dt = par[37];
 
   const int64_t n = static_cast<int64_t>(rain.size());
   std::vector<double> rain_v(rain.begin(), rain.end());

@@ -10,8 +10,14 @@ covers building and checking.
 
 ## What the core covers
 
-Simulation only, for Pareto capacity, standard recharge, two-store cascade surface routing and
-power-law groundwater routing (cubic when `m = 3`). Configuration files, calibration and
+Simulation only, for:
+
+- capacity distribution: Pareto, rectangular or exponential;
+- recharge: standard, split or demand;
+- surface and groundwater routes, chosen independently: two-store cascade, power-law store or
+  exponential store.
+
+Not covered: the triangular and lognormal distributions and PACK snow. Configuration files, calibration and
 metrics stay in each host language. A calibration in another language will therefore agree
 closely with R's, not exactly, because optimisers differ between languages.
 
@@ -56,16 +62,17 @@ The interface uses only fixed-width integers, doubles, arrays of doubles and a c
 buffer for error messages. The caller allocates every array. The core allocates nothing the
 caller must free, holds no global state, and is safe to call from several threads at once.
 
-- **Python:** load the shared library with `ctypes.CDLL`. Declare `pdm_params` as a
-  `ctypes.Structure` with 18 `c_double` fields and two `c_int32` fields, in header order.
+- **Python:** load the shared library with `ctypes.CDLL`. Declare `pdm_route` and
+  `pdm_params` as `ctypes.Structure` classes with the fields of the header, in order, and
+  nest two `pdm_route` structures inside `pdm_params`.
   Pass NumPy arrays with `numpy.ctypeslib.as_ctypes` or `arr.ctypes.data_as(...)`. No
   compilation is needed on the Python side.
 - **Scala and Java:** use the Java Foreign Function and Memory API (standard from Java 22),
-  or JNA on older JVMs. `pdm_params` is 152 bytes: 18 doubles followed by two 32-bit
-  integers, with no padding. Scala Native can call the core directly with `@extern`.
+  or JNA on older JVMs. `pdm_route` is 72 bytes (two 32-bit integers, then
+  8 doubles) and `pdm_params` 280 bytes, with no padding. Scala Native can call the core directly with `@extern`.
 - **Julia:** `ccall` with a `struct` matching `pdm_params`.
 
-Read the struct size back and compare it with 152 bytes, and check `pdm_core_abi_version()`
+Read the struct sizes back and compare them with 72 and 280 bytes, and check `pdm_core_abi_version()`
 against `PDM_CORE_ABI_VERSION`, before trusting a new binding.
 
 ## Errors

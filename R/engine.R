@@ -4,7 +4,7 @@
 # Flode Module: standalone; target reach.hydro
 # Author:       Claude Code (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-31
-# Modified:     2026-10-31 - Initial compiled engine dispatch
+# Modified:     2026-10-31 - All components except triangular and lognormal distributions
 # Tier:         3
 # Inputs:       FlodePdmModel, FlodePdmState, forcing depths in mm per interval
 # Outputs:      run_pdm() output columns and final state, equal to the R loop to rounding
@@ -14,19 +14,105 @@
 #' @useDynLib pdmS7, .registration = TRUE
 NULL
 
-# The compiled engine covers Pareto capacity, standard recharge, cascade surface routing and
-# power-law groundwater routing (cubic by default). Other models use the R loop. Exact class
-# matching keeps any future subclass on the R loop until it is ported and tested.
+# The compiled engine covers the Pareto, rectangular and exponential distributions; standard,
+# split and demand recharge; and cascade, power-law and exponential stores for either route.
+# Triangular and lognormal distributions use the R loop. Exact class matching keeps any future
+# subclass on the R loop until it is ported and tested.
 # options(pdmS7.engine = "r") forces the R loop, which remains the reference implementation.
+.engine_classes <- list(
+  distribution = c(
+    "pdmS7::FlodeParetoCapacity" = 0, "pdmS7::FlodeRectangularCapacity" = 1,
+    "pdmS7::FlodeExponentialCapacity" = 2
+  ),
+  recharge = c(
+    "pdmS7::FlodeStandardRecharge" = 0, "pdmS7::FlodeSplitRecharge" = 1,
+    "pdmS7::FlodeDemandRecharge" = 2
+  ),
+  route = c(
+    "pdmS7::FlodeCascadeRouting" = 0, "pdmS7::FlodePowerRouting" = 1,
+    "pdmS7::FlodeExponentialRouting" = 2
+  )
+)
+
 .engine_supported <- function(model) {
   if (identical(getOption("pdmS7.engine", "auto"), "r")) {
     return(FALSE)
   }
   first <- function(x) class(x)[1L]
-  first(model@distribution) == "pdmS7::FlodeParetoCapacity" &&
-    first(model@recharge) == "pdmS7::FlodeStandardRecharge" &&
-    first(model@surface) == "pdmS7::FlodeCascadeRouting" &&
-    first(model@groundwater) == "pdmS7::FlodePowerRouting"
+  first(model@distribution) %in% names(.engine_classes$distribution) &&
+    first(model@recharge) %in% names(.engine_classes$recharge) &&
+    first(model@surface) %in% names(.engine_classes$route) &&
+    first(model@groundwater) %in% names(.engine_classes$route)
+}
+
+# Field values of pdm_params in src/pdm_core.h, in struct order. Fields not used by a
+# component are 0. The golden file generator writes these names as column headers.
+.engine_route_params <- function(x) {
+  type <- .engine_classes$route[[class(x)[1L]]]
+  p <- c(type = type, smith = 0, k1 = 0, k2 = 0, k = 0, m = 0, rtol = 0, atol = 0, a = 0,
+         gamma = 0)
+  if (type == 0) {
+    p[c("k1", "k2")] <- c(x@k1, x@k2)
+  } else if (type == 1) {
+    p[c("smith", "k", "m", "rtol", "atol")] <-
+      c(as.numeric(x@solver == "smith"), x@k, x@m, x@rtol, x@atol)
+  } else {
+    p[c("a", "gamma")] <- c(x@a, x@gamma)
+  }
+  p
+}
+
+.engine_params <- function(model) {
+  d <- model@distribution
+  r <- model@recharge
+  dtype <- .engine_classes$distribution[[class(d)[1L]]]
+  rtype <- .engine_classes$recharge[[class(r)[1L]]]
+  p <- c(distribution = dtype, recharge = rtype, cmin = 0, cmax = 0, b = 0, mean = 0, kg = 0,
+         bg = 0, st = 0, alpha = 0, beta = 0, qsat = 0)
+  if (dtype == 0) {
+    p[c("cmin", "cmax", "b")] <- c(d@cmin, d@cmax, d@b)
+  } else if (dtype == 1) {
+    p[c("cmin", "cmax")] <- c(d@cmin, d@cmax)
+  } else {
+    p[["mean"]] <- d@mean
+  }
+  if (rtype == 0) {
+    p[c("kg", "bg", "st")] <- c(r@kg, r@bg, r@st)
+  } else if (rtype == 1) {
+    p[["alpha"]] <- r@alpha
+  } else {
+    p[c("alpha", "beta", "qsat")] <- c(r@alpha, r@beta, r@qsat)
+  }
+  surface <- .engine_route_params(model@surface)
+  groundwater <- .engine_route_params(model@groundwater)
+  names(surface) <- paste0("surface.", names(surface))
+  names(groundwater) <- paste0("groundwater.", names(groundwater))
+  c(p, surface, groundwater,
+    be = model@be, fc = model@fc, td = model@td, qc = model@qc, area_km2 = model@area_km2,
+    dt = model@dt)
+}
+
+# State array of src/pdm_core.h: soil, two surface slots, two groundwater slots, step, then the
+# four delay queues. The second slot of a single-store route is 0.
+.engine_pack_state <- function(state) {
+  two <- function(x) if (length(x) == 1L) c(x, 0) else x
+  as.double(c(
+    state@soil, two(state@surface), two(state@groundwater), state@step,
+    state@delay_surface, state@delay_groundwater,
+    state@delay_surface_end, state@delay_groundwater_end
+  ))
+}
+
+.engine_unpack_state <- function(v, template) {
+  n <- length(template@delay_surface)
+  queue <- function(j) v[6L + (j - 1L) * n + seq_len(n)]
+  FlodePdmState(
+    soil = v[1L], surface = v[1L + seq_along(template@surface)],
+    groundwater = v[3L + seq_along(template@groundwater)],
+    delay_surface = queue(1L), delay_groundwater = queue(2L),
+    delay_surface_end = queue(3L), delay_groundwater_end = queue(4L),
+    step = v[6L]
+  )
 }
 
 .engine_flux_names <- c(
@@ -39,30 +125,11 @@ NULL
 
 .engine_run <- function(model, rain, pet, state, full) {
   .validate_state(model, state)
-  d <- model@distribution
-  r <- model@recharge
-  s <- model@surface
-  g <- model@groundwater
-  par <- c(
-    d@cmin, d@cmax, d@b, r@kg, r@bg, r@st, s@k1, s@k2, g@k, g@m, g@rtol, g@atol,
-    model@be, model@fc, model@td, model@qc, model@area_km2, model@dt,
-    as.numeric(g@solver == "smith")
+  res <- pdm_engine_run(
+    as.double(rain), as.double(pet), as.double(.engine_params(model)),
+    .engine_pack_state(state), full
   )
-  packed <- c(
-    state@soil, state@surface, state@groundwater, state@step,
-    state@delay_surface, state@delay_groundwater,
-    state@delay_surface_end, state@delay_groundwater_end
-  )
-  res <- pdm_engine_run(as.double(rain), as.double(pet), as.double(par), as.double(packed), full)
-  out <- res$state
-  n <- length(state@delay_surface)
-  pending <- function(j) out[5L + (j - 1L) * n + seq_len(n)]
-  final <- FlodePdmState(
-    soil = out[1L], surface = out[2:3], groundwater = out[4L],
-    delay_surface = pending(1L), delay_groundwater = pending(2L),
-    delay_surface_end = pending(3L), delay_groundwater_end = pending(4L),
-    step = out[5L]
-  )
+  final <- .engine_unpack_state(res$state, state)
   if (full) {
     columns <- stats::setNames(res$columns, .engine_flux_names)
     output <- data.table::setDF(data.table::setDT(columns))

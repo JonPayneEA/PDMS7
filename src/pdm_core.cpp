@@ -4,7 +4,7 @@
 // Flode Module: standalone; target reach.hydro
 // Author:       Claude Code (AI-generated); human maintainer attribution not supplied
 // Created:      2026-10-31
-// Modified:     2026-10-31 - Extracted from pdm_engine.cpp with no change to the arithmetic
+// Modified:     2026-10-31 - Interface version 2: selectable distribution, recharge, routes
 // Tier:         3
 // Inputs:       pdm_params, state array, rain and PET depths in mm per interval
 // Outputs:      Flow in m3/s, optional flux table, updated state
@@ -72,83 +72,79 @@ double rsum2(double a, double b) {
   return static_cast<double>(s);
 }
 
-struct Params {
-  double cmin, cmax, b, kg, bg, st, k1, k2, k, m, rtol, atol, be, fc, td, qc, area, dt;
-  int smith;
-  double smax;
+// ---- Capacity distributions ----------------------------------------------------------------
+
+// The rectangular distribution is computed as Pareto with b = 1, as in R (.as_uniform), but
+// its capacity mean, used by pdm_step(), is (cmin + cmax) / 2. The two can differ in the last
+// place, so both are kept: smax for the model, psmax inside the Pareto formulas.
+struct Dist {
+  int type;
+  double cmin, cmax, b, mean;
+  double smax;   // capacity_mean(model@distribution)
+  double psmax;  // capacity_mean of the Pareto object used in the formulas
 };
 
-Params unpack(const pdm_params& in) {
-  Params p;
-  p.cmin = in.cmin; p.cmax = in.cmax; p.b = in.b; p.kg = in.kg; p.bg = in.bg; p.st = in.st;
-  p.k1 = in.k1; p.k2 = in.k2; p.k = in.k; p.m = in.m; p.rtol = in.rtol; p.atol = in.atol;
-  p.be = in.be; p.fc = in.fc; p.td = in.td; p.qc = in.qc; p.area = in.area_km2; p.dt = in.dt;
-  p.smith = in.smith != 0;
-  p.smax = p.cmin + (p.cmax - p.cmin) / (p.b + 1);
-  return p;
+Dist make_dist(const pdm_params& in) {
+  Dist d;
+  d.type = in.distribution;
+  d.cmin = in.cmin;
+  d.cmax = in.cmax;
+  d.mean = in.mean;
+  if (d.type == PDM_DIST_EXPONENTIAL) {
+    d.b = 0;
+    d.smax = in.mean;
+    d.psmax = in.mean;
+  } else {
+    d.b = d.type == PDM_DIST_RECTANGULAR ? 1.0 : in.b;
+    d.psmax = d.cmin + (d.cmax - d.cmin) / (d.b + 1);
+    d.smax = d.type == PDM_DIST_RECTANGULAR ? (in.cmin + in.cmax) / 2 : d.psmax;
+  }
+  return d;
 }
 
-// The same rules as the S7 validators of FlodeParetoCapacity, FlodeStandardRecharge,
-// FlodeCascadeRouting, FlodePowerRouting and FlodePdmModel, and no stricter.
-void validate(const pdm_params& in) {
-  std::string bad;
-  auto need = [&](bool ok, const char* name) {
-    if (!ok) bad += bad.empty() ? name : std::string(", ") + name;
-  };
-  auto fin = [](double x) { return std::isfinite(x); };
-  need(fin(in.cmin) && in.cmin >= 0, "cmin");
-  need(fin(in.cmax) && in.cmax > in.cmin, "cmax");
-  need(fin(in.b) && in.b >= 0, "b");
-  need(fin(in.kg) && in.kg > 0, "kg");
-  need(fin(in.bg) && in.bg > 0, "bg");
-  need(fin(in.st) && in.st >= 0, "st");
-  need(fin(in.k1) && in.k1 > 0, "k1");
-  need(fin(in.k2) && in.k2 > 0, "k2");
-  need(fin(in.k) && in.k > 0, "k");
-  need(fin(in.m) && in.m > 0, "m");
-  need(in.smith == 0 || in.smith == 1, "smith");
-  need(in.smith == 0 || in.m == 3, "smith_cubic");
-  need(fin(in.rtol) && in.rtol > 0, "rtol");
-  need(fin(in.atol) && in.atol > 0, "atol");
-  need(fin(in.be) && in.be > 0, "be");
-  need(fin(in.fc) && in.fc >= 0, "fc");
-  need(fin(in.td) && in.td >= 0, "td");
-  need(fin(in.qc), "qc");
-  need(fin(in.area_km2) && in.area_km2 > 0, "area_km2");
-  need(fin(in.dt) && in.dt > 0, "dt");
-  if (!bad.empty()) throw ArgumentError("Invalid parameter(s): " + bad);
-  double smax = in.cmin + (in.cmax - in.cmin) / (in.b + 1);
-  if (in.st > smax) throw ArgumentError("st cannot exceed Smax");
+// distributions_part3.R (Pareto, rectangular, exponential).
+double cap_from_storage(const Dist& d, double s) {
+  if (d.type == PDM_DIST_EXPONENTIAL) {
+    check(s >= 0.0 && s <= d.mean, "Soil storage exceeds capacity_mean(distribution)");
+    return -d.mean * std::log1p(-s / d.mean);
+  }
+  check(s >= 0.0 && s <= d.psmax, "Soil storage exceeds capacity_mean(distribution)");
+  double z = std::min(1.0, std::max(0.0, (s - d.cmin) / (d.psmax - d.cmin)));
+  double out = d.cmin + (d.cmax - d.cmin) * (-std::expm1(std::log1p(-z) / (d.b + 1)));
+  return s < d.cmin ? s : out;
 }
 
-int64_t pending_length(const pdm_params& in) {
-  return static_cast<int64_t>(std::floor(in.td / in.dt)) + 1;
+// distributions.R and distributions_part3.R.
+double storage_from_cap(const Dist& d, double c) {
+  if (d.type == PDM_DIST_EXPONENTIAL) return d.mean * (-std::expm1(-c / d.mean));
+  double z = std::min(1.0, std::max(0.0, (c - d.cmin) / (d.cmax - d.cmin)));
+  double out = d.cmin + (d.psmax - d.cmin) * (-std::expm1((d.b + 1) * std::log1p(-z)));
+  return c < d.cmin ? c : out;
 }
 
-// Pareto capacity, distributions.R and distributions_part3.R.
-double cap_from_storage(const Params& p, double s) {
-  check(s >= 0.0 && s <= p.smax, "Soil storage exceeds capacity_mean(distribution)");
-  double z = std::min(1.0, std::max(0.0, (s - p.cmin) / (p.smax - p.cmin)));
-  double out = p.cmin + (p.cmax - p.cmin) * (-std::expm1(std::log1p(-z) / (p.b + 1)));
-  return s < p.cmin ? s : out;
+double cap_cdf(const Dist& d, double c) {
+  if (d.type == PDM_DIST_EXPONENTIAL) return -std::expm1(-c / d.mean);
+  if (d.b == 0) return c >= d.cmax ? 1.0 : 0.0;
+  double z = std::min(1.0, std::max(0.0, (c - d.cmin) / (d.cmax - d.cmin)));
+  return -std::expm1(d.b * std::log1p(-z));
 }
 
-double storage_from_cap(const Params& p, double c) {
-  double z = std::min(1.0, std::max(0.0, (c - p.cmin) / (p.cmax - p.cmin)));
-  double out = p.cmin + (p.smax - p.cmin) * (-std::expm1((p.b + 1) * std::log1p(-z)));
-  return c < p.cmin ? c : out;
+// ---- Routing -------------------------------------------------------------------------------
+
+int store_count(const pdm_route& r) {
+  return r.type == PDM_ROUTE_CASCADE ? 2 : 1;
 }
 
-double cap_cdf(const Params& p, double c) {
-  if (p.b == 0) return c >= p.cmax ? 1.0 : 0.0;
-  double z = std::min(1.0, std::max(0.0, (c - p.cmin) / (p.cmax - p.cmin)));
-  return -std::expm1(p.b * std::log1p(-z));
+// sum() over one route's storage vector, as R does for a vector argument.
+double store_sum(const pdm_route& r, const double* s) {
+  return store_count(r) == 2 ? rsum2(s[0], s[1]) : s[0];
 }
 
 struct Route {
   double outflow, q_end;
 };
 
+// routing_part3.R, .route_result.
 Route route_result(double old_sum, double old_abs, double new_sum, double u, double dt,
                    double q_end) {
   double v = old_sum + u * dt - new_sum;
@@ -159,7 +155,7 @@ Route route_result(double old_sum, double old_abs, double new_sum, double u, dou
 }
 
 // routing_part3.R, route_step for FlodeCascadeRouting.
-Route cascade_step(const Params& p, double* s, double u, double dt) {
+Route cascade_step(const pdm_route& p, double* s, double u, double dt) {
   check(u >= 0.0 && std::isfinite(u), "inflow >= 0 and dt > 0 required");
   double e1 = std::exp(-dt / p.k1);
   double e2 = std::exp(-dt / p.k2);
@@ -193,7 +189,7 @@ double rk4(double s, double h, double u, double k, double m) {
   return s + h * (a + 2 * b + 2 * c + d) / 6;
 }
 
-double power_adaptive(const Params& p, double s, double u, double dt) {
+double power_adaptive(const pdm_route& p, double s, double u, double dt) {
   double target = rpow(u / p.k, 1 / p.m);
   if (s == target) return s;
   double time = 0;
@@ -225,7 +221,7 @@ double power_adaptive(const Params& p, double s, double u, double dt) {
 }
 
 // routing_2.R, route_step for FlodePowerRouting.
-Route power_step(const Params& p, double* store, double u, double dt) {
+Route power_step(const pdm_route& p, double* store, double u, double dt) {
   check(u >= 0.0 && std::isfinite(u), "inflow >= 0 and dt > 0 required");
   double s = store[0];
   double k = p.k;
@@ -257,6 +253,180 @@ Route power_step(const Params& p, double* store, double u, double dt) {
   return r;
 }
 
+// routing_2.R, route_step for FlodeExponentialRouting. The storage is a signed coordinate.
+Route exponential_step(const pdm_route& p, double* store, double u, double dt) {
+  check(u >= 0.0 && std::isfinite(u), "inflow >= 0 and dt > 0 required");
+  double s = store[0];
+  double logq = p.gamma + p.a * s;
+  check(std::isfinite(std::exp(logq)) && std::exp(logq) > 0,
+        "Exponential flow overflow/underflow");
+  double lognext;
+  if (u == 0) {
+    lognext = logq - std::log1p(p.a * std::exp(logq) * dt);
+  } else {
+    double h = p.a * u * dt;
+    // 1/q_next = exp(-h)/q + (1-exp(-h))/u, using log-sum-exp.
+    double t1 = -h - logq;
+    double t2 = std::log(-std::expm1(-h)) - std::log(u);
+    double mx = std::max(t1, t2);
+    lognext = -(mx + std::log(rsum2(std::exp(t1 - mx), std::exp(t2 - mx))));
+  }
+  double next = (lognext - p.gamma) / p.a;
+  Route r = route_result(s, std::fabs(s), next, u, dt, std::exp(p.gamma + p.a * next));
+  store[0] = next;
+  return r;
+}
+
+Route route_step(const pdm_route& p, double* store, double u, double dt) {
+  switch (p.type) {
+    case PDM_ROUTE_CASCADE: return cascade_step(p, store, u, dt);
+    case PDM_ROUTE_POWER: return power_step(p, store, u, dt);
+    default: return exponential_step(p, store, u, dt);
+  }
+}
+
+// routing.R, storage_for_flow for a single store (used by demand recharge).
+double storage_for_flow(const pdm_route& p, double q) {
+  if (p.type == PDM_ROUTE_POWER) return rpow(q / p.k, 1 / p.m);
+  return (std::log(q) - p.gamma) / p.a;
+}
+
+// ---- Validation ----------------------------------------------------------------------------
+
+// The same rules as the S7 validators of each component and of FlodePdmModel, and no
+// stricter. Fields not used by the chosen types are ignored.
+void validate(const pdm_params& in) {
+  std::string bad;
+  auto need = [&](bool ok, const std::string& name) {
+    if (!ok) bad += bad.empty() ? name : ", " + name;
+  };
+  auto fin = [](double x) { return std::isfinite(x); };
+  auto route = [&](const pdm_route& r, const std::string& prefix) {
+    switch (r.type) {
+      case PDM_ROUTE_CASCADE:
+        need(fin(r.k1) && r.k1 > 0, prefix + "k1");
+        need(fin(r.k2) && r.k2 > 0, prefix + "k2");
+        break;
+      case PDM_ROUTE_POWER:
+        need(fin(r.k) && r.k > 0, prefix + "k");
+        need(fin(r.m) && r.m > 0, prefix + "m");
+        need(r.smith == 0 || r.smith == 1, prefix + "smith");
+        need(r.smith == 0 || r.m == 3, prefix + "smith_cubic");
+        need(fin(r.rtol) && r.rtol > 0, prefix + "rtol");
+        need(fin(r.atol) && r.atol > 0, prefix + "atol");
+        break;
+      case PDM_ROUTE_EXPONENTIAL:
+        need(fin(r.a) && r.a > 0, prefix + "a");
+        need(fin(r.gamma), prefix + "gamma");
+        break;
+      default:
+        need(false, prefix + "type");
+    }
+  };
+  switch (in.distribution) {
+    case PDM_DIST_PARETO:
+      need(fin(in.cmin) && in.cmin >= 0, "cmin");
+      need(fin(in.cmax) && in.cmax > in.cmin, "cmax");
+      need(fin(in.b) && in.b >= 0, "b");
+      break;
+    case PDM_DIST_RECTANGULAR:
+      need(fin(in.cmin) && in.cmin >= 0, "cmin");
+      need(fin(in.cmax) && in.cmax > in.cmin, "cmax");
+      break;
+    case PDM_DIST_EXPONENTIAL:
+      need(fin(in.mean) && in.mean > 0, "mean");
+      break;
+    default:
+      need(false, "distribution");
+  }
+  switch (in.recharge) {
+    case PDM_RECHARGE_STANDARD:
+      need(fin(in.kg) && in.kg > 0, "kg");
+      need(fin(in.bg) && in.bg > 0, "bg");
+      need(fin(in.st) && in.st >= 0, "st");
+      break;
+    case PDM_RECHARGE_SPLIT:
+      need(fin(in.alpha) && in.alpha >= 0 && in.alpha <= 1, "alpha");
+      break;
+    case PDM_RECHARGE_DEMAND:
+      need(fin(in.alpha) && in.alpha > 0 && in.alpha <= 1, "alpha");
+      need(fin(in.beta) && in.beta > 0, "beta");
+      need(fin(in.qsat) && in.qsat > 0, "qsat");
+      break;
+    default:
+      need(false, "recharge");
+  }
+  route(in.surface, "surface.");
+  route(in.groundwater, "groundwater.");
+  need(fin(in.be) && in.be > 0, "be");
+  need(fin(in.fc) && in.fc >= 0, "fc");
+  need(fin(in.td) && in.td >= 0, "td");
+  need(fin(in.qc), "qc");
+  need(fin(in.area_km2) && in.area_km2 > 0, "area_km2");
+  need(fin(in.dt) && in.dt > 0, "dt");
+  if (!bad.empty()) throw ArgumentError("Invalid parameter(s): " + bad);
+
+  // FlodePdmModel validator.
+  double smax = make_dist(in).smax;
+  if (in.recharge == PDM_RECHARGE_STANDARD && in.st > smax) {
+    throw ArgumentError("st cannot exceed Smax");
+  }
+  if (in.recharge == PDM_RECHARGE_DEMAND) {
+    if (in.groundwater.type == PDM_ROUTE_CASCADE) {
+      throw ArgumentError("Demand recharge requires a single groundwater store");
+    }
+    if (storage_for_flow(in.groundwater, in.qsat) <= 0) {
+      throw ArgumentError("Demand recharge requires Sgmax > 0");
+    }
+    if (in.qsat * in.dt > smax) {
+      throw ArgumentError("Demand recharge requires qsat*dt <= Smax");
+    }
+  }
+}
+
+int64_t pending_length(const pdm_params& in) {
+  return static_cast<int64_t>(std::floor(in.td / in.dt)) + 1;
+}
+
+void validate_route_state(const pdm_route& r, const double* s) {
+  bool signed_ok = r.type == PDM_ROUTE_EXPONENTIAL;
+  if (!(std::isfinite(s[0]) && (signed_ok || s[0] >= 0))) {
+    throw ArgumentError("FlodeRouting storage must be finite and nonnegative");
+  }
+  if (r.type == PDM_ROUTE_CASCADE) {
+    if (!(std::isfinite(s[1]) && s[1] >= 0)) {
+      throw ArgumentError("FlodeRouting storage must be finite and nonnegative");
+    }
+  } else if (s[1] != 0) {
+    throw ArgumentError("The second store of a single-store route must be 0");
+  }
+}
+
+void validate_state(const pdm_params& in, const double* state, int64_t state_length) {
+  if (state == nullptr) throw ArgumentError("state must not be null");
+  int64_t n_pending = pending_length(in);
+  if (state_length != 6 + 4 * n_pending) {
+    throw ArgumentError(
+      "Delay state incompatible with td/dt; reinitialise after changing time step");
+  }
+  double smax = make_dist(in).smax;
+  if (!(std::isfinite(state[0]) && state[0] >= 0 && state[0] <= smax)) {
+    throw ArgumentError("Soil storage exceeds capacity_mean(distribution)");
+  }
+  validate_route_state(in.surface, state + 1);
+  validate_route_state(in.groundwater, state + 3);
+  if (!(std::isfinite(state[5]) && state[5] >= 0 && state[5] == std::floor(state[5]))) {
+    throw ArgumentError("Invalid state dimensions");
+  }
+  for (int64_t i = 6; i < state_length; ++i) {
+    if (!(std::isfinite(state[i]) && state[i] >= 0)) {
+      throw ArgumentError("Delay queues must be finite and nonnegative");
+    }
+  }
+}
+
+// ---- Time loop -----------------------------------------------------------------------------
+
 // model.R, .delay.
 double delay(std::vector<double>& pending, std::vector<double>& work, double value,
              double ratio) {
@@ -281,33 +451,28 @@ const char* const kFluxNames[PDM_N_FLUX] = {
   "groundwater_mm", "delay_mm", "saturated_fraction", "balance_error_mm"
 };
 
-void validate_state(const pdm_params& in, const double* state, int64_t state_length) {
-  if (state == nullptr) throw ArgumentError("state must not be null");
-  int64_t n_pending = pending_length(in);
-  if (state_length != 5 + 4 * n_pending) {
-    throw ArgumentError(
-      "Delay state incompatible with td/dt; reinitialise after changing time step");
-  }
-  double smax = in.cmin + (in.cmax - in.cmin) / (in.b + 1);
-  if (!(std::isfinite(state[0]) && state[0] >= 0 && state[0] <= smax)) {
-    throw ArgumentError("Soil storage exceeds capacity_mean(distribution)");
-  }
-  for (int64_t i = 1; i < 4; ++i) {
-    if (!(std::isfinite(state[i]) && state[i] >= 0)) {
-      throw ArgumentError("FlodeRouting storage must be finite and nonnegative");
-    }
-  }
-  if (!(std::isfinite(state[4]) && state[4] >= 0 && state[4] == std::floor(state[4]))) {
-    throw ArgumentError("Invalid state dimensions");
-  }
-  for (int64_t i = 5; i < state_length; ++i) {
-    if (!(std::isfinite(state[i]) && state[i] >= 0)) {
-      throw ArgumentError("Delay queues must be finite and nonnegative");
+// recharge.R, recharge_depth.
+double recharge_depth(const pdm_params& in, double soil, double smax, double groundwater,
+                      double dt) {
+  switch (in.recharge) {
+    case PDM_RECHARGE_STANDARD:
+      return rpow(std::max(0.0, soil - in.st), in.bg) / in.kg * dt;
+    case PDM_RECHARGE_SPLIT:
+      return 0;
+    default: {
+      double sgmax = storage_for_flow(in.groundwater, in.qsat);
+      check(std::isfinite(sgmax) && sgmax > 0, "Demand recharge requires positive implied Sgmax");
+      double g = std::min(1.0, std::max(0.0, (sgmax - groundwater) / sgmax));
+      double demand = std::min(1.0, rpow(g / in.alpha, in.beta));
+      double dsat = in.qsat * dt;
+      check(dsat <= smax, "qsat*dt must not exceed Smax for the Eq. 13 demand scheme");
+      return (dsat + (smax - dsat) * demand) * soil / smax;
     }
   }
 }
 
-// The time loop. Works on a copy of the state and writes it back only on success.
+// model_part2.R, pdm_step, repeated for each interval. Works on a copy of the state and
+// writes it back only on success.
 void run(const pdm_params& in, const double* rain, const double* pet, int64_t n_steps,
          double* state, int64_t state_length, double* q, double* q_end, double* fluxes) {
   validate(in);
@@ -316,29 +481,32 @@ void run(const pdm_params& in, const double* rain, const double* pet, int64_t n_
   if (n_steps > 0 && (rain == nullptr || pet == nullptr || q == nullptr || q_end == nullptr)) {
     throw ArgumentError("rain, pet, q_m3s and q_end_m3s must not be null");
   }
-  Params p = unpack(in);
-  const double dt = p.dt;
+  const Dist dist = make_dist(in);
+  const pdm_route& srf = in.surface;
+  const pdm_route& gwr = in.groundwater;
+  const double dt = in.dt;
+  const double smax = dist.smax;
   const std::size_t n_pending = static_cast<std::size_t>(pending_length(in));
   double soil = state[0];
   double surface[2] = {state[1], state[2]};
-  double ground[1] = {state[3]};
-  double step = state[4];
+  double ground[2] = {state[3], state[4]};
+  double step = state[5];
   std::vector<double> ds(n_pending), dg(n_pending), dse(n_pending), dge(n_pending);
   for (std::size_t i = 0; i < n_pending; ++i) {
-    ds[i] = state[5 + i];
-    dg[i] = state[5 + n_pending + i];
-    dse[i] = state[5 + 2 * n_pending + i];
-    dge[i] = state[5 + 3 * n_pending + i];
+    ds[i] = state[6 + i];
+    dg[i] = state[6 + n_pending + i];
+    dse[i] = state[6 + 2 * n_pending + i];
+    dge[i] = state[6 + 3 * n_pending + i];
   }
   std::vector<double> work(n_pending + 1);
-  const double ratio = p.td / dt;
-  const double factor = p.area / 3.6;
+  const double ratio = in.td / dt;
+  const double factor = in.area_km2 / 3.6;
 
   auto total_storage = [&]() {
     double t = 0;
     t += soil;
-    t += rsum2(surface[0], surface[1]);
-    t += ground[0];
+    t += store_sum(srf, surface);
+    t += store_sum(gwr, ground);
     t += rsum(ds);
     t += rsum(dg);
     return t;
@@ -351,11 +519,11 @@ void run(const pdm_params& in, const double* rain, const double* pet, int64_t n_
     if (!(std::isfinite(r) && r >= 0 && std::isfinite(e) && e >= 0)) {
       throw ArgumentError("rain and pet must be finite nonnegative depths");
     }
-    check(soil >= 0 && soil <= p.smax, "Soil storage exceeds capacity_mean(distribution)");
+    check(soil >= 0 && soil <= smax, "Soil storage exceeds capacity_mean(distribution)");
     double old = total_storage();
-    double pr = r * p.fc;
-    double et_requested = e * (-std::expm1(p.be * std::log1p(-soil / p.smax)));
-    double dr_requested = rpow(std::max(0.0, soil - p.st), p.bg) / p.kg * dt;
+    double pr = r * in.fc;
+    double et_requested = e * (-std::expm1(in.be * std::log1p(-soil / smax)));
+    double dr_requested = recharge_depth(in, soil, smax, ground[0], dt);
     double et = std::min(et_requested, soil + pr);
     double dr = std::min(dr_requested, std::max(0.0, soil + pr - et));
     double net = pr - et - dr;
@@ -364,15 +532,19 @@ void run(const pdm_params& in, const double* rain, const double* pet, int64_t n_
       soil_next = std::max(0.0, soil + net);
       runoff = 0;
     } else {
-      double c = cap_from_storage(p, soil);
-      double next_s = storage_from_cap(p, c + net);
+      double c = cap_from_storage(dist, soil);
+      double next_s = storage_from_cap(dist, c + net);
       soil_next = std::min(soil + net, std::max(soil, next_s));
       runoff = std::max(0.0, net - (soil_next - soil));
     }
     double fast = runoff;
     double slow = dr;
-    Route surf = cascade_step(p, surface, fast / dt, dt);
-    Route gw = power_step(p, ground, slow / dt, dt);
+    if (in.recharge == PDM_RECHARGE_SPLIT) {
+      fast = runoff * in.alpha;
+      slow = runoff * (1 - in.alpha);
+    }
+    Route surf = route_step(srf, surface, fast / dt, dt);
+    Route gw = route_step(gwr, ground, slow / dt, dt);
     double d1 = delay(ds, work, surf.outflow, ratio);
     double d2 = delay(dg, work, gw.outflow, ratio);
     double e1 = delay(dse, work, surf.q_end, ratio);
@@ -380,11 +552,11 @@ void run(const pdm_params& in, const double* rain, const double* pet, int64_t n_
     soil = soil_next;
     step = step + 1;
     check(std::isfinite(soil) && std::isfinite(surface[0]) && std::isfinite(surface[1]) &&
-            std::isfinite(ground[0]),
+            std::isfinite(ground[0]) && std::isfinite(ground[1]),
           "Invalid parameter(s): non-finite model state");
     double natural = d1 + d2;
-    q[i] = natural / dt * factor + p.qc;
-    q_end[i] = (e1 + e2) * factor + p.qc;
+    q[i] = natural / dt * factor + in.qc;
+    q_end[i] = (e1 + e2) * factor + in.qc;
     if (fluxes != nullptr) {
       double residual = old + pr - et - natural - total_storage();
       col(0, i) = step;
@@ -406,10 +578,10 @@ void run(const pdm_params& in, const double* rain, const double* pet, int64_t n_
       col(16, i) = surf.q_end;
       col(17, i) = gw.q_end;
       col(18, i) = soil;
-      col(19, i) = rsum2(surface[0], surface[1]);
-      col(20, i) = ground[0];
+      col(19, i) = store_sum(srf, surface);
+      col(20, i) = store_sum(gwr, ground);
       col(21, i) = rsum(ds) + rsum(dg);
-      col(22, i) = cap_cdf(p, cap_from_storage(p, soil));
+      col(22, i) = cap_cdf(dist, cap_from_storage(dist, soil));
       col(23, i) = residual;
     }
   }
@@ -418,12 +590,13 @@ void run(const pdm_params& in, const double* rain, const double* pet, int64_t n_
   state[1] = surface[0];
   state[2] = surface[1];
   state[3] = ground[0];
-  state[4] = step;
+  state[4] = ground[1];
+  state[5] = step;
   for (std::size_t j = 0; j < n_pending; ++j) {
-    state[5 + j] = ds[j];
-    state[5 + n_pending + j] = dg[j];
-    state[5 + 2 * n_pending + j] = dse[j];
-    state[5 + 3 * n_pending + j] = dge[j];
+    state[6 + j] = ds[j];
+    state[6 + n_pending + j] = dg[j];
+    state[6 + 2 * n_pending + j] = dse[j];
+    state[6 + 3 * n_pending + j] = dge[j];
   }
 }
 
@@ -470,7 +643,7 @@ int64_t pdm_state_length(const pdm_params* params) {
       !(std::isfinite(params->td) && params->td >= 0)) {
     return -1;
   }
-  return 5 + 4 * pending_length(*params);
+  return 6 + 4 * pending_length(*params);
 }
 
 int32_t pdm_initial_state(const pdm_params* params, double soil_fraction, double* state,
@@ -481,12 +654,11 @@ int32_t pdm_initial_state(const pdm_params* params, double soil_fraction, double
     if (!(std::isfinite(soil_fraction) && soil_fraction >= 0 && soil_fraction <= 1)) {
       throw ArgumentError("soil_fraction must lie in [0,1]");
     }
-    if (state == nullptr || state_length != 5 + 4 * pending_length(*params)) {
+    if (state == nullptr || state_length != 6 + 4 * pending_length(*params)) {
       throw ArgumentError("state must hold pdm_state_length() values");
     }
-    double smax = params->cmin + (params->cmax - params->cmin) / (params->b + 1);
     for (int64_t i = 0; i < state_length; ++i) state[i] = 0;
-    state[0] = soil_fraction * smax;
+    state[0] = soil_fraction * make_dist(*params).smax;
   });
 }
 

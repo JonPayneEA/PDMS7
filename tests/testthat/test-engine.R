@@ -66,7 +66,22 @@ engine_models <- function() {
     ),
     linear = pdm_model(groundwater = linear_routing(30)),
     quadratic = pdm_model(groundwater = quadratic_routing(300)),
-    point_mass = pdm_model(distribution = FlodeParetoCapacity(cmin = 0, cmax = 140, b = 0))
+    point_mass = pdm_model(distribution = FlodeParetoCapacity(cmin = 0, cmax = 140, b = 0)),
+    rectangular = pdm_model(distribution = FlodeRectangularCapacity(cmin = 0.4, cmax = 170.7)),
+    exponential_capacity = pdm_model(distribution = FlodeExponentialCapacity(mean = 110)),
+    split = pdm_model(recharge = FlodeSplitRecharge(alpha = 0.7)),
+    demand_power = pdm_model(recharge = FlodeDemandRecharge(alpha = 0.5, beta = 1.5, qsat = 0.5)),
+    demand_exponential = pdm_model(
+      recharge = FlodeDemandRecharge(alpha = 0.4, beta = 2, qsat = 0.3),
+      groundwater = FlodeExponentialRouting(a = 0.02, gamma = -2)
+    ),
+    exponential_routes = pdm_model(
+      surface = FlodeExponentialRouting(a = 0.05, gamma = -5),
+      groundwater = FlodeExponentialRouting(a = 0.02, gamma = -8)
+    ),
+    power_surface = pdm_model(surface = power_routing(k = 0.01, m = 1.7)),
+    smith_surface = pdm_model(surface = power_routing(k = 1e-3, m = 3, solver = "smith")),
+    cascade_groundwater = pdm_model(groundwater = FlodeCascadeRouting(k1 = 30, k2 = 200))
   )
 }
 
@@ -133,9 +148,8 @@ test_that(
 test_that(
   "unsupported models and the r option use the R loop",
   {
-    check(!pdmS7:::.engine_supported(pdm_model(recharge = FlodeSplitRecharge(0.7))))
-    check(!pdmS7:::.engine_supported(pdm_model(surface = linear_routing(5))))
-    check(!pdmS7:::.engine_supported(pdm_model(distribution = FlodeExponentialCapacity(100))))
+    check(!pdmS7:::.engine_supported(pdm_model(distribution = TriangularCapacity(10, 190))))
+    check(!pdmS7:::.engine_supported(pdm_model(distribution = LognormalCapacity(4, 1))))
     check(!with_engine("r", pdmS7:::.engine_supported(pdm_model())))
   }
 )

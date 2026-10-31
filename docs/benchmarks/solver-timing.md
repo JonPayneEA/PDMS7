@@ -100,6 +100,6 @@ more, so 1 hour is the warning threshold. Adaptive is accurate at every step tes
 
 ## Decision
 
-The compiled engine covers the default configuration only. Other distributions, recharge
-schemes and routing types still run in R and can be ported one at a time against the same
-equivalence tests. A peak timing objective stays deferred.
+The compiled engine now covers every component except the triangular and lognormal
+distributions and PACK snow, which still run in R and can be ported against the same
+equivalence and golden tests. A peak timing objective stays deferred.

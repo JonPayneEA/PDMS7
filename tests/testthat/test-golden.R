@@ -22,24 +22,45 @@ golden_agree <- function(got, want, label) {
   testthat::expect_lte(max(abs(got - want)), 1e-12 * scale, label = label)
 }
 
-golden_model <- function(p) {
-  pdm_model(
-    distribution = FlodeParetoCapacity(cmin = p$cmin, cmax = p$cmax, b = p$b),
-    recharge = FlodeStandardRecharge(kg = p$kg, bg = p$bg, st = p$st),
-    surface = FlodeCascadeRouting(k1 = p$k1, k2 = p$k2),
-    groundwater = power_routing(
-      k = p$k, m = p$m, solver = if (p$smith == 1) "smith" else "adaptive",
-      rtol = p$rtol, atol = p$atol
+# Rebuilds the S7 model from one row of cases.csv (the fields of pdm_params).
+golden_route <- function(p, prefix) {
+  f <- function(name) p[[paste0(prefix, name)]]
+  switch(as.character(f("type")),
+    "0" = FlodeCascadeRouting(k1 = f("k1"), k2 = f("k2")),
+    "1" = power_routing(
+      k = f("k"), m = f("m"), solver = if (f("smith") == 1) "smith" else "adaptive",
+      rtol = f("rtol"), atol = f("atol")
     ),
+    "2" = FlodeExponentialRouting(a = f("a"), gamma = f("gamma"))
+  )
+}
+
+golden_model <- function(p) {
+  distribution <- switch(as.character(p$distribution),
+    "0" = FlodeParetoCapacity(cmin = p$cmin, cmax = p$cmax, b = p$b),
+    "1" = FlodeRectangularCapacity(cmin = p$cmin, cmax = p$cmax),
+    "2" = FlodeExponentialCapacity(mean = p$mean)
+  )
+  recharge <- switch(as.character(p$recharge),
+    "0" = FlodeStandardRecharge(kg = p$kg, bg = p$bg, st = p$st),
+    "1" = FlodeSplitRecharge(alpha = p$alpha),
+    "2" = FlodeDemandRecharge(alpha = p$alpha, beta = p$beta, qsat = p$qsat)
+  )
+  pdm_model(
+    distribution = distribution, recharge = recharge,
+    surface = golden_route(p, "surface."), groundwater = golden_route(p, "groundwater."),
     be = p$be, fc = p$fc, td = p$td, qc = p$qc, area_km2 = p$area_km2, dt = p$dt
   )
 }
 
-golden_state <- function(v) {
-  n <- (length(v) - 5L) / 4L
-  queue <- function(j) v[5L + (j - 1L) * n + seq_len(n)]
+# Rebuilds a FlodePdmState from a state array in the layout of src/pdm_core.h.
+golden_state <- function(v, p) {
+  stores <- function(type) if (type == 0) 2L else 1L
+  n <- (length(v) - 6L) / 4L
+  queue <- function(j) v[6L + (j - 1L) * n + seq_len(n)]
   FlodePdmState(
-    soil = v[1L], surface = v[2:3], groundwater = v[4L], step = v[5L],
+    soil = v[1L], surface = v[1L + seq_len(stores(p$surface.type))],
+    groundwater = v[3L + seq_len(stores(p$groundwater.type))], step = v[6L],
     delay_surface = queue(1L), delay_groundwater = queue(2L),
     delay_surface_end = queue(3L), delay_groundwater_end = queue(4L)
   )
@@ -51,12 +72,12 @@ test_that(
     forcing <- golden_read("forcing.csv")
     forcing <- data.frame(rain = forcing$rain_mm, pet = forcing$pet_mm)
     cases <- golden_read("cases.csv")
-    expect_gte(nrow(cases), 9L)
+    expect_gte(nrow(cases), 18L)
     for (i in seq_len(nrow(cases))) {
       p <- cases[i, ]
       name <- p$case
       model <- golden_model(p)
-      state <- golden_state(golden_read(paste0(name, "_initial_state.csv"))$value)
+      state <- golden_state(golden_read(paste0(name, "_initial_state.csv"))$value, p)
       want <- golden_read(paste0(name, "_fluxes.csv"))
       want_state <- golden_read(paste0(name, "_final_state.csv"))$value
       for (engine in c("auto", "r")) {
@@ -67,11 +88,7 @@ test_that(
         for (col in names(want)) {
           golden_agree(result$output[[col]], want[[col]], paste(name, engine, col))
         }
-        got_state <- c(
-          result$state@soil, result$state@surface, result$state@groundwater, result$state@step,
-          result$state@delay_surface, result$state@delay_groundwater,
-          result$state@delay_surface_end, result$state@delay_groundwater_end
-        )
+        got_state <- pdmS7:::.engine_pack_state(result$state)
         golden_agree(got_state, want_state, paste(name, engine, "state"))
       }
     }
@@ -82,13 +99,13 @@ test_that(
   "the core rejects every invalid golden parameter set",
   {
     invalid <- golden_read("invalid_cases.csv")
-    params <- c("cmin", "cmax", "b", "kg", "bg", "st", "k1", "k2", "k", "m", "rtol", "atol",
-                "be", "fc", "td", "qc", "area_km2", "dt", "smith")
+    params <- setdiff(names(invalid), c("case", "expected_code"))
+    expect_length(params, 38L)
     for (i in seq_len(nrow(invalid))) {
       par <- as.numeric(invalid[i, params])
       expect_error(
-        pdmS7:::pdm_engine_run(1, 0.1, par, c(0, 0, 0, 0, 0, 0, 0, 0, 0), FALSE),
-        regexp = "Invalid parameter|cannot exceed|incompatible",
+        pdmS7:::pdm_engine_run(1, 0.1, par, rep(0, 10), FALSE),
+        regexp = "Invalid parameter|cannot exceed|Demand recharge|incompatible",
         label = invalid$case[i]
       )
     }

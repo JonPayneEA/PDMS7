@@ -194,9 +194,10 @@ convention (`ar=-phi` in the paper).
 ## Fast, fair calibration
 
 `calibrate_pdm(..., starts = 20L, seed = 42)` runs L-BFGS-B from several starting points and
-returns the best, with a per-start table in `start_results`. The default configuration
-(Pareto capacity, standard recharge, cascade surface routing, power-law groundwater) runs on
-a compiled engine about 430 times faster than the R loop, with output that agrees to rounding. The
+returns the best, with a per-start table in `start_results`. Every model except those with
+a triangular or lognormal distribution, or PACK snow, runs on a compiled engine about 430
+times faster than the R loop, with output that agrees to rounding. The engine has a C interface
+that other languages can call; see `tools/core/README.md`. The
 Smith groundwater solver is inaccurate above a 1-hour step and now warns. See the
 [performance guide](docs/performance.md) for how these work, parallel runs across basins,
 and budgeting a large calibration.

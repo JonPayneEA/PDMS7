@@ -36,24 +36,9 @@ rain[100] <- 250
 pet <- pmax(0, 0.15 + 0.1 * sin(seq_len(n) / 12))
 write_table(data.frame(rain_mm = rain, pet_mm = pet), "forcing.csv")
 
-param_names <- c("cmin", "cmax", "b", "kg", "bg", "st", "k1", "k2", "k", "m", "rtol",
-                 "atol", "be", "fc", "td", "qc", "area_km2", "dt", "smith")
-model_params <- function(model) {
-  d <- model@distribution
-  r <- model@recharge
-  s <- model@surface
-  g <- model@groundwater
-  stats::setNames(
-    c(d@cmin, d@cmax, d@b, r@kg, r@bg, r@st, s@k1, s@k2, g@k, g@m, g@rtol, g@atol,
-      model@be, model@fc, model@td, model@qc, model@area_km2, model@dt,
-      as.numeric(g@solver == "smith")),
-    param_names
-  )
-}
-pack_state <- function(state) {
-  c(state@soil, state@surface, state@groundwater, state@step, state@delay_surface,
-    state@delay_groundwater, state@delay_surface_end, state@delay_groundwater_end)
-}
+# Column names and order follow pdm_params in src/pdm_core.h; state arrays follow its layout.
+model_params <- function(model) pdmS7:::.engine_params(model)
+pack_state <- function(state) pdmS7:::.engine_pack_state(state)
 
 cases <- list(
   default = list(model = pdm_model(), fraction = 0.5),
@@ -76,7 +61,43 @@ cases <- list(
   point_mass = list(model = pdm_model(distribution = FlodeParetoCapacity(0, 140, 0)),
                     fraction = 0.4),
   custom_state = list(model = pdm_model(td = 2.5), fraction = 0.9,
-                      surface = c(3, 4), groundwater = 20)
+                      surface = c(3, 4), groundwater = 20),
+  rectangular = list(
+    model = pdm_model(distribution = FlodeRectangularCapacity(cmin = 0.4, cmax = 170.7)),
+    fraction = 0.5
+  ),
+  exponential_capacity = list(
+    model = pdm_model(distribution = FlodeExponentialCapacity(mean = 110)), fraction = 0.7
+  ),
+  split = list(model = pdm_model(recharge = FlodeSplitRecharge(alpha = 0.7)), fraction = 0.5),
+  demand_power = list(
+    model = pdm_model(recharge = FlodeDemandRecharge(alpha = 0.5, beta = 1.5, qsat = 0.5)),
+    fraction = 0.6, groundwater = 40
+  ),
+  demand_exponential = list(
+    model = pdm_model(
+      recharge = FlodeDemandRecharge(alpha = 0.4, beta = 2, qsat = 0.3),
+      groundwater = FlodeExponentialRouting(a = 0.02, gamma = -2)
+    ),
+    fraction = 0.9, groundwater = 150
+  ),
+  exponential_routes = list(
+    model = pdm_model(
+      surface = FlodeExponentialRouting(a = 0.05, gamma = -5),
+      groundwater = FlodeExponentialRouting(a = 0.02, gamma = -8)
+    ),
+    fraction = 0.5, surface = -30, groundwater = -60
+  ),
+  power_surface = list(model = pdm_model(surface = power_routing(k = 0.01, m = 1.7)),
+                       fraction = 0.5),
+  smith_surface = list(
+    model = pdm_model(surface = power_routing(k = 1e-3, m = 3, solver = "smith")),
+    fraction = 0.5
+  ),
+  cascade_groundwater = list(
+    model = pdm_model(groundwater = FlodeCascadeRouting(k1 = 30, k2 = 200)), fraction = 0.5,
+    groundwater = c(10, 25)
+  )
 )
 
 rows <- list()
@@ -105,11 +126,19 @@ write_table(
     invalid("kg_zero", kg = 0),
     invalid("cmax_below_cmin", cmin = 50, cmax = 40),
     invalid("negative_b", b = -0.1),
-    invalid("smith_not_cubic", m = 2.5, smith = 1),
+    invalid("smith_not_cubic", groundwater.m = 2.5, groundwater.smith = 1),
     invalid("st_above_smax", st = 500),
     invalid("dt_zero", dt = 0),
     invalid("area_negative", area_km2 = -1),
-    invalid("rtol_negative", rtol = -1e-8)
+    invalid("rtol_negative", groundwater.rtol = -1e-8),
+    invalid("unknown_distribution", distribution = 7),
+    invalid("exponential_mean_zero", distribution = 2, cmin = 0, cmax = 0, b = 0, mean = 0),
+    invalid("split_alpha_above_one", recharge = 1, kg = 0, bg = 0, alpha = 1.5),
+    invalid("demand_cascade_groundwater", recharge = 2, kg = 0, bg = 0, alpha = 0.5, beta = 1,
+            qsat = 0.5, groundwater.type = 0, groundwater.k = 0, groundwater.m = 0,
+            groundwater.rtol = 0, groundwater.atol = 0, groundwater.k1 = 30, groundwater.k2 = 200),
+    invalid("exponential_route_a_zero", surface.type = 2, surface.k1 = 0, surface.k2 = 0,
+            surface.a = 0, surface.gamma = -5)
   ),
   "invalid_cases.csv"
 )

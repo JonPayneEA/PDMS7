@@ -6,11 +6,12 @@
   table of per-start objective, convergence code, evaluation count and fitted parameters.
   The default `starts = 1L` runs the same single optimisation as earlier versions.
 - `run_pdm()`, and so `sim_pdm()` and `calibrate_pdm()`, now run a compiled time loop for
-  Pareto capacity, standard recharge, cascade surface routing and power-law groundwater
-  routing (the default configuration). It is about 430 times faster. Output agrees with the
+  the Pareto, rectangular and exponential distributions; standard, split and demand recharge;
+  and cascade, power-law and exponential stores on either route. It is about 430 times
+  faster. Output agrees with the
   R loop to rounding: bit-identical on R 4.3, with last-place differences on R 4.5 and later,
   where calibrated parameters can differ from earlier versions by about 1e-13 relative.
-  Other models use the R loop as before. `options(pdmS7.engine = "r")` forces the R loop,
+  Models with a triangular or lognormal distribution use the R loop as before. `options(pdmS7.engine = "r")` forces the R loop,
   which remains the reference implementation. Building from source now needs a
   C++ compiler (Rtools on Windows); cpp11 is a build-time dependency only.
 - Added `inst/benchmarks/time_solvers.R` and a report at `docs/benchmarks/solver-timing.md`
@@ -20,8 +21,8 @@
   step and reaches 60 to 100 per cent of peak flow at a daily step. Results are unchanged; the
   default adaptive solver is unaffected. `inst/benchmarks/smith_step_error.R` reproduces the
   evidence.
-- The compiled time loop now sits behind a language-neutral C interface (`src/pdm_core.h`), so
-  other languages can call the same model code. `src/pdm_engine.cpp` is a thin R wrapper over
+- The compiled time loop now sits behind a language-neutral C interface (`src/pdm_core.h`,
+  interface version 2), so other languages can call the same model code. `src/pdm_engine.cpp` is a thin R wrapper over
   it, and results are unchanged. The core validates its own inputs and leaves the caller's
   state untouched on error. `tools/core/README.md` covers building it without R.
 - Golden test files in `inst/golden/` hold inputs and expected outputs from the R reference,

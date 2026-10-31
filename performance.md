@@ -180,16 +180,16 @@ Each time step of PDM is a few dozen arithmetic operations. In R, the work aroun
 far more: building S7 objects, validating them, and creating a one-row data.table at every
 step. A profile put the groundwater maths itself at under 10 per cent of the run time.
 
-The compiled engine runs the whole time loop in C++. It covers the default configuration:
+The compiled engine runs the whole time loop in C++. It covers:
 
-- Pareto capacity distribution
-- standard recharge
-- two-store cascade surface routing
-- power-law groundwater routing, including cubic, with either solver
+- capacity distribution: Pareto, rectangular or exponential;
+- recharge: standard, split or demand;
+- surface and groundwater routes, chosen independently: two-store cascade, power-law store
+  (linear, quadratic, cubic or any exponent, with either solver) or exponential store.
 
 `run_pdm()` checks the model and uses the compiled loop when every component is one of these.
-Anything else, such as split recharge, exponential routing or snow, runs on the original R
-loop exactly as before. You do not choose; it happens automatically. `sim_pdm()` and
+The triangular and lognormal distributions, and PACK snow, run on the original R loop exactly
+as before. You do not choose; it happens automatically. `sim_pdm()` and
 `calibrate_pdm()` both go through `run_pdm()`, so they speed up too.
 
 ### Is the output the same?
@@ -309,7 +309,8 @@ counts from its `start_results`.
   one.
 - Uniform random starts cover the parameter space less evenly than a space-filling design such
   as a Latin hypercube. With 20 starts and three or four parameters this rarely matters.
-- The compiled engine covers the default configuration only. Other components run at R speed.
+- The triangular and lognormal distributions and PACK snow are not compiled and run at R
+  speed.
 - Evaluation counts depend on the basin, the objective, the bounds and the number of
   parameters.
 
@@ -317,7 +318,8 @@ counts from its `start_results`.
 
 The model arithmetic lives in `src/pdm_core.cpp`, behind the C interface in `src/pdm_core.h`.
 It has no R dependency, so other languages can call it; `tools/core/README.md` explains how.
-`src/pdm_engine.cpp` is only the R wrapper.
+`src/pdm_engine.cpp` is only the R wrapper. Only the triangular and lognormal distributions,
+which R inverts numerically with `uniroot()`, and PACK snow remain outside it.
 
 To port another component:
 

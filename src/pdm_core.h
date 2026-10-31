@@ -4,7 +4,7 @@
 // Flode Module: standalone; target reach.hydro
 // Author:       Claude Code (AI-generated); human maintainer attribution not supplied
 // Created:      2026-10-31
-// Modified:     2026-10-31 - Initial C interface
+// Modified:     2026-10-31 - Interface version 2: selectable distribution, recharge, routes
 // Tier:         3
 // Inputs:       Parameters, state, rain and PET depths in mm per interval
 // Outputs:      Flow in m3/s, optional flux table, updated state
@@ -24,9 +24,13 @@
      an optional message buffer;
    - on error, outputs are unspecified and the caller's state array is left unchanged.
 
-   Model covered: Pareto capacity distribution, standard recharge, two-store cascade surface
-   routing and power-law groundwater routing (cubic when m = 3), as described by Moore (2007),
-   doi:10.5194/hess-11-483-2007. Units: depths in mm, time in hours, flow in m3/s.
+   Components covered, as described by Moore (2007), doi:10.5194/hess-11-483-2007:
+   - capacity distribution: Pareto, rectangular or exponential;
+   - recharge: standard, split or demand;
+   - surface and groundwater routes, chosen independently: two-store cascade, power-law store
+     (linear, quadratic, cubic or any positive exponent) or exponential store.
+   Not covered: triangular and lognormal distributions, and PACK snow. Units: depths in mm,
+   time in hours, flow in m3/s.
 
    Golden test files in inst/golden/ hold inputs and expected outputs from the R reference
    implementation. Every binding should reproduce them within 1e-12 of each column's magnitude.
@@ -47,9 +51,9 @@
 extern "C" {
 #endif
 
-/* Version of this interface. It changes only when a signature, struct layout, state layout or
-   flux column order changes. */
-#define PDM_CORE_ABI_VERSION 1
+/* Version of this interface. It changes only when a signature, struct layout, state layout,
+   type code or flux column order changes. */
+#define PDM_CORE_ABI_VERSION 2
 
 /* Return codes. */
 #define PDM_OK 0
@@ -59,46 +63,80 @@ extern "C" {
 /* Number of columns in the optional flux table. */
 #define PDM_N_FLUX 24
 
-/* Model parameters. All fields must be finite. Layout: 18 doubles, then two 32-bit integers,
-   152 bytes with no padding on common platforms. */
+/* Capacity distribution types (pdm_params.distribution). */
+#define PDM_DIST_PARETO 0       /* uses cmin, cmax, b */
+#define PDM_DIST_RECTANGULAR 1  /* uses cmin, cmax */
+#define PDM_DIST_EXPONENTIAL 2  /* uses mean */
+
+/* Recharge types (pdm_params.recharge). */
+#define PDM_RECHARGE_STANDARD 0  /* uses kg, bg, st */
+#define PDM_RECHARGE_SPLIT 1     /* uses alpha: the fraction of soil runoff sent to the surface */
+#define PDM_RECHARGE_DEMAND 2    /* uses alpha, beta, qsat; groundwater must not be a cascade */
+
+/* Route types (pdm_route.type). */
+#define PDM_ROUTE_CASCADE 0      /* uses k1, k2; two stores */
+#define PDM_ROUTE_POWER 1        /* uses k, m, rtol, atol, smith; one store */
+#define PDM_ROUTE_EXPONENTIAL 2  /* uses a, gamma; one store, signed storage coordinate */
+
+/* One routing store or cascade. Fields not used by the chosen type are ignored.
+   Layout: two 32-bit integers, then 8 doubles; 72 bytes with no padding. */
+typedef struct pdm_route {
+  int32_t type;   /* PDM_ROUTE_* */
+  int32_t smith;  /* power only: 0 adaptive solver (recommended); 1 Smith (needs m = 3) */
+  double k1;      /* cascade: first store time constant, h; > 0 */
+  double k2;      /* cascade: second store time constant, h; > 0 */
+  double k;       /* power: rate, q = k S^m; > 0. Cubic routing with kb uses k = 1 / kb */
+  double m;       /* power: exponent; > 0. 1 linear, 2 quadratic, 3 cubic */
+  double rtol;    /* power: adaptive solver relative tolerance; > 0. Default 1e-8 */
+  double atol;    /* power: adaptive solver absolute tolerance, mm; > 0. Default 1e-10 */
+  double a;       /* exponential: slope, per mm; > 0. q = exp(gamma + a S) */
+  double gamma;   /* exponential: log-flow intercept; any finite value */
+} pdm_route;
+
+/* Model parameters. Fields not used by the chosen types are ignored; used fields must be
+   finite. Layout: two 32-bit integers, 10 doubles, two pdm_route, 6 doubles; 280 bytes with
+   no padding on common platforms. */
 typedef struct pdm_params {
-  double cmin;     /* minimum store capacity, mm; >= 0 */
-  double cmax;     /* maximum store capacity, mm; > cmin */
-  double b;        /* Pareto shape; >= 0 */
-  double kg;       /* recharge time constant, h mm^(bg-1); > 0 */
-  double bg;       /* recharge exponent; > 0 */
-  double st;       /* tension storage threshold, mm; >= 0 and <= Smax */
-  double k1;       /* first surface store time constant, h; > 0 */
-  double k2;       /* second surface store time constant, h; > 0 */
-  double k;        /* groundwater rate, q = k S^m; > 0. For cubic routing k = 1 / kb */
-  double m;        /* groundwater exponent; > 0. m = 3 is cubic */
-  double rtol;     /* adaptive solver relative tolerance; > 0. Default 1e-8 */
-  double atol;     /* adaptive solver absolute tolerance, mm; > 0. Default 1e-10 */
-  double be;       /* evaporation exponent; > 0 */
-  double fc;       /* rainfall correction factor; >= 0 */
-  double td;       /* outlet delay, h; >= 0 */
-  double qc;       /* constant flow added at the outlet, m3/s; any finite value */
-  double area_km2; /* catchment area, km2; > 0 */
-  double dt;       /* time step, h; > 0. 0.25 for 15-minute data */
-  int32_t smith;   /* 0: adaptive groundwater solver (recommended); 1: Smith (needs m = 3) */
-  int32_t reserved; /* set to 0 */
+  int32_t distribution;  /* PDM_DIST_* */
+  int32_t recharge;      /* PDM_RECHARGE_* */
+  double cmin;           /* Pareto, rectangular: minimum capacity, mm; >= 0 */
+  double cmax;           /* Pareto, rectangular: maximum capacity, mm; > cmin */
+  double b;              /* Pareto: shape; >= 0 */
+  double mean;           /* exponential: mean capacity, mm; > 0 */
+  double kg;             /* standard: time constant, h mm^(bg-1); > 0 */
+  double bg;             /* standard: exponent; > 0 */
+  double st;             /* standard: tension threshold, mm; >= 0 and <= Smax */
+  double alpha;          /* split: surface fraction in [0, 1]; demand: threshold in (0, 1] */
+  double beta;           /* demand: exponent; > 0 */
+  double qsat;           /* demand: saturation recharge rate, mm/h; > 0 */
+  pdm_route surface;     /* fast route */
+  pdm_route groundwater; /* slow route */
+  double be;             /* evaporation exponent; > 0 */
+  double fc;             /* rainfall correction factor; >= 0 */
+  double td;             /* outlet delay, h; >= 0 */
+  double qc;             /* constant flow added at the outlet, m3/s; any finite value */
+  double area_km2;       /* catchment area, km2; > 0 */
+  double dt;             /* time step, h; > 0. 0.25 for 15-minute data */
 } pdm_params;
 
 /* Interface version compiled into the library. Compare with PDM_CORE_ABI_VERSION. */
 PDM_CORE_API int32_t pdm_core_abi_version(void);
 
 /* Number of doubles in the state array for these parameters:
-   5 + 4 * (floor(td / dt) + 1). Returns -1 if dt is not positive or td is negative.
+   6 + 4 * (floor(td / dt) + 1). Returns -1 if dt is not positive or td is negative.
    State layout:
      [0] soil storage, mm
-     [1] first surface store, mm      [2] second surface store, mm
-     [3] groundwater store, mm        [4] step counter
+     [1] surface store 1          [2] surface store 2 (cascade only; otherwise 0)
+     [3] groundwater store 1      [4] groundwater store 2 (cascade only; otherwise 0)
+     [5] step counter
      then four delay queues of n = floor(td / dt) + 1 values each, in this order:
-     surface volume, groundwater volume, surface endpoint flow, groundwater endpoint flow. */
+     surface volume, groundwater volume, surface endpoint flow, groundwater endpoint flow.
+   Stores are in mm and must be >= 0, except an exponential store, whose storage is a signed
+   coordinate. */
 PDM_CORE_API int64_t pdm_state_length(const pdm_params* params);
 
 /* Fills state with the standard initial state: soil at soil_fraction of Smax, all routing
-   stores and delay queues empty, step 0. soil_fraction must lie in [0, 1]. */
+   stores and delay queues at zero, step 0. soil_fraction must lie in [0, 1]. */
 PDM_CORE_API int32_t pdm_initial_state(const pdm_params* params, double soil_fraction,
                                        double* state, int64_t state_length,
                                        char* message, int64_t message_length);

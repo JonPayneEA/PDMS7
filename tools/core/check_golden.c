@@ -28,7 +28,7 @@
 
 #include "pdm_core.h"
 
-#define MAX_COLS 32
+#define MAX_COLS 48
 #define MAX_LINE 8192
 #define TOLERANCE 1e-12
 
@@ -100,28 +100,46 @@ static double cell(const table* t, int row, const char* name) {
   exit(2);
 }
 
+static pdm_route route_from(const table* t, int row, const char* prefix) {
+  char name[96];
+  pdm_route r;
+#define FIELD(f) (snprintf(name, sizeof(name), "%s%s", prefix, f), cell(t, row, name))
+  r.type = (int32_t)FIELD("type");
+  r.smith = (int32_t)FIELD("smith");
+  r.k1 = FIELD("k1");
+  r.k2 = FIELD("k2");
+  r.k = FIELD("k");
+  r.m = FIELD("m");
+  r.rtol = FIELD("rtol");
+  r.atol = FIELD("atol");
+  r.a = FIELD("a");
+  r.gamma = FIELD("gamma");
+#undef FIELD
+  return r;
+}
+
 static pdm_params params_from(const table* t, int row) {
   pdm_params p;
+  p.distribution = (int32_t)cell(t, row, "distribution");
+  p.recharge = (int32_t)cell(t, row, "recharge");
   p.cmin = cell(t, row, "cmin");
   p.cmax = cell(t, row, "cmax");
   p.b = cell(t, row, "b");
+  p.mean = cell(t, row, "mean");
   p.kg = cell(t, row, "kg");
   p.bg = cell(t, row, "bg");
   p.st = cell(t, row, "st");
-  p.k1 = cell(t, row, "k1");
-  p.k2 = cell(t, row, "k2");
-  p.k = cell(t, row, "k");
-  p.m = cell(t, row, "m");
-  p.rtol = cell(t, row, "rtol");
-  p.atol = cell(t, row, "atol");
+  p.alpha = cell(t, row, "alpha");
+  p.beta = cell(t, row, "beta");
+  p.qsat = cell(t, row, "qsat");
+  p.surface = route_from(t, row, "surface.");
+  p.groundwater = route_from(t, row, "groundwater.");
   p.be = cell(t, row, "be");
   p.fc = cell(t, row, "fc");
   p.td = cell(t, row, "td");
   p.qc = cell(t, row, "qc");
   p.area_km2 = cell(t, row, "area_km2");
   p.dt = cell(t, row, "dt");
-  p.smith = (int32_t)cell(t, row, "smith");
-  p.reserved = 0;
   return p;
 }
 
@@ -215,7 +233,7 @@ int main(int argc, char** argv) {
     double q[1], q_end[1], r1[1] = {1}, e1[1] = {0.1};
     char message[256];
     long len = (long)pdm_state_length(&p);
-    if (len < 0 || len > 64) len = 9;
+    if (len < 0 || len > 64) len = 10;
     int32_t code = pdm_run(&p, r1, e1, 1, state, len, q, q_end, NULL, message,
                            (int64_t)sizeof(message));
     int unchanged = 1;

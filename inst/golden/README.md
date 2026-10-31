@@ -12,7 +12,7 @@ the compiled core, so the files test the core as well as the bindings.
 | File | Content |
 |---|---|
 | `forcing.csv` | `rain_mm`, `pet_mm`: 150 steps shared by every case, in mm per interval |
-| `cases.csv` | One row per case: `case`, then the 19 fields of `pdm_params` in header order |
+| `cases.csv` | One row per case: `case`, then the 38 fields of `pdm_params` in header order. Route fields are prefixed `surface.` or `groundwater.` |
 | `<case>_initial_state.csv` | Column `value`: the state array passed to `pdm_run()` |
 | `<case>_fluxes.csv` | The 24 flux columns, named and ordered as `pdm_flux_name(0..23)` |
 | `<case>_final_state.csv` | Column `value`: the state array after the run |
@@ -22,9 +22,12 @@ the compiled core, so the files test the core as well as the bindings.
 All numbers are written with 17 significant digits, so they round-trip exactly to doubles.
 There are no infinities or missing values.
 
-The cases cover the default model, the Smith solver, a 15-minute step with a fractional delay,
-a daily step, unusual parameters with near-equal cascade constants, linear and quadratic
-groundwater, a point-mass capacity distribution, and a non-default initial state. The forcing
+The 18 cases cover the default model, the Smith solver, a 15-minute step with a fractional
+delay, a daily step, unusual parameters with near-equal cascade constants, linear and
+quadratic groundwater, a point-mass capacity distribution and a non-default initial state.
+They also cover the rectangular and exponential distributions, split recharge, demand
+recharge with power and exponential groundwater, exponential stores starting from negative
+storage, power-law and Smith surface stores, and a cascade as the groundwater route. The forcing
 includes dry spells and two storms that saturate the soil store.
 
 ## Tolerance rule
