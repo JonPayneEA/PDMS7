@@ -7,15 +7,16 @@
 // Modified:     2026-10-31 - Initial compiled engine
 // Tier:         3
 // Inputs:       Rain and PET depths in mm per interval; parameters in R/engine.R order
-// Outputs:      Flux columns identical to pdm_step(); final state vectors
+// Outputs:      Flux columns equal to pdm_step() to rounding; final state vectors
 // Dependencies: cpp11 (header only, build time)
 // ============================================================ //
 //
 // Every expression mirrors the R code in model_part2.R, distributions*.R, recharge.R and
-// routing*.R, in the same evaluation order, so results match the R engine bit for bit.
-// Two R conventions are reproduced deliberately:
+// routing*.R, in the same evaluation order. Two R 4.3 conventions are reproduced:
 //   - x^y evaluates x * x when y == 2 and otherwise uses pow(), as R's arithmetic does;
 //   - sum() accumulates each argument in long double, then adds the arguments in double.
+// Results are bit-identical to the R engine on R 4.3. Later R versions changed both
+// conventions, so there the engines differ in the last place; tests allow for this.
 // Any change to the R model code must be repeated here; tests compare the two engines.
 
 #include <cpp11.hpp>

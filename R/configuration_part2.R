@@ -31,7 +31,7 @@
 #' @param control Named control list forwarded to stats::optim.
 #' @param soil_fraction Initial fraction of basin capacity between zero and one.
 #' @param starts Positive integer number of L-BFGS-B starts. The default, 1, runs a single
-#' start from the values in config and is identical to earlier versions. With more than one,
+#' start from the values in config, as earlier versions did. With more than one,
 #' the first start is still the values in config and the others are drawn uniformly inside
 #' lower and upper. Every start is optimised and the best objective is returned.
 #' @param seed Optional finite number that seeds the random starting points. The caller's
@@ -144,9 +144,10 @@ calibrate_pdm <- function(
   }
   # Counts every objective call, including the finite-difference gradient calls that
   # stats::optim leaves out of its own function count.
-  calls <- 0L
+  counter <- new.env(parent = emptyenv())
+  counter$calls <- 0L
   loss <- function(z) {
-    calls <<- calls + 1L
+    counter$calls <- counter$calls + 1L
     par <- lower + z * (upper - lower)
     tryCatch(
       {
@@ -185,33 +186,33 @@ calibrate_pdm <- function(
   z_start <- list(z0)
   if (starts > 1L) {
     if (!is.null(seed)) {
-      if (exists(".Random.seed", envir = globalenv(), inherits = FALSE)) {
-        old_seed <- get(".Random.seed", envir = globalenv(), inherits = FALSE)
-        on.exit(assign(".Random.seed", old_seed, envir = globalenv()), add = TRUE)
+      seed_name <- ".Random.seed"
+      if (exists(seed_name, envir = globalenv(), inherits = FALSE)) {
+        old_seed <- get(seed_name, envir = globalenv(), inherits = FALSE)
+        on.exit(assign(seed_name, old_seed, envir = globalenv()), add = TRUE)
       } else {
-        on.exit(rm(list = ".Random.seed", envir = globalenv()), add = TRUE)
+        on.exit(rm(list = seed_name, envir = globalenv()), add = TRUE)
       }
       set.seed(seed)
     }
     extra <- lapply(seq_len(starts - 1L), function(i) stats::runif(length(z0)))
     z_start <- c(z_start, extra)
   }
-  eval_counts <- integer(length(z_start))
-  fits <- lapply(
-    seq_along(z_start),
-    function(i) {
-      z <- z_start[[i]]
-      calls <<- 0L
-      out <- stats::optim(
+  runs <- lapply(
+    z_start,
+    function(z) {
+      counter$calls <- 0L
+      fit <- stats::optim(
         z, loss,
         method = "L-BFGS-B", lower = rep(0, length(lower)),
         upper = rep(1, length(upper)),
         control = control
       )
-      eval_counts[i] <<- calls
-      out
+      list(fit = fit, calls = counter$calls)
     }
   )
+  fits <- lapply(runs, function(r) r$fit)
+  eval_counts <- vapply(runs, function(r) r$calls, integer(1))
   values <- vapply(fits, function(f) f$value, numeric(1))
   best_index <- which.min(values)
   fit <- fits[[best_index]]

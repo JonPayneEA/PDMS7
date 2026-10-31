@@ -85,7 +85,7 @@ a single start from the same configuration.
 
 | Argument | Default | Meaning |
 |---|---|---|
-| `starts` | `1L` | Number of starts. `1L` behaves exactly as earlier versions. |
+| `starts` | `1L` | Number of starts. `1L` runs the same single optimisation as earlier versions. |
 | `seed` | `NULL` | Seeds the random starting points, so a run can be repeated. Your session's random number state is restored afterwards. Ignored when `starts` is 1. |
 
 All other arguments are unchanged: `lower`, `upper`, `warmup`, `objective` (rmse, nse or
@@ -187,11 +187,16 @@ loop exactly as before. You do not choose; it happens automatically. `sim_pdm()`
 
 ### Is the output the same?
 
-Yes, bit for bit. The C++ code repeats the R arithmetic in the same order, including two
-details of R's own behaviour: `x^2` is computed as `x * x`, and `sum()` accumulates in extended
-precision. `tests/testthat/test-engine.R` compares every output column, the final state and
-the water balance between the two engines across eight model configurations, restarts and
-timestamped forcing, and requires them to be identical.
+Yes, to rounding. The C++ code repeats the R arithmetic in the same order, so the two engines
+agree to the last one or two decimal places of a double, around 1e-15 relative. On R 4.3 they
+are bit-identical. On R 4.5 and 4.6 they differ in the last place, because those versions
+changed how R's own `sum()` and `^` round. `tests/testthat/test-engine.R` compares every output
+column, the final state and the water balance between the two engines across eight model
+configurations, restarts and timestamped forcing, and requires each to agree within 1e-12 of
+its own magnitude.
+
+A calibration amplifies these differences slightly: optimised parameters agree to about 1e-13
+relative. That is far below any meaningful parameter uncertainty.
 
 To run the original R loop, for checking or debugging:
 
@@ -311,7 +316,7 @@ To port another component:
 3. Add its class to `.engine_supported()`. Matching is by exact class, so subclasses stay on
    the R loop until they are added deliberately.
 4. Add a configuration using it to `engine_models()` in `tests/testthat/test-engine.R`. The
-   test requires identical output from both engines.
+   test requires both engines to agree within 1e-12.
 5. Run `cpp11::cpp_register()` if a function signature changed, then `roxygen2::roxygenise()`.
 
 Any change to the model equations in R must be repeated in C++. The equivalence tests will

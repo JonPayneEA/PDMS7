@@ -49,7 +49,7 @@ second.}
 \item{soil_fraction}{Initial fraction of basin capacity between zero and one.}
 
 \item{starts}{Positive integer number of L-BFGS-B starts. The default, 1, runs a single
-start from the values in config and is identical to earlier versions. With more than one,
+start from the values in config, as earlier versions did. With more than one,
 the first start is still the values in config and the others are drawn uniformly inside
 lower and upper. Every start is optimised and the best objective is returned.}
 

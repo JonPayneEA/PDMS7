@@ -7,7 +7,7 @@
 # Modified:     2026-10-31 - Initial compiled engine dispatch
 # Tier:         3
 # Inputs:       FlodePdmModel, FlodePdmState, forcing depths in mm per interval
-# Outputs:      run_pdm() output columns and final state, identical to the R loop
+# Outputs:      run_pdm() output columns and final state, equal to the R loop to rounding
 # Dependencies: cpp11 (build time); data.table
 # ============================================================ #
 
