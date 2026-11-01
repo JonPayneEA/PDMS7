@@ -56,7 +56,7 @@ S7::method(capacity_from_storage, FlodeLognormalCapacity) <- function(x, s) {
 # Inverse of the lognormal storage function by safeguarded Newton iteration. dS/dC is the
 # survival probability 1 - F(C), known exactly. S is increasing and concave, so Newton steps
 # from below never overshoot; a bracket and bisection guard against slow progress in the tail.
-# Converges to machine precision. Mirrored in src/pdm_core.cpp.
+# Converges to machine precision. Mirrored in src/pdm_core.c.
 .lognormal_inverse <- function(x, si) {
   if (si == 0) {
     return(0)

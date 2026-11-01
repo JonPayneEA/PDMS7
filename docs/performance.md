@@ -180,7 +180,7 @@ Each time step of PDM is a few dozen arithmetic operations. In R, the work aroun
 far more: building S7 objects, validating them, and creating a one-row data.table at every
 step. A profile put the groundwater maths itself at under 10 per cent of the run time.
 
-The compiled engine runs the whole time loop in C++. It covers:
+The compiled engine runs the whole time loop in C. It covers:
 
 - capacity distribution: Pareto, rectangular, exponential, triangular or lognormal;
 - recharge: standard, split or demand;
@@ -194,7 +194,7 @@ snowpack in R and then the PDM part through the compiled loop. You do not choose
 
 ### Is the output the same?
 
-Yes, to rounding. The C++ code repeats the R arithmetic in the same order, so the two engines
+Yes, to rounding. The C code repeats the R arithmetic in the same order, so the two engines
 agree to the last one or two decimal places of a double, around 1e-15 relative. On R 4.3 they
 are bit-identical. On R 4.5 and 4.6 they differ in the last place, because those versions
 changed how R's own `sum()` and `^` round. `tests/testthat/test-engine.R` compares every output
@@ -235,8 +235,8 @@ would have needed about six hours. Full details are in the
 
 ### Installing
 
-The package now contains C++ code, so building from source needs a compiler. On Windows that
-means Rtools matched to your R version; on macOS, the Xcode command line tools; on Linux, the
+The package now contains compiled code: the model core in C and a thin C++ wrapper for R. So
+building from source needs a compiler. On Windows that means Rtools matched to your R version; on macOS, the Xcode command line tools; on Linux, the
 usual build tools. The cpp11 package is needed at build time only; nothing extra is loaded
 when the package runs.
 
@@ -315,13 +315,13 @@ counts from its `start_results`.
 
 ## For maintainers: extending the engine
 
-The model arithmetic lives in `src/pdm_core.cpp`, behind the C interface in `src/pdm_core.h`.
+The model arithmetic lives in `src/pdm_core.c`, plain C99 behind the interface in `src/pdm_core.h`.
 It has no R dependency, so other languages can call it; `tools/core/README.md` explains how.
 `src/pdm_engine.cpp` is only the R wrapper. Only the PACK snowpack remains outside it.
 
 To port another component:
 
-1. Add its step to `src/pdm_core.cpp`, mirroring the R expression in the same evaluation
+1. Add its step to `src/pdm_core.c`, mirroring the R expression in the same evaluation
    order. Use `rpow()` for `^` and the long-double helpers for `sum()`.
 2. Add its parameters to `pdm_params` in `src/pdm_core.h`, with validation rules no stricter
    than the S7 validator, and raise `PDM_CORE_ABI_VERSION`. Other languages' bindings must
@@ -333,7 +333,7 @@ To port another component:
    case to `inst/golden/generate_golden.R`. Regenerate the golden files and review the diff.
 6. Run `cpp11::cpp_register()` if a function signature changed, then `roxygen2::roxygenise()`.
 
-Any change to the model equations in R must be repeated in C++. The equivalence and golden
+Any change to the model equations in R must be repeated in C. The equivalence and golden
 tests will fail until both agree.
 
 ## Files
@@ -342,7 +342,7 @@ tests will fail until both agree.
 |---|---|
 | `R/configuration_part2.R` | `calibrate_pdm()`, including multi-start |
 | `R/engine.R` | Engine dispatch, the calibration path and the Smith warning |
-| `src/pdm_core.h`, `src/pdm_core.cpp` | Compiled time loop behind a C interface |
+| `src/pdm_core.h`, `src/pdm_core.c` | Compiled time loop, in C99 |
 | `src/pdm_engine.cpp` | R wrapper for the core |
 | `inst/golden/` | Golden test files for every language binding |
 | `tools/core/` | Building and checking the core without R |

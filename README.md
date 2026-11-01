@@ -18,8 +18,8 @@ install.packages(c("S7", "data.table", "yaml", "logger"))
 install.packages("pdmS7_0.3.1.tar.gz", repos = NULL, type = "source")
 ```
 
-The package contains C++ code, so installing from source needs a compiler: Rtools on
-Windows, the Xcode command line tools on macOS, or the usual build tools on Linux. The cpp11
+The package contains compiled code (the model core in C, with a thin C++ wrapper for R), so
+installing from source needs a compiler: Rtools on Windows, the Xcode command line tools on macOS, or the usual build tools on Linux. The cpp11
 package is needed at build time only.
 
 For developers, extract the full project, open R in `pdmS7/`, and use

@@ -26,7 +26,7 @@ with_engine <- function(engine, code) {
 }
 
 # The engines agree to rounding, not bit for bit: R's own sum() and ^ changed between R
-# versions (4.3 and 4.6 differ in the last place), so the C++ code cannot track them exactly.
+# versions (4.3 and 4.6 differ in the last place), so the C code cannot track them exactly.
 # Each numeric column must agree within 1e-12 of its own magnitude (at least 1).
 # Non-numeric columns, such as timestamps, must match exactly.
 expect_engines_agree <- function(fast, ref, label = "") {

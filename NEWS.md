@@ -13,7 +13,7 @@
   where calibrated parameters can differ from earlier versions by about 1e-13 relative.
   `options(pdmS7.engine = "r")` forces the R loop, which remains the reference
   implementation. Building from source now needs a
-  C++ compiler (Rtools on Windows); cpp11 is a build-time dependency only.
+  compiler (Rtools on Windows); cpp11 is a build-time dependency only.
 - Added `inst/benchmarks/time_solvers.R` and a report at `docs/benchmarks/solver-timing.md`
   timing both solvers and both engines on daily and 15-minute series.
 - `pdm_model()` (and so `pdm_from_config()` and `sim_pdm()`) warns, once per session, when the

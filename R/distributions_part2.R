@@ -43,7 +43,7 @@ S7::method(capacity_from_storage, FlodeTriangularCapacity) <- function(x, s) {
 # Exact inverse of the triangular storage function. Storage is cubic in capacity on each half
 # of the support. Upper half: S = m - 2 y^3 / (3 w^2) with y = cmax - C, a cube root. Lower
 # half: x - 2 x^3 / (3 w^2) = S - cmin with x = C - cmin, solved by the trigonometric form of
-# the cubic, then one Newton step to remove rounding. Mirrored in src/pdm_core.cpp.
+# the cubic, then one Newton step to remove rounding. Mirrored in src/pdm_core.c.
 .triangular_inverse <- function(x, si) {
   if (si <= x@cmin) {
     return(si)

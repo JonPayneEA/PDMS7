@@ -8,16 +8,14 @@
 // Tier:         3
 // Inputs:       CSV files in inst/golden
 // Outputs:      Pass or fail per case on stdout; exit status 0 only if every case passes
-// Dependencies: C99 and the PDM core (src/pdm_core.h, src/pdm_core.cpp)
+// Dependencies: C99 and the PDM core (src/pdm_core.h, src/pdm_core.c)
 // ============================================================ //
 
-   Written in C, not C++, to prove that the interface in pdm_core.h works from plain C, and
+   Written in plain C to prove that the interface in pdm_core.h works from C, and
    therefore from any language with a C foreign function interface. Build and run from the
    package root (see tools/core/README.md):
 
-     g++ -std=c++11 -O2 -c src/pdm_core.cpp -o pdm_core.o
-     gcc -std=c99 -O2 -I src -c tools/core/check_golden.c -o check_golden.o
-     g++ check_golden.o pdm_core.o -o check_golden
+     gcc -std=c99 -O2 -I src src/pdm_core.c tools/core/check_golden.c -lm -o check_golden
      ./check_golden inst/golden
 */
 

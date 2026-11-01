@@ -11,7 +11,7 @@
 // Dependencies: cpp11 (header only, build time); pdm_core
 // ============================================================ //
 //
-// The model arithmetic lives in pdm_core.cpp, which has no R dependency. This file only
+// The model arithmetic lives in pdm_core.c, plain C99 with no R dependency. This file only
 // converts between R vectors and the C interface, and turns error codes into R errors.
 
 #include <cpp11.hpp>

@@ -8,7 +8,7 @@
 // Tier:         3
 // Inputs:       Parameters, state, rain and PET depths in mm per interval
 // Outputs:      Flow in m3/s, optional flux table, updated state
-// Dependencies: C++11 standard library only (implementation); C99 (this header)
+// Dependencies: C99 standard library only
 // ============================================================ //
 
    One source of truth for the PDM equations, callable from any language with a C foreign
@@ -20,8 +20,7 @@
    - only fixed-width integers, doubles, pointers to arrays of doubles and a char buffer cross
      the interface;
    - the core never allocates memory that the caller must free;
-   - no C++ exception crosses the interface; every function reports errors by return code and
-     an optional message buffer;
+   - every function reports errors by return code and an optional message buffer;
    - on error, outputs are unspecified and the caller's state array is left unchanged.
 
    Components covered, as described by Moore (2007), doi:10.5194/hess-11-483-2007:

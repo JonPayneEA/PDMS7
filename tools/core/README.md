@@ -1,6 +1,6 @@
 # Using the PDM core outside R
 
-The PDM time loop is written once, in `src/pdm_core.cpp`, behind the C interface in
+The PDM time loop is written once, in plain C99 in `src/pdm_core.c`, behind the interface in
 `src/pdm_core.h`. The core has no R dependency. Any language that can call C functions can
 use it: R does so through `src/pdm_engine.cpp`, and Python, Scala, Julia, MATLAB or Fortran
 can do the same through their foreign function interfaces.
@@ -23,20 +23,20 @@ closely with R's, not exactly, because optimisers differ between languages.
 
 ## Building
 
-The core needs a C++11 compiler and nothing else. From the package root:
+The core is plain C99 and needs only a C compiler and the standard maths library. From the
+package root:
 
 ```
 # Linux or macOS: a shared library for other languages
-g++ -std=c++11 -O2 -shared -fPIC src/pdm_core.cpp -o libpdmcore.so      # Linux
-clang++ -std=c++11 -O2 -dynamiclib src/pdm_core.cpp -o libpdmcore.dylib # macOS
+gcc -std=c99 -O2 -shared -fPIC src/pdm_core.c -lm -o libpdmcore.so      # Linux
+clang -std=c99 -O2 -dynamiclib src/pdm_core.c -o libpdmcore.dylib       # macOS
 
 # Windows, with the Rtools or MinGW toolchain
-g++ -std=c++11 -O2 -shared -DPDM_CORE_BUILD_SHARED src/pdm_core.cpp -o pdmcore.dll ^
-    -static-libgcc -static-libstdc++
+gcc -std=c99 -O2 -shared -DPDM_CORE_BUILD_SHARED src/pdm_core.c -o pdmcore.dll -static-libgcc
 ```
 
-On Windows, `PDM_CORE_BUILD_SHARED` exports the functions from the DLL, and the two static
-flags make the DLL independent of the compiler's runtime libraries.
+On Windows, `PDM_CORE_BUILD_SHARED` exports the functions from the DLL, and `-static-libgcc`
+makes the DLL independent of the compiler's runtime library.
 
 Only the Linux commands have been run so far. The macOS and Windows commands are standard, but
 have not been run yet; run `check_golden` after the first build on each.
@@ -47,9 +47,7 @@ have not been run yet; run `check_golden` after the first build on each.
 from any language with a C foreign function interface, and it checks every golden case:
 
 ```
-g++ -std=c++11 -O2 -c src/pdm_core.cpp -o pdm_core.o
-gcc -std=c99 -O2 -I src -c tools/core/check_golden.c -o check_golden.o
-g++ check_golden.o pdm_core.o -o check_golden
+gcc -std=c99 -O2 -I src src/pdm_core.c tools/core/check_golden.c -lm -o check_golden
 ./check_golden inst/golden
 ```
 
