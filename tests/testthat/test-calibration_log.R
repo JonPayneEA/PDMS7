@@ -123,6 +123,21 @@ test_that("tampering, missing data and changed outputs are detected", {
   expect_error(log_trial(p$folder, 3, c(fc = 0.9), "worse", "x"), "changed since")
 })
 
+test_that("checksums survive a change of line endings, as on a Windows checkout", {
+  p <- new_project()
+  propose_candidate(p$folder, 3, "Starting structure")
+  files <- list.files(p$folder, recursive = TRUE, full.names = TRUE,
+                      pattern = "\\.(yml|csv)$")
+  for (f in files) {
+    text <- readBin(f, "raw", file.info(f)$size)
+    crlf <- gsub("\n", "\r\n", rawToChar(text), fixed = TRUE)
+    writeBin(charToRaw(crlf), f)
+  }
+  expect_true(all(verify_project(p$folder, rerun = TRUE)$ok))
+  log_note(p$folder, "Still appends after conversion")
+  expect_true(all(verify_project(p$folder)$ok))
+})
+
 test_that("a rerun that differs names the software change", {
   p <- new_project()
   local_mocked_bindings(.series_md5 = function(x) "different")

@@ -114,7 +114,9 @@ entries again, and a later sign-off supersedes the earlier one.
 
 ## Integrity
 
-- **Chain.** Each entry stores the MD5 of the file before it. `verify_project()` recomputes
+- **Chain.** Each entry stores the MD5 of the file before it. Checksums of entries, data
+  and series ignore carriage returns, so a Windows checkout that converts line endings
+  does not break the chain. `verify_project()` recomputes
   the chain and reports any gap, insertion or alteration. Alteration of the newest entry is
   caught by the next entry, by a sign-off, or by version control.
 - **Data.** Every run first checks the registered files against their MD5s.

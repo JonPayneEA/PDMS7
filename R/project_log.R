@@ -59,7 +59,16 @@
 
 # ---- Checksums ---------------------------------------------------------------------------
 
-.md5_file <- function(path) unname(tools::md5sum(path))
+# Line-ending insensitive: entries, CSV data and series are text, and git on Windows may
+# convert LF to CRLF on checkout. Carriage returns are removed before hashing.
+.md5_file <- function(path) {
+  bytes <- readBin(path, "raw", file.info(path)$size)
+  if (!any(bytes == as.raw(13L))) return(unname(tools::md5sum(path)))
+  temp <- tempfile()
+  on.exit(unlink(temp))
+  writeBin(bytes[bytes != as.raw(13L)], temp)
+  unname(tools::md5sum(temp))
+}
 
 .md5_text <- function(text) {
   path <- tempfile()
