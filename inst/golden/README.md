@@ -24,6 +24,11 @@ the compiled core, so the files test the core as well as the bindings.
 | `pack_invalid_cases.csv` | PACK parameter sets that must fail |
 | `snow_cases.csv` | Coupled runs: `case`, the PACK case and the PDM case whose parameters and initial states to use |
 | `<case>_fluxes.csv`, `<case>_final_state.csv`, `<case>_pack_final_state.csv` for each coupled case | PDM fluxes and both final states from `pdm_snow_run()` |
+| `correction_cases.csv` | State corrections: the PDM case whose final state is corrected, the `pdm_state_updater` fields, `observed_m3s` and `expected_code` |
+| `correction_expected.csv`, `<case>_corrected_state.csv` | The `pdm_correction` results and the corrected state |
+| `arma_history.csv`, `arma_forecast.csv` | Observed and simulated history, and the forecast to update |
+| `arma_cases.csv` | ARMA cases: `scale` (0 additive, 1 log), `offset`, `p`, `q`, and coefficients `ar1`-`ar3`, `ma1`-`ma2` (only the first p and q are used) |
+| `<case>_arma.csv`, `<case>_arma_innovations.csv` | The updated forecast, the error forecast and the innovations |
 | `generate_golden.R` | Regenerates every file from the R reference |
 
 All numbers are written with 17 significant digits, so they round-trip exactly to doubles.

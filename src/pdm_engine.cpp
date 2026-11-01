@@ -130,3 +130,69 @@ cpp11::list pack_engine_run(doubles precipitation, doubles temperature, doubles 
     "state"_nm = cpp11::writable::doubles(state_v.begin(), state_v.end())
   });
 }
+
+// State correction. par holds the 40 fields of pdm_params; upd holds scheme, soil_proportional,
+// gb, gs, gg, beta1 and beta2, as built by .engine_updater_params() in R/engine.R.
+[[cpp11::register]]
+cpp11::list correct_engine_run(doubles par, doubles state, double observed, doubles upd) {
+  if (par.size() != 40 || upd.size() != 7) cpp11::stop("correct_engine_run: wrong lengths");
+  pdm_params p;
+  p.distribution = static_cast<int32_t>(par[0]);
+  p.recharge = static_cast<int32_t>(par[1]);
+  p.cmin = par[2]; p.cmax = par[3]; p.b = par[4]; p.mean = par[5];
+  p.meanlog = par[6]; p.sdlog = par[7];
+  p.kg = par[8]; p.bg = par[9]; p.st = par[10];
+  p.alpha = par[11]; p.beta = par[12]; p.qsat = par[13];
+  fill_route(p.surface, par, 14);
+  fill_route(p.groundwater, par, 24);
+  p.be = par[34]; p.fc = par[35]; p.td = par[36]; p.qc = par[37]; p.area_km2 = par[38];
+  p.dt = par[39];
+  pdm_state_updater u;
+  u.scheme = static_cast<int32_t>(upd[0]);
+  u.soil_proportional = upd[1] != 0 ? 1 : 0;
+  u.gb = upd[2]; u.gs = upd[3]; u.gg = upd[4]; u.beta1 = upd[5]; u.beta2 = upd[6];
+  std::vector<double> state_v(state.begin(), state.end());
+  pdm_correction out;
+  char message[512];
+  int32_t code = pdm_correct_state(&p, &u, observed, state_v.data(),
+                                   static_cast<int64_t>(state_v.size()), &out, message,
+                                   sizeof(message));
+  if (code != PDM_OK) cpp11::stop("%s", message);
+  using namespace cpp11::literals;
+  return cpp11::writable::list({
+    "state"_nm = cpp11::writable::doubles(state_v.begin(), state_v.end()),
+    "correction_mm"_nm = out.correction_mm,
+    "q_corrected_m3s"_nm = out.q_corrected_m3s,
+    "innovation_mmh"_nm = out.innovation_mmh,
+    "alpha"_nm = out.alpha
+  });
+}
+
+// ARMA error prediction. scale is 0 (additive) or 1 (log).
+[[cpp11::register]]
+cpp11::list forecast_engine_run(doubles ar, doubles ma, int scale, double offset,
+                                doubles observed, doubles simulated, doubles forecast) {
+  if (observed.size() != simulated.size()) {
+    cpp11::stop("Error history needs equal-length, complete finite numeric vectors");
+  }
+  std::vector<double> ar_v(ar.begin(), ar.end()), ma_v(ma.begin(), ma.end());
+  std::vector<double> obs_v(observed.begin(), observed.end());
+  std::vector<double> sim_v(simulated.begin(), simulated.end());
+  std::vector<double> fc_v(forecast.begin(), forecast.end());
+  const int64_t nh = static_cast<int64_t>(obs_v.size());
+  const int64_t nf = static_cast<int64_t>(fc_v.size());
+  std::vector<double> updated(nf), error_forecast(nf), innovations(nh);
+  char message[512];
+  int32_t code = pdm_update_forecast(
+    ar_v.empty() ? nullptr : ar_v.data(), static_cast<int32_t>(ar_v.size()),
+    ma_v.empty() ? nullptr : ma_v.data(), static_cast<int32_t>(ma_v.size()), scale, offset,
+    obs_v.data(), sim_v.data(), nh, fc_v.data(), nf, updated.data(), error_forecast.data(),
+    innovations.data(), message, sizeof(message));
+  if (code != PDM_OK) cpp11::stop("%s", message);
+  using namespace cpp11::literals;
+  return cpp11::writable::list({
+    "forecast"_nm = cpp11::writable::doubles(updated.begin(), updated.end()),
+    "error_forecast"_nm = cpp11::writable::doubles(error_forecast.begin(), error_forecast.end()),
+    "innovations"_nm = cpp11::writable::doubles(innovations.begin(), innovations.end())
+  });
+}

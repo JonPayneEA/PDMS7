@@ -4,7 +4,7 @@
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
-# Modified:     2026-10-05 - CX: Align with Flode Tier 3 target conventions
+# Modified:     2026-11-01 - ARMA updating runs in the compiled core by default
 # Tier:         3
 # Inputs:       Typed S7 components; depths in mm; time in hours
 # Outputs:      Validated S7 objects or hydrological values with documented units
@@ -36,6 +36,10 @@ update_forecast <- function(updater, observed_history, simulated_history, foreca
     "forecast must be finite"
   )
   eta <- .errors(observed_history, simulated_history, updater@scale, updater@offset)
+  if (!identical(getOption("pdmS7.engine", "auto"), "r")) {
+    # Compiled ARMA recursion; results agree with the R loop below (see R/engine.R).
+    return(.engine_update_forecast(updater, observed_history, simulated_history, forecast))
+  }
   n <- length(eta)
   errors <- c(eta, rep(0, length(forecast)))
   innovations <- numeric(length(errors))

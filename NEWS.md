@@ -38,6 +38,10 @@
 - The PACK snowpack also runs in the compiled core, about 540 times faster than its R loop
   and bit-identical to it on R 4.3. `sim_pack()` and `sim_snow_pdm()` use it automatically.
   The core gains `pdm_pack_run()` for snow alone and `pdm_snow_run()` for snow feeding PDM.
+- Forecast updating also runs in the compiled core: `correct_state()` (state correction,
+  Moore 2007 Eq. 28-30) and `update_forecast()` (ARMA error prediction, Eq. 31-42), with
+  `pdm_correct_state()` and `pdm_update_forecast()` for other languages. Results are
+  bit-identical to the R code. Fitting the ARMA coefficients stays in R.
 - The compiled core is now plain C99 (`src/pdm_core.c`), so other languages need only a C
   compiler to build it. Results are bit-identical to the previous C++ version.
 - Fixed: the compiled engine rejected an initial state whose values were all stored as

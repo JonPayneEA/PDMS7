@@ -242,4 +242,78 @@ for (i in seq_len(nrow(snow_cases))) {
 }
 write_table(snow_cases, "snow_cases.csv")
 
+# ---- Forecast updating -----------------------------------------------------------------------
+# State correction starts from a PDM case's golden final state; the observation is a multiple of
+# that case's last endpoint flow. Schemes: 0 proportional, 1 super-proportional, 2 non-.
+
+correction_cases <- data.frame(
+  case = c("correct_default", "correct_varied", "correct_exponential", "correct_cascade_gw",
+           "correct_point_mass", "correct_lognormal", "correct_delay_invalid",
+           "correct_beta2_invalid"),
+  pdm_case = c("default", "varied", "exponential_routes", "cascade_groundwater", "point_mass",
+               "lognormal", "quarter_hour_delay", "default"),
+  flow_factor = c(1.5, 0.6, 1.3, 0.2, 2, 0.8, 1.2, 1.2),
+  scheme = c(0, 1, 2, 0, 1, 2, 0, 0),
+  soil_proportional = c(1, 1, 0, 1, 0, 1, 1, 1),
+  gb = c(1, 0.8, 0.5, 1, 1.2, 0.7, 1, 1),
+  gs = c(1, 0.9, 0.5, 1, 0.6, 0.3, 1, 1),
+  gg = c(0, 0.5, 0.2, 0.3, 0, 1, 0, 0),
+  beta1 = c(10, 7, 10, 10, 4, 10, 10, 10),
+  beta2 = c(1.1, 1.3, 1.1, 1.1, 2, 1.1, 1.1, 0.5),
+  expected_code = c(0, 0, 0, 0, 0, 0, 1, 1)
+)
+schemes <- c("proportional", "super_proportional", "non_proportional")
+observed_flow <- numeric(nrow(correction_cases))
+results <- list()
+for (i in seq_len(nrow(correction_cases))) {
+  cc <- correction_cases[i, ]
+  pd <- cases[[cc$pdm_case]]
+  fluxes <- utils::read.csv(file.path(out_dir, paste0(cc$pdm_case, "_fluxes.csv")))
+  observed_flow[i] <- cc$flow_factor * fluxes$q_end_m3s[nrow(fluxes)]
+  if (cc$expected_code != 0) next
+  start <- pdmS7:::.engine_unpack_state(
+    utils::read.csv(file.path(out_dir, paste0(cc$pdm_case, "_final_state.csv")))$value,
+    initial_state(pd$model, 0.5, surface = pd$surface, groundwater = pd$groundwater)
+  )
+  updater <- state_updater(schemes[cc$scheme + 1], gb = cc$gb, gs = cc$gs, gg = cc$gg,
+                           beta1 = cc$beta1, beta2 = cc$beta2,
+                           soil_proportional = cc$soil_proportional == 1)
+  z <- correct_state(pd$model, start, observed_flow[i], updater)
+  write_table(data.frame(value = pack_state(z$state)), paste0(cc$case, "_corrected_state.csv"))
+  results[[cc$case]] <- data.frame(case = cc$case, correction_mm = z$correction_mm,
+                                   q_corrected_m3s = z$q_corrected_m3s,
+                                   innovation_mmh = z$innovation_mmh, alpha = z$alpha)
+}
+correction_cases$observed_m3s <- observed_flow
+correction_cases$flow_factor <- NULL
+write_table(correction_cases, "correction_cases.csv")
+write_table(do.call(rbind, results), "correction_expected.csv")
+
+# ARMA error prediction over a 300-step history and a 48-step forecast.
+set.seed(20261102)
+n_history <- 300L
+simulated <- 5 + 3 * sin(seq_len(n_history) / 20) + stats::rgamma(n_history, 1)
+observed <- simulated * exp(as.numeric(stats::arima.sim(list(ar = 0.8), n_history, sd = 0.05)))
+forecast <- simulated[1:48] * 1.1
+write_table(data.frame(observed = observed, simulated = simulated), "arma_history.csv")
+write_table(data.frame(forecast = forecast), "arma_forecast.csv")
+arma_cases <- data.frame(
+  case = c("arma_ar1", "arma_ar3", "arma_mixed", "arma_ma", "arma_log", "arma_log_zero_offset"),
+  scale = c(0, 0, 0, 0, 1, 1), offset = c(0, 0, 0, 0, 0.1, 0),
+  p = c(1, 3, 2, 0, 1, 2), q = c(0, 0, 1, 2, 1, 0),
+  ar1 = c(0.7, 0.9, 0.6, 0, 0.8, 0.5), ar2 = c(0, -0.2, 0.1, 0, 0, 0.2),
+  ar3 = c(0, 0.05, 0, 0, 0, 0), ma1 = c(0, 0, 0.3, 0.5, 0.2, 0), ma2 = c(0, 0, 0, 0.2, 0, 0)
+)
+for (i in seq_len(nrow(arma_cases))) {
+  ac <- arma_cases[i, ]
+  ar <- as.numeric(ac[c("ar1", "ar2", "ar3")])[seq_len(ac$p)]
+  ma <- as.numeric(ac[c("ma1", "ma2")])[seq_len(ac$q)]
+  updater <- error_updater(ar, ma, if (ac$scale == 1) "log" else "additive", ac$offset)
+  z <- update_forecast(updater, observed, simulated, forecast)
+  write_table(data.frame(forecast = z$forecast, error_forecast = z$error_forecast),
+              paste0(ac$case, "_arma.csv"))
+  write_table(data.frame(value = z$innovations), paste0(ac$case, "_arma_innovations.csv"))
+}
+write_table(arma_cases, "arma_cases.csv")
+
 cat("Golden files written to", normalizePath(out_dir), "\n")

@@ -1137,3 +1137,232 @@ int32_t pdm_snow_run(const pdm_params* pdm, const pdm_pack_params* pack,
   free(effective);
   return finish(&e, message, message_length);
 }
+
+/* ---- Forecast updating --------------------------------------------------------------------- */
+
+/* routing.R, routing_flow: endpoint flow of a route's stores, mm/h. */
+static double routing_flow(const pdm_route* r, const double* s) {
+  switch (r->type) {
+    case PDM_ROUTE_CASCADE: return s[1] / r->k2;
+    case PDM_ROUTE_POWER: return r->k * rpow(s[0], r->m);
+    default: return exp(r->gamma + r->a * s[0]);
+  }
+}
+
+/* updating.R, .change_flow: sets a route's stores to give flow q, mm/h. A cascade keeps its
+   first store and sets the second. */
+static void change_flow(const pdm_route* r, double* s, double q) {
+  switch (r->type) {
+    case PDM_ROUTE_CASCADE:
+      s[1] = q * r->k2;
+      break;
+    case PDM_ROUTE_POWER:
+      s[0] = rpow(q / r->k, 1 / r->m);
+      break;
+    default:
+      s[0] = (log(q) - r->gamma) / r->a;
+  }
+}
+
+/* The same rules as the FlodeStateUpdater validator. */
+static int validate_updater(const pdm_state_updater* u, pdm_error* e) {
+  bad_list b;
+  b.text[0] = '\0';
+  b.any = 0;
+  need(&b, u->scheme >= PDM_UPDATE_PROPORTIONAL && u->scheme <= PDM_UPDATE_NON_PROPORTIONAL, "",
+       "scheme");
+  need(&b, isfinite(u->gb) && u->gb >= 0, "", "gb");
+  need(&b, isfinite(u->gs) && u->gs >= 0, "", "gs");
+  need(&b, isfinite(u->gg) && u->gg >= 0, "", "gg");
+  need(&b, isfinite(u->beta1) && u->beta1 > 0, "", "beta1");
+  need(&b, isfinite(u->beta2) && u->beta2 >= 1, "", "beta2");
+  need(&b, u->soil_proportional == 0 || u->soil_proportional == 1, "", "soil_proportional");
+  if (b.any) {
+    char text[300];
+    strcpy(text, "Invalid parameter(s): ");
+    strncat(text, b.text, sizeof(text) - strlen(text) - 1);
+    set_error(e, PDM_ERR_ARGUMENT, text);
+    return 0;
+  }
+  return 1;
+}
+
+/* updating.R, correct_state, on a state array updated in place. */
+static void correct(const pdm_params* m, const pdm_state_updater* u, double observed,
+                    double* st, int64_t state_length, pdm_correction* out, pdm_error* e) {
+  const pdm_route* srf = &m->surface;
+  const pdm_route* gwr = &m->groundwater;
+  size_t n_pending = (size_t)pending_length(m);
+  const double* ds = st + 6;
+  const double* dg = st + 6 + n_pending;
+  double qb, qs, epsilon, alpha, wb, ws, newb, news, old, weight, smax;
+  int64_t i;
+  qb = routing_flow(gwr, st + 3);
+  qs = routing_flow(srf, st + 1);
+  epsilon = (observed - m->qc) * 3.6 / m->area_km2 - qb - qs;
+  if (qb + qs == 0) {
+    alpha = 0;
+  } else if (u->scheme == PDM_UPDATE_SUPER_PROPORTIONAL) {
+    alpha = qb / (u->beta1 * qs + u->beta2 * qb);
+  } else {
+    alpha = qb / (qb + qs);
+  }
+  wb = u->scheme == PDM_UPDATE_NON_PROPORTIONAL ? 1 : alpha;
+  ws = u->scheme == PDM_UPDATE_NON_PROPORTIONAL ? 1 : 1 - alpha;
+  newb = dmax(0.0, qb + wb * u->gb * epsilon);
+  news = dmax(0.0, qs + ws * u->gs * epsilon);
+  if ((gwr->type == PDM_ROUTE_EXPONENTIAL && newb == 0) ||
+      (srf->type == PDM_ROUTE_EXPONENTIAL && news == 0)) {
+    set_error(e, PDM_ERR_NUMERICAL, "Exponential storage cannot be corrected to zero flow");
+    return;
+  }
+  old = total_storage(st[0], srf, st + 1, gwr, st + 3, ds, dg, n_pending);
+  change_flow(gwr, st + 3, newb);
+  change_flow(srf, st + 1, news);
+  weight = u->soil_proportional ? alpha : 1;
+  smax = make_dist(m).smax;
+  st[0] = dmin(smax, dmax(0.0, st[0] + weight * u->gg * epsilon));
+  for (i = 0; i < 6; ++i) {
+    if (!isfinite(st[i])) {
+      set_error(e, PDM_ERR_NUMERICAL, "State correction produced a non-finite state");
+      return;
+    }
+  }
+  (void)state_length;
+  out->correction_mm = total_storage(st[0], srf, st + 1, gwr, st + 3, ds, dg, n_pending) - old;
+  out->q_corrected_m3s = (newb + news) * m->area_km2 / 3.6 + m->qc;
+  out->innovation_mmh = epsilon;
+  out->alpha = alpha;
+}
+
+int32_t pdm_correct_state(const pdm_params* params, const pdm_state_updater* updater,
+                          double observed_m3s, double* state, int64_t state_length,
+                          pdm_correction* out, char* message, int64_t message_length) {
+  pdm_error e;
+  double* copy = NULL;
+  pdm_correction result;
+  e.code = PDM_OK;
+  e.text[0] = '\0';
+  if (params == NULL || updater == NULL || out == NULL) {
+    set_error(&e, PDM_ERR_ARGUMENT, "params, updater and out must not be null");
+  } else if (validate(params, &e) && validate_state(params, state, state_length, &e)) {
+    if (params->td != 0) {
+      set_error(&e, PDM_ERR_ARGUMENT,
+                "State correction requires td=0; delayed observations need a lag-aware smoother");
+    } else if (!isfinite(observed_m3s)) {
+      set_error(&e, PDM_ERR_ARGUMENT, "observed_m3s must be finite");
+    } else if (validate_updater(updater, &e)) {
+      copy = (double*)malloc(sizeof(double) * (size_t)state_length);
+      if (copy == NULL) {
+        set_error(&e, PDM_ERR_NUMERICAL, "Out of memory");
+      } else {
+        memcpy(copy, state, sizeof(double) * (size_t)state_length);
+        correct(params, updater, observed_m3s, copy, state_length, &result, &e);
+        if (e.code == PDM_OK) {
+          memcpy(state, copy, sizeof(double) * (size_t)state_length);
+          *out = result;
+        }
+      }
+    }
+  }
+  free(copy);
+  return finish(&e, message, message_length);
+}
+
+/* updating_part2.R, update_forecast, with .errors from updating.R. */
+int32_t pdm_update_forecast(const double* ar, int32_t p, const double* ma, int32_t q,
+                            int32_t scale, double offset, const double* observed,
+                            const double* simulated, int64_t n_history, const double* forecast,
+                            int64_t n_forecast, double* updated, double* error_forecast,
+                            double* innovations, char* message, int64_t message_length) {
+  pdm_error e;
+  double *errors = NULL, *innov = NULL, *predicted = NULL;
+  int64_t i, t, total;
+  e.code = PDM_OK;
+  e.text[0] = '\0';
+  if (p < 0 || q < 0 || (p > 0 && ar == NULL) || (q > 0 && ma == NULL)) {
+    set_error(&e, PDM_ERR_ARGUMENT, "ar and ma must hold p and q coefficients");
+    return finish(&e, message, message_length);
+  }
+  for (i = 0; i < p; ++i) {
+    if (!isfinite(ar[i])) set_error(&e, PDM_ERR_ARGUMENT, "Invalid parameter(s): ar");
+  }
+  for (i = 0; i < q; ++i) {
+    if (!isfinite(ma[i])) set_error(&e, PDM_ERR_ARGUMENT, "Invalid parameter(s): ma");
+  }
+  if (scale != 0 && scale != 1) set_error(&e, PDM_ERR_ARGUMENT, "Invalid parameter(s): scale");
+  if (!(isfinite(offset) && offset >= 0)) {
+    set_error(&e, PDM_ERR_ARGUMENT, "Invalid parameter(s): offset");
+  }
+  if (e.code != PDM_OK) return finish(&e, message, message_length);
+  if (n_forecast <= 0 || forecast == NULL || updated == NULL) {
+    set_error(&e, PDM_ERR_ARGUMENT, "forecast must be finite");
+    return finish(&e, message, message_length);
+  }
+  for (t = 0; t < n_forecast; ++t) {
+    if (!isfinite(forecast[t])) {
+      set_error(&e, PDM_ERR_ARGUMENT, "forecast must be finite");
+      return finish(&e, message, message_length);
+    }
+  }
+  if (n_history <= 0 || observed == NULL || simulated == NULL) {
+    set_error(&e, PDM_ERR_ARGUMENT,
+              "Error history needs equal-length, complete finite numeric vectors");
+    return finish(&e, message, message_length);
+  }
+  for (t = 0; t < n_history; ++t) {
+    if (!(isfinite(observed[t]) && isfinite(simulated[t]))) {
+      set_error(&e, PDM_ERR_ARGUMENT,
+                "Error history needs equal-length, complete finite numeric vectors");
+      return finish(&e, message, message_length);
+    }
+    if (scale == 1 && !(observed[t] + offset > 0 && simulated[t] + offset > 0)) {
+      set_error(&e, PDM_ERR_ARGUMENT, "Log updating requires positive flows plus offset");
+      return finish(&e, message, message_length);
+    }
+  }
+  total = n_history + n_forecast;
+  errors = (double*)calloc((size_t)total, sizeof(double));
+  innov = (double*)calloc((size_t)total, sizeof(double));
+  predicted = (double*)calloc((size_t)total, sizeof(double));
+  if (errors == NULL || innov == NULL || predicted == NULL) {
+    set_error(&e, PDM_ERR_NUMERICAL, "Out of memory");
+  } else {
+    for (t = 0; t < n_history; ++t) {
+      errors[t] = scale == 0 ? observed[t] - simulated[t]
+                             : log(observed[t] + offset) - log(simulated[t] + offset);
+    }
+    /* R convention eta[t] = sum(ar*eta[t-i]) + sum(ma*a[t-j]) + a[t], 1-based as in R. */
+    for (t = 1; t <= total; ++t) {
+      for (i = 1; i <= p; ++i) {
+        if (t > i) predicted[t - 1] = predicted[t - 1] + ar[i - 1] * errors[t - 1 - i];
+      }
+      for (i = 1; i <= q; ++i) {
+        if (t > i) predicted[t - 1] = predicted[t - 1] + ma[i - 1] * innov[t - 1 - i];
+      }
+      if (t <= n_history) {
+        innov[t - 1] = errors[t - 1] - predicted[t - 1];
+      } else {
+        errors[t - 1] = predicted[t - 1];
+      }
+    }
+    for (t = 0; t < n_forecast && e.code == PDM_OK; ++t) {
+      double correction = errors[n_history + t];
+      if (scale == 0) {
+        updated[t] = forecast[t] + correction;
+      } else if (!(forecast[t] + offset > 0)) {
+        set_error(&e, PDM_ERR_ARGUMENT, "Log forecast must be positive plus offset");
+      } else {
+        updated[t] = (forecast[t] + offset) * exp(correction) - offset;
+      }
+      if (error_forecast != NULL) error_forecast[t] = correction;
+    }
+    if (e.code == PDM_OK && innovations != NULL) {
+      memcpy(innovations, innov, sizeof(double) * (size_t)n_history);
+    }
+  }
+  free(errors);
+  free(innov);
+  free(predicted);
+  return finish(&e, message, message_length);
+}

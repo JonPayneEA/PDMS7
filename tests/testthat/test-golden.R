@@ -193,3 +193,66 @@ test_that(
     }
   }
 )
+
+test_that(
+  "both engines reproduce the state correction golden files",
+  {
+    cases <- golden_read("correction_cases.csv")
+    expected <- golden_read("correction_expected.csv")
+    pdm_cases <- golden_read("cases.csv")
+    schemes <- c("proportional", "super_proportional", "non_proportional")
+    for (i in seq_len(nrow(cases))) {
+      cc <- cases[i, ]
+      pd <- pdm_cases[pdm_cases$case == cc$pdm_case, ]
+      model <- golden_model(pd)
+      state <- golden_state(golden_read(paste0(cc$pdm_case, "_final_state.csv"))$value, pd)
+      for (engine in c("auto", "r")) {
+        old <- options(pdmS7.engine = engine)
+        result <- tryCatch(
+          correct_state(model, state, cc$observed_m3s, state_updater(
+            schemes[cc$scheme + 1], gb = cc$gb, gs = cc$gs, gg = cc$gg, beta1 = cc$beta1,
+            beta2 = cc$beta2, soil_proportional = cc$soil_proportional == 1
+          )),
+          error = function(e) e
+        )
+        options(old)
+        if (cc$expected_code != 0) {
+          expect_s3_class(result, "error")
+          next
+        }
+        want <- expected[expected$case == cc$case, ]
+        golden_agree(pdmS7:::.engine_pack_state(result$state),
+                     golden_read(paste0(cc$case, "_corrected_state.csv"))$value,
+                     paste(cc$case, engine, "state"))
+        for (field in c("correction_mm", "q_corrected_m3s", "innovation_mmh", "alpha")) {
+          golden_agree(result[[field]], want[[field]], paste(cc$case, engine, field))
+        }
+      }
+    }
+  }
+)
+
+test_that(
+  "both engines reproduce the ARMA updating golden files",
+  {
+    history <- golden_read("arma_history.csv")
+    forecast <- golden_read("arma_forecast.csv")$forecast
+    cases <- golden_read("arma_cases.csv")
+    for (i in seq_len(nrow(cases))) {
+      ac <- cases[i, ]
+      ar <- as.numeric(ac[c("ar1", "ar2", "ar3")])[seq_len(ac$p)]
+      ma <- as.numeric(ac[c("ma1", "ma2")])[seq_len(ac$q)]
+      updater <- error_updater(ar, ma, if (ac$scale == 1) "log" else "additive", ac$offset)
+      want <- golden_read(paste0(ac$case, "_arma.csv"))
+      want_innov <- golden_read(paste0(ac$case, "_arma_innovations.csv"))$value
+      for (engine in c("auto", "r")) {
+        old <- options(pdmS7.engine = engine)
+        z <- update_forecast(updater, history$observed, history$simulated, forecast)
+        options(old)
+        golden_agree(z$forecast, want$forecast, paste(ac$case, engine, "forecast"))
+        golden_agree(z$error_forecast, want$error_forecast, paste(ac$case, engine, "error"))
+        golden_agree(z$innovations, want_innov, paste(ac$case, engine, "innovations"))
+      }
+    }
+  }
+)

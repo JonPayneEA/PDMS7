@@ -28,7 +28,9 @@
    - recharge: standard, split or demand;
    - surface and groundwater routes, chosen independently: two-store cascade, power-law store
      (linear, quadratic, cubic or any positive exponent) or exponential store.
-   - the PACK snowpack (Institute of Hydrology, NORA report 15304), alone or feeding PDM.
+   - the PACK snowpack (Institute of Hydrology, NORA report 15304), alone or feeding PDM;
+   - forecast updating: state correction (Moore 2007, Eq. 28-30) and ARMA error prediction
+     (Eq. 31-42). Estimating the ARMA coefficients stays in the host language.
    Units: depths in mm, time in hours, temperature in degrees Celsius, flow in m3/s.
 
    Golden test files in inst/golden/ hold inputs and expected outputs from the R reference
@@ -222,6 +224,65 @@ PDM_CORE_API int32_t pdm_snow_run(const pdm_params* pdm, const pdm_pack_params* 
                                   double* q_m3s, double* q_end_m3s, double* pdm_fluxes,
                                   double* pack_fluxes, char* message,
                                   int64_t message_length);
+
+/* ---- Forecast updating ----------------------------------------------------------------------
+
+   State correction adjusts the routing stores, and optionally the soil store, so that the
+   model's flow moves towards an observed flow at the forecast origin. ARMA error prediction
+   models recent errors between observed and simulated flow and projects them over the
+   forecast. Both follow R/updating.R and R/updating_part2.R. */
+
+/* State correction schemes (pdm_state_updater.scheme). */
+#define PDM_UPDATE_PROPORTIONAL 0       /* error shared by the stores' share of flow */
+#define PDM_UPDATE_SUPER_PROPORTIONAL 1 /* surface weighted by beta1, baseflow by beta2 */
+#define PDM_UPDATE_NON_PROPORTIONAL 2   /* each store takes the whole error, times its gain */
+
+/* State correction settings. Layout: two 32-bit integers, then 5 doubles; 48 bytes. */
+typedef struct pdm_state_updater {
+  int32_t scheme;            /* PDM_UPDATE_* */
+  int32_t soil_proportional; /* 1: soil gain weighted by the baseflow share; 0: unweighted */
+  double gb;                 /* baseflow gain; >= 0 */
+  double gs;                 /* surface flow gain; >= 0 */
+  double gg;                 /* soil store gain; >= 0 */
+  double beta1;              /* super-proportional surface weight; > 0 */
+  double beta2;              /* super-proportional baseflow weight; >= 1 */
+} pdm_state_updater;
+
+/* Results of one state correction. Layout: 4 doubles; 32 bytes. */
+typedef struct pdm_correction {
+  double correction_mm;   /* water added to the stores by the correction, mm */
+  double q_corrected_m3s; /* the model's flow after correction, m3/s */
+  double innovation_mmh;  /* observed minus modelled flow before correction, mm/h */
+  double alpha;           /* the baseflow share used to divide the error */
+} pdm_correction;
+
+/* Corrects the state towards observed_m3s, the flow observed at the end of the last interval.
+   Requires td = 0: with an outlet delay, the observation reflects earlier states. On success
+   state is updated in place and out receives the details. */
+PDM_CORE_API int32_t pdm_correct_state(const pdm_params* params,
+                                       const pdm_state_updater* updater,
+                                       double observed_m3s, double* state,
+                                       int64_t state_length, pdm_correction* out,
+                                       char* message, int64_t message_length);
+
+/* ARMA error prediction (R/updating_part2.R, update_forecast).
+   Errors are observed minus simulated flow (scale 0, additive) or log(observed + offset) minus
+   log(simulated + offset) (scale 1, log), over n_history steps up to the forecast origin.
+   The model is error[t] = sum(ar[i] error[t-i]) + sum(ma[j] innovation[t-j]) + innovation[t],
+   in R's sign convention: ar = -phi in Moore (2007).
+   ar, ma:          p and q coefficients; either may be empty (p or q 0, pointer may be null).
+   observed, simulated: n_history flows, finite; with log scale, each plus offset > 0.
+   forecast:        n_forecast simulated flows after the origin, finite.
+   updated:         n_forecast values written: the corrected forecast.
+   error_forecast:  null, or n_forecast values written: the predicted error.
+   innovations:     null, or n_history values written: the one-step innovations. */
+PDM_CORE_API int32_t pdm_update_forecast(const double* ar, int32_t p, const double* ma,
+                                         int32_t q, int32_t scale, double offset,
+                                         const double* observed, const double* simulated,
+                                         int64_t n_history, const double* forecast,
+                                         int64_t n_forecast, double* updated,
+                                         double* error_forecast, double* innovations,
+                                         char* message, int64_t message_length);
 
 #ifdef __cplusplus
 }

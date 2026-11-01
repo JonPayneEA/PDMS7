@@ -218,3 +218,33 @@ NULL
   output <- data.table::setDT(stats::setNames(res$columns, .pack_flux_names))
   list(output = output, state = final)
 }
+
+# ---- Forecast updating ------------------------------------------------------------------------
+
+# Fields of pdm_state_updater in src/pdm_core.h, in struct order.
+.engine_updater_params <- function(updater) {
+  scheme <- match(updater@scheme, c("proportional", "super_proportional", "non_proportional")) - 1
+  c(scheme = scheme, soil_proportional = as.numeric(updater@soil_proportional),
+    gb = updater@gb, gs = updater@gs, gg = updater@gg, beta1 = updater@beta1,
+    beta2 = updater@beta2)
+}
+
+.engine_correct <- function(model, state, observed_m3s, updater) {
+  res <- correct_engine_run(
+    as.double(.engine_params(model)), .engine_pack_state(state), as.double(observed_m3s),
+    as.double(.engine_updater_params(updater))
+  )
+  list(
+    state = .engine_unpack_state(res$state, state), correction_mm = res$correction_mm,
+    q_corrected_m3s = res$q_corrected_m3s, innovation_mmh = res$innovation_mmh,
+    alpha = res$alpha
+  )
+}
+
+.engine_update_forecast <- function(updater, observed_history, simulated_history, forecast) {
+  forecast_engine_run(
+    as.double(updater@ar), as.double(updater@ma), as.integer(updater@scale == "log"),
+    as.double(updater@offset), as.double(observed_history), as.double(simulated_history),
+    as.double(forecast)
+  )
+}

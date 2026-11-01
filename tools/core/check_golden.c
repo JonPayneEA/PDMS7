@@ -339,6 +339,161 @@ static int check_snow(const char* dir, const table* pdm_cases) {
   return failures;
 }
 
+/* Reads the text in column col of data row row (0-based) of a CSV file. */
+static void text_cell(const char* path, int row, int col, char* out, size_t size) {
+  FILE* f = fopen(path, "r");
+  char line[MAX_LINE];
+  int r = -1;
+  out[0] = '\0';
+  while (f != NULL && fgets(line, sizeof(line), f) != NULL) {
+    if (r == row) {
+      char* tok;
+      int c = 0;
+      line[strcspn(line, "\r\n")] = '\0';
+      for (tok = strtok(line, ","); tok != NULL; tok = strtok(NULL, ","), ++c) {
+        if (c == col) {
+          strncpy(out, tok, size - 1);
+          out[size - 1] = '\0';
+          break;
+        }
+      }
+      break;
+    }
+    r++;
+  }
+  if (f != NULL) fclose(f);
+}
+
+/* State correction and ARMA error prediction. Returns the failure count. */
+static int check_updating(const char* dir, const table* pdm_cases) {
+  char path[1024], message[256], pdm_case[64];
+  table cases, expected, history, forecast, arma;
+  int failures = 0;
+  snprintf(path, sizeof(path), "%s/correction_cases.csv", dir);
+  if (!read_table(path, 1, &cases)) return 1;
+  snprintf(path, sizeof(path), "%s/correction_expected.csv", dir);
+  if (!read_table(path, 1, &expected)) return 1;
+  for (int c = 0; c < cases.nrow; ++c) {
+    const char* name = cases.labels[c];
+    table init, want_state;
+    pdm_state_updater u;
+    pdm_correction out;
+    snprintf(path, sizeof(path), "%s/correction_cases.csv", dir);
+    text_cell(path, c, 1, pdm_case, sizeof(pdm_case));
+    pdm_params pd = params_from(pdm_cases, find_row(pdm_cases, pdm_case));
+    u.scheme = (int32_t)cell(&cases, c, "scheme");
+    u.soil_proportional = (int32_t)cell(&cases, c, "soil_proportional");
+    u.gb = cell(&cases, c, "gb");
+    u.gs = cell(&cases, c, "gs");
+    u.gg = cell(&cases, c, "gg");
+    u.beta1 = cell(&cases, c, "beta1");
+    u.beta2 = cell(&cases, c, "beta2");
+    int32_t expected_code = (int32_t)cell(&cases, c, "expected_code");
+    snprintf(path, sizeof(path), "%s/%s_final_state.csv", dir, pdm_case);
+    read_table(path, 0, &init);
+    long len = (long)pdm_state_length(&pd);
+    double* state = malloc(sizeof(double) * (size_t)len);
+    for (long i = 0; i < len; ++i) state[i] = init.values[i];
+    int32_t code = pdm_correct_state(&pd, &u, cell(&cases, c, "observed_m3s"), state, len, &out,
+                                     message, (int64_t)sizeof(message));
+    int ok;
+    double worst = 0;
+    if (expected_code != 0) {
+      int unchanged = 1;
+      for (long i = 0; i < len; ++i) unchanged = unchanged && state[i] == init.values[i];
+      ok = code == expected_code && unchanged && message[0] != '\0';
+      printf("%s %-24s code %d: %s\n", ok ? "PASS" : "FAIL", name, code, message);
+    } else {
+      int row = find_row(&expected, name);
+      double got[4], want[4];
+      got[0] = out.correction_mm;
+      got[1] = out.q_corrected_m3s;
+      got[2] = out.innovation_mmh;
+      got[3] = out.alpha;
+      want[0] = cell(&expected, row, "correction_mm");
+      want[1] = cell(&expected, row, "q_corrected_m3s");
+      want[2] = cell(&expected, row, "innovation_mmh");
+      want[3] = cell(&expected, row, "alpha");
+      ok = code == PDM_OK;
+      if (ok) {
+        snprintf(path, sizeof(path), "%s/%s_corrected_state.csv", dir, name);
+        read_table(path, 0, &want_state);
+        worst = scaled_error(state, want_state.values, len);
+        for (int k = 0; k < 4; ++k) worst = fmax(worst, scaled_error(&got[k], &want[k], 1));
+        free_table(&want_state);
+      }
+      ok = ok && worst <= TOLERANCE;
+      printf("%s %-24s largest scaled error %.3g%s%s\n", ok ? "PASS" : "FAIL", name, worst,
+             code == PDM_OK ? "" : ": ", code == PDM_OK ? "" : message);
+    }
+    failures += !ok;
+    free(state);
+    free_table(&init);
+  }
+
+  snprintf(path, sizeof(path), "%s/arma_history.csv", dir);
+  if (!read_table(path, 0, &history)) return 1;
+  snprintf(path, sizeof(path), "%s/arma_forecast.csv", dir);
+  if (!read_table(path, 0, &forecast)) return 1;
+  snprintf(path, sizeof(path), "%s/arma_cases.csv", dir);
+  if (!read_table(path, 1, &arma)) return 1;
+  long nh = history.nrow, nf = forecast.nrow;
+  double* obs = malloc(sizeof(double) * (size_t)nh);
+  double* sim = malloc(sizeof(double) * (size_t)nh);
+  double* updated = malloc(sizeof(double) * (size_t)nf);
+  double* error_fc = malloc(sizeof(double) * (size_t)nf);
+  double* innov = malloc(sizeof(double) * (size_t)nh);
+  double* col = malloc(sizeof(double) * (size_t)(nh > nf ? nh : nf));
+  for (long i = 0; i < nh; ++i) {
+    obs[i] = history.values[i * 2];
+    sim[i] = history.values[i * 2 + 1];
+  }
+  for (int c = 0; c < arma.nrow; ++c) {
+    const char* name = arma.labels[c];
+    double ar[3], ma[2], worst = 0;
+    table want, want_innov;
+    ar[0] = cell(&arma, c, "ar1");
+    ar[1] = cell(&arma, c, "ar2");
+    ar[2] = cell(&arma, c, "ar3");
+    ma[0] = cell(&arma, c, "ma1");
+    ma[1] = cell(&arma, c, "ma2");
+    int32_t code = pdm_update_forecast(
+      ar, (int32_t)cell(&arma, c, "p"), ma, (int32_t)cell(&arma, c, "q"),
+      (int32_t)cell(&arma, c, "scale"), cell(&arma, c, "offset"), obs, sim, nh,
+      forecast.values, nf, updated, error_fc, innov, message, (int64_t)sizeof(message));
+    int ok = code == PDM_OK;
+    if (ok) {
+      snprintf(path, sizeof(path), "%s/%s_arma.csv", dir, name);
+      read_table(path, 0, &want);
+      snprintf(path, sizeof(path), "%s/%s_arma_innovations.csv", dir, name);
+      read_table(path, 0, &want_innov);
+      for (long i = 0; i < nf; ++i) col[i] = want.values[i * 2];
+      worst = fmax(worst, scaled_error(updated, col, nf));
+      for (long i = 0; i < nf; ++i) col[i] = want.values[i * 2 + 1];
+      worst = fmax(worst, scaled_error(error_fc, col, nf));
+      worst = fmax(worst, scaled_error(innov, want_innov.values, nh));
+      free_table(&want);
+      free_table(&want_innov);
+    }
+    ok = ok && worst <= TOLERANCE;
+    printf("%s %-24s largest scaled error %.3g%s%s\n", ok ? "PASS" : "FAIL", name, worst,
+           code == PDM_OK ? "" : ": ", code == PDM_OK ? "" : message);
+    failures += !ok;
+  }
+  free(obs);
+  free(sim);
+  free(updated);
+  free(error_fc);
+  free(innov);
+  free(col);
+  free_table(&cases);
+  free_table(&expected);
+  free_table(&history);
+  free_table(&forecast);
+  free_table(&arma);
+  return failures;
+}
+
 int main(int argc, char** argv) {
   const char* dir = argc > 1 ? argv[1] : "inst/golden";
   char path[1024];
@@ -432,6 +587,7 @@ int main(int argc, char** argv) {
   }
 
   failures += check_snow(dir, &cases);
+  failures += check_updating(dir, &cases);
 
   free(rain);
   free(pet);
