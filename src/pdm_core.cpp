@@ -4,7 +4,7 @@
 // Flode Module: standalone; target reach.hydro
 // Author:       Claude Code (AI-generated); human maintainer attribution not supplied
 // Created:      2026-10-31
-// Modified:     2026-10-31 - Interface version 2: selectable distribution, recharge, routes
+// Modified:     2026-11-01 - Triangular and lognormal distributions; one rectangular Smax
 // Tier:         3
 // Inputs:       pdm_params, state array, rain and PET depths in mm per interval
 // Outputs:      Flow in m3/s, optional flux table, updated state
@@ -74,15 +74,19 @@ double rsum2(double a, double b) {
 
 // ---- Capacity distributions ----------------------------------------------------------------
 
-// The rectangular distribution is computed as Pareto with b = 1, as in R (.as_uniform), but
-// its capacity mean, used by pdm_step(), is (cmin + cmax) / 2. The two can differ in the last
-// place, so both are kept: smax for the model, psmax inside the Pareto formulas.
+// The rectangular distribution is computed as Pareto with b = 1, as in R (.as_uniform), and its
+// capacity mean comes from the same Pareto formula.
 struct Dist {
   int type;
-  double cmin, cmax, b, mean;
-  double smax;   // capacity_mean(model@distribution)
-  double psmax;  // capacity_mean of the Pareto object used in the formulas
+  double cmin, cmax, b, mean, meanlog, sdlog;
+  double smax;  // capacity_mean(distribution)
 };
+
+const double kPi = 3.141592653589793;
+
+// Standard normal distribution function, and its upper tail, through erfc.
+double pnorm_lower(double x) { return 0.5 * std::erfc(-x / std::sqrt(2.0)); }
+double pnorm_upper(double x) { return 0.5 * std::erfc(x / std::sqrt(2.0)); }
 
 Dist make_dist(const pdm_params& in) {
   Dist d;
@@ -90,26 +94,100 @@ Dist make_dist(const pdm_params& in) {
   d.cmin = in.cmin;
   d.cmax = in.cmax;
   d.mean = in.mean;
-  if (d.type == PDM_DIST_EXPONENTIAL) {
-    d.b = 0;
-    d.smax = in.mean;
-    d.psmax = in.mean;
-  } else {
-    d.b = d.type == PDM_DIST_RECTANGULAR ? 1.0 : in.b;
-    d.psmax = d.cmin + (d.cmax - d.cmin) / (d.b + 1);
-    d.smax = d.type == PDM_DIST_RECTANGULAR ? (in.cmin + in.cmax) / 2 : d.psmax;
+  d.meanlog = in.meanlog;
+  d.sdlog = in.sdlog;
+  d.b = 0;
+  switch (d.type) {
+    case PDM_DIST_EXPONENTIAL:
+      d.smax = in.mean;
+      break;
+    case PDM_DIST_TRIANGULAR:
+      d.smax = (in.cmin + in.cmax) / 2;
+      break;
+    case PDM_DIST_LOGNORMAL:
+      d.smax = std::exp(in.meanlog + rpow(in.sdlog, 2) / 2);
+      break;
+    default:
+      d.b = d.type == PDM_DIST_RECTANGULAR ? 1.0 : in.b;
+      d.smax = d.cmin + (d.cmax - d.cmin) / (d.b + 1);
   }
   return d;
 }
 
+// distributions_part2.R, storage_from_capacity for FlodeTriangularCapacity.
+double triangular_storage(const Dist& d, double c) {
+  double w = d.cmax - d.cmin;
+  double z = std::min(d.cmax, std::max(d.cmin, c));
+  double out = z <= d.smax ? z - 2 * rpow(z - d.cmin, 3) / (3 * rpow(w, 2))
+                           : d.smax - 2 * rpow(d.cmax - z, 3) / (3 * rpow(w, 2));
+  return c < d.cmin ? c : out;
+}
+
+// distributions_part2.R, .triangular_inverse: exact, by cube root or the trigonometric form
+// of the cubic, then one Newton step.
+double triangular_inverse(const Dist& d, double si) {
+  if (si <= d.cmin) return si;
+  double m = d.smax;
+  if (si >= m) return d.cmax;
+  double w = d.cmax - d.cmin;
+  if (si >= m - w / 12) {
+    double y = rpow(3 * w * w * (m - si) / 2, 1.0 / 3);
+    return std::min(d.cmax, std::max(m, d.cmax - y));
+  }
+  double dd = si - d.cmin;
+  double theta = std::acos(std::max(-1.0, std::min(1.0, -3 / std::sqrt(2.0) * dd / w)));
+  double u = std::sqrt(2.0) * w * std::cos(theta / 3 - 2 * kPi / 3);
+  double f = u - 2 * u * u * u / (3 * w * w) - dd;
+  u = u - f / (1 - 2 * u * u / (w * w));
+  return d.cmin + std::min(w / 2, std::max(0.0, u));
+}
+
+// distributions_part2.R, storage_from_capacity for FlodeLognormalCapacity.
+double lognormal_storage(const Dist& d, double c) {
+  if (!(c > 0)) return 0;
+  if (std::isinf(c)) return d.smax;
+  double z = (std::log(c) - d.meanlog) / d.sdlog;
+  double out = d.smax * pnorm_lower(z - d.sdlog) + c * pnorm_upper(z);
+  return std::min(d.smax, out);
+}
+
+// distributions_2.R, .lognormal_inverse: safeguarded Newton iteration.
+double lognormal_inverse(const Dist& d, double si) {
+  if (si == 0) return 0;
+  double m = d.smax;
+  if (si >= m) return std::numeric_limits<double>::infinity();
+  double lo = 0;
+  double hi = std::max(1.0, m);
+  while (lognormal_storage(d, hi) < si) {
+    hi = hi * 2;
+    check(std::isfinite(hi), "Could not bracket lognormal inverse");
+  }
+  double c = std::min(si, hi);
+  for (int i = 0; i < 200; ++i) {
+    double f = lognormal_storage(d, c) - si;
+    if (f == 0) return c;
+    if (f < 0) lo = c; else hi = c;
+    double slope = pnorm_upper((std::log(c) - d.meanlog) / d.sdlog);
+    double next = c - f / slope;
+    if (!(std::isfinite(next) && next > lo && next < hi)) next = (lo + hi) / 2;
+    if (std::fabs(next - c) <= 4 * DBL_EPSILON * next) return next;
+    c = next;
+  }
+  return c;
+}
+
 // distributions_part3.R (Pareto, rectangular, exponential).
 double cap_from_storage(const Dist& d, double s) {
+  if (d.type == PDM_DIST_TRIANGULAR || d.type == PDM_DIST_LOGNORMAL) {
+    check(s >= 0.0 && s <= d.smax, "Soil storage exceeds capacity_mean(distribution)");
+    return d.type == PDM_DIST_TRIANGULAR ? triangular_inverse(d, s) : lognormal_inverse(d, s);
+  }
   if (d.type == PDM_DIST_EXPONENTIAL) {
     check(s >= 0.0 && s <= d.mean, "Soil storage exceeds capacity_mean(distribution)");
     return -d.mean * std::log1p(-s / d.mean);
   }
-  check(s >= 0.0 && s <= d.psmax, "Soil storage exceeds capacity_mean(distribution)");
-  double z = std::min(1.0, std::max(0.0, (s - d.cmin) / (d.psmax - d.cmin)));
+  check(s >= 0.0 && s <= d.smax, "Soil storage exceeds capacity_mean(distribution)");
+  double z = std::min(1.0, std::max(0.0, (s - d.cmin) / (d.smax - d.cmin)));
   double out = d.cmin + (d.cmax - d.cmin) * (-std::expm1(std::log1p(-z) / (d.b + 1)));
   return s < d.cmin ? s : out;
 }
@@ -117,13 +195,24 @@ double cap_from_storage(const Dist& d, double s) {
 // distributions.R and distributions_part3.R.
 double storage_from_cap(const Dist& d, double c) {
   if (d.type == PDM_DIST_EXPONENTIAL) return d.mean * (-std::expm1(-c / d.mean));
+  if (d.type == PDM_DIST_TRIANGULAR) return triangular_storage(d, c);
+  if (d.type == PDM_DIST_LOGNORMAL) return lognormal_storage(d, c);
   double z = std::min(1.0, std::max(0.0, (c - d.cmin) / (d.cmax - d.cmin)));
-  double out = d.cmin + (d.psmax - d.cmin) * (-std::expm1((d.b + 1) * std::log1p(-z)));
+  double out = d.cmin + (d.smax - d.cmin) * (-std::expm1((d.b + 1) * std::log1p(-z)));
   return c < d.cmin ? c : out;
 }
 
 double cap_cdf(const Dist& d, double c) {
   if (d.type == PDM_DIST_EXPONENTIAL) return -std::expm1(-c / d.mean);
+  if (d.type == PDM_DIST_TRIANGULAR) {
+    double z = std::min(1.0, std::max(0.0, (c - d.cmin) / (d.cmax - d.cmin)));
+    return z <= 0.5 ? 2 * rpow(z, 2) : 1 - 2 * rpow(1 - z, 2);
+  }
+  if (d.type == PDM_DIST_LOGNORMAL) {
+    if (!(c > 0)) return 0;
+    if (std::isinf(c)) return 1;
+    return pnorm_lower((std::log(c) - d.meanlog) / d.sdlog);
+  }
   if (d.b == 0) return c >= d.cmax ? 1.0 : 0.0;
   double z = std::min(1.0, std::max(0.0, (c - d.cmin) / (d.cmax - d.cmin)));
   return -std::expm1(d.b * std::log1p(-z));
@@ -335,6 +424,18 @@ void validate(const pdm_params& in) {
       break;
     case PDM_DIST_EXPONENTIAL:
       need(fin(in.mean) && in.mean > 0, "mean");
+      break;
+    case PDM_DIST_TRIANGULAR:
+      need(fin(in.cmin) && in.cmin >= 0, "cmin");
+      need(fin(in.cmax) && in.cmax > in.cmin, "cmax");
+      break;
+    case PDM_DIST_LOGNORMAL:
+      need(fin(in.meanlog), "meanlog");
+      need(fin(in.sdlog) && in.sdlog > 0, "sdlog");
+      if (fin(in.meanlog) && fin(in.sdlog)) {
+        double m = std::exp(in.meanlog + rpow(in.sdlog, 2) / 2);
+        need(fin(m) && m > 0, "finite_mean");
+      }
       break;
     default:
       need(false, "distribution");

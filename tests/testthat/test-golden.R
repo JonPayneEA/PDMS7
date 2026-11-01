@@ -39,7 +39,9 @@ golden_model <- function(p) {
   distribution <- switch(as.character(p$distribution),
     "0" = FlodeParetoCapacity(cmin = p$cmin, cmax = p$cmax, b = p$b),
     "1" = FlodeRectangularCapacity(cmin = p$cmin, cmax = p$cmax),
-    "2" = FlodeExponentialCapacity(mean = p$mean)
+    "2" = FlodeExponentialCapacity(mean = p$mean),
+    "3" = FlodeTriangularCapacity(cmin = p$cmin, cmax = p$cmax),
+    "4" = FlodeLognormalCapacity(meanlog = p$meanlog, sdlog = p$sdlog)
   )
   recharge <- switch(as.character(p$recharge),
     "0" = FlodeStandardRecharge(kg = p$kg, bg = p$bg, st = p$st),
@@ -72,7 +74,7 @@ test_that(
     forcing <- golden_read("forcing.csv")
     forcing <- data.frame(rain = forcing$rain_mm, pet = forcing$pet_mm)
     cases <- golden_read("cases.csv")
-    expect_gte(nrow(cases), 18L)
+    expect_gte(nrow(cases), 21L)
     for (i in seq_len(nrow(cases))) {
       p <- cases[i, ]
       name <- p$case
@@ -100,7 +102,7 @@ test_that(
   {
     invalid <- golden_read("invalid_cases.csv")
     params <- setdiff(names(invalid), c("case", "expected_code"))
-    expect_length(params, 38L)
+    expect_length(params, 40L)
     for (i in seq_len(nrow(invalid))) {
       par <- as.numeric(invalid[i, params])
       expect_error(

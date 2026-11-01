@@ -81,7 +81,9 @@ engine_models <- function() {
     ),
     power_surface = pdm_model(surface = power_routing(k = 0.01, m = 1.7)),
     smith_surface = pdm_model(surface = power_routing(k = 1e-3, m = 3, solver = "smith")),
-    cascade_groundwater = pdm_model(groundwater = FlodeCascadeRouting(k1 = 30, k2 = 200))
+    cascade_groundwater = pdm_model(groundwater = FlodeCascadeRouting(k1 = 30, k2 = 200)),
+    triangular = pdm_model(distribution = FlodeTriangularCapacity(cmin = 10, cmax = 190)),
+    lognormal = pdm_model(distribution = FlodeLognormalCapacity(meanlog = 4.1, sdlog = 1))
   )
 }
 
@@ -146,11 +148,26 @@ test_that(
 )
 
 test_that(
-  "unsupported models and the r option use the R loop",
+  "the r option uses the R loop",
   {
-    check(!pdmS7:::.engine_supported(pdm_model(distribution = TriangularCapacity(10, 190))))
-    check(!pdmS7:::.engine_supported(pdm_model(distribution = LognormalCapacity(4, 1))))
     check(!with_engine("r", pdmS7:::.engine_supported(pdm_model())))
+  }
+)
+
+test_that(
+  "a rectangular store filled exactly to capacity runs on both engines",
+  {
+    # (cmin + cmax) / 2 and cmin + (cmax - cmin) / 2 differ in the last place for these
+    # bounds; a full store used to fail with "Soil storage exceeds capacity_mean".
+    distribution <- FlodeRectangularCapacity(cmin = 0.2, cmax = 1.0)
+    model <- pdm_model(distribution = distribution)
+    state <- initial_state(model, 1)
+    forcing <- data.frame(rain = c(0, 5, 0), pet = 0.1)
+    expect_engines_agree(
+      run_pdm(model, forcing, state)$output,
+      with_engine("r", run_pdm(model, forcing, state))$output
+    )
+    expect_equal(capacity_from_storage(distribution, capacity_mean(distribution)), 1.0)
   }
 )
 

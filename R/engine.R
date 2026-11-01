@@ -4,7 +4,7 @@
 # Flode Module: standalone; target reach.hydro
 # Author:       Claude Code (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-31
-# Modified:     2026-10-31 - All components except triangular and lognormal distributions
+# Modified:     2026-11-01 - All PDM components; only PACK snow stays on the R loop
 # Tier:         3
 # Inputs:       FlodePdmModel, FlodePdmState, forcing depths in mm per interval
 # Outputs:      run_pdm() output columns and final state, equal to the R loop to rounding
@@ -14,15 +14,16 @@
 #' @useDynLib pdmS7, .registration = TRUE
 NULL
 
-# The compiled engine covers the Pareto, rectangular and exponential distributions; standard,
-# split and demand recharge; and cascade, power-law and exponential stores for either route.
-# Triangular and lognormal distributions use the R loop. Exact class matching keeps any future
-# subclass on the R loop until it is ported and tested.
+# The compiled engine covers every capacity distribution (Pareto, rectangular, exponential,
+# triangular, lognormal); standard, split and demand recharge; and cascade, power-law and
+# exponential stores for either route. Exact class matching keeps any future subclass on the
+# R loop until it is ported and tested.
 # options(pdmS7.engine = "r") forces the R loop, which remains the reference implementation.
 .engine_classes <- list(
   distribution = c(
     "pdmS7::FlodeParetoCapacity" = 0, "pdmS7::FlodeRectangularCapacity" = 1,
-    "pdmS7::FlodeExponentialCapacity" = 2
+    "pdmS7::FlodeExponentialCapacity" = 2, "pdmS7::FlodeTriangularCapacity" = 3,
+    "pdmS7::FlodeLognormalCapacity" = 4
   ),
   recharge = c(
     "pdmS7::FlodeStandardRecharge" = 0, "pdmS7::FlodeSplitRecharge" = 1,
@@ -67,14 +68,16 @@ NULL
   r <- model@recharge
   dtype <- .engine_classes$distribution[[class(d)[1L]]]
   rtype <- .engine_classes$recharge[[class(r)[1L]]]
-  p <- c(distribution = dtype, recharge = rtype, cmin = 0, cmax = 0, b = 0, mean = 0, kg = 0,
-         bg = 0, st = 0, alpha = 0, beta = 0, qsat = 0)
+  p <- c(distribution = dtype, recharge = rtype, cmin = 0, cmax = 0, b = 0, mean = 0,
+         meanlog = 0, sdlog = 0, kg = 0, bg = 0, st = 0, alpha = 0, beta = 0, qsat = 0)
   if (dtype == 0) {
     p[c("cmin", "cmax", "b")] <- c(d@cmin, d@cmax, d@b)
-  } else if (dtype == 1) {
+  } else if (dtype %in% c(1, 3)) {
     p[c("cmin", "cmax")] <- c(d@cmin, d@cmax)
-  } else {
+  } else if (dtype == 2) {
     p[["mean"]] <- d@mean
+  } else {
+    p[c("meanlog", "sdlog")] <- c(d@meanlog, d@sdlog)
   }
   if (rtype == 0) {
     p[c("kg", "bg", "st")] <- c(r@kg, r@bg, r@st)

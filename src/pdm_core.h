@@ -25,12 +25,11 @@
    - on error, outputs are unspecified and the caller's state array is left unchanged.
 
    Components covered, as described by Moore (2007), doi:10.5194/hess-11-483-2007:
-   - capacity distribution: Pareto, rectangular or exponential;
+   - capacity distribution: Pareto, rectangular, exponential, triangular or lognormal;
    - recharge: standard, split or demand;
    - surface and groundwater routes, chosen independently: two-store cascade, power-law store
      (linear, quadratic, cubic or any positive exponent) or exponential store.
-   Not covered: triangular and lognormal distributions, and PACK snow. Units: depths in mm,
-   time in hours, flow in m3/s.
+   Not covered: PACK snow. Units: depths in mm, time in hours, flow in m3/s.
 
    Golden test files in inst/golden/ hold inputs and expected outputs from the R reference
    implementation. Every binding should reproduce them within 1e-12 of each column's magnitude.
@@ -67,6 +66,8 @@ extern "C" {
 #define PDM_DIST_PARETO 0       /* uses cmin, cmax, b */
 #define PDM_DIST_RECTANGULAR 1  /* uses cmin, cmax */
 #define PDM_DIST_EXPONENTIAL 2  /* uses mean */
+#define PDM_DIST_TRIANGULAR 3   /* uses cmin, cmax; symmetric, mode at the midpoint */
+#define PDM_DIST_LOGNORMAL 4    /* uses meanlog, sdlog */
 
 /* Recharge types (pdm_params.recharge). */
 #define PDM_RECHARGE_STANDARD 0  /* uses kg, bg, st */
@@ -94,15 +95,17 @@ typedef struct pdm_route {
 } pdm_route;
 
 /* Model parameters. Fields not used by the chosen types are ignored; used fields must be
-   finite. Layout: two 32-bit integers, 10 doubles, two pdm_route, 6 doubles; 280 bytes with
+   finite. Layout: two 32-bit integers, 12 doubles, two pdm_route, 6 doubles; 296 bytes with
    no padding on common platforms. */
 typedef struct pdm_params {
   int32_t distribution;  /* PDM_DIST_* */
   int32_t recharge;      /* PDM_RECHARGE_* */
-  double cmin;           /* Pareto, rectangular: minimum capacity, mm; >= 0 */
-  double cmax;           /* Pareto, rectangular: maximum capacity, mm; > cmin */
+  double cmin;           /* Pareto, rectangular, triangular: minimum capacity, mm; >= 0 */
+  double cmax;           /* Pareto, rectangular, triangular: maximum capacity, mm; > cmin */
   double b;              /* Pareto: shape; >= 0 */
   double mean;           /* exponential: mean capacity, mm; > 0 */
+  double meanlog;        /* lognormal: mean of log capacity; any finite value */
+  double sdlog;          /* lognormal: standard deviation of log capacity; > 0 */
   double kg;             /* standard: time constant, h mm^(bg-1); > 0 */
   double bg;             /* standard: exponent; > 0 */
   double st;             /* standard: tension threshold, mm; >= 0 and <= Smax */

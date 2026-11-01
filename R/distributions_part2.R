@@ -37,22 +37,32 @@ S7::method(storage_from_capacity, FlodeTriangularCapacity) <- function(x, c) {
 }
 S7::method(capacity_from_storage, FlodeTriangularCapacity) <- function(x, s) {
   .scheck(x, s)
-  vapply(
-    s, function(si) {
-      if (si <= x@cmin) {
-        return(si)
-      }
-      if (si == capacity_mean(x)) {
-        return(x@cmax)
-      }
-      .root(
-        function(c) {
-          storage_from_capacity(x, c) -
-            si
-        }, x@cmin, x@cmax
-      )
-    }, numeric(1)
-  )
+  vapply(s, function(si) .triangular_inverse(x, si), numeric(1))
+}
+
+# Exact inverse of the triangular storage function. Storage is cubic in capacity on each half
+# of the support. Upper half: S = m - 2 y^3 / (3 w^2) with y = cmax - C, a cube root. Lower
+# half: x - 2 x^3 / (3 w^2) = S - cmin with x = C - cmin, solved by the trigonometric form of
+# the cubic, then one Newton step to remove rounding. Mirrored in src/pdm_core.cpp.
+.triangular_inverse <- function(x, si) {
+  if (si <= x@cmin) {
+    return(si)
+  }
+  m <- capacity_mean(x)
+  if (si >= m) {
+    return(x@cmax)
+  }
+  w <- x@cmax - x@cmin
+  if (si >= m - w / 12) {
+    y <- (3 * w * w * (m - si) / 2)^(1 / 3)
+    return(min(x@cmax, max(m, x@cmax - y)))
+  }
+  d <- si - x@cmin
+  theta <- acos(max(-1, min(1, -3 / sqrt(2) * d / w)))
+  u <- sqrt(2) * w * cos(theta / 3 - 2 * pi / 3)
+  f <- u - 2 * u * u * u / (3 * w * w) - d
+  u <- u - f / (1 - 2 * u * u / (w * w))
+  x@cmin + min(w / 2, max(0, u))
 }
 S7::method(capacity_mean, FlodeLognormalCapacity) <- function(x) exp(x@meanlog + x@sdlog^2 / 2)
 S7::method(capacity_cdf, FlodeLognormalCapacity) <- function(x, c) {

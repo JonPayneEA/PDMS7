@@ -126,6 +126,8 @@ static pdm_params params_from(const table* t, int row) {
   p.cmax = cell(t, row, "cmax");
   p.b = cell(t, row, "b");
   p.mean = cell(t, row, "mean");
+  p.meanlog = cell(t, row, "meanlog");
+  p.sdlog = cell(t, row, "sdlog");
   p.kg = cell(t, row, "kg");
   p.bg = cell(t, row, "bg");
   p.st = cell(t, row, "st");

@@ -57,9 +57,12 @@ The total basin capacity is E[c], not the maximum point capacity.
   instead of the inconsistent erfc expression printed in Appendix A.
 
 At S=Smax for an unbounded distribution, C=Inf is an exact limiting state; any
-additional positive net rain becomes runoff. At zero storage C=0. Triangular
-and lognormal inverses use bracketed root finding, avoiding unconstrained
-Newton iterations near distribution tails. CDF/integral operations are vectorised;
+additional positive net rain becomes runoff. At zero storage C=0. The triangular
+inverse is exact: a cube root on the upper half of the support, and the
+trigonometric solution of the cubic on the lower half, polished by one Newton
+step. The lognormal inverse uses Newton iteration with the exact derivative
+dS/dC = 1 - F(C), safeguarded by a bracket and bisection; S is increasing and
+concave, so steps from below never overshoot. Both reach machine precision. CDF/integral operations are vectorised;
 `soil_step` operates on one state and one net depth.
 
 ### Apparent typographical errors in Appendix A

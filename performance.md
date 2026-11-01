@@ -182,14 +182,14 @@ step. A profile put the groundwater maths itself at under 10 per cent of the run
 
 The compiled engine runs the whole time loop in C++. It covers:
 
-- capacity distribution: Pareto, rectangular or exponential;
+- capacity distribution: Pareto, rectangular, exponential, triangular or lognormal;
 - recharge: standard, split or demand;
 - surface and groundwater routes, chosen independently: two-store cascade, power-law store
   (linear, quadratic, cubic or any exponent, with either solver) or exponential store.
 
-`run_pdm()` checks the model and uses the compiled loop when every component is one of these.
-The triangular and lognormal distributions, and PACK snow, run on the original R loop exactly
-as before. You do not choose; it happens automatically. `sim_pdm()` and
+That is every PDM component in the package, so `run_pdm()` always uses the compiled loop
+unless `options(pdmS7.engine = "r")` is set. With snow, `sim_snow_pdm()` runs the PACK
+snowpack in R and then the PDM part through the compiled loop. You do not choose; it happens automatically. `sim_pdm()` and
 `calibrate_pdm()` both go through `run_pdm()`, so they speed up too.
 
 ### Is the output the same?
@@ -309,8 +309,7 @@ counts from its `start_results`.
   one.
 - Uniform random starts cover the parameter space less evenly than a space-filling design such
   as a Latin hypercube. With 20 starts and three or four parameters this rarely matters.
-- The triangular and lognormal distributions and PACK snow are not compiled and run at R
-  speed.
+- The PACK snowpack routine (`sim_pack()`) is not compiled and runs at R speed.
 - Evaluation counts depend on the basin, the objective, the bounds and the number of
   parameters.
 
@@ -318,8 +317,7 @@ counts from its `start_results`.
 
 The model arithmetic lives in `src/pdm_core.cpp`, behind the C interface in `src/pdm_core.h`.
 It has no R dependency, so other languages can call it; `tools/core/README.md` explains how.
-`src/pdm_engine.cpp` is only the R wrapper. Only the triangular and lognormal distributions,
-which R inverts numerically with `uniroot()`, and PACK snow remain outside it.
+`src/pdm_engine.cpp` is only the R wrapper. Only the PACK snowpack remains outside it.
 
 To port another component:
 

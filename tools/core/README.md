@@ -12,13 +12,13 @@ covers building and checking.
 
 Simulation only, for:
 
-- capacity distribution: Pareto, rectangular or exponential;
+- capacity distribution: Pareto, rectangular, exponential, triangular or lognormal;
 - recharge: standard, split or demand;
 - surface and groundwater routes, chosen independently: two-store cascade, power-law store or
   exponential store.
 
-Not covered: the triangular and lognormal distributions and PACK snow. Configuration files, calibration and
-metrics stay in each host language. A calibration in another language will therefore agree
+Not covered: the PACK snowpack. Configuration files, calibration and metrics stay in each host
+language. A calibration in another language will therefore agree
 closely with R's, not exactly, because optimisers differ between languages.
 
 ## Building
@@ -68,12 +68,13 @@ caller must free, holds no global state, and is safe to call from several thread
   Pass NumPy arrays with `numpy.ctypeslib.as_ctypes` or `arr.ctypes.data_as(...)`. No
   compilation is needed on the Python side.
 - **Scala and Java:** use the Java Foreign Function and Memory API (standard from Java 22),
-  or JNA on older JVMs. `pdm_route` is 72 bytes (two 32-bit integers, then
-  8 doubles) and `pdm_params` 280 bytes, with no padding. Scala Native can call the core directly with `@extern`.
+  or JNA on older JVMs. `pdm_route` is 72 bytes (two 32-bit integers, then 8 doubles) and
+  `pdm_params` 296 bytes, with no padding. Scala Native can call the core directly with
+  `@extern`.
 - **Julia:** `ccall` with a `struct` matching `pdm_params`.
 
-Read the struct sizes back and compare them with 72 and 280 bytes, and check `pdm_core_abi_version()`
-against `PDM_CORE_ABI_VERSION`, before trusting a new binding.
+Read the struct sizes back and compare them with 72 and 296 bytes, and check
+`pdm_core_abi_version()` against `PDM_CORE_ABI_VERSION`, before trusting a new binding.
 
 ## Errors
 

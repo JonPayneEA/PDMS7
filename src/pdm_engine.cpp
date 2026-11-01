@@ -40,23 +40,24 @@ void fill_route(pdm_route& r, const doubles& par, int at) {
 
 }  // namespace
 
-// Runs the time loop. par holds the 38 fields of pdm_params in struct order, as built by
+// Runs the time loop. par holds the 40 fields of pdm_params in struct order, as built by
 // .engine_params() in R/engine.R. state uses the layout documented in pdm_core.h. With
 // full = FALSE only q_m3s and q_end_m3s are filled; the flux columns are returned empty.
 [[cpp11::register]]
 cpp11::list pdm_engine_run(doubles rain, doubles pet, doubles par, doubles state, bool full) {
-  if (par.size() != 38) cpp11::stop("pdm_engine_run expects 38 parameters");
+  if (par.size() != 40) cpp11::stop("pdm_engine_run expects 40 parameters");
   if (rain.size() != pet.size()) cpp11::stop("rain and pet must have equal length");
   pdm_params p;
   p.distribution = static_cast<int32_t>(par[0]);
   p.recharge = static_cast<int32_t>(par[1]);
   p.cmin = par[2]; p.cmax = par[3]; p.b = par[4]; p.mean = par[5];
-  p.kg = par[6]; p.bg = par[7]; p.st = par[8];
-  p.alpha = par[9]; p.beta = par[10]; p.qsat = par[11];
-  fill_route(p.surface, par, 12);
-  fill_route(p.groundwater, par, 22);
-  p.be = par[32]; p.fc = par[33]; p.td = par[34]; p.qc = par[35]; p.area_km2 = par[36];
-  p.dt = par[37];
+  p.meanlog = par[6]; p.sdlog = par[7];
+  p.kg = par[8]; p.bg = par[9]; p.st = par[10];
+  p.alpha = par[11]; p.beta = par[12]; p.qsat = par[13];
+  fill_route(p.surface, par, 14);
+  fill_route(p.groundwater, par, 24);
+  p.be = par[34]; p.fc = par[35]; p.td = par[36]; p.qc = par[37]; p.area_km2 = par[38];
+  p.dt = par[39];
 
   const int64_t n = static_cast<int64_t>(rain.size());
   std::vector<double> rain_v(rain.begin(), rain.end());

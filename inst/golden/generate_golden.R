@@ -97,6 +97,18 @@ cases <- list(
   cascade_groundwater = list(
     model = pdm_model(groundwater = FlodeCascadeRouting(k1 = 30, k2 = 200)), fraction = 0.5,
     groundwater = c(10, 25)
+  ),
+  rectangular_full = list(
+    model = pdm_model(distribution = FlodeRectangularCapacity(cmin = 0.2, cmax = 1.0)),
+    fraction = 1
+  ),
+  triangular = list(
+    model = pdm_model(distribution = FlodeTriangularCapacity(cmin = 10, cmax = 190)),
+    fraction = 0.4
+  ),
+  lognormal = list(
+    model = pdm_model(distribution = FlodeLognormalCapacity(meanlog = 4.1, sdlog = 1)),
+    fraction = 0.7
   )
 )
 
@@ -138,7 +150,10 @@ write_table(
             qsat = 0.5, groundwater.type = 0, groundwater.k = 0, groundwater.m = 0,
             groundwater.rtol = 0, groundwater.atol = 0, groundwater.k1 = 30, groundwater.k2 = 200),
     invalid("exponential_route_a_zero", surface.type = 2, surface.k1 = 0, surface.k2 = 0,
-            surface.a = 0, surface.gamma = -5)
+            surface.a = 0, surface.gamma = -5),
+    invalid("triangular_cmax_below_cmin", distribution = 3, b = 0, cmin = 50, cmax = 40),
+    invalid("lognormal_sdlog_zero", distribution = 4, cmin = 0, cmax = 0, b = 0, meanlog = 4,
+            sdlog = 0)
   ),
   "invalid_cases.csv"
 )
