@@ -180,3 +180,41 @@ NULL
   }
   invisible(NULL)
 }
+
+# ---- PACK snowpack ---------------------------------------------------------------------------
+
+.pack_flux_names <- c(
+  "snowfall_mm", "rainfall_mm", "melt_mm", "drainage_mm", "bypass_mm", "effective_rain_mm",
+  "precipitation_corrected_mm", "dry_snow_mm", "wet_snow_mm", "snow_cover_fraction",
+  "snow_balance_error_mm"
+)
+
+# Field values of pdm_pack_params in src/pdm_core.h, in struct order.
+.pack_engine_params <- function(model) {
+  c(
+    precipitation_factor = model@precipitation_factor, lower_rate_h = model@lower_rate_h,
+    upper_rate_h = model@upper_rate_h, retention_fraction = model@retention_fraction,
+    melt_factor_mmh_c = model@melt_factor_mmh_c, adc_alpha = model@adc_alpha,
+    adc_depth_mm = model@adc_depth_mm, melt_threshold_c = model@melt_threshold_c,
+    snow_threshold_c = model@snow_threshold_c, drain_threshold_c = model@drain_threshold_c,
+    max_step_min = model@max_step_min, areal_depletion = as.numeric(model@areal_depletion)
+  )
+}
+
+.pack_pack_state <- function(state) {
+  as.double(c(state@dry_mm, state@wet_mm, state@anchor_mm, state@anchor_fraction,
+              state@fresh_mm))
+}
+
+# Runs PACK through the compiled core; returns the same output as the R loop in sim_pack().
+.pack_engine_run <- function(model, precipitation, temperature, state, dt) {
+  res <- pack_engine_run(
+    as.double(precipitation), as.double(temperature), as.double(.pack_engine_params(model)),
+    .pack_pack_state(state), as.double(dt)
+  )
+  v <- res$state
+  final <- FlodePackState(dry_mm = v[1L], wet_mm = v[2L], anchor_mm = v[3L],
+                          anchor_fraction = v[4L], fresh_mm = v[5L])
+  output <- data.table::setDT(stats::setNames(res$columns, .pack_flux_names))
+  list(output = output, state = final)
+}

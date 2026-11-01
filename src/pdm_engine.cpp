@@ -89,3 +89,44 @@ cpp11::list pdm_engine_run(doubles rain, doubles pet, doubles par, doubles state
     "state"_nm = cpp11::writable::doubles(state_v.begin(), state_v.end())
   });
 }
+
+// Runs the PACK snowpack. par holds the 12 fields of pdm_pack_params in struct order, as built
+// by .pack_engine_params() in R/engine.R; state holds the five PACK state values.
+[[cpp11::register]]
+cpp11::list pack_engine_run(doubles precipitation, doubles temperature, doubles par,
+                            doubles state, double dt) {
+  if (par.size() != 12) cpp11::stop("pack_engine_run expects 12 parameters");
+  if (state.size() != PDM_PACK_STATE_LENGTH) cpp11::stop("PACK state must hold 5 values");
+  if (precipitation.size() != temperature.size()) {
+    cpp11::stop("precipitation and temperature must have equal length");
+  }
+  pdm_pack_params p;
+  p.precipitation_factor = par[0]; p.lower_rate_h = par[1]; p.upper_rate_h = par[2];
+  p.retention_fraction = par[3]; p.melt_factor_mmh_c = par[4]; p.adc_alpha = par[5];
+  p.adc_depth_mm = par[6]; p.melt_threshold_c = par[7]; p.snow_threshold_c = par[8];
+  p.drain_threshold_c = par[9]; p.max_step_min = par[10];
+  p.areal_depletion = par[11] != 0 ? 1 : 0;
+  p.reserved = 0;
+
+  const int64_t n = static_cast<int64_t>(precipitation.size());
+  std::vector<double> precip_v(precipitation.begin(), precipitation.end());
+  std::vector<double> temp_v(temperature.begin(), temperature.end());
+  std::vector<double> state_v(state.begin(), state.end());
+  std::vector<double> effective(n);
+  std::vector<double> fluxes(static_cast<std::size_t>(n) * PDM_PACK_N_FLUX);
+  char message[512];
+  int32_t code = pdm_pack_run(&p, precip_v.data(), temp_v.data(), n, dt, state_v.data(),
+                              effective.data(), fluxes.data(), message, sizeof(message));
+  if (code != PDM_OK) cpp11::stop("%s", message);
+
+  cpp11::writable::list columns(PDM_PACK_N_FLUX);
+  for (int j = 0; j < PDM_PACK_N_FLUX; ++j) {
+    auto first = fluxes.begin() + static_cast<std::ptrdiff_t>(j) * n;
+    columns[j] = cpp11::writable::doubles(first, first + n);
+  }
+  using namespace cpp11::literals;
+  return cpp11::writable::list({
+    "columns"_nm = columns,
+    "state"_nm = cpp11::writable::doubles(state_v.begin(), state_v.end())
+  });
+}

@@ -113,3 +113,83 @@ test_that(
     }
   }
 )
+
+golden_pack_model <- function(p) {
+  FlodePackModel(
+    precipitation_factor = p$precipitation_factor, lower_rate_h = p$lower_rate_h,
+    upper_rate_h = p$upper_rate_h, retention_fraction = p$retention_fraction,
+    melt_factor_mmh_c = p$melt_factor_mmh_c, adc_alpha = p$adc_alpha,
+    adc_depth_mm = p$adc_depth_mm, melt_threshold_c = p$melt_threshold_c,
+    snow_threshold_c = p$snow_threshold_c, drain_threshold_c = p$drain_threshold_c,
+    max_step_min = p$max_step_min, areal_depletion = p$areal_depletion == 1
+  )
+}
+
+golden_pack_state <- function(v) {
+  FlodePackState(dry_mm = v[1L], wet_mm = v[2L], anchor_mm = v[3L], anchor_fraction = v[4L],
+                 fresh_mm = v[5L])
+}
+
+test_that(
+  "both snowpack engines reproduce the PACK golden files",
+  {
+    forcing <- golden_read("pack_forcing.csv")
+    cases <- golden_read("pack_cases.csv")
+    expect_gte(nrow(cases), 4L)
+    for (i in seq_len(nrow(cases))) {
+      p <- cases[i, ]
+      name <- p$case
+      state <- golden_pack_state(golden_read(paste0(name, "_pack_initial_state.csv"))$value)
+      want <- golden_read(paste0(name, "_pack_fluxes.csv"))
+      want_state <- golden_read(paste0(name, "_pack_final_state.csv"))$value
+      for (engine in c("auto", "r")) {
+        old <- options(pdmS7.engine = engine)
+        result <- sim_pack(forcing$precipitation_mm, forcing$temperature_c,
+                           golden_pack_model(p), p$dt * 60, state)
+        options(old)
+        expect_identical(names(result), names(want))
+        for (col in names(want)) {
+          golden_agree(result[[col]], want[[col]], paste(name, engine, col))
+        }
+        golden_agree(pdmS7:::.pack_pack_state(attr(result, "final_state")), want_state,
+                     paste(name, engine, "state"))
+      }
+    }
+  }
+)
+
+test_that(
+  "snow feeding PDM reproduces the coupled golden files",
+  {
+    forcing <- golden_read("pack_forcing.csv")
+    pack_cases <- golden_read("pack_cases.csv")
+    pdm_cases <- golden_read("cases.csv")
+    snow_cases <- golden_read("snow_cases.csv")
+    for (i in seq_len(nrow(snow_cases))) {
+      sc <- snow_cases[i, ]
+      pk <- pack_cases[pack_cases$case == sc$pack_case, ]
+      pd <- pdm_cases[pdm_cases$case == sc$pdm_case, ]
+      pack_state <- golden_pack_state(
+        golden_read(paste0(sc$pack_case, "_pack_initial_state.csv"))$value
+      )
+      pdm_state <- golden_state(
+        golden_read(paste0(sc$pdm_case, "_initial_state.csv"))$value, pd
+      )
+      snow <- sim_pack(forcing$precipitation_mm, forcing$temperature_c, golden_pack_model(pk),
+                       pk$dt * 60, pack_state)
+      result <- run_pdm(golden_model(pd),
+                        data.frame(rain = snow$effective_rain_mm, pet = forcing$pet_mm),
+                        pdm_state)
+      want <- golden_read(paste0(sc$case, "_fluxes.csv"))
+      for (col in names(want)) {
+        golden_agree(result$output[[col]], want[[col]], paste(sc$case, col))
+      }
+      golden_agree(pdmS7:::.engine_pack_state(result$state),
+                   golden_read(paste0(sc$case, "_final_state.csv"))$value,
+                   paste(sc$case, "state"))
+      golden_agree(pdmS7:::.pack_pack_state(attr(snow, "final_state")),
+                   golden_read(paste0(sc$case, "_pack_final_state.csv"))$value,
+                   paste(sc$case, "pack state"))
+    }
+  }
+)

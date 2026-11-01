@@ -17,6 +17,13 @@ the compiled core, so the files test the core as well as the bindings.
 | `<case>_fluxes.csv` | The 24 flux columns, named and ordered as `pdm_flux_name(0..23)` |
 | `<case>_final_state.csv` | Column `value`: the state array after the run |
 | `invalid_cases.csv` | Parameter sets that must fail, with `expected_code` 1 (`PDM_ERR_ARGUMENT`) |
+| `pack_forcing.csv` | `precipitation_mm`, `temperature_c`, `pet_mm`: 150 intervals for the snow cases |
+| `pack_cases.csv` | One row per PACK case: `case`, the 12 fields of `pdm_pack_params`, and `dt` in hours |
+| `<case>_pack_initial_state.csv`, `<case>_pack_final_state.csv` | The 5 PACK state values before and after |
+| `<case>_pack_fluxes.csv` | The 11 PACK flux columns, named and ordered as `pdm_pack_flux_name(0..10)` |
+| `pack_invalid_cases.csv` | PACK parameter sets that must fail |
+| `snow_cases.csv` | Coupled runs: `case`, the PACK case and the PDM case whose parameters and initial states to use |
+| `<case>_fluxes.csv`, `<case>_final_state.csv`, `<case>_pack_final_state.csv` for each coupled case | PDM fluxes and both final states from `pdm_snow_run()` |
 | `generate_golden.R` | Regenerates every file from the R reference |
 
 All numbers are written with 17 significant digits, so they round-trip exactly to doubles.

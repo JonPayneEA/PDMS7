@@ -15,10 +15,10 @@ Simulation only, for:
 - capacity distribution: Pareto, rectangular, exponential, triangular or lognormal;
 - recharge: standard, split or demand;
 - surface and groundwater routes, chosen independently: two-store cascade, power-law store or
-  exponential store.
+  exponential store;
+- the PACK snowpack, alone (`pdm_pack_run()`) or feeding PDM in one call (`pdm_snow_run()`).
 
-Not covered: the PACK snowpack. Configuration files, calibration and metrics stay in each host
-language. A calibration in another language will therefore agree
+Configuration files, calibration and metrics stay in each host language. A calibration in another language will therefore agree
 closely with R's, not exactly, because optimisers differ between languages.
 
 ## Building
@@ -67,11 +67,12 @@ caller must free, holds no global state, and is safe to call from several thread
   compilation is needed on the Python side.
 - **Scala and Java:** use the Java Foreign Function and Memory API (standard from Java 22),
   or JNA on older JVMs. `pdm_route` is 72 bytes (two 32-bit integers, then 8 doubles) and
-  `pdm_params` 296 bytes, with no padding. Scala Native can call the core directly with
+  `pdm_params` 296 bytes, and `pdm_pack_params` 96 bytes (11 doubles, then two 32-bit
+  integers), with no padding. Scala Native can call the core directly with
   `@extern`.
 - **Julia:** `ccall` with a `struct` matching `pdm_params`.
 
-Read the struct sizes back and compare them with 72 and 296 bytes, and check
+Read the struct sizes back and compare them with 72, 296 and 96 bytes, and check
 `pdm_core_abi_version()` against `PDM_CORE_ABI_VERSION`, before trusting a new binding.
 
 ## Errors

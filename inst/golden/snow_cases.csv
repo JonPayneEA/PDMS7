@@ -1,0 +1,4 @@
+case,pack_case,pdm_case
+snow_hourly,image_hourly,default
+snow_quarter_hour,no_depletion,quarter_hour_delay
+snow_daily,report_daily,daily

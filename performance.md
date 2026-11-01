@@ -188,8 +188,9 @@ The compiled engine runs the whole time loop in C. It covers:
   (linear, quadratic, cubic or any exponent, with either solver) or exponential store.
 
 That is every PDM component in the package, so `run_pdm()` always uses the compiled loop
-unless `options(pdmS7.engine = "r")` is set. With snow, `sim_snow_pdm()` runs the PACK
-snowpack in R and then the PDM part through the compiled loop. You do not choose; it happens automatically. `sim_pdm()` and
+unless `options(pdmS7.engine = "r")` is set. The PACK snowpack (`sim_pack()`, and so
+`sim_snow_pdm()`) is compiled too, about 540 times faster than its R loop. You do not choose;
+it happens automatically. `sim_pdm()` and
 `calibrate_pdm()` both go through `run_pdm()`, so they speed up too.
 
 ### Is the output the same?
@@ -309,7 +310,6 @@ counts from its `start_results`.
   one.
 - Uniform random starts cover the parameter space less evenly than a space-filling design such
   as a Latin hypercube. With 20 starts and three or four parameters this rarely matters.
-- The PACK snowpack routine (`sim_pack()`) is not compiled and runs at R speed.
 - Evaluation counts depend on the basin, the objective, the bounds and the number of
   parameters.
 
@@ -317,7 +317,7 @@ counts from its `start_results`.
 
 The model arithmetic lives in `src/pdm_core.c`, plain C99 behind the interface in `src/pdm_core.h`.
 It has no R dependency, so other languages can call it; `tools/core/README.md` explains how.
-`src/pdm_engine.cpp` is only the R wrapper. Only the PACK snowpack remains outside it.
+`src/pdm_engine.cpp` is only the R wrapper. The PACK snowpack is in the core too.
 
 To port another component:
 

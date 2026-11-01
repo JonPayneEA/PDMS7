@@ -100,5 +100,4 @@ more, so 1 hour is the warning threshold. Adaptive is accurate at every step tes
 
 ## Decision
 
-The compiled engine now covers every PDM component. Only the PACK snowpack routine still
-runs in R, and could be ported against the same equivalence and golden tests. A peak timing objective stays deferred.
+The compiled engine now covers every PDM component and the PACK snowpack. A peak timing objective stays deferred.

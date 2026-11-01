@@ -4,7 +4,7 @@
 // Flode Module: standalone; target reach.hydro
 // Author:       Claude Code (AI-generated); human maintainer attribution not supplied
 // Created:      2026-10-31
-// Modified:     2026-11-01 - Rewritten in C99 from the C++ version, arithmetic unchanged
+// Modified:     2026-11-01 - C99 rewrite; PACK snowpack and coupled snow-PDM runs added
 // Tier:         3
 // Inputs:       pdm_params, state array, rain and PET depths in mm per interval
 // Outputs:      Flow in m3/s, optional flux table, updated state
@@ -851,34 +851,289 @@ const char* pdm_flux_name(int32_t j) {
   return k_flux_names[j];
 }
 
+/* Validates and runs PDM on a state array updated in place. Used by pdm_run() and
+   pdm_snow_run(), which pass a working copy. */
+static void pdm_simulate(const pdm_params* params, const double* rain, const double* pet,
+                         int64_t n, double* state, int64_t state_length, double* q_m3s,
+                         double* q_end_m3s, double* fluxes, pdm_error* e) {
+  size_t n_pending;
+  double* buffer;
+  if (params == NULL) {
+    set_error(e, PDM_ERR_ARGUMENT, "params must not be null");
+    return;
+  }
+  if (!validate(params, e) || !validate_state(params, state, state_length, e)) return;
+  if (n < 0) {
+    set_error(e, PDM_ERR_ARGUMENT, "n must be nonnegative");
+    return;
+  }
+  if (n > 0 && (rain == NULL || pet == NULL || q_m3s == NULL || q_end_m3s == NULL)) {
+    set_error(e, PDM_ERR_ARGUMENT, "rain, pet, q_m3s and q_end_m3s must not be null");
+    return;
+  }
+  /* Four delay queues and a scratch queue. */
+  n_pending = (size_t)pending_length(params);
+  buffer = (double*)malloc(sizeof(double) * (5 * n_pending + 1));
+  if (buffer == NULL) {
+    set_error(e, PDM_ERR_NUMERICAL, "Out of memory");
+    return;
+  }
+  run(params, rain, pet, n, state, q_m3s, q_end_m3s, fluxes, buffer, e);
+  free(buffer);
+}
+
 int32_t pdm_run(const pdm_params* params, const double* rain, const double* pet, int64_t n,
                 double* state, int64_t state_length, double* q_m3s, double* q_end_m3s,
                 double* fluxes, char* message, int64_t message_length) {
   pdm_error e;
-  double* block = NULL;
+  double* copy = NULL;
   e.code = PDM_OK;
   e.text[0] = '\0';
-  if (params == NULL) {
-    set_error(&e, PDM_ERR_ARGUMENT, "params must not be null");
-  } else if (validate(params, &e) && validate_state(params, state, state_length, &e)) {
-    if (n < 0) {
-      set_error(&e, PDM_ERR_ARGUMENT, "n must be nonnegative");
-    } else if (n > 0 && (rain == NULL || pet == NULL || q_m3s == NULL || q_end_m3s == NULL)) {
-      set_error(&e, PDM_ERR_ARGUMENT, "rain, pet, q_m3s and q_end_m3s must not be null");
-    } else {
-      /* One block: a working copy of the state, so the caller's is unchanged on failure,
-         then four delay queues and a scratch queue. */
-      size_t n_pending = (size_t)pending_length(params);
-      block = (double*)malloc(sizeof(double) * ((size_t)state_length + 5 * n_pending + 1));
-      if (block == NULL) {
-        set_error(&e, PDM_ERR_NUMERICAL, "Out of memory");
+  if (state != NULL && state_length > 0) {
+    copy = (double*)malloc(sizeof(double) * (size_t)state_length);
+    if (copy == NULL) {
+      set_error(&e, PDM_ERR_NUMERICAL, "Out of memory");
+      return finish(&e, message, message_length);
+    }
+    memcpy(copy, state, sizeof(double) * (size_t)state_length);
+  }
+  /* Run on a copy so that the caller's state is unchanged if the run fails. */
+  pdm_simulate(params, rain, pet, n, copy, state_length, q_m3s, q_end_m3s, fluxes, &e);
+  if (e.code == PDM_OK) memcpy(state, copy, sizeof(double) * (size_t)state_length);
+  free(copy);
+  return finish(&e, message, message_length);
+}
+
+/* ---- PACK snowpack ------------------------------------------------------------------------- */
+
+static const char* const k_pack_flux_names[PDM_PACK_N_FLUX] = {
+  "snowfall_mm", "rainfall_mm", "melt_mm", "drainage_mm", "bypass_mm", "effective_rain_mm",
+  "precipitation_corrected_mm", "dry_snow_mm", "wet_snow_mm", "snow_cover_fraction",
+  "snow_balance_error_mm"
+};
+
+/* The same rules as the FlodePackModel validator. */
+static int validate_pack(const pdm_pack_params* in, pdm_error* e) {
+  bad_list b;
+  b.text[0] = '\0';
+  b.any = 0;
+  need(&b, isfinite(in->precipitation_factor) && in->precipitation_factor >= 0, "",
+       "precipitation_factor");
+  need(&b, isfinite(in->lower_rate_h) && in->lower_rate_h >= 0, "", "lower_rate_h");
+  need(&b, isfinite(in->upper_rate_h) && in->upper_rate_h >= 0, "", "upper_rate_h");
+  need(&b, isfinite(in->retention_fraction) && in->retention_fraction >= 0 &&
+             in->retention_fraction < 1, "", "retention_fraction");
+  need(&b, isfinite(in->melt_factor_mmh_c) && in->melt_factor_mmh_c >= 0, "",
+       "melt_factor_mmh_c");
+  need(&b, isfinite(in->adc_alpha) && in->adc_alpha > 0 && in->adc_alpha <= 1, "", "adc_alpha");
+  need(&b, isfinite(in->adc_depth_mm) && in->adc_depth_mm > 0, "", "adc_depth_mm");
+  need(&b, isfinite(in->melt_threshold_c), "", "melt_threshold_c");
+  need(&b, isfinite(in->snow_threshold_c), "", "snow_threshold_c");
+  need(&b, isfinite(in->drain_threshold_c), "", "drain_threshold_c");
+  need(&b, in->areal_depletion == 0 || in->areal_depletion == 1, "", "areal_depletion");
+  need(&b, isfinite(in->max_step_min) && in->max_step_min > 0, "", "max_step_min");
+  if (b.any) {
+    char text[300];
+    strcpy(text, "Invalid parameter(s): ");
+    strncat(text, b.text, sizeof(text) - strlen(text) - 1);
+    set_error(e, PDM_ERR_ARGUMENT, text);
+    return 0;
+  }
+  return 1;
+}
+
+/* The same rules as the FlodePackState validator. */
+static int validate_pack_state(const double* s, pdm_error* e) {
+  if (s == NULL) {
+    set_error(e, PDM_ERR_ARGUMENT, "pack state must not be null");
+    return 0;
+  }
+  if (!(isfinite(s[0]) && s[0] >= 0 && isfinite(s[1]) && s[1] >= 0 && isfinite(s[2]) &&
+        s[2] >= 0 && isfinite(s[3]) && s[3] >= 0 && s[3] <= 1 && isfinite(s[4]) && s[4] >= 0)) {
+    set_error(e, PDM_ERR_ARGUMENT,
+              "Invalid PACK state: stores must be finite and nonnegative, fraction in [0,1]");
+    return 0;
+  }
+  return 1;
+}
+
+/* pack_model.R, .pack_cover. s: dry, wet, anchor, anchor fraction, fresh. */
+static double pack_cover(const pdm_pack_params* m, const double* s) {
+  double theta = s[0] + s[1], base, fresh;
+  if (theta <= 0) return 0;
+  if (!m->areal_depletion) return 1;
+  base = dmin(1.0, log1p(theta) / log1p(m->adc_depth_mm));
+  if (s[4] == 0 || theta <= s[2]) return base;
+  fresh = s[3] + (1 - s[3]) * dmin(1.0, (theta - s[2]) / (m->adc_alpha * s[4]));
+  return dmax(base, fresh);
+}
+
+/* pack_step.R, pack_step: one interval of dt hours. flux receives PDM_PACK_N_FLUX values. */
+static void pack_step(const pdm_pack_params* m, double* s, double precipitation,
+                      double temperature, double dt, double* flux, pdm_error* e) {
+  double rate = m->lower_rate_h + m->upper_rate_h;
+  double steps = ceil(dmax(dmax(dt * 60 / m->max_step_min, dt * rate), 1.0));
+  double h, corrected, p, old, totals[6] = {0, 0, 0, 0, 0, 0};
+  int64_t i, k;
+  if (!check(e, isfinite(steps) && steps <= 100000,
+             "Too many snow substeps; inspect dt and rates")) {
+    return;
+  }
+  h = dt / steps;
+  corrected = precipitation * m->precipitation_factor;
+  if (!check(e, isfinite(corrected), "Corrected precipitation overflow")) return;
+  p = corrected / steps;
+  old = s[0] + s[1];
+  for (i = 0; i < (int64_t)steps; ++i) {
+    double theta = s[0] + s[1];
+    double cover = pack_cover(m, s);
+    double snow = temperature < m->snow_threshold_c ? p : 0;
+    double rain = p - snow, dry, melt, wet, threshold, drainage, bypass;
+    double add[6];
+    if (snow > 0) {
+      /* Consecutive snowfall grows one excursion; a depleted excursion starts anew. */
+      if (s[4] == 0 || theta < s[2] + s[4] - 1e-10) {
+        s[2] = theta;
+        s[3] = cover;
+        s[4] = snow;
       } else {
-        memcpy(block, state, sizeof(double) * (size_t)state_length);
-        run(params, rain, pet, n, block, q_m3s, q_end_m3s, fluxes, block + state_length, &e);
-        if (e.code == PDM_OK) memcpy(state, block, sizeof(double) * (size_t)state_length);
+        s[4] = s[4] + snow;
       }
+      cover = 1;
+    }
+    dry = s[0] + snow;
+    melt = dmin(dry, m->melt_factor_mmh_c * dmax(0.0, temperature - m->melt_threshold_c) * h *
+                       cover);
+    dry = dry - melt;
+    wet = s[1] + rain * cover + melt;
+    threshold = m->retention_fraction * (wet + dry);
+    drainage = temperature < m->drain_threshold_c
+      ? 0
+      : dmin(wet, h * (m->lower_rate_h * wet + m->upper_rate_h * dmax(0.0, wet - threshold)));
+    bypass = rain * (1 - cover);
+    s[0] = dry;
+    s[1] = wet - drainage;
+    if (dry + s[1] <= s[2]) s[4] = 0;
+    add[0] = snow;
+    add[1] = rain;
+    add[2] = melt;
+    add[3] = drainage;
+    add[4] = bypass;
+    add[5] = drainage + bypass;
+    for (k = 0; k < 6; ++k) totals[k] = totals[k] + add[k];
+  }
+  for (k = 0; k < 6; ++k) flux[k] = totals[k];
+  flux[6] = corrected;
+  flux[7] = s[0];
+  flux[8] = s[1];
+  flux[9] = pack_cover(m, s);
+  flux[10] = old + corrected - (s[0] + s[1]) - totals[5];
+}
+
+/* Validates and runs PACK on a state array updated in place. */
+static void pack_simulate(const pdm_pack_params* params, const double* precipitation,
+                          const double* temperature, int64_t n, double dt, double* state,
+                          double* effective_rain, double* fluxes, pdm_error* e) {
+  double flux[PDM_PACK_N_FLUX];
+  int64_t t;
+  int j;
+  if (params == NULL) {
+    set_error(e, PDM_ERR_ARGUMENT, "pack params must not be null");
+    return;
+  }
+  if (!validate_pack(params, e) || !validate_pack_state(state, e)) return;
+  if (!(isfinite(dt) && dt > 0)) {
+    set_error(e, PDM_ERR_ARGUMENT, "dt must be positive and finite");
+    return;
+  }
+  if (n < 0) {
+    set_error(e, PDM_ERR_ARGUMENT, "n must be nonnegative");
+    return;
+  }
+  if (n > 0 && (precipitation == NULL || temperature == NULL || effective_rain == NULL)) {
+    set_error(e, PDM_ERR_ARGUMENT,
+              "precipitation, temperature and effective_rain must not be null");
+    return;
+  }
+  for (t = 0; t < n; ++t) {
+    if (!(isfinite(precipitation[t]) && precipitation[t] >= 0)) {
+      set_error(e, PDM_ERR_ARGUMENT, "precipitation_mm must be finite and nonnegative");
+      return;
+    }
+    if (!isfinite(temperature[t])) {
+      set_error(e, PDM_ERR_ARGUMENT, "temperature_c must be finite");
+      return;
+    }
+    pack_step(params, state, precipitation[t], temperature[t], dt, flux, e);
+    if (e->code != PDM_OK) return;
+    effective_rain[t] = flux[5];
+    if (fluxes != NULL) {
+      for (j = 0; j < PDM_PACK_N_FLUX; ++j) fluxes[(int64_t)j * n + t] = flux[j];
     }
   }
-  free(block);
+}
+
+const char* pdm_pack_flux_name(int32_t j) {
+  if (j < 0 || j >= PDM_PACK_N_FLUX) return NULL;
+  return k_pack_flux_names[j];
+}
+
+int32_t pdm_pack_run(const pdm_pack_params* params, const double* precipitation,
+                     const double* temperature, int64_t n, double dt, double* state,
+                     double* effective_rain, double* fluxes, char* message,
+                     int64_t message_length) {
+  pdm_error e;
+  double copy[PDM_PACK_STATE_LENGTH];
+  e.code = PDM_OK;
+  e.text[0] = '\0';
+  if (state == NULL) {
+    set_error(&e, PDM_ERR_ARGUMENT, "pack state must not be null");
+    return finish(&e, message, message_length);
+  }
+  memcpy(copy, state, sizeof(copy));
+  pack_simulate(params, precipitation, temperature, n, dt, copy, effective_rain, fluxes, &e);
+  if (e.code == PDM_OK) memcpy(state, copy, sizeof(copy));
+  return finish(&e, message, message_length);
+}
+
+int32_t pdm_snow_run(const pdm_params* pdm, const pdm_pack_params* pack,
+                     const double* precipitation, const double* temperature,
+                     const double* pet, int64_t n, double* pdm_state, int64_t pdm_state_length,
+                     double* pack_state, double* q_m3s, double* q_end_m3s, double* pdm_fluxes,
+                     double* pack_fluxes, char* message, int64_t message_length) {
+  pdm_error e;
+  double pack_copy[PDM_PACK_STATE_LENGTH];
+  double* pdm_copy = NULL;
+  double* effective = NULL;
+  e.code = PDM_OK;
+  e.text[0] = '\0';
+  if (pdm == NULL || pack_state == NULL || pdm_state == NULL || pdm_state_length <= 0 || n < 0) {
+    set_error(&e, PDM_ERR_ARGUMENT,
+              "pdm, pdm_state and pack_state must not be null, and n must be nonnegative");
+    return finish(&e, message, message_length);
+  }
+  memcpy(pack_copy, pack_state, sizeof(pack_copy));
+  pdm_copy = (double*)malloc(sizeof(double) * (size_t)pdm_state_length);
+  effective = (double*)malloc(sizeof(double) * (size_t)(n > 0 ? n : 1));
+  if (pdm_copy == NULL || effective == NULL) {
+    set_error(&e, PDM_ERR_NUMERICAL, "Out of memory");
+  } else {
+    memcpy(pdm_copy, pdm_state, sizeof(double) * (size_t)pdm_state_length);
+    /* Check PDM before spending time on the snowpack. */
+    if (validate(pdm, &e) && validate_state(pdm, pdm_copy, pdm_state_length, &e)) {
+      pack_simulate(pack, precipitation, temperature, n, pdm->dt, pack_copy, effective,
+                    pack_fluxes, &e);
+      if (e.code == PDM_OK) {
+        pdm_simulate(pdm, effective, pet, n, pdm_copy, pdm_state_length, q_m3s, q_end_m3s,
+                     pdm_fluxes, &e);
+      }
+    }
+    if (e.code == PDM_OK) {
+      memcpy(pack_state, pack_copy, sizeof(pack_copy));
+      memcpy(pdm_state, pdm_copy, sizeof(double) * (size_t)pdm_state_length);
+    }
+  }
+  free(pdm_copy);
+  free(effective);
   return finish(&e, message, message_length);
 }

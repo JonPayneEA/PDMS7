@@ -12,10 +12,18 @@ extern "C" SEXP _pdmS7_pdm_engine_run(SEXP rain, SEXP pet, SEXP par, SEXP state,
     return cpp11::as_sexp(pdm_engine_run(cpp11::as_cpp<cpp11::decay_t<doubles>>(rain), cpp11::as_cpp<cpp11::decay_t<doubles>>(pet), cpp11::as_cpp<cpp11::decay_t<doubles>>(par), cpp11::as_cpp<cpp11::decay_t<doubles>>(state), cpp11::as_cpp<cpp11::decay_t<bool>>(full)));
   END_CPP11
 }
+// pdm_engine.cpp
+cpp11::list pack_engine_run(doubles precipitation, doubles temperature, doubles par, doubles state, double dt);
+extern "C" SEXP _pdmS7_pack_engine_run(SEXP precipitation, SEXP temperature, SEXP par, SEXP state, SEXP dt) {
+  BEGIN_CPP11
+    return cpp11::as_sexp(pack_engine_run(cpp11::as_cpp<cpp11::decay_t<doubles>>(precipitation), cpp11::as_cpp<cpp11::decay_t<doubles>>(temperature), cpp11::as_cpp<cpp11::decay_t<doubles>>(par), cpp11::as_cpp<cpp11::decay_t<doubles>>(state), cpp11::as_cpp<cpp11::decay_t<double>>(dt)));
+  END_CPP11
+}
 
 extern "C" {
 static const R_CallMethodDef CallEntries[] = {
-    {"_pdmS7_pdm_engine_run", (DL_FUNC) &_pdmS7_pdm_engine_run, 5},
+    {"_pdmS7_pack_engine_run", (DL_FUNC) &_pdmS7_pack_engine_run, 5},
+    {"_pdmS7_pdm_engine_run",  (DL_FUNC) &_pdmS7_pdm_engine_run,  5},
     {NULL, NULL, 0}
 };
 }

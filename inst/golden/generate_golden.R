@@ -157,4 +157,89 @@ write_table(
   ),
   "invalid_cases.csv"
 )
+# ---- PACK snowpack, alone and feeding PDM ----------------------------------------------------
+# Expected values come from the R loops, as for PDM.
+
+set.seed(20261101)
+n_snow <- 150L
+temperature <- 2 + 6 * sin(2 * pi * seq_len(n_snow) / 60)
+temperature[20:45] <- temperature[20:45] - 8  # a cold spell that builds a pack
+precipitation <- ifelse(stats::runif(n_snow) < 0.4, stats::rgamma(n_snow, 0.7, scale = 4), 0)
+precipitation[c(25, 26, 90)] <- c(30, 45, 25)
+snow_pet <- pmax(0, 0.05 + 0.05 * sin(seq_len(n_snow) / 10))
+write_table(
+  data.frame(precipitation_mm = precipitation, temperature_c = temperature, pet_mm = snow_pet),
+  "pack_forcing.csv"
+)
+snow_params <- function(model) pdmS7:::.pack_engine_params(model)
+snow_state <- function(state) pdmS7:::.pack_pack_state(state)
+deep <- FlodePackState(dry_mm = 150, wet_mm = 10, anchor_mm = 120, anchor_fraction = 0.6,
+                       fresh_mm = 30)
+pack_cases <- list(
+  image_hourly = list(model = pack_from_config(pack_presets("image_hourly")), dt = 1,
+                      state = FlodePackState()),
+  report_daily = list(model = pack_from_config(pack_presets("report_daily")), dt = 24,
+                      state = FlodePackState()),
+  no_depletion = list(model = FlodePackModel(areal_depletion = FALSE), dt = 0.25, state = deep),
+  fast_drainage = list(
+    model = FlodePackModel(lower_rate_h = 3, upper_rate_h = 8, max_step_min = 15,
+                           snow_threshold_c = 1.5, melt_threshold_c = -0.5,
+                           drain_threshold_c = 0.5, retention_fraction = 0.2),
+    dt = 1, state = deep
+  )
+)
+pack_rows <- list()
+for (name in names(pack_cases)) {
+  case <- pack_cases[[name]]
+  result <- sim_pack(precipitation, temperature, case$model, case$dt * 60, case$state)
+  write_table(data.frame(value = snow_state(case$state)), paste0(name, "_pack_initial_state.csv"))
+  write_table(data.frame(value = snow_state(attr(result, "final_state"))),
+              paste0(name, "_pack_final_state.csv"))
+  write_table(as.data.frame(result), paste0(name, "_pack_fluxes.csv"))
+  pack_rows[[name]] <- data.frame(case = name, t(snow_params(case$model)), dt = case$dt,
+                                  check.names = FALSE)
+}
+write_table(do.call(rbind, pack_rows), "pack_cases.csv")
+
+pack_base <- snow_params(FlodePackModel())
+pack_invalid <- function(reason, ...) {
+  p <- pack_base
+  changes <- list(...)
+  p[names(changes)] <- unlist(changes)
+  data.frame(case = reason, t(p), dt = 1, expected_code = 1L, check.names = FALSE)
+}
+write_table(
+  rbind(
+    pack_invalid("adc_alpha_zero", adc_alpha = 0),
+    pack_invalid("retention_one", retention_fraction = 1),
+    pack_invalid("max_step_zero", max_step_min = 0),
+    pack_invalid("negative_melt_factor", melt_factor_mmh_c = -0.1)
+  ),
+  "pack_invalid_cases.csv"
+)
+
+# Coupled runs: a PACK case feeding a PDM case with the same time step. Both initial states are
+# the cases' own initial state files.
+snow_cases <- data.frame(
+  case = c("snow_hourly", "snow_quarter_hour", "snow_daily"),
+  pack_case = c("image_hourly", "no_depletion", "report_daily"),
+  pdm_case = c("default", "quarter_hour_delay", "daily")
+)
+for (i in seq_len(nrow(snow_cases))) {
+  pk <- pack_cases[[snow_cases$pack_case[i]]]
+  pd <- cases[[snow_cases$pdm_case[i]]]
+  stopifnot(pk$dt == pd$model@dt)
+  snow <- sim_pack(precipitation, temperature, pk$model, pk$dt * 60, pk$state)
+  pdm_state <- initial_state(pd$model, pd$fraction, surface = pd$surface,
+                             groundwater = pd$groundwater)
+  result <- run_pdm(pd$model, data.frame(rain = snow$effective_rain_mm, pet = snow_pet),
+                    pdm_state)
+  write_table(result$output, paste0(snow_cases$case[i], "_fluxes.csv"))
+  write_table(data.frame(value = pack_state(result$state)),
+              paste0(snow_cases$case[i], "_final_state.csv"))
+  write_table(data.frame(value = snow_state(attr(snow, "final_state"))),
+              paste0(snow_cases$case[i], "_pack_final_state.csv"))
+}
+write_table(snow_cases, "snow_cases.csv")
+
 cat("Golden files written to", normalizePath(out_dir), "\n")

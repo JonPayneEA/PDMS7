@@ -151,6 +151,194 @@ static double scaled_error(const double* got, const double* want, long n) {
   return err / scale;
 }
 
+static pdm_pack_params pack_params_from(const table* t, int row) {
+  pdm_pack_params p;
+  p.precipitation_factor = cell(t, row, "precipitation_factor");
+  p.lower_rate_h = cell(t, row, "lower_rate_h");
+  p.upper_rate_h = cell(t, row, "upper_rate_h");
+  p.retention_fraction = cell(t, row, "retention_fraction");
+  p.melt_factor_mmh_c = cell(t, row, "melt_factor_mmh_c");
+  p.adc_alpha = cell(t, row, "adc_alpha");
+  p.adc_depth_mm = cell(t, row, "adc_depth_mm");
+  p.melt_threshold_c = cell(t, row, "melt_threshold_c");
+  p.snow_threshold_c = cell(t, row, "snow_threshold_c");
+  p.drain_threshold_c = cell(t, row, "drain_threshold_c");
+  p.max_step_min = cell(t, row, "max_step_min");
+  p.areal_depletion = (int32_t)cell(t, row, "areal_depletion");
+  p.reserved = 0;
+  return p;
+}
+
+static int find_row(const table* t, const char* label) {
+  for (int i = 0; i < t->nrow; ++i) {
+    if (strcmp(t->labels[i], label) == 0) return i;
+  }
+  fprintf(stderr, "missing case %s\n", label);
+  exit(2);
+}
+
+/* Compares n_cols columns of got (column by column, n rows) with a CSV table. */
+static double compare_columns(const double* got, const table* want, int n_cols, long n,
+                              const char* (*name_of)(int32_t), int* names_ok) {
+  double worst = 0;
+  double* col = malloc(sizeof(double) * (size_t)n);
+  *names_ok = want->ncol == n_cols;
+  for (int j = 0; *names_ok && j < n_cols; ++j) {
+    *names_ok = strcmp(want->names[j], name_of(j)) == 0;
+    for (long i = 0; *names_ok && i < n; ++i) col[i] = want->values[i * want->ncol + j];
+    if (*names_ok) worst = fmax(worst, scaled_error(got + (size_t)j * (size_t)n, col, n));
+  }
+  free(col);
+  return worst;
+}
+
+/* PACK alone, PACK invalid parameter sets, and PACK feeding PDM. Returns the failure count. */
+static int check_snow(const char* dir, const table* pdm_cases) {
+  char path[1024], message[256];
+  table forcing, cases, invalid, snow;
+  int failures = 0;
+  snprintf(path, sizeof(path), "%s/pack_forcing.csv", dir);
+  if (!read_table(path, 0, &forcing)) return 1;
+  long n = forcing.nrow;
+  double* precip = malloc(sizeof(double) * (size_t)n);
+  double* temp = malloc(sizeof(double) * (size_t)n);
+  double* pet = malloc(sizeof(double) * (size_t)n);
+  double* effective = malloc(sizeof(double) * (size_t)n);
+  double* fluxes = malloc(sizeof(double) * (size_t)n * PDM_PACK_N_FLUX);
+  double* pdm_fluxes = malloc(sizeof(double) * (size_t)n * PDM_N_FLUX);
+  double* q = malloc(sizeof(double) * (size_t)n);
+  double* q_end = malloc(sizeof(double) * (size_t)n);
+  for (long i = 0; i < n; ++i) {
+    precip[i] = forcing.values[i * 3];
+    temp[i] = forcing.values[i * 3 + 1];
+    pet[i] = forcing.values[i * 3 + 2];
+  }
+
+  snprintf(path, sizeof(path), "%s/pack_cases.csv", dir);
+  if (!read_table(path, 1, &cases)) return 1;
+  for (int c = 0; c < cases.nrow; ++c) {
+    const char* name = cases.labels[c];
+    pdm_pack_params p = pack_params_from(&cases, c);
+    table init, final_state, want;
+    double state[PDM_PACK_STATE_LENGTH], worst = 0;
+    int names_ok = 0;
+    snprintf(path, sizeof(path), "%s/%s_pack_initial_state.csv", dir, name);
+    read_table(path, 0, &init);
+    snprintf(path, sizeof(path), "%s/%s_pack_final_state.csv", dir, name);
+    read_table(path, 0, &final_state);
+    snprintf(path, sizeof(path), "%s/%s_pack_fluxes.csv", dir, name);
+    read_table(path, 0, &want);
+    for (int i = 0; i < PDM_PACK_STATE_LENGTH; ++i) state[i] = init.values[i];
+    int32_t code = pdm_pack_run(&p, precip, temp, n, cell(&cases, c, "dt"), state, effective,
+                                fluxes, message, (int64_t)sizeof(message));
+    int ok = code == PDM_OK;
+    if (ok) worst = compare_columns(fluxes, &want, PDM_PACK_N_FLUX, n, pdm_pack_flux_name,
+                                    &names_ok);
+    ok = ok && names_ok;
+    if (ok) worst = fmax(worst, scaled_error(state, final_state.values, PDM_PACK_STATE_LENGTH));
+    ok = ok && worst <= TOLERANCE;
+    printf("%s pack %-15s largest scaled error %.3g%s%s\n", ok ? "PASS" : "FAIL", name, worst,
+           code == PDM_OK ? "" : ": ", code == PDM_OK ? "" : message);
+    failures += !ok;
+    free_table(&init);
+    free_table(&final_state);
+    free_table(&want);
+  }
+
+  snprintf(path, sizeof(path), "%s/pack_invalid_cases.csv", dir);
+  if (!read_table(path, 1, &invalid)) return 1;
+  for (int c = 0; c < invalid.nrow; ++c) {
+    pdm_pack_params p = pack_params_from(&invalid, c);
+    double state[PDM_PACK_STATE_LENGTH] = {0, 0, 0, 0, 0}, r1[1] = {1}, t1[1] = {0}, e1[1];
+    int32_t code = pdm_pack_run(&p, r1, t1, 1, 1.0, state, e1, NULL, message,
+                                (int64_t)sizeof(message));
+    int ok = code == (int32_t)cell(&invalid, c, "expected_code") && message[0] != '\0';
+    printf("%s pack %-20s code %d: %s\n", ok ? "PASS" : "FAIL", invalid.labels[c], code,
+           message);
+    failures += !ok;
+  }
+
+  snprintf(path, sizeof(path), "%s/snow_cases.csv", dir);
+  if (!read_table(path, 1, &snow)) return 1;
+  for (int c = 0; c < snow.nrow; ++c) {
+    const char* name = snow.labels[c];
+    char pack_case[64], pdm_case[64];
+    table pack_init, pdm_init, want, want_pdm_state, want_pack_state;
+    /* The case table has text columns, so read the case names from the raw file. */
+    snprintf(path, sizeof(path), "%s/snow_cases.csv", dir);
+    {
+      FILE* f = fopen(path, "r");
+      char line[512];
+      int row = -1;
+      while (fgets(line, sizeof(line), f) != NULL) {
+        if (row == c) {
+          line[strcspn(line, "\r\n")] = '\0';
+          strtok(line, ",");
+          strncpy(pack_case, strtok(NULL, ","), 63);
+          pack_case[63] = '\0';
+          strncpy(pdm_case, strtok(NULL, ","), 63);
+          pdm_case[63] = '\0';
+          break;
+        }
+        row++;
+      }
+      fclose(f);
+    }
+    pdm_pack_params pk = pack_params_from(&cases, find_row(&cases, pack_case));
+    pdm_params pd = params_from(pdm_cases, find_row(pdm_cases, pdm_case));
+    snprintf(path, sizeof(path), "%s/%s_pack_initial_state.csv", dir, pack_case);
+    read_table(path, 0, &pack_init);
+    snprintf(path, sizeof(path), "%s/%s_initial_state.csv", dir, pdm_case);
+    read_table(path, 0, &pdm_init);
+    snprintf(path, sizeof(path), "%s/%s_fluxes.csv", dir, name);
+    read_table(path, 0, &want);
+    snprintf(path, sizeof(path), "%s/%s_final_state.csv", dir, name);
+    read_table(path, 0, &want_pdm_state);
+    snprintf(path, sizeof(path), "%s/%s_pack_final_state.csv", dir, name);
+    read_table(path, 0, &want_pack_state);
+    double pack_state[PDM_PACK_STATE_LENGTH], worst = 0;
+    long len = (long)pdm_state_length(&pd);
+    double* pdm_state = malloc(sizeof(double) * (size_t)len);
+    int names_ok = 0;
+    for (int i = 0; i < PDM_PACK_STATE_LENGTH; ++i) pack_state[i] = pack_init.values[i];
+    for (long i = 0; i < len; ++i) pdm_state[i] = pdm_init.values[i];
+    int32_t code = pdm_snow_run(&pd, &pk, precip, temp, pet, n, pdm_state, len, pack_state, q,
+                                q_end, pdm_fluxes, NULL, message, (int64_t)sizeof(message));
+    int ok = code == PDM_OK;
+    if (ok) worst = compare_columns(pdm_fluxes, &want, PDM_N_FLUX, n, pdm_flux_name, &names_ok);
+    ok = ok && names_ok;
+    if (ok) {
+      worst = fmax(worst, scaled_error(pdm_state, want_pdm_state.values, len));
+      worst = fmax(worst, scaled_error(pack_state, want_pack_state.values,
+                                       PDM_PACK_STATE_LENGTH));
+    }
+    ok = ok && worst <= TOLERANCE;
+    printf("%s snow %-15s largest scaled error %.3g%s%s\n", ok ? "PASS" : "FAIL", name, worst,
+           code == PDM_OK ? "" : ": ", code == PDM_OK ? "" : message);
+    failures += !ok;
+    free(pdm_state);
+    free_table(&pack_init);
+    free_table(&pdm_init);
+    free_table(&want);
+    free_table(&want_pdm_state);
+    free_table(&want_pack_state);
+  }
+
+  free(precip);
+  free(temp);
+  free(pet);
+  free(effective);
+  free(fluxes);
+  free(pdm_fluxes);
+  free(q);
+  free(q_end);
+  free_table(&forcing);
+  free_table(&cases);
+  free_table(&invalid);
+  free_table(&snow);
+  return failures;
+}
+
 int main(int argc, char** argv) {
   const char* dir = argc > 1 ? argv[1] : "inst/golden";
   char path[1024];
@@ -242,6 +430,8 @@ int main(int argc, char** argv) {
     printf("%s %-20s code %d: %s\n", ok ? "PASS" : "FAIL", invalid.labels[c], code, message);
     failures += !ok;
   }
+
+  failures += check_snow(dir, &cases);
 
   free(rain);
   free(pet);

@@ -4,7 +4,7 @@
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-05
-# Modified:     2026-10-05 - CX: Add snow simulation and restart
+# Modified:     2026-11-01 - Compiled snowpack by default; R loop as reference
 # Tier:         3
 # Inputs:       Interval precipitation mm, temperature Celsius and PET mm
 # Outputs:      data.table fluxes and restart attributes
@@ -32,13 +32,21 @@ sim_pack <- function(precipitation_mm, temperature_c, params = pack_presets(),
   )
   model <- if (S7::S7_inherits(params, FlodePackModel)) params else pack_from_config(params)
   if (is.null(state)) state <- FlodePackState()
-  rows <- vector("list", length(precipitation_mm))
-  for (i in seq_along(precipitation_mm)) {
-    result <- pack_step(model, state, precipitation_mm[i], temperature_c[i], timestep_min / 60)
-    state <- result$state
-    rows[[i]] <- as.list(result$flux)
+  if (!identical(getOption("pdmS7.engine", "auto"), "r")) {
+    # Compiled snowpack; results agree with the R loop below (see R/engine.R).
+    res <- .pack_engine_run(model, precipitation_mm, temperature_c, state, timestep_min / 60)
+    output <- res$output
+    state <- res$state
+  } else {
+    rows <- vector("list", length(precipitation_mm))
+    for (i in seq_along(precipitation_mm)) {
+      result <- pack_step(model, state, precipitation_mm[i], temperature_c[i],
+                          timestep_min / 60)
+      state <- result$state
+      rows[[i]] <- as.list(result$flux)
+    }
+    output <- data.table::rbindlist(rows)
   }
-  output <- data.table::rbindlist(rows)
   data.table::setattr(output, "final_state", state)
   data.table::setattr(output, "water_balance", sum(output$snow_balance_error_mm))
   output

@@ -3,3 +3,7 @@
 pdm_engine_run <- function(rain, pet, par, state, full) {
   .Call(`_pdmS7_pdm_engine_run`, rain, pet, par, state, full)
 }
+
+pack_engine_run <- function(precipitation, temperature, par, state, dt) {
+  .Call(`_pdmS7_pack_engine_run`, precipitation, temperature, par, state, dt)
+}

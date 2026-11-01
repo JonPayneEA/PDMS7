@@ -28,7 +28,8 @@
    - recharge: standard, split or demand;
    - surface and groundwater routes, chosen independently: two-store cascade, power-law store
      (linear, quadratic, cubic or any positive exponent) or exponential store.
-   Not covered: PACK snow. Units: depths in mm, time in hours, flow in m3/s.
+   - the PACK snowpack (Institute of Hydrology, NORA report 15304), alone or feeding PDM.
+   Units: depths in mm, time in hours, temperature in degrees Celsius, flow in m3/s.
 
    Golden test files in inst/golden/ hold inputs and expected outputs from the R reference
    implementation. Every binding should reproduce them within 1e-12 of each column's magnitude.
@@ -161,6 +162,66 @@ PDM_CORE_API int32_t pdm_run(const pdm_params* params, const double* rain, const
                              int64_t n, double* state, int64_t state_length, double* q_m3s,
                              double* q_end_m3s, double* fluxes, char* message,
                              int64_t message_length);
+
+/* ---- PACK snowpack --------------------------------------------------------------------------
+
+   Dry and wet snow stores, temperature thresholds for snowfall, melt and drainage, two-rate
+   drainage of the wet store, and areal depletion of snow cover with memory of fresh snow.
+   Each interval is split into equal substeps no longer than max_step_min and short enough for
+   the drainage rates. */
+
+/* Number of doubles in a PACK state array, and of PACK flux columns. */
+#define PDM_PACK_STATE_LENGTH 5
+#define PDM_PACK_N_FLUX 11
+
+/* PACK parameters. All fields must be finite. Layout: 11 doubles, then two 32-bit integers;
+   96 bytes with no padding. */
+typedef struct pdm_pack_params {
+  double precipitation_factor; /* multiplier on precipitation; >= 0 */
+  double lower_rate_h;         /* wet store drainage rate, per hour; >= 0 */
+  double upper_rate_h;         /* extra drainage above the retention threshold, per hour; >= 0 */
+  double retention_fraction;   /* liquid water held in the pack, fraction of total; [0, 1) */
+  double melt_factor_mmh_c;    /* melt per degree above melt_threshold_c, mm/h/C; >= 0 */
+  double adc_alpha;            /* areal depletion: fresh snow fraction; (0, 1] */
+  double adc_depth_mm;         /* areal depletion: depth for full cover, mm; > 0 */
+  double melt_threshold_c;     /* melt occurs above this temperature, C */
+  double snow_threshold_c;     /* precipitation falls as snow below this temperature, C */
+  double drain_threshold_c;    /* the wet store drains at or above this temperature, C */
+  double max_step_min;         /* longest substep, minutes; > 0 */
+  int32_t areal_depletion;     /* 1: cover depletes with depth; 0: full cover whenever snow lies */
+  int32_t reserved;            /* set to 0 */
+} pdm_pack_params;
+
+/* Name of PACK flux column j (0 to PDM_PACK_N_FLUX - 1), or a null pointer if j is out of
+   range. The returned string is static; do not free it. */
+PDM_CORE_API const char* pdm_pack_flux_name(int32_t j);
+
+/* Runs PACK for n intervals of dt hours.
+   precipitation: n depths in mm per interval, finite and >= 0.
+   temperature:   n air temperatures in degrees C, finite.
+   state:         PDM_PACK_STATE_LENGTH doubles, updated in place on success:
+                  [0] dry snow, mm  [1] wet snow, mm  [2] cover anchor depth, mm
+                  [3] cover anchor fraction, [0, 1]  [4] fresh snow since the anchor, mm.
+                  All zero is a snow-free start.
+   effective_rain: n values written: rain and melt leaving the pack, mm per interval. This is
+                  the rainfall input for PDM.
+   fluxes:        null, or n * PDM_PACK_N_FLUX values written column by column.
+   Returns PDM_OK, PDM_ERR_ARGUMENT or PDM_ERR_NUMERICAL. */
+PDM_CORE_API int32_t pdm_pack_run(const pdm_pack_params* params, const double* precipitation,
+                                  const double* temperature, int64_t n, double dt,
+                                  double* state, double* effective_rain, double* fluxes,
+                                  char* message, int64_t message_length);
+
+/* Runs PACK and feeds its effective rain into PDM, with the PDM time step pdm->dt for both.
+   Arguments are as for pdm_pack_run() and pdm_run(). Neither state array is changed unless
+   both models succeed. */
+PDM_CORE_API int32_t pdm_snow_run(const pdm_params* pdm, const pdm_pack_params* pack,
+                                  const double* precipitation, const double* temperature,
+                                  const double* pet, int64_t n, double* pdm_state,
+                                  int64_t pdm_state_length, double* pack_state,
+                                  double* q_m3s, double* q_end_m3s, double* pdm_fluxes,
+                                  double* pack_fluxes, char* message,
+                                  int64_t message_length);
 
 #ifdef __cplusplus
 }
