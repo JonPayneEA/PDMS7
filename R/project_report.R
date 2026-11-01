@@ -129,10 +129,10 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
     s <- r$summary
     card <- r$scorecard
     files <- data.frame(
-      series = c("forcing", "observed"),
-      stored = c(r$data$forcing$stored, r$data$observed$stored),
-      copied = c(r$data$forcing$copied, r$data$observed$copied),
-      md5 = c(r$data$forcing$md5, r$data$observed$md5)
+      series = names(r$data),
+      stored = vapply(r$data, function(d) d$stored, character(1)),
+      copied = vapply(r$data, function(d) isTRUE(d$copied), logical(1)),
+      md5 = vapply(r$data, function(d) d$md5, character(1)), row.names = NULL
     )
     windows <- data.frame(
       window = c("warm-up", "calibration", "validation"),
@@ -156,6 +156,12 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
                                  ". The soil store starts at ", card$soil_fraction,
                                  " of capacity."))
     ))
+    if (length(card$thresholds)) {
+      out <- c(out, list(.blk_table(.threshold_definitions(card), paste0(
+        "Thresholds. Events matched within ", card$events$tolerance_h, " h; exceedances less ",
+        "than ", card$events$gap_h, " h apart are one event."
+      ))))
+    }
     if (nzchar(r$reasoning %||% "")) out <- c(out, list(.blk_p(r$reasoning)))
   }
   latest <- .latest(entries, "data_registered")
@@ -248,16 +254,21 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
   series <- data.table::fread(file.path(path, candidate$series$file))
   registration <- .find_entry(entries, candidate$registration)
   card <- registration$scorecard
-  scores <- data.frame(score = names(candidate$scores),
-                       calibration = vapply(candidate$scores, .num_or_na, numeric(1)))
+  core <- !grepl(":", names(candidate$scores), fixed = TRUE)
+  scores <- data.frame(score = names(candidate$scores)[core],
+                       calibration = vapply(candidate$scores[core], .num_or_na, numeric(1)))
   if (validated) {
-    scores$validation <- vapply(validation$validation_scores, .num_or_na, numeric(1))
+    scores$validation <- vapply(validation$validation_scores[core], .num_or_na, numeric(1))
     out <- c(out, list(.blk_p(paste0("Validated in entry ", validation$id, " (",
                                      validation$author$name, "): ", validation$reasoning))))
   } else {
     out <- c(out, list(.blk_alert("The candidate has not been validated.", FALSE)))
   }
   out <- c(out, list(.blk_table(scores, "Scorecard")))
+  if (length(card$thresholds)) {
+    out <- c(out, .rpt_thresholds(card, candidate$scores,
+                                  if (validated) validation$validation_scores))
+  }
   for (w in c("calibration", if (validated) "validation")) {
     rows <- .window_rows(card[[w]])
     obs <- series$observed_m3s[rows]
@@ -274,6 +285,50 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
     ))
   }
   out
+}
+
+.threshold_definitions <- function(card) {
+  data.frame(
+    threshold = vapply(card$thresholds, function(t) t$name, character(1)),
+    given = vapply(card$thresholds, function(t) {
+      paste(format(t$value), if (t$unit == "level") "m" else "m3/s")
+    }, character(1)),
+    flow_m3s = vapply(card$thresholds, function(t) t$flow_m3s, numeric(1))
+  )
+}
+
+# One row per threshold and window, from flattened "metric:name" scores.
+.threshold_table <- function(card, scores, window) {
+  metrics <- c("observed_events", "hits", "misses", "false_alarms", "pod", "far", "csi",
+               "bias", "crossing_error_h", "peak_error", "duration_error_h", "csi_step",
+               "ets_step")
+  rows <- lapply(card$thresholds, function(t) {
+    values <- lapply(metrics, function(m) .num_or_na(scores[[paste0(m, ":", t$name)]]))
+    data.frame(threshold = t$name, window = window, stats::setNames(values, metrics),
+               check.names = FALSE)
+  })
+  do.call(rbind, rows)
+}
+
+.rpt_thresholds <- function(card, calibration, validation) {
+  table <- rbind(.threshold_table(card, calibration, "calibration"),
+                 if (!is.null(validation)) .threshold_table(card, validation, "validation"))
+  table <- table[order(match(table$threshold, table$threshold)), ]
+  list(
+    .blk_h("Threshold crossings", 3L),
+    .blk_p(paste(
+      "Event scores count each episode above a threshold once, and match a simulated",
+      "crossing to an observed one within the tolerance. Crossing and peak timing errors are",
+      "simulated minus observed, so positive means late. Step scores (csi_step, ets_step)",
+      "count every time step and penalise small timing errors twice."
+    )),
+    .blk_table(table, "Threshold scores"),
+    .blk_fig("performance", function() .plot_performance(table),
+             paste("Performance diagram: probability of detection against success ratio",
+                   "(1 - false alarm ratio). Curves are critical success index; dashed lines",
+                   "are frequency bias. Best is top right."),
+             width = 5.5, height = 5.5)
+  )
 }
 
 .rpt_sensitivity <- function(path, entries, candidate, range, steps) {
@@ -403,6 +458,11 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
   y <- vapply(nodes, function(e) .num_or_na(e$scores[[headline]]), numeric(1))
   x <- seq_along(nodes)
   graphics::par(mar = c(4, 4.2, 0.6, 0.6))
+  if (!any(is.finite(y))) {
+    graphics::plot.new()
+    graphics::text(0.5, 0.5, paste("No run has a defined", headline))
+    return(invisible())
+  }
   span <- range(y, na.rm = TRUE)
   pad <- max(diff(span), 1e-6)
   graphics::plot(x, y, type = "n", xlab = "Run, in the order logged", ylab = headline,
@@ -466,6 +526,38 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
 
 # One shared vertical scale, so a parameter that barely moves the score looks flat. Points
 # below the floor (the 20th percentile of all values) are drawn at the floor as triangles.
+# Roebber (2009) performance diagram.
+.plot_performance <- function(table) {
+  graphics::par(mar = c(4, 4, 0.6, 0.6))
+  graphics::plot(NA, xlim = c(0, 1), ylim = c(0, 1), xaxs = "i", yaxs = "i",
+                 xlab = "Success ratio (1 - FAR)", ylab = "Probability of detection")
+  grid <- seq(0.01, 1, length.out = 200)
+  for (csi in seq(0.1, 0.9, 0.1)) {
+    pod <- 1 / (1 / csi + 1 - 1 / grid)
+    pod[pod <= 0 | pod > 1] <- NA
+    graphics::lines(grid, pod, col = .pal[["light"]])
+    k <- which(!is.na(pod))[1L]
+    if (!is.na(k)) graphics::text(grid[k], pod[k], csi, cex = 0.6, pos = 4, col = .pal[["light"]])
+  }
+  for (b in c(0.5, 0.8, 1, 1.25, 2)) {
+    graphics::lines(c(0, 1), c(0, b), lty = 2, col = .pal[["light"]])
+    at <- if (b <= 1) c(1, b) else c(1 / b, 1)
+    graphics::text(at[1], at[2], paste("bias", b), cex = 0.6, col = .pal[["grey"]],
+                   adj = c(1.1, if (b <= 1) -0.3 else 1.3))
+  }
+  thresholds <- unique(table$threshold)
+  cols <- rep(c(.pal[["blue"]], .pal[["orange"]], .pal[["green"]], .pal[["purple"]],
+                .pal[["red"]]), length.out = length(thresholds))
+  for (i in seq_along(thresholds)) {
+    rows <- table[table$threshold == thresholds[i], ]
+    graphics::points(1 - rows$far, rows$pod, col = cols[i], cex = 1.6, lwd = 2,
+                     pch = ifelse(rows$window == "calibration", 16, 2))
+  }
+  graphics::legend("bottomright", c(thresholds, "calibration", "validation"),
+                   col = c(cols, .pal[["grey"]], .pal[["grey"]]),
+                   pch = c(rep(15, length(thresholds)), 16, 2), bty = "n", cex = 0.8)
+}
+
 .plot_sensitivity <- function(curves, factors, headline) {
   n <- length(curves)
   values <- unlist(curves)

@@ -98,7 +98,12 @@
                   validation = .window_input(input$val_start, input$val_end),
                   headline = input$headline, log_offset = input$log_offset,
                   soil_fraction = input$soil_fraction, copy = input$copy,
-                  reasoning = input$register_reasoning)
+                  reasoning = input$register_reasoning,
+                  thresholds = .parse_thresholds(input$thresholds),
+                  rating = if (nzchar(trimws(input$rating_path %||% ""))) input$rating_path,
+                  event_tolerance_h = input$event_tolerance %||% 6,
+                  event_gap_h = input$event_gap %||% 24,
+                  event_min_duration_h = input$event_min %||% 0)
   }, "Data registered"))
   shiny::observeEvent(input$structure, act(function() {
     shiny::req(rv$project)
@@ -127,6 +132,13 @@
   shiny::observe({
     paths <- .editable_paths(parent()$configuration)
     shiny::updateSelectizeInput(session, "calib_params", choices = paths, selected = character(0))
+  })
+  shiny::observe({
+    reg <- state$registration()
+    names <- if (is.null(reg)) character(0) else
+      vapply(reg$scorecard$thresholds, function(t) t$name, character(1))
+    shiny::updateSelectizeInput(session, "calib_thresholds", choices = names,
+                                selected = character(0))
   })
   output$params <- shiny::renderUI({
     config <- parent()$configuration
@@ -185,10 +197,15 @@
     config <- parent()$configuration
     value <- vapply(input$calib_params, function(p) .path_get(config, p), numeric(1))
     .check(all(value != 0), "Bounds are relative to the value; a zero parameter cannot be used")
+    chosen <- input$calib_thresholds
     log_auto_calibration(rv$project, input$parent, lower = value * (1 - input$calib_range),
                          upper = value * (1 + input$calib_range), starts = input$calib_starts,
                          seed = input$calib_seed, control = list(maxit = input$calib_maxit),
-                         reasoning = input$calib_reasoning)
+                         reasoning = input$calib_reasoning,
+                         method = input$calib_method %||% "lbfgsb",
+                         threshold_objective = if (length(chosen)) chosen,
+                         threshold_weight = input$calib_weight %||% 1,
+                         threshold_score = input$calib_score %||% "csi")
   }, "Calibration logged"))
 }
 

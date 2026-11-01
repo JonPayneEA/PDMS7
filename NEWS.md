@@ -1,5 +1,20 @@
 # pdmS7 (development version)
 
+- New threshold verification. `pdm_threshold_scores()` scores one or more thresholds at
+  once: events (episodes above a threshold, merged across short gaps and matched within a
+  timing tolerance) give probability of detection, false alarm ratio, critical success index
+  and frequency bias, plus crossing time, peak timing, peak, duration and volume errors for
+  each hit; a step-by-step count adds probability of false detection, equitable threat
+  score and Peirce skill score.
+- `register_data()` gains `thresholds` (flows, or levels converted through a registered
+  `rating` table and never extrapolated) and event settings. Every logged run is scored at
+  every threshold, and a threshold score such as `csi:Flood Warning` may be the headline.
+  The report adds a threshold table and a performance diagram.
+- `calibrate_pdm()` gains `method = "nelder_mead"`, a derivative-free optimiser kept
+  within the bounds, and an optional threshold term in the objective (`thresholds`,
+  `threshold_weight`, `threshold_score`), or `objective = "threshold"` alone.
+  `log_auto_calibration()` passes registered thresholds by name and records the method,
+  objective and number of model runs. The default method and objective are unchanged.
 - New article, "Logging a manual calibration": a complete project from start to sign-off,
   integrity checks and tampering, the report, and tracing operational runs with the run
   log.

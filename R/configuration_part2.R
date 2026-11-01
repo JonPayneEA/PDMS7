@@ -24,7 +24,8 @@
 #' @param upper Finite named upper calibration bounds with the same names/order as lower.
 #' @param warmup Number of initial forcing steps excluded from calibration scoring, but still
 #' simulated.
-#' @param objective Calibration objective: rmse, nse (minimizes 1-NSE), or log_rmse.
+#' @param objective Calibration objective: rmse, nse (minimizes 1-NSE), log_rmse, or
+#' threshold (the threshold term alone; needs thresholds).
 #' @param flow Series to score: q_m3s (interval mean) or q_end_m3s (endpoint flow).
 #' @param log_offset Positive offset added before logarithms in log-RMSE, cubic metres per
 #' second.
@@ -36,6 +37,20 @@
 #' lower and upper. Every start is optimised and the best objective is returned.
 #' @param seed Optional finite number that seeds the random starting points. The caller's
 #' random number state is restored on exit. It has no effect when starts is 1.
+#' @param method Optimiser: `lbfgsb` (default), gradient-based and fast for smooth objectives,
+#' or `nelder_mead`, derivative-free, needed for threshold objectives because event counts
+#' change in steps. Nelder-Mead works on a logistic transform of the unit box, so every
+#' trial stays within lower and upper; it usually needs several times more model runs.
+#' @param thresholds Optional named vector of threshold flows, m3/s. The objective then
+#' becomes the continuous objective plus `threshold_weight` times the mean over thresholds
+#' of the threshold loss (1 - score, or the score itself for false alarm ratios), from
+#' [pdm_threshold_scores()] over the scored rows. An undefined score counts as the worst.
+#' Requires `method = "nelder_mead"`, and at least one observed event at each threshold.
+#' @param threshold_weight Nonnegative weight of the threshold term.
+#' @param threshold_score Threshold score: `csi` (default), `pod`, `far`, `csi_step`,
+#' `pod_step`, `far_step`, `ets_step` or `pss_step`.
+#' @param event_settings List of `tolerance_h`, `gap_h` and `min_duration_h` for event
+#' matching; see [pdm_threshold_scores()].
 #'
 #' @return A list of config, model, parameters, objective, convergence, message, optim
 #' diagnostics, and start_results. The first six describe the best start; optim is its
@@ -58,13 +73,19 @@
 #' @references Moore (2007), doi:10.5194/hess-11-483-2007.
 #' @export
 calibrate_pdm <- function(
-  config, forcing, observed, lower, upper, warmup = 0, objective = c("rmse", "nse", "log_rmse"),
+  config, forcing, observed, lower, upper, warmup = 0,
+  objective = c("rmse", "nse", "log_rmse", "threshold"),
   flow = c("q_m3s", "q_end_m3s"),
   log_offset = 0.01, control = list(maxit = 200),
-  soil_fraction = 0.5, starts = 1L, seed = NULL
+  soil_fraction = 0.5, starts = 1L, seed = NULL, method = c("lbfgsb", "nelder_mead"),
+  thresholds = NULL, threshold_weight = 1, threshold_score = "csi",
+  event_settings = list(tolerance_h = 6, gap_h = 24, min_duration_h = 0)
 ) {
   objective <- match.arg(objective)
   flow <- match.arg(flow)
+  method <- match.arg(method)
+  .check_threshold_objective(objective, method, thresholds, threshold_weight, threshold_score,
+                             event_settings, observed, warmup)
   .check(
     is.numeric(observed) &&
       length(observed) ==
@@ -152,9 +173,11 @@ calibrate_pdm <- function(
     tryCatch(
       {
         mod <- pdm_from_config(build(par))
-        sim <- .quietly(.run_flow(mod, forcing, initial_state(mod, soil_fraction), flow))[keep]
+        all_sim <- .quietly(.run_flow(mod, forcing, initial_state(mod, soil_fraction), flow))
+        sim <- all_sim[keep]
         obs <- observed[keep]
         val <- switch(objective,
+          threshold = 0,
           rmse = sqrt(mean((sim - obs)^2)),
           nse = sum((sim - obs)^2) / sum((obs - mean(obs))^2),
           log_rmse = if (any(sim + log_offset <= 0)) {
@@ -168,6 +191,13 @@ calibrate_pdm <- function(
             )
           }
         )
+        if (!is.null(thresholds)) {
+          scored <- seq_along(observed) > warmup
+          val <- val + threshold_weight * .threshold_loss(
+            all_sim[scored], observed[scored], thresholds, threshold_score, event_settings,
+            mod@dt
+          )
+        }
         if (is.finite(val)) {
           val
         } else {
@@ -202,12 +232,16 @@ calibrate_pdm <- function(
     z_start,
     function(z) {
       counter$calls <- 0L
-      fit <- stats::optim(
-        z, loss,
-        method = "L-BFGS-B", lower = rep(0, length(lower)),
-        upper = rep(1, length(upper)),
-        control = control
-      )
+      fit <- if (method == "lbfgsb") {
+        stats::optim(
+          z, loss,
+          method = "L-BFGS-B", lower = rep(0, length(lower)),
+          upper = rep(1, length(upper)),
+          control = control
+        )
+      } else {
+        .nelder_mead_box(z, loss, control)
+      }
       list(fit = fit, calls = counter$calls)
     }
   )
@@ -236,9 +270,70 @@ calibrate_pdm <- function(
     config = best, model = pdm_from_config(best),
     parameters = parameters,
     objective = fit$value,
-    objective_name = if (objective == "nse") "1-NSE" else objective,
+    objective_name = .objective_name(objective, thresholds, threshold_weight, threshold_score),
+    method = method,
 
     convergence = fit$convergence, message = fit$message, optim = fit,
     start_results = start_results
   )
+}
+
+# Nelder-Mead on the logistic transform of the unit box: every trial lies inside the bounds.
+.nelder_mead_box <- function(z, loss, control) {
+  u0 <- stats::qlogis(pmin(pmax(z, 1e-6), 1 - 1e-6))
+  fit <- withCallingHandlers(
+    stats::optim(u0, function(u) loss(stats::plogis(u)), method = "Nelder-Mead",
+                 control = control),
+    warning = function(w) {
+      if (grepl("one-dimensional", conditionMessage(w))) invokeRestart("muffleWarning")
+    }
+  )
+  fit$par <- stats::plogis(fit$par)
+  fit
+}
+
+.threshold_loss <- function(sim, obs, thresholds, score, events, dt) {
+  table <- pdm_threshold_scores(sim, obs, thresholds, dt, events$tolerance_h, events$gap_h,
+                                events$min_duration_h)
+  values <- table[[score]]
+  lower_better <- .threshold_headlines[[score]] == "lower"
+  losses <- if (lower_better) values else 1 - values
+  losses[!is.finite(losses)] <- 1
+  mean(losses)
+}
+
+.check_threshold_objective <- function(objective, method, thresholds, weight, score, events,
+                                       observed, warmup) {
+  if (is.null(thresholds)) {
+    .check(objective != "threshold", "objective = \"threshold\" needs thresholds")
+    return(invisible(TRUE))
+  }
+  .check(method == "nelder_mead", paste(
+    "Threshold scores change in steps, which a gradient optimiser cannot follow;",
+    "use method = \"nelder_mead\""
+  ))
+  .check(is.numeric(thresholds) && length(thresholds) > 0 && !is.null(names(thresholds)) &&
+           all(is.finite(thresholds) & thresholds > 0), "thresholds must be named positive flows")
+  .check(.scalar(weight, 0), "threshold_weight must be nonnegative")
+  .check(length(score) == 1L && score %in% names(.threshold_headlines),
+         paste("threshold_score must be one of", paste(names(.threshold_headlines),
+                                                       collapse = ", ")))
+  .check(is.list(events) && all(c("tolerance_h", "gap_h", "min_duration_h") %in% names(events)),
+         "event_settings needs tolerance_h, gap_h and min_duration_h")
+  scored <- observed[seq_along(observed) > warmup]
+  for (name in names(thresholds)) {
+    .check(any(scored > thresholds[[name]], na.rm = TRUE), paste0(
+      "Observed flow never exceeds threshold ", name, " in the scored period, so its score ",
+      "cannot guide calibration"
+    ))
+  }
+  invisible(TRUE)
+}
+
+.objective_name <- function(objective, thresholds, weight, score) {
+  base <- if (objective == "nse") "1-NSE" else objective
+  if (is.null(thresholds)) return(base)
+  term <- paste0(weight, " x mean threshold loss (", score, " at ",
+                 paste(names(thresholds), collapse = ", "), ")")
+  if (objective == "threshold") term else paste(base, "+", term)
 }

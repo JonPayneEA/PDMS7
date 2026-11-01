@@ -181,7 +181,7 @@ verify_project <- function(project, rerun = FALSE) {
 .verify_data <- function(path, entries) {
   out <- NULL
   for (e in Filter(function(x) x$type == "data_registered", entries)) {
-    for (name in c("forcing", "observed")) {
+    for (name in names(e$data)) {
       item <- e$data[[name]]
       file <- .stored_file(path, item)
       ok <- file.exists(file) && identical(.md5_file(file), item$md5)

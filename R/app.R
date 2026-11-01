@@ -84,8 +84,26 @@ calibration_app <- function(project = NULL) {
   if (all(grepl("^[0-9]+$", values))) as.numeric(values) else values
 }
 
+# Thresholds typed as lines of "name, value, unit".
+.parse_thresholds <- function(text) {
+  lines <- trimws(strsplit(text %||% "", "\n", fixed = TRUE)[[1L]])
+  lines <- lines[nzchar(lines)]
+  if (!length(lines)) return(NULL)
+  parts <- lapply(strsplit(lines, ",", fixed = TRUE), trimws)
+  .check(all(lengths(parts) == 3L), "Write each threshold as: name, value, flow or level")
+  data.frame(name = vapply(parts, `[`, "", 1L), value = as.numeric(vapply(parts, `[`, "", 2L)),
+             unit = vapply(parts, `[`, "", 3L))
+}
+
+# The scores worth showing in a table: the scorecard and the main threshold scores.
+.shown_scores <- function(names) {
+  main <- c("pod", "far", "csi", "crossing_error_h")
+  keep <- !grepl(":", names, fixed = TRUE) | sub(":.*$", "", names) %in% main
+  names[keep]
+}
+
 .score_table <- function(parent, trial) {
-  names <- names(trial)
+  names <- .shown_scores(names(trial))
   p <- vapply(names, function(n) .num_or_na(parent[[n]]), numeric(1))
   t <- vapply(names, function(n) .num_or_na(trial[[n]]), numeric(1))
   data.frame(score = names, parent = signif(p, 5), trial = signif(t, 5),
@@ -164,7 +182,18 @@ calibration_app <- function(project = NULL) {
       shiny::textInput("val_start", "Validation from"),
       shiny::textInput("val_end", "to")
     ),
-    shiny::selectInput("headline", "Headline score", names(.headline_scores())),
+    .text_area("thresholds", "Thresholds, one per line: name, value, flow or level",
+               "Flood Alert, 12.5, flow\nFlood Warning, 1.85, level"),
+    shiny::textInput("rating_path", "Rating CSV (stage_m, q_m3s), for level thresholds",
+                     width = "100%"),
+    shiny::splitLayout(
+      shiny::numericInput("event_tolerance", "Timing tolerance (h)", 6, 0),
+      shiny::numericInput("event_gap", "Merge gap (h)", 24, 0),
+      shiny::numericInput("event_min", "Minimum duration (h)", 0, 0)
+    ),
+    shiny::selectizeInput("headline", "Headline score", names(.headline_scores()),
+                          options = list(create = TRUE)),
+    shiny::helpText("Or type a threshold score such as csi:Flood Warning."),
     shiny::splitLayout(
       shiny::numericInput("log_offset", "Log offset (m3/s)", 0.01),
       shiny::numericInput("soil_fraction", "Initial soil fraction", 0.5)
@@ -189,6 +218,15 @@ calibration_app <- function(project = NULL) {
   calibration <- shiny::tagList(
     shiny::h4("Automatic calibration"),
     shiny::selectizeInput("calib_params", "Parameters", character(0), multiple = TRUE),
+    shiny::radioButtons("calib_method", "Optimiser",
+                        c("Gradient (L-BFGS-B)" = "lbfgsb", "Nelder-Mead" = "nelder_mead"),
+                        inline = TRUE),
+    shiny::selectizeInput("calib_thresholds", "Threshold objective (Nelder-Mead only)",
+                          character(0), multiple = TRUE),
+    shiny::splitLayout(
+      shiny::numericInput("calib_weight", "Threshold weight", 1, 0),
+      shiny::selectInput("calib_score", "Threshold score", names(.threshold_headlines), "csi")
+    ),
     shiny::sliderInput("calib_range", "Bounds: value times 1 +/-", 0.05, 0.9, 0.5, 0.05),
     shiny::splitLayout(
       shiny::numericInput("calib_starts", "Starts", 3, 1),

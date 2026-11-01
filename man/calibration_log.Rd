@@ -37,7 +37,12 @@ register_data(
   log_offset = 0.01,
   soil_fraction = 0.5,
   copy = TRUE,
-  reasoning = ""
+  reasoning = "",
+  thresholds = NULL,
+  rating = NULL,
+  event_tolerance_h = 6,
+  event_gap_h = 24,
+  event_min_duration_h = 0
 )
 
 select_structure(project, configuration, reasoning)
@@ -51,11 +56,15 @@ log_auto_calibration(
   parent,
   lower,
   upper,
-  objective = c("nse", "rmse", "log_rmse"),
+  objective = c("nse", "rmse", "log_rmse", "threshold"),
   starts = 1L,
   seed = NULL,
   control = list(maxit = 200),
-  reasoning
+  reasoning,
+  method = c("lbfgsb", "nelder_mead"),
+  threshold_objective = NULL,
+  threshold_weight = 1,
+  threshold_score = "csi"
 )
 
 log_note(project, text, refers_to = NULL)
@@ -100,7 +109,9 @@ when the forcing has a time column. Rows before the calibration window are warm-
 \code{validation} may be \code{NULL} until it is needed.}
 
 \item{headline}{Score used to rank runs: one of \code{nse}, \code{log_nse}, \code{kge}, \code{rmse},
-\code{log_rmse}, \code{abs_volume_error}.}
+\code{log_rmse}, \code{abs_volume_error}, or a threshold score written as \code{metric:name}, such as
+\verb{csi:Flood Warning}, where metric is \code{pod}, \code{far}, \code{csi}, \code{pod_step}, \code{far_step},
+\code{csi_step}, \code{ets_step} or \code{pss_step}.}
 
 \item{log_offset}{Offset added before logarithms, m3/s.}
 
@@ -111,6 +122,16 @@ by path and MD5. Data frames and vectors are always written into the project.}
 
 \item{reasoning, statement, reason, text}{Free text explaining the entry.}
 
+\item{thresholds}{Optional data frame of thresholds with columns \code{name}, \code{value} and
+\code{unit}: \code{flow} (m3/s) or \code{level} (m, converted to flow through \code{rating}). Every run is
+then also scored with \code{\link[=pdm_threshold_scores]{pdm_threshold_scores()}}, under names such as \verb{csi:Flood Warning}.}
+
+\item{rating}{Rating table for level thresholds: a CSV path or data frame with \code{stage_m}
+and \code{q_m3s}. Levels outside it are refused, not extrapolated. Stored like the data.}
+
+\item{event_tolerance_h, event_gap_h, event_min_duration_h}{Event matching settings in
+hours; see \code{\link[=pdm_threshold_scores]{pdm_threshold_scores()}}.}
+
 \item{configuration}{A configuration list or the path of a YAML configuration file.}
 
 \item{parent}{Id of the structure, trial or automatic calibration entry to start from.}
@@ -120,7 +141,14 @@ by path and MD5. Data frames and vectors are always written into the project.}
 
 \item{verdict}{Your judgement of the trial: \code{better}, \code{worse} or \code{inconclusive}.}
 
-\item{lower, upper, objective, starts, seed, control}{Passed to \code{\link[=calibrate_pdm]{calibrate_pdm()}}.}
+\item{lower, upper, objective, starts, seed, control, method}{Passed to \code{\link[=calibrate_pdm]{calibrate_pdm()}}.}
+
+\item{threshold_objective}{Optional names of registered thresholds to include in the
+objective of an automatic calibration, with \code{method = "nelder_mead"}. Their flows and
+the registered event settings are used, so the calibration and the scorecard agree.}
+
+\item{threshold_weight, threshold_score}{Weight and score of the threshold term; see
+\code{\link[=calibrate_pdm]{calibrate_pdm()}}.}
 
 \item{refers_to}{Optional id of the entry a note concerns.}
 

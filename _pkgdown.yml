@@ -151,6 +151,7 @@ reference:
   - calibrate_pdm_multi
   - pdm_objectives
   - pdm_scorecard
+  - pdm_threshold_scores
   - pareto_front
 - title: Calibration log
   desc: An append-only, tamper-evident record of manual and automatic calibration.

@@ -143,6 +143,20 @@ window is scored once, by the `validation` entry, so that it stays an honest tes
 Every run simulates continuously from the first registered row from `initial_state(model,
 soil_fraction)`; rows before the calibration window are the warm-up.
 
+## Threshold scores
+
+Agreed 2026-11-01, after phases 1 to 5.
+
+| # | Question | Decision |
+|---|---|---|
+| 13 | What is an event | An episode above the threshold; exceedances closer than a minimum gap merge; a simulated crossing within a timing tolerance of an observed one is a hit, matched one to one, closest first |
+| 14 | Threshold units | Flow (m3/s) or level (m), per threshold; levels convert through a registered rating table, interpolated in log flow, never extrapolated |
+| 15 | Matching settings | One set per registration: tolerance 6 h, gap 24 h, minimum duration 0 by default. Event scores need no correct negatives; the chance-corrected scores (POFD, ETS, PSS) are step-based only |
+| 16 | Weight in calibration | A threshold score may be the headline. Automatic calibration may add a weighted threshold term to a continuous objective, using derivative-free Nelder-Mead, since event counts change in steps |
+
+Threshold scores join each run's scores as `metric:threshold`, for example
+`csi:Flood Warning`, so they are logged, verified, reported and ranked like any other.
+
 ## Run log and register
 
 With `options(pdmS7.run_log = )` or `PDMS7_RUN_LOG` set, `run_pdm()` appends one CSV row per
