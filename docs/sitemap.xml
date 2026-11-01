@@ -1,6 +1,7 @@
 <urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
 <url><loc>https://jonpayneea.github.io/PDMS7/404.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/LICENSE-text.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/articles/calibration-log.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/calibration.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/compiled-core.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/example-workflow.html</loc></url>
@@ -12,6 +13,7 @@
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/starting-states.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/authors.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/benchmark-protocol.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/calibration-log-design.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/index.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/multi-objective.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/news/index.html</loc></url>
@@ -54,8 +56,12 @@
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/StandardRecharge.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/StateUpdater.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/TriangularCapacity.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/approved_configurations.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/build_report.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm_multi.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/calibration_app.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/calibration_log.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/capacity_cdf.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/capacity_from_storage.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/capacity_mean.html</loc></url>
@@ -74,14 +80,18 @@
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/pack_step.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/parameter_catalog.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/pareto_front.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/pdm_fingerprint.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/pdm_from_config.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/pdm_model.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/pdm_objectives.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/pdm_presets.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/pdm_scorecard.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/pdm_step.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/power_routing.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/quadratic_routing.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/read_pdm_config.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/read_project.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/read_run_log.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/recharge_depth.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/route_step.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/routing_flow.html</loc></url>
@@ -96,6 +106,7 @@
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/storage_from_capacity.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/transfer_coefficients.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/update_forecast.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/verify_project.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/roadmap.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/snow-model.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/source-notes.html</loc></url>

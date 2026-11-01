@@ -2,6 +2,78 @@
 
 ## pdmS7 (development version)
 
+- New article, “Logging a manual calibration”: a complete project from
+  start to sign-off, integrity checks and tampering, the report, and
+  tracing operational runs with the run log.
+- New
+  [`calibration_app()`](https://jonpayneea.github.io/PDMS7/reference/calibration_app.md):
+  a Shiny app over the calibration log for staff who prefer not to
+  script. Setup (start, register data, select structure), Trial (adjust
+  parameters, preview the hydrograph and scorecard against the parent,
+  save with a verdict and reasoning; notes; automatic calibration),
+  History (path, every run, compare two runs, propose and validate a
+  candidate), Report (integrity, build and download) and Sign-off. Every
+  button calls the exported function a script would, so the same rules
+  apply. shiny is a suggested package, needed only for the app.
+- New opt-in run log. With `options(pdmS7.run_log = "runs.csv")` or
+  `PDMS7_RUN_LOG` set, every
+  [`run_pdm()`](https://jonpayneea.github.io/PDMS7/reference/run_pdm.md)
+  call, and so
+  [`sim_pdm()`](https://jonpayneea.github.io/PDMS7/reference/sim_pdm.md)
+  and
+  [`sim_snow_pdm()`](https://jonpayneea.github.io/PDMS7/reference/sim_snow_pdm.md),
+  appends one row: who, when, an optional tag, the model’s
+  [`pdm_fingerprint()`](https://jonpayneea.github.io/PDMS7/reference/pdm_fingerprint.md),
+  a checksum of the forcing, period, versions, run time, and success or
+  the error message. Calibration evaluations, spin-up cycles and the
+  calibration log’s own reruns are not logged. With a register of
+  calibration projects set (`pdmS7.register` or `PDMS7_REGISTER`), each
+  run is marked `approved`, `superseded` (its project was reopened) or
+  `unapproved`; runs are never blocked. New
+  [`read_run_log()`](https://jonpayneea.github.io/PDMS7/reference/read_run_log.md),
+  [`approved_configurations()`](https://jonpayneea.github.io/PDMS7/reference/approved_configurations.md)
+  and
+  [`pdm_fingerprint()`](https://jonpayneea.github.io/PDMS7/reference/pdm_fingerprint.md).
+  Logging is off by default and a logging failure never stops a run.
+- New calibration log: an append-only, tamper-evident record of a
+  calibration project.
+  [`start_calibration_project()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md),
+  [`register_data()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md),
+  [`select_structure()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md),
+  [`log_trial()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md),
+  [`log_auto_calibration()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md),
+  [`log_note()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md),
+  [`propose_candidate()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md),
+  [`validate_candidate()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md),
+  [`sign_off_project()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
+  and
+  [`reopen_project()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
+  each write one YAML entry recording who, when, which data and
+  parameters, the scores and the reasoning. Entries are chained by MD5,
+  data are copied and checksummed, and every run records a checksum of
+  its output.
+  [`verify_project()`](https://jonpayneea.github.io/PDMS7/reference/verify_project.md)
+  detects edits, gaps, changed data and runs that no longer reproduce. A
+  Steward cannot sign off their own calibration.
+  [`read_project()`](https://jonpayneea.github.io/PDMS7/reference/read_project.md),
+  [`project_trials()`](https://jonpayneea.github.io/PDMS7/reference/read_project.md)
+  and
+  [`read_projects()`](https://jonpayneea.github.io/PDMS7/reference/read_project.md)
+  read the record. Design: `calibration-log-design.md`.
+- New
+  [`build_report()`](https://jonpayneea.github.io/PDMS7/reference/build_report.md)
+  writes a calibration report generated from the log: a self-contained
+  HTML file with embedded figures, and a Markdown copy. It shows
+  integrity status first, then data and scoring windows, model
+  structure, the calibration path as a tree and a table, the candidate’s
+  hydrographs, flow-duration curves and scorecard for both windows,
+  parameter sensitivity on a shared scale, sign-off history, and the
+  final configuration. It uses base graphics only.
+- New
+  [`pdm_scorecard()`](https://jonpayneea.github.io/PDMS7/reference/pdm_scorecard.md):
+  NSE, log NSE, KGE and its components, RMSE, signed and absolute volume
+  error, peak error, and the Yilmaz et al. (2008) flow-duration-curve
+  signatures.
 - Five new illustrated articles on the package website: choosing model
   components, starting states, calibration, forecast updating, and the C
   core. Articles, guides and the function reference are grouped by topic

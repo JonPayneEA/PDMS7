@@ -59,6 +59,10 @@ Calibration and forecasting:
 
 - [Calibration: multi-start, budgets and staged
   calibration](https://jonpayneea.github.io/PDMS7/articles/calibration.html)
+- [Logging a manual
+  calibration](https://jonpayneea.github.io/PDMS7/articles/calibration-log.html):
+  the audit trail from project start to sign-off, the report, and
+  tracing operational runs
 - [Forecast
   updating](https://jonpayneea.github.io/PDMS7/articles/forecast-updating.html):
   state correction and ARMA error prediction

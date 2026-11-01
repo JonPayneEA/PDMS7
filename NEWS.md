@@ -1,5 +1,8 @@
 # pdmS7 (development version)
 
+- New article, "Logging a manual calibration": a complete project from start to sign-off,
+  integrity checks and tampering, the report, and tracing operational runs with the run
+  log.
 - New `calibration_app()`: a Shiny app over the calibration log for staff who prefer not
   to script. Setup (start, register data, select structure), Trial (adjust parameters,
   preview the hydrograph and scorecard against the parent, save with a verdict and

@@ -30,6 +30,7 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Calibration and forecasting</h6></li>
     <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: multi-start, budgets and staged calibration</a></li>
+    <li><a class="dropdown-item" href="../articles/calibration-log.html">Logging a manual calibration</a></li>
     <li><a class="dropdown-item" href="../articles/forecast-updating.html">Forecast updating</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Under the bonnet</h6></li>
@@ -41,6 +42,7 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-guides"><li><a class="dropdown-item" href="../performance.html">Performance and the compiled core</a></li>
     <li><a class="external-link dropdown-item" href="https://github.com/JonPayneEA/PDMS7/blob/master/docs/benchmarks/solver-timing.md">Solver timing</a></li>
     <li><a class="dropdown-item" href="../benchmark-protocol.html">Benchmark protocol</a></li>
+    <li><a class="dropdown-item" href="../calibration-log-design.html">Calibration log design</a></li>
     <li><a class="dropdown-item" href="../validation.html">Validation</a></li>
     <li><a class="dropdown-item" href="../multi-objective.html">Multi-objective calibration</a></li>
     <li><a class="dropdown-item" href="../snow-model.html">Snow model notes</a></li>
@@ -611,10 +613,91 @@
 
         <dt>
 
+          <code><a href="pdm_scorecard.html">pdm_scorecard()</a></code>
+
+        </dt>
+        <dd>Score a simulation against observed flow</dd>
+
+        <dt>
+
           <code><a href="pareto_front.html">pareto_front()</a></code>
 
         </dt>
         <dd>Identify nondominated loss vectors</dd>
+      </dl></div><div class="section level2">
+      <h2 id="calibration-log">Calibration log<a class="anchor" aria-label="anchor" href="#calibration-log"></a></h2>
+
+      <div class="section-desc"><p>An append-only, tamper-evident record of manual and automatic calibration.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="calibration_log.html">start_calibration_project()</a></code> <code><a href="calibration_log.html">register_data()</a></code> <code><a href="calibration_log.html">select_structure()</a></code> <code><a href="calibration_log.html">preview_trial()</a></code> <code><a href="calibration_log.html">log_trial()</a></code> <code><a href="calibration_log.html">log_auto_calibration()</a></code> <code><a href="calibration_log.html">log_note()</a></code> <code><a href="calibration_log.html">propose_candidate()</a></code> <code><a href="calibration_log.html">validate_candidate()</a></code> <code><a href="calibration_log.html">sign_off_project()</a></code> <code><a href="calibration_log.html">reopen_project()</a></code>
+
+        </dt>
+        <dd>Calibration log</dd>
+
+        <dt>
+
+          <code><a href="read_project.html">read_project()</a></code> <code><a href="read_project.html">project_trials()</a></code> <code><a href="read_project.html">read_projects()</a></code>
+
+        </dt>
+        <dd>Read a calibration project</dd>
+
+        <dt>
+
+          <code><a href="verify_project.html">verify_project()</a></code>
+
+        </dt>
+        <dd>Verify a calibration project</dd>
+
+        <dt>
+
+          <code><a href="build_report.html">build_report()</a></code>
+
+        </dt>
+        <dd>Build the calibration report</dd>
+
+        <dt>
+
+          <code><a href="calibration_app.html">calibration_app()</a></code>
+
+        </dt>
+        <dd>Calibration app</dd>
+      </dl></div><div class="section level2">
+      <h2 id="run-log">Run log<a class="anchor" aria-label="anchor" href="#run-log"></a></h2>
+
+      <div class="section-desc"><p>An opt-in record of every model run, checked against signed-off calibrations.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="read_run_log.html">read_run_log()</a></code>
+
+        </dt>
+        <dd>Read the run log</dd>
+
+        <dt>
+
+          <code><a href="approved_configurations.html">approved_configurations()</a></code>
+
+        </dt>
+        <dd>List the configurations approved in a register</dd>
+
+        <dt>
+
+          <code><a href="pdm_fingerprint.html">pdm_fingerprint()</a></code>
+
+        </dt>
+        <dd>Fingerprint a model configuration</dd>
       </dl></div><div class="section level2">
       <h2 id="forecast-updating">Forecast updating<a class="anchor" aria-label="anchor" href="#forecast-updating"></a></h2>
 

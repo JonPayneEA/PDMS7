@@ -20,6 +20,8 @@
 
 - [Calibration: multi-start, budgets and staged
   calibration](https://jonpayneea.github.io/PDMS7/articles/calibration.md):
+- [Logging a manual
+  calibration](https://jonpayneea.github.io/PDMS7/articles/calibration-log.md):
 - [Forecast
   updating](https://jonpayneea.github.io/PDMS7/articles/forecast-updating.md):
 
