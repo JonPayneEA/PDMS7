@@ -146,6 +146,18 @@ PDM_CORE_API int32_t pdm_initial_state(const pdm_params* params, double soil_fra
                                        double* state, int64_t state_length,
                                        char* message, int64_t message_length);
 
+/* Fills state with a warm start in equilibrium with an observed flow (R/initial_flow.R):
+   natural flow (observed_m3s - qc) is divided into baseflow (baseflow_fraction) and surface
+   flow; each routing store is set to deliver its share in equilibrium; the soil store is set so
+   that recharge equals baseflow (standard and demand recharge), or to soil_fraction of
+   capacity with split recharge, and capped at capacity; the delay queues hold the water in
+   transit. observed_m3s must be at least qc, both fractions must lie in [0, 1], and an
+   exponential store's share of the flow must be positive. */
+PDM_CORE_API int32_t pdm_state_from_flow(const pdm_params* params, double observed_m3s,
+                                         double baseflow_fraction, double soil_fraction,
+                                         double* state, int64_t state_length,
+                                         char* message, int64_t message_length);
+
 /* Name of flux column j (0 to PDM_N_FLUX - 1), or a null pointer if j is out of range.
    The returned string is static; do not free it. */
 PDM_CORE_API const char* pdm_flux_name(int32_t j);

@@ -18,7 +18,10 @@ Simulation only, for:
   exponential store;
 - the PACK snowpack, alone (`pdm_pack_run()`) or feeding PDM in one call (`pdm_snow_run()`);
 - forecast updating: state correction at the forecast origin (`pdm_correct_state()`) and ARMA
-  error prediction over the forecast (`pdm_update_forecast()`).
+  error prediction over the forecast (`pdm_update_forecast()`);
+- initial states: a cold start at a fixed soil fraction (`pdm_initial_state()`) or a warm start
+  in steady state with an observed flow (`pdm_state_from_flow()`). For a hot start, keep the
+  state array from the end of one run and pass it to the next.
 
 Configuration files, calibration, metrics and the fitting of ARMA coefficients stay in each
 host language: R uses `fit_error_updater()` (`stats::arima()`); Python could use `statsmodels`.

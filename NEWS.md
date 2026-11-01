@@ -38,6 +38,11 @@
 - The PACK snowpack also runs in the compiled core, about 540 times faster than its R loop
   and bit-identical to it on R 4.3. `sim_pack()` and `sim_snow_pdm()` use it automatically.
   The core gains `pdm_pack_run()` for snow alone and `pdm_snow_run()` for snow feeding PDM.
+- New `initial_state_from_flow()`: a warm start in steady state with the flow observed at
+  the start of a run. Routing stores deliver their share of the flow, the soil store is set so
+  that recharge equals baseflow, and delay queues hold the water in transit. It replaces an
+  arbitrary soil fraction for short test runs and forecasts. Also in the core as
+  `pdm_state_from_flow()`.
 - Forecast updating also runs in the compiled core: `correct_state()` (state correction,
   Moore 2007 Eq. 28-30) and `update_forecast()` (ARMA error prediction, Eq. 31-42), with
   `pdm_correct_state()` and `pdm_update_forecast()` for other languages. Results are

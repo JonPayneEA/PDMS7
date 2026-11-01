@@ -29,6 +29,8 @@ the compiled core, so the files test the core as well as the bindings.
 | `arma_history.csv`, `arma_forecast.csv` | Observed and simulated history, and the forecast to update |
 | `arma_cases.csv` | ARMA cases: `scale` (0 additive, 1 log), `offset`, `p`, `q`, and coefficients `ar1`-`ar3`, `ma1`-`ma2` (only the first p and q are used) |
 | `<case>_arma.csv`, `<case>_arma_innovations.csv` | The updated forecast, the error forecast and the innovations |
+| `flow_cases.csv` | Steady-state starts: the PDM case, `observed_m3s`, `baseflow_fraction`, `soil_fraction` and `expected_code` |
+| `<case>_flow_state.csv` | The state from `pdm_state_from_flow()` |
 | `generate_golden.R` | Regenerates every file from the R reference |
 
 All numbers are written with 17 significant digits, so they round-trip exactly to doubles.

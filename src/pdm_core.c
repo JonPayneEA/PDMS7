@@ -1366,3 +1366,110 @@ int32_t pdm_update_forecast(const double* ar, int32_t p, const double* ma, int32
   free(predicted);
   return finish(&e, message, message_length);
 }
+
+/* ---- Steady-state start from an observed flow ---------------------------------------------- */
+
+/* initial_flow.R, .steady_storage: stores giving flow q (mm/h) in equilibrium. */
+static int steady_storage(const pdm_route* r, double q, double* s, const char* text,
+                          pdm_error* e) {
+  if (r->type == PDM_ROUTE_EXPONENTIAL && !(q > 0)) {
+    set_error(e, PDM_ERR_ARGUMENT, text);
+    return 0;
+  }
+  s[1] = 0;
+  switch (r->type) {
+    case PDM_ROUTE_CASCADE:
+      s[0] = q * r->k1;
+      s[1] = q * r->k2;
+      break;
+    case PDM_ROUTE_POWER:
+      s[0] = rpow(q / r->k, 1 / r->m);
+      break;
+    default:
+      s[0] = (log(q) - r->gamma) / r->a;
+  }
+  return 1;
+}
+
+/* initial_flow.R, .steady_queue: n full values of v, then the fractional remainder. */
+static void steady_queue(double* queue, size_t len, double ratio, double v) {
+  double n = floor(ratio);
+  size_t i;
+  for (i = 0; i < len; ++i) queue[i] = v;
+  queue[len - 1] = (ratio - n) * v;
+}
+
+int32_t pdm_state_from_flow(const pdm_params* params, double observed_m3s,
+                            double baseflow_fraction, double soil_fraction, double* state,
+                            int64_t state_length, char* message, int64_t message_length) {
+  pdm_error e;
+  double q, qb, qs, smax, soil, sgmax, g, demand, dsat;
+  double surface[2], ground[2];
+  size_t n_pending, i;
+  e.code = PDM_OK;
+  e.text[0] = '\0';
+  if (params == NULL || state == NULL) {
+    set_error(&e, PDM_ERR_ARGUMENT, "params and state must not be null");
+    return finish(&e, message, message_length);
+  }
+  if (!validate(params, &e)) return finish(&e, message, message_length);
+  if (state_length != 6 + 4 * pending_length(params)) {
+    set_error(&e, PDM_ERR_ARGUMENT, "state must hold pdm_state_length() values");
+  } else if (!isfinite(observed_m3s)) {
+    set_error(&e, PDM_ERR_ARGUMENT, "observed_m3s must be finite");
+  } else if (!(isfinite(baseflow_fraction) && baseflow_fraction >= 0 && baseflow_fraction <= 1)) {
+    set_error(&e, PDM_ERR_ARGUMENT, "baseflow_fraction must lie in [0,1]");
+  } else if (!(isfinite(soil_fraction) && soil_fraction >= 0 && soil_fraction <= 1)) {
+    set_error(&e, PDM_ERR_ARGUMENT, "soil_fraction must lie in [0,1]");
+  }
+  if (e.code != PDM_OK) return finish(&e, message, message_length);
+
+  q = (observed_m3s - params->qc) * 3.6 / params->area_km2;
+  if (!(q >= 0)) {
+    set_error(&e, PDM_ERR_ARGUMENT, "observed_m3s is below the constant flow qc");
+    return finish(&e, message, message_length);
+  }
+  qb = baseflow_fraction * q;
+  qs = (1 - baseflow_fraction) * q;
+  if (!steady_storage(&params->groundwater, qb, ground,
+                      "An exponential groundwater store cannot start at zero flow", &e) ||
+      !steady_storage(&params->surface, qs, surface,
+                      "An exponential surface store cannot start at zero flow", &e)) {
+    return finish(&e, message, message_length);
+  }
+  smax = make_dist(params).smax;
+  switch (params->recharge) {
+    case PDM_RECHARGE_STANDARD:
+      soil = params->st + rpow(params->kg * qb, 1 / params->bg);
+      break;
+    case PDM_RECHARGE_DEMAND:
+      sgmax = storage_for_flow(&params->groundwater, params->qsat);
+      g = dmin(1.0, dmax(0.0, (sgmax - ground[0]) / sgmax));
+      demand = dmin(1.0, rpow(g / params->alpha, params->beta));
+      dsat = params->qsat * params->dt;
+      soil = qb * params->dt * smax / (dsat + (smax - dsat) * demand);
+      break;
+    default:
+      soil = soil_fraction * smax;
+  }
+  soil = dmin(smax, dmax(0.0, soil));
+
+  n_pending = (size_t)pending_length(params);
+  state[0] = soil;
+  state[1] = surface[0];
+  state[2] = surface[1];
+  state[3] = ground[0];
+  state[4] = ground[1];
+  state[5] = 0;
+  steady_queue(state + 6, n_pending, params->td / params->dt, qs * params->dt);
+  steady_queue(state + 6 + n_pending, n_pending, params->td / params->dt, qb * params->dt);
+  steady_queue(state + 6 + 2 * n_pending, n_pending, params->td / params->dt, qs);
+  steady_queue(state + 6 + 3 * n_pending, n_pending, params->td / params->dt, qb);
+  for (i = 0; i < 6; ++i) {
+    if (!isfinite(state[i])) {
+      set_error(&e, PDM_ERR_NUMERICAL, "Steady-state start produced a non-finite state");
+      break;
+    }
+  }
+  return finish(&e, message, message_length);
+}

@@ -33,13 +33,21 @@ extern "C" SEXP _pdmS7_forecast_engine_run(SEXP ar, SEXP ma, SEXP scale, SEXP of
     return cpp11::as_sexp(forecast_engine_run(cpp11::as_cpp<cpp11::decay_t<doubles>>(ar), cpp11::as_cpp<cpp11::decay_t<doubles>>(ma), cpp11::as_cpp<cpp11::decay_t<int>>(scale), cpp11::as_cpp<cpp11::decay_t<double>>(offset), cpp11::as_cpp<cpp11::decay_t<doubles>>(observed), cpp11::as_cpp<cpp11::decay_t<doubles>>(simulated), cpp11::as_cpp<cpp11::decay_t<doubles>>(forecast)));
   END_CPP11
 }
+// pdm_engine.cpp
+cpp11::doubles from_flow_engine_run(doubles par, double observed, double baseflow_fraction, double soil_fraction);
+extern "C" SEXP _pdmS7_from_flow_engine_run(SEXP par, SEXP observed, SEXP baseflow_fraction, SEXP soil_fraction) {
+  BEGIN_CPP11
+    return cpp11::as_sexp(from_flow_engine_run(cpp11::as_cpp<cpp11::decay_t<doubles>>(par), cpp11::as_cpp<cpp11::decay_t<double>>(observed), cpp11::as_cpp<cpp11::decay_t<double>>(baseflow_fraction), cpp11::as_cpp<cpp11::decay_t<double>>(soil_fraction)));
+  END_CPP11
+}
 
 extern "C" {
 static const R_CallMethodDef CallEntries[] = {
-    {"_pdmS7_correct_engine_run",  (DL_FUNC) &_pdmS7_correct_engine_run,  4},
-    {"_pdmS7_forecast_engine_run", (DL_FUNC) &_pdmS7_forecast_engine_run, 7},
-    {"_pdmS7_pack_engine_run",     (DL_FUNC) &_pdmS7_pack_engine_run,     5},
-    {"_pdmS7_pdm_engine_run",      (DL_FUNC) &_pdmS7_pdm_engine_run,      5},
+    {"_pdmS7_correct_engine_run",   (DL_FUNC) &_pdmS7_correct_engine_run,   4},
+    {"_pdmS7_forecast_engine_run",  (DL_FUNC) &_pdmS7_forecast_engine_run,  7},
+    {"_pdmS7_from_flow_engine_run", (DL_FUNC) &_pdmS7_from_flow_engine_run, 4},
+    {"_pdmS7_pack_engine_run",      (DL_FUNC) &_pdmS7_pack_engine_run,      5},
+    {"_pdmS7_pdm_engine_run",       (DL_FUNC) &_pdmS7_pdm_engine_run,       5},
     {NULL, NULL, 0}
 };
 }

@@ -316,4 +316,25 @@ for (i in seq_len(nrow(arma_cases))) {
 }
 write_table(arma_cases, "arma_cases.csv")
 
+# ---- Steady-state start from an observed flow --------------------------------------------------
+
+flow_cases <- data.frame(
+  case = c("flow_default", "flow_demand", "flow_split", "flow_cascade_gw", "flow_exponential",
+           "flow_delay", "flow_full_soil", "flow_below_qc_invalid", "flow_exponential_invalid"),
+  pdm_case = c("default", "demand_power", "split", "cascade_groundwater", "exponential_routes",
+               "quarter_hour_delay", "lognormal", "quarter_hour_delay", "exponential_routes"),
+  observed_m3s = c(0.3, 0.25, 0.4, 0.2, 0.35, 3, 2, 0.1, 0.3),
+  baseflow_fraction = c(0.6, 0.7, 0.5, 0.8, 0.4, 0.65, 0.9, 0.5, 0),
+  soil_fraction = c(0.5, 0.5, 0.3, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5),
+  expected_code = c(0, 0, 0, 0, 0, 0, 0, 1, 1)
+)
+for (i in seq_len(nrow(flow_cases))) {
+  fc <- flow_cases[i, ]
+  if (fc$expected_code != 0) next
+  state <- initial_state_from_flow(cases[[fc$pdm_case]]$model, fc$observed_m3s,
+                                   fc$baseflow_fraction, fc$soil_fraction)
+  write_table(data.frame(value = pack_state(state)), paste0(fc$case, "_flow_state.csv"))
+}
+write_table(flow_cases, "flow_cases.csv")
+
 cat("Golden files written to", normalizePath(out_dir), "\n")

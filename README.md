@@ -162,9 +162,17 @@ second_dt <- sim_pdm(c(5, 0), c(0.05, 0.05), config, 60L,
 # Warm-up rows are retained and flagged; exclude is_warmup rows when scoring.
 ```
 
-`initial_state()` allows explicit soil/routing states. `spin_up()` repeats a
-representative forcing period; inspect state convergence. Store checkpoint
-objects with `saveRDS()` and `readRDS()`, using a caller-configured path.
+Four ways to start a run:
+
+- **Cold:** `initial_state(model, soil_fraction = 0.5)`, with empty routing stores. Explicit
+  soil and routing storages can also be given.
+- **Warm from an observed flow:** `initial_state_from_flow(model, observed_m3s,
+  baseflow_fraction)` sets every store in steady state with the flow at the start of the run.
+  For UK gauged catchments the NRFA baseflow index is a reasonable `baseflow_fraction`.
+- **Warm by spin-up:** `spin_up()` repeats a representative forcing period; inspect state
+  convergence.
+- **Hot:** pass the final state of one run to the next. Restarts are exactly continuous. Store
+  checkpoint objects with `saveRDS()` and `readRDS()`, using a caller-configured path.
 
 ## Calibration and updating
 

@@ -196,3 +196,29 @@ cpp11::list forecast_engine_run(doubles ar, doubles ma, int scale, double offset
     "innovations"_nm = cpp11::writable::doubles(innovations.begin(), innovations.end())
   });
 }
+
+// Steady-state start from an observed flow. par holds the 40 fields of pdm_params.
+[[cpp11::register]]
+cpp11::doubles from_flow_engine_run(doubles par, double observed, double baseflow_fraction,
+                                    double soil_fraction) {
+  if (par.size() != 40) cpp11::stop("from_flow_engine_run expects 40 parameters");
+  pdm_params p;
+  p.distribution = static_cast<int32_t>(par[0]);
+  p.recharge = static_cast<int32_t>(par[1]);
+  p.cmin = par[2]; p.cmax = par[3]; p.b = par[4]; p.mean = par[5];
+  p.meanlog = par[6]; p.sdlog = par[7];
+  p.kg = par[8]; p.bg = par[9]; p.st = par[10];
+  p.alpha = par[11]; p.beta = par[12]; p.qsat = par[13];
+  fill_route(p.surface, par, 14);
+  fill_route(p.groundwater, par, 24);
+  p.be = par[34]; p.fc = par[35]; p.td = par[36]; p.qc = par[37]; p.area_km2 = par[38];
+  p.dt = par[39];
+  int64_t len = pdm_state_length(&p);
+  if (len < 0) cpp11::stop("Invalid parameter(s): dt or td");
+  std::vector<double> state(static_cast<std::size_t>(len));
+  char message[512];
+  int32_t code = pdm_state_from_flow(&p, observed, baseflow_fraction, soil_fraction,
+                                     state.data(), len, message, sizeof(message));
+  if (code != PDM_OK) cpp11::stop("%s", message);
+  return cpp11::writable::doubles(state.begin(), state.end());
+}

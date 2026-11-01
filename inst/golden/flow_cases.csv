@@ -1,0 +1,10 @@
+case,pdm_case,observed_m3s,baseflow_fraction,soil_fraction,expected_code
+flow_default,default,0.29999999999999999,0.59999999999999998,0.5,0
+flow_demand,demand_power,0.25,0.69999999999999996,0.5,0
+flow_split,split,0.40000000000000002,0.5,0.29999999999999999,0
+flow_cascade_gw,cascade_groundwater,0.20000000000000001,0.80000000000000004,0.5,0
+flow_exponential,exponential_routes,0.34999999999999998,0.40000000000000002,0.5,0
+flow_delay,quarter_hour_delay,3,0.65000000000000002,0.5,0
+flow_full_soil,lognormal,2,0.90000000000000002,0.5,0
+flow_below_qc_invalid,quarter_hour_delay,0.10000000000000001,0.5,0.5,1
+flow_exponential_invalid,exponential_routes,0.29999999999999999,0,0.5,1

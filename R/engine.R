@@ -248,3 +248,11 @@ NULL
     as.double(forecast)
   )
 }
+
+.engine_state_from_flow <- function(model, observed_m3s, baseflow_fraction, soil_fraction) {
+  v <- from_flow_engine_run(
+    as.double(.engine_params(model)), as.double(observed_m3s), as.double(baseflow_fraction),
+    as.double(soil_fraction)
+  )
+  .engine_unpack_state(v, initial_state(model))
+}

@@ -494,6 +494,51 @@ static int check_updating(const char* dir, const table* pdm_cases) {
   return failures;
 }
 
+/* Steady-state starts from an observed flow. Returns the failure count. */
+static int check_flow_starts(const char* dir, const table* pdm_cases) {
+  char path[1024], message[256], pdm_case[64];
+  table cases;
+  int failures = 0;
+  snprintf(path, sizeof(path), "%s/flow_cases.csv", dir);
+  if (!read_table(path, 1, &cases)) return 1;
+  for (int c = 0; c < cases.nrow; ++c) {
+    const char* name = cases.labels[c];
+    table want;
+    snprintf(path, sizeof(path), "%s/flow_cases.csv", dir);
+    text_cell(path, c, 1, pdm_case, sizeof(pdm_case));
+    pdm_params pd = params_from(pdm_cases, find_row(pdm_cases, pdm_case));
+    long len = (long)pdm_state_length(&pd);
+    double* state = calloc((size_t)len, sizeof(double));
+    int32_t expected = (int32_t)cell(&cases, c, "expected_code");
+    int32_t code = pdm_state_from_flow(&pd, cell(&cases, c, "observed_m3s"),
+                                       cell(&cases, c, "baseflow_fraction"),
+                                       cell(&cases, c, "soil_fraction"), state, len, message,
+                                       (int64_t)sizeof(message));
+    int ok;
+    if (expected != 0) {
+      ok = code == expected && message[0] != '\0';
+      printf("%s %-24s code %d: %s\n", ok ? "PASS" : "FAIL", name, code, message);
+    } else {
+      double worst = 0;
+      ok = code == PDM_OK;
+      if (ok) {
+        snprintf(path, sizeof(path), "%s/%s_flow_state.csv", dir, name);
+        read_table(path, 0, &want);
+        ok = want.nrow == len;
+        if (ok) worst = scaled_error(state, want.values, len);
+        free_table(&want);
+      }
+      ok = ok && worst <= TOLERANCE;
+      printf("%s %-24s largest scaled error %.3g%s%s\n", ok ? "PASS" : "FAIL", name, worst,
+             code == PDM_OK ? "" : ": ", code == PDM_OK ? "" : message);
+    }
+    failures += !ok;
+    free(state);
+  }
+  free_table(&cases);
+  return failures;
+}
+
 int main(int argc, char** argv) {
   const char* dir = argc > 1 ? argv[1] : "inst/golden";
   char path[1024];
@@ -588,6 +633,7 @@ int main(int argc, char** argv) {
 
   failures += check_snow(dir, &cases);
   failures += check_updating(dir, &cases);
+  failures += check_flow_starts(dir, &cases);
 
   free(rain);
   free(pet);

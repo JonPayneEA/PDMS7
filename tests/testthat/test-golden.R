@@ -256,3 +256,31 @@ test_that(
     }
   }
 )
+
+test_that(
+  "both engines reproduce the steady-state start golden files",
+  {
+    cases <- golden_read("flow_cases.csv")
+    pdm_cases <- golden_read("cases.csv")
+    for (i in seq_len(nrow(cases))) {
+      fc <- cases[i, ]
+      model <- golden_model(pdm_cases[pdm_cases$case == fc$pdm_case, ])
+      for (engine in c("auto", "r")) {
+        old <- options(pdmS7.engine = engine)
+        state <- tryCatch(
+          initial_state_from_flow(model, fc$observed_m3s, fc$baseflow_fraction,
+                                  fc$soil_fraction),
+          error = function(e) e
+        )
+        options(old)
+        if (fc$expected_code != 0) {
+          expect_s3_class(state, "error")
+        } else {
+          golden_agree(pdmS7:::.engine_pack_state(state),
+                       golden_read(paste0(fc$case, "_flow_state.csv"))$value,
+                       paste(fc$case, engine))
+        }
+      }
+    }
+  }
+)
