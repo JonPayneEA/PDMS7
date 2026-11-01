@@ -93,7 +93,7 @@ calibrate_pdm_multi <- function(config, forcing, observed, lower, upper,
         timestep_min = round(dt * 60), datetime = time
       )$qsim_cms
     } else {
-      sim_pdm(forcing$rain, forcing$pet, cfg, round(dt * 60), datetime = time)$qsim_cms
+      .quietly(sim_pdm(forcing$rain, forcing$pet, cfg, round(dt * 60), datetime = time))$qsim_cms
     }
   }
   # Fail early on invalid forcing/configuration rather than hiding it as bad trials.

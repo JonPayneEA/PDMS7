@@ -158,6 +158,12 @@ reference:
   - read_project
   - verify_project
   - build_report
+- title: Run log
+  desc: An opt-in record of every model run, checked against signed-off calibrations.
+  contents:
+  - read_run_log
+  - approved_configurations
+  - pdm_fingerprint
 - title: Forecast updating
   desc: State correction and ARMA error prediction (Moore 2007, Eq. 28-42).
   contents:

@@ -152,7 +152,7 @@ calibrate_pdm <- function(
     tryCatch(
       {
         mod <- pdm_from_config(build(par))
-        sim <- .run_flow(mod, forcing, initial_state(mod, soil_fraction), flow)[keep]
+        sim <- .quietly(.run_flow(mod, forcing, initial_state(mod, soil_fraction), flow))[keep]
         obs <- observed[keep]
         val <- switch(objective,
           rmse = sqrt(mean((sim - obs)^2)),
