@@ -17,6 +17,17 @@
 #' @return A list containing output, final state, initial state, model and water balance.
 #' @export
 run_pdm <- function(model, forcing, state = initial_state(model)) {
+  if (!.run_log_active()) return(.run_pdm_core(model, forcing, state))
+  started <- proc.time()[["elapsed"]]
+  result <- tryCatch(.quietly(.run_pdm_core(model, forcing, state)), error = function(e) {
+    .log_run(model, forcing, started, e)
+    stop(e)
+  })
+  .log_run(model, forcing, started)
+  result
+}
+
+.run_pdm_core <- function(model, forcing, state) {
   .check_forcing(model, forcing)
   initial <- state
   if (.engine_supported(model)) {
@@ -83,7 +94,7 @@ spin_up <- function(model, forcing, cycles = 5, state = initial_state(model)) {
       cycles == floor(cycles),
     "cycles must be a positive integer"
   )
-  for (i in seq_len(cycles)) state <- run_pdm(model, forcing, state)$state
+  .quietly(for (i in seq_len(cycles)) state <- run_pdm(model, forcing, state)$state)
   state@step <- 0
   state
 }

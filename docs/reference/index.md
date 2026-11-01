@@ -170,8 +170,50 @@ The PACK snow model, alone or feeding the PDM.
   : Calibrate PDM or coupled snow-PDM against multiple objectives
 - [`pdm_objectives()`](https://jonpayneea.github.io/PDMS7/reference/pdm_objectives.md)
   : Evaluate hydrological calibration losses
+- [`pdm_scorecard()`](https://jonpayneea.github.io/PDMS7/reference/pdm_scorecard.md)
+  : Score a simulation against observed flow
 - [`pareto_front()`](https://jonpayneea.github.io/PDMS7/reference/pareto_front.md)
   : Identify nondominated loss vectors
+
+## Calibration log
+
+An append-only, tamper-evident record of manual and automatic
+calibration.
+
+- [`start_calibration_project()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
+  [`register_data()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
+  [`select_structure()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
+  [`preview_trial()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
+  [`log_trial()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
+  [`log_auto_calibration()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
+  [`log_note()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
+  [`propose_candidate()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
+  [`validate_candidate()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
+  [`sign_off_project()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
+  [`reopen_project()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
+  : Calibration log
+- [`read_project()`](https://jonpayneea.github.io/PDMS7/reference/read_project.md)
+  [`project_trials()`](https://jonpayneea.github.io/PDMS7/reference/read_project.md)
+  [`read_projects()`](https://jonpayneea.github.io/PDMS7/reference/read_project.md)
+  : Read a calibration project
+- [`verify_project()`](https://jonpayneea.github.io/PDMS7/reference/verify_project.md)
+  : Verify a calibration project
+- [`build_report()`](https://jonpayneea.github.io/PDMS7/reference/build_report.md)
+  : Build the calibration report
+- [`calibration_app()`](https://jonpayneea.github.io/PDMS7/reference/calibration_app.md)
+  : Calibration app
+
+## Run log
+
+An opt-in record of every model run, checked against signed-off
+calibrations.
+
+- [`read_run_log()`](https://jonpayneea.github.io/PDMS7/reference/read_run_log.md)
+  : Read the run log
+- [`approved_configurations()`](https://jonpayneea.github.io/PDMS7/reference/approved_configurations.md)
+  : List the configurations approved in a register
+- [`pdm_fingerprint()`](https://jonpayneea.github.io/PDMS7/reference/pdm_fingerprint.md)
+  : Fingerprint a model configuration
 
 ## Forecast updating
 

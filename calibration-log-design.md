@@ -143,6 +143,15 @@ window is scored once, by the `validation` entry, so that it stays an honest tes
 Every run simulates continuously from the first registered row from `initial_state(model,
 soil_fraction)`; rows before the calibration window are the warm-up.
 
+## Run log and register
+
+With `options(pdmS7.run_log = )` or `PDMS7_RUN_LOG` set, `run_pdm()` appends one CSV row per
+call under a lock. Each row carries the model's fingerprint, an MD5 of its canonical
+components and parameters, so a model built in code and the signed-off YAML match. A
+register (`pdmS7.register` or `PDMS7_REGISTER`) is a YAML file listing project folders, or
+the folders themselves; its sign-offs are re-read at most once a minute. Calibration
+evaluations, spin-up cycles and the calibration log's own reruns are not logged.
+
 ## Delivery
 
 1. Project log core, scorecard and integrity checks.

@@ -172,7 +172,7 @@
   ))
   card <- registration$scorecard
   state <- initial_state(model, card$soil_fraction)
-  sim <- run_pdm(model, data$forcing, state)$output$q_m3s
+  sim <- .quietly(run_pdm(model, data$forcing, state))$output$q_m3s
   rows <- .window_rows(card[[window]])
   list(
     simulated = sim, observed = data$observed, rows = rows,

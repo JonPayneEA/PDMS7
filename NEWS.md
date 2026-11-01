@@ -1,5 +1,24 @@
 # pdmS7 (development version)
 
+- New article, "Logging a manual calibration": a complete project from start to sign-off,
+  integrity checks and tampering, the report, and tracing operational runs with the run
+  log.
+- New `calibration_app()`: a Shiny app over the calibration log for staff who prefer not
+  to script. Setup (start, register data, select structure), Trial (adjust parameters,
+  preview the hydrograph and scorecard against the parent, save with a verdict and
+  reasoning; notes; automatic calibration), History (path, every run, compare two runs,
+  propose and validate a candidate), Report (integrity, build and download) and Sign-off.
+  Every button calls the exported function a script would, so the same rules apply.
+  shiny is a suggested package, needed only for the app.
+- New opt-in run log. With `options(pdmS7.run_log = "runs.csv")` or `PDMS7_RUN_LOG` set,
+  every `run_pdm()` call, and so `sim_pdm()` and `sim_snow_pdm()`, appends one row: who,
+  when, an optional tag, the model's `pdm_fingerprint()`, a checksum of the forcing, period,
+  versions, run time, and success or the error message. Calibration evaluations, spin-up
+  cycles and the calibration log's own reruns are not logged. With a register of
+  calibration projects set (`pdmS7.register` or `PDMS7_REGISTER`), each run is marked
+  `approved`, `superseded` (its project was reopened) or `unapproved`; runs are never
+  blocked. New `read_run_log()`, `approved_configurations()` and `pdm_fingerprint()`.
+  Logging is off by default and a logging failure never stops a run.
 - New calibration log: an append-only, tamper-evident record of a calibration project.
   `start_calibration_project()`, `register_data()`, `select_structure()`, `log_trial()`,
   `log_auto_calibration()`, `log_note()`, `propose_candidate()`, `validate_candidate()`,
