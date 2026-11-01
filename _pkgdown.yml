@@ -70,6 +70,7 @@ articles:
   navbar: Forecasting
   contents:
   - forecast-updating
+  - ar-error-correction
   - hindcasts
 - title: Under the bonnet
   navbar: Under the bonnet

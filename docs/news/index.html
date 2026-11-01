@@ -44,6 +44,7 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Forecasting</h6></li>
     <li><a class="dropdown-item" href="../articles/forecast-updating.html">Forecast updating</a></li>
+    <li><a class="dropdown-item" href="../articles/ar-error-correction.html">AR and ARMA error correction, explained</a></li>
     <li><a class="dropdown-item" href="../articles/hindcasts.html">Testing forecasts with hindcasts</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Under the bonnet</h6></li>
@@ -86,7 +87,7 @@
 <li><p>New <code><a href="../reference/calibrate_staged.html">calibrate_staged()</a></code> and <code><a href="../reference/pdm_stages.html">pdm_stages()</a></code> calibrate in stages: water balance and slow stores on log NSE with a volume penalty, then the fast stores on NSE, then a joint polish within narrowed bounds. <code><a href="../reference/calibrate_staged.html">log_staged_calibration()</a></code> writes one <code>auto_calibration</code> entry per stage, each recording its stage; <code>calibrate_batch(staged = TRUE)</code> does the same per basin and resumes from the last finished stage.</p></li>
 <li><p><code><a href="../reference/calibrate_pdm.html">calibrate_pdm()</a></code> gains <code>objective = "log_nse"</code> and <code>volume_weight</code>, a penalty on the absolute volume error.</p></li>
 <li><p><code><a href="../reference/calibrate_batch.html">calibrate_batch()</a></code> handles snow basins: with <code>snow: true</code> in <code>basin.yml</code> and a <code>temperature</code> column, PACK at fixed parameters turns precipitation into rain and melt, the PDM is calibrated on that, and a log note records the PACK settings and the raw forcing’s checksum.</p></li>
-<li><p>New article, “Testing forecasts with hindcasts”. “Automatic calibration” and “Calibrating many catchments” cover staged calibration and snow basins.</p></li>
+<li><p>New articles, “Testing forecasts with hindcasts” and “AR and ARMA error correction, explained”. “Automatic calibration” and “Calibrating many catchments” cover staged calibration and snow basins.</p></li>
 <li><p>Internal: the calibration functions are split into smaller helpers; no results change.</p></li>
 <li><p>The introductory articles are rewritten in plain English with figures of the model running: “How the PDM works” (buckets, dry and wet ground, the saturated area, the two paths to the river, the water balance, and what each setting does), “How the snow model works” (a winter, rain on snow, snow cover, settings, and snow with the PDM) and “Your first model run” (from data files to a calibrated, saved model). Each ends with a short equations appendix; the new “Model equations” page holds the full reference.</p></li>
 <li><p>New <code><a href="../reference/write_pdm_config.html">write_pdm_config()</a></code> writes a configuration that <code><a href="../reference/read_pdm_config.html">read_pdm_config()</a></code> reads back exactly; general YAML writers round numbers to seven significant figures.</p></li>

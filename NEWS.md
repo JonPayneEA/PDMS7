@@ -23,7 +23,8 @@
   `temperature` column, PACK at fixed parameters turns precipitation into rain and melt, the
   PDM is calibrated on that, and a log note records the PACK settings and the raw forcing's
   checksum.
-- New article, "Testing forecasts with hindcasts". "Automatic calibration" and "Calibrating
+- New articles, "Testing forecasts with hindcasts" and "AR and ARMA error correction,
+  explained". "Automatic calibration" and "Calibrating
   many catchments" cover staged calibration and snow basins.
 - Internal: the calibration functions are split into smaller helpers; no results change.
 

@@ -76,6 +76,9 @@ Forecasting:
 
 - [Forecast updating](https://jonpayneea.github.io/PDMS7/articles/forecast-updating.html):
   state correction and ARMA error prediction
+- [AR and ARMA error correction, explained](https://jonpayneea.github.io/PDMS7/articles/ar-error-correction.html):
+  what the coefficients mean, the EA 2024 default and its family, roots, sign conventions,
+  fitting, and where the method stops working
 - [Testing forecasts with hindcasts](https://jonpayneea.github.io/PDMS7/articles/hindcasts.html):
   the model's response time, IMFS-style AR post-processing, and skill against persistence at
   every lead time
