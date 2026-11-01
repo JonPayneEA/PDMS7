@@ -3,6 +3,7 @@
 \name{read_project}
 \alias{read_project}
 \alias{project_trials}
+\alias{read_entry}
 \alias{read_projects}
 \title{Read a calibration project}
 \usage{
@@ -10,23 +11,30 @@ read_project(project)
 
 project_trials(project)
 
+read_entry(project, id)
+
 read_projects(projects)
 }
 \arguments{
 \item{project}{Path of a calibration project folder.}
+
+\item{id}{An entry id, such as 4 or "0004".}
 
 \item{projects}{Paths of calibration project folders.}
 }
 \value{
 \code{read_project()}: a list with \code{path}, \code{id}, \code{status} (\code{open}, \code{signed_off} or
 \code{reopened}), \code{project} (the \code{project_start} fields), \code{scorecard} (the latest) and
-\code{entries} (a data.table). \code{project_trials()} and \code{read_projects()}: data.tables.
+\code{entries} (a data.table). \code{read_entry()}: the entry as a list. \code{project_trials()} and
+\code{read_projects()}: data.tables.
 }
 \description{
 \code{read_project()} gives the project details, status and a one-row-per-entry table.
 \code{project_trials()} lists every run (structure, trial and automatic calibration) with its
-parent, changes, scores, verdict and reasoning. \code{read_projects()} summarises several
-projects in one table, for example every project in a team folder.
+parent, changes, scores, verdict and reasoning. \code{read_entry()} returns one entry in full,
+for example an automatic calibration's table of starts. \code{read_projects()} summarises
+several projects in one table, for example every basin of a large-sample calibration,
+with the candidate's headline score on the calibration and validation windows.
 }
 \seealso{
 \link{calibration_log}, \code{\link[=verify_project]{verify_project()}}

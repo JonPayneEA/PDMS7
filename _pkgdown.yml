@@ -53,6 +53,7 @@ articles:
   navbar: Calibration and forecasting
   contents:
   - calibration
+  - many-catchments
   - calibration-log
   - forecast-updating
 - title: Under the bonnet

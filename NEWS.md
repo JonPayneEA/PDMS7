@@ -1,5 +1,10 @@
 # pdmS7 (development version)
 
+- New article, "Calibrating many catchments": one logged protocol applied to a batch of
+  basins, budgeting, catching failures, judging scores as a distribution, checking whether
+  multi-start runs agreed, and how well calibration recovers known parameters.
+- New `read_entry()` returns one calibration-log entry in full, and `read_projects()` gains
+  `validation_score`, the candidate's headline score on the validation window.
 - New threshold verification. `pdm_threshold_scores()` scores one or more thresholds at
   once: events (episodes above a threshold, merged across short gaps and matched within a
   timing tolerance) give probability of detection, false alarm ratio, critical success index
