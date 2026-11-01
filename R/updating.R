@@ -4,7 +4,7 @@
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
-# Modified:     2026-10-05 - CX: Align with Flode Tier 3 target conventions
+# Modified:     2026-11-01 - State correction runs in the compiled core by default
 # Tier:         3
 # Inputs:       Typed S7 components; depths in mm; time in hours
 # Outputs:      Validated S7 objects or hydrological values with documented units
@@ -125,6 +125,10 @@ correct_state <- function(model, state, observed_m3s, updater = state_updater())
     .scalar(observed_m3s),
     "observed_m3s must be finite"
   )
+  if (.engine_supported(model)) {
+    # Compiled state correction; results agree with the R code below (see R/engine.R).
+    return(.engine_correct(model, state, observed_m3s, updater))
+  }
   qb <- routing_flow(model@groundwater, state@groundwater)
   qs <- routing_flow(model@surface, state@surface)
   epsilon <- (observed_m3s - model@qc) * 3.6 / model@area_km2 - qb - qs

@@ -3,3 +3,19 @@
 pdm_engine_run <- function(rain, pet, par, state, full) {
   .Call(`_pdmS7_pdm_engine_run`, rain, pet, par, state, full)
 }
+
+pack_engine_run <- function(precipitation, temperature, par, state, dt) {
+  .Call(`_pdmS7_pack_engine_run`, precipitation, temperature, par, state, dt)
+}
+
+correct_engine_run <- function(par, state, observed, upd) {
+  .Call(`_pdmS7_correct_engine_run`, par, state, observed, upd)
+}
+
+forecast_engine_run <- function(ar, ma, scale, offset, observed, simulated, forecast) {
+  .Call(`_pdmS7_forecast_engine_run`, ar, ma, scale, offset, observed, simulated, forecast)
+}
+
+from_flow_engine_run <- function(par, observed, baseflow_fraction, soil_fraction) {
+  .Call(`_pdmS7_from_flow_engine_run`, par, observed, baseflow_fraction, soil_fraction)
+}

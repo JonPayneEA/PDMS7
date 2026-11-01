@@ -37,9 +37,11 @@ S7::method(capacity_pdf, FlodeRectangularCapacity) <- function(x, c) {
     c
   )
 }
+# Computed through the Pareto b = 1 form, as every other rectangular method is, so that a
+# store filled exactly to capacity_mean() is never judged to exceed it. (cmin + cmax) / 2 is
+# algebraically equal but can differ in the last floating-point place.
 S7::method(capacity_mean, FlodeRectangularCapacity) <- function(x) {
-  (x@cmin +
-     x@cmax) / 2
+  capacity_mean(.as_uniform(x))
 }
 S7::method(storage_from_capacity, FlodeRectangularCapacity) <- function(x, c) {
   storage_from_capacity(

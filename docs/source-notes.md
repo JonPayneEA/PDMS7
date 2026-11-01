@@ -21,24 +21,24 @@ not to the source papers.
 
 ## Equations and implementation
 
-| Paper | Implementation |
-|----|----|
-| Eq. 2–3 | `capacity_cdf`, saturated area fraction (multiply by catchment area for area) |
-| Eq. 7, 9 | `storage_from_capacity`, `capacity_mean` |
-| Eq. 5–7, 15–17 | `soil_step`; runoff = net depth − change in basin storage |
-| Eq. 8 | Start-of-interval actual evaporation request, configurable exponent |
-| Eq. 10 | Standard recharge above `st`, exponent `bg` |
-| Eq. 11–13 | Demand recharge with derived `Sgmax`; deficit clipped to \[0,1\] |
-| p486 third formulation | Split direct runoff by `alpha`; no soil drainage |
-| Eq. 18–20, Appendix A | Five capacity families and inverse storage transforms |
-| Eq. 21–23 | Power routing dS/dt = u − k S^m |
-| Eq. 24–25 | Optional cubic Smith recurrence and endpoint flow |
-| Eq. 26–27 | Exact two-store state-space routing; exposed transfer coefficients |
-| Table 1 | Parameter catalog, rainfall factor, delay, constant flow |
-| Eq. 28–30 | Manual state correction with gains and explicit correction flux |
-| Eq. 31–42 | ARMA additive/log forecast correction; ar = −phi |
-| 2002 Appendix A.2, A.4, A.10 | Exact linear, quadratic, general recession solutions |
-| 2002 Appendix A.6–A.7 | Exact exponential/log-storage routing |
+| Paper                        | Implementation                                                                |
+|------------------------------|-------------------------------------------------------------------------------|
+| Eq. 2–3                      | `capacity_cdf`, saturated area fraction (multiply by catchment area for area) |
+| Eq. 7, 9                     | `storage_from_capacity`, `capacity_mean`                                      |
+| Eq. 5–7, 15–17               | `soil_step`; runoff = net depth − change in basin storage                     |
+| Eq. 8                        | Start-of-interval actual evaporation request, configurable exponent           |
+| Eq. 10                       | Standard recharge above `st`, exponent `bg`                                   |
+| Eq. 11–13                    | Demand recharge with derived `Sgmax`; deficit clipped to \[0,1\]              |
+| p486 third formulation       | Split direct runoff by `alpha`; no soil drainage                              |
+| Eq. 18–20, Appendix A        | Five capacity families and inverse storage transforms                         |
+| Eq. 21–23                    | Power routing dS/dt = u − k S^m                                               |
+| Eq. 24–25                    | Optional cubic Smith recurrence and endpoint flow                             |
+| Eq. 26–27                    | Exact two-store state-space routing; exposed transfer coefficients            |
+| Table 1                      | Parameter catalog, rainfall factor, delay, constant flow                      |
+| Eq. 28–30                    | Manual state correction with gains and explicit correction flux               |
+| Eq. 31–42                    | ARMA additive/log forecast correction; ar = −phi                              |
+| 2002 Appendix A.2, A.4, A.10 | Exact linear, quadratic, general recession solutions                          |
+| 2002 Appendix A.6–A.7        | Exact exponential/log-storage routing                                         |
 
 ### Capacity distributions
 
@@ -63,10 +63,17 @@ capacity.
 
 At S=Smax for an unbounded distribution, C=Inf is an exact limiting
 state; any additional positive net rain becomes runoff. At zero storage
-C=0. Triangular and lognormal inverses use bracketed root finding,
-avoiding unconstrained Newton iterations near distribution tails.
-CDF/integral operations are vectorised; `soil_step` operates on one
-state and one net depth.
+C=0. The triangular inverse is exact: a cube root on the upper half of
+the support, and the trigonometric solution of the cubic on the lower
+half, polished by one Newton step. The lognormal inverse uses Newton
+iteration with the exact derivative dS/dC = 1 - F(C), safeguarded by a
+bracket and bisection; S is increasing and concave, so steps from below
+never overshoot. Both reach machine precision. Both follow Appendix A,
+which suggests solving the triangular expression for C\* “as the
+solution of a cubic equation”, and gives the Newton-Raphson scheme with
+slope 1 - F(C) used here for the lognormal (pp. 498-499). CDF/integral
+operations are vectorised; `soil_step` operates on one state and one net
+depth.
 
 ### Apparent typographical errors in Appendix A
 

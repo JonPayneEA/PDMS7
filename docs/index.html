@@ -6,10 +6,10 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <title>Configurable Probability Distributed Rainfall Runoff Model • pdmS7</title>
-<script src="deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<script src="deps/jquery-3.6.1/jquery-3.6.1.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
-<script src="deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
-<link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
+<script src="deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.4.2/css/all.min.css" rel="stylesheet">
+<link href="deps/font-awesome-6.4.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="Configurable Probability Distributed Rainfall Runoff Model">
 <meta name="description" content="An independent, configurable implementation of the Probability Distributed Model described by Moore (2007) &lt;doi:10.5194/hess-11-483-2007&gt;. S7 components provide five capacity distributions, three recharge schemes, reservoir routing, PACK snow processing, multi-objective calibration, and forecast updating. Explicit water accounting and source notes distinguish numerical choices from the paper.">
 <meta property="og:description" content="An independent, configurable implementation of the Probability Distributed Model described by Moore (2007) &lt;doi:10.5194/hess-11-483-2007&gt;. S7 components provide five capacity distributions, three recharge schemes, reservoir routing, PACK snow processing, multi-objective calibration, and forecast updating. Explicit water accounting and source notes distinguish numerical choices from the paper.">
@@ -31,13 +31,40 @@
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto">
-<li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
+<li class="nav-item"><a class="nav-link" href="articles/example-workflow.html">Get started</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="articles/example-workflow.html">Worked example: snow, flow, calibration and restart</a></li>
+<li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>How the model works</h6></li>
     <li><a class="dropdown-item" href="articles/pdm-explained.html">PDM explained: from rainfall to river flow</a></li>
     <li><a class="dropdown-item" href="articles/snowpack-explained.html">PACK explained: storing snow and releasing meltwater</a></li>
+    <li><a class="dropdown-item" href="articles/example-workflow.html">Worked example: snow, flow, calibration and restart</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Model options</h6></li>
+    <li><a class="dropdown-item" href="articles/model-options.html">Choosing model components</a></li>
+    <li><a class="dropdown-item" href="articles/starting-states.html">Starting a run: cold, warm and hot</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Calibration and forecasting</h6></li>
+    <li><a class="dropdown-item" href="articles/calibration.html">Calibration: multi-start, budgets and staged calibration</a></li>
+    <li><a class="dropdown-item" href="articles/forecast-updating.html">Forecast updating</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Under the bonnet</h6></li>
+    <li><a class="dropdown-item" href="articles/compiled-core.html">The C core: speed, equivalence and other languages</a></li>
+  </ul>
+</li>
+<li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-guides" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Guides</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-guides">
+<li><a class="dropdown-item" href="performance.html">Performance and the compiled core</a></li>
+    <li><a class="external-link dropdown-item" href="https://github.com/JonPayneEA/PDMS7/blob/master/docs/benchmarks/solver-timing.md">Solver timing</a></li>
+    <li><a class="dropdown-item" href="benchmark-protocol.html">Benchmark protocol</a></li>
+    <li><a class="dropdown-item" href="validation.html">Validation</a></li>
+    <li><a class="dropdown-item" href="multi-objective.html">Multi-objective calibration</a></li>
+    <li><a class="dropdown-item" href="snow-model.html">Snow model notes</a></li>
+    <li><a class="dropdown-item" href="source-notes.html">Source notes</a></li>
+    <li><a class="dropdown-item" href="roadmap.html">Roadmap</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
@@ -46,6 +73,7 @@
 <li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="search.json">
 </form></li>
+<li class="nav-item"><a class="external-link nav-link" href="https://github.com/JonPayneEA/PDMS7" aria-label="GitHub"><span class="fa fa-github"></span></a></li>
       </ul>
 </div>
 
@@ -65,18 +93,36 @@
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"S7"</span>, <span class="st">"data.table"</span>, <span class="st">"yaml"</span>, <span class="st">"logger"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"pdmS7_0.3.1.tar.gz"</span>, repos <span class="op">=</span> <span class="cn">NULL</span>, type <span class="op">=</span> <span class="st">"source"</span><span class="op">)</span></span></code></pre></div>
-<p>For developers, extract the full project, open R in <code>pdmS7/</code>, and use <code><a href="https://rstudio.github.io/renv/reference/restore.html" class="external-link">renv::restore()</a></code>. The lockfile also records the testing and documentation tools. Do not copy the previous machine’s <code>renv/library</code> directory.</p>
+<p>The package contains compiled code (the model core in C, with a thin C++ wrapper for R), so installing from source needs a compiler: Rtools on Windows, the Xcode command line tools on macOS, or the usual build tools on Linux. The cpp11 package is needed at build time only.</p>
+<p>For developers, extract the full project, open R in <code>pdmS7/</code>, and use <code><a href="https://rdrr.io/pkg/renv/man/restore.html" class="external-link">renv::restore()</a></code>. The lockfile also records the testing and documentation tools. Do not copy the previous machine’s <code>renv/library</code> directory.</p>
 </div>
 <div class="section level2">
-<h2 id="illustrated-vignettes">Illustrated vignettes<a class="anchor" aria-label="anchor" href="#illustrated-vignettes"></a>
+<h2 id="articles">Articles<a class="anchor" aria-label="anchor" href="#articles"></a>
 </h2>
-<p><strong>Plain Markdown copies are included in the project:</strong></p>
+<p>The <a href="https://jonpayneea.github.io/PDMS7/">package website</a> carries illustrated articles, each built from a vignette in <code>vignettes/</code> with live examples and plots.</p>
+<p>How the model works:</p>
 <ul>
-<li><a href="docs/vignettes/pdm-explained.html">PDM explained</a></li>
-<li><a href="docs/vignettes/snowpack-explained.html">PACK snowpack explained</a></li>
-<li><a href="docs/vignettes/example-workflow.html">Example workflow</a></li>
+<li><a href="https://jonpayneea.github.io/PDMS7/articles/pdm-explained.html">PDM explained: from rainfall to river flow</a></li>
+<li><a href="https://jonpayneea.github.io/PDMS7/articles/snowpack-explained.html">PACK explained: storing snow and releasing meltwater</a></li>
+<li><a href="https://jonpayneea.github.io/PDMS7/articles/example-workflow.html">Worked example: snow, flow, calibration and restart</a></li>
 </ul>
-<p>Start with <a href="docs/vignettes/README.html">the guide index and PACK file map</a>. Diagrams are included in <code>docs/vignettes/figures/</code>; no documentation build is needed to read the <code>.md</code> guides. The PACK implementation is in <code>R/pack_model.R</code>, <code>R/pack_step.R</code> and <code>R/sim_pack.R</code>, with defaults in <code>inst/config/pack.yml</code>.</p>
+<p>Model options:</p>
+<ul>
+<li>
+<a href="https://jonpayneea.github.io/PDMS7/articles/model-options.html">Choosing model components</a>: the five capacity distributions, three recharge rules, routing forms and the solver</li>
+<li><a href="https://jonpayneea.github.io/PDMS7/articles/starting-states.html">Starting a run: cold, warm and hot</a></li>
+</ul>
+<p>Calibration and forecasting:</p>
+<ul>
+<li><a href="https://jonpayneea.github.io/PDMS7/articles/calibration.html">Calibration: multi-start, budgets and staged calibration</a></li>
+<li>
+<a href="https://jonpayneea.github.io/PDMS7/articles/forecast-updating.html">Forecast updating</a>: state correction and ARMA error prediction</li>
+</ul>
+<p>Under the bonnet:</p>
+<ul>
+<li><a href="https://jonpayneea.github.io/PDMS7/articles/compiled-core.html">The C core: speed, equivalence and other languages</a></li>
+</ul>
+<p>The PACK implementation is in <code>R/pack_model.R</code>, <code>R/pack_step.R</code> and <code>R/sim_pack.R</code>, with defaults in <code>inst/config/pack.yml</code>.</p>
 <p>The source archive includes built HTML vignettes. After installation:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/browseVignettes.html" class="external-link">browseVignettes</a></span><span class="op">(</span><span class="st">"pdmS7"</span><span class="op">)</span></span>
@@ -127,30 +173,30 @@
 <col width="50%">
 <col width="50%">
 </colgroup>
-<thead><tr>
+<thead><tr class="header">
 <th>Component</th>
 <th>Choices and parameters</th>
 </tr></thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td>Capacity</td>
 <td>
 <code>pareto(cmin,cmax,b)</code>; <code>rectangular(cmin,cmax)</code>; <code>triangular(cmin,cmax)</code>; <code>exponential(mean)</code>; <code>lognormal(meanlog,sdlog)</code>
 </td>
 </tr>
-<tr>
+<tr class="even">
 <td>Recharge</td>
 <td>
 <code>standard(kg,bg,st)</code>; <code>demand(alpha,beta,qsat)</code>; <code>split(alpha)</code>
 </td>
 </tr>
-<tr>
+<tr class="odd">
 <td>Either routing pathway</td>
 <td>
 <code>linear(kb)</code>; <code>quadratic(kb)</code>; <code>cubic(kb,solver)</code>; <code>power(k,m,solver,rtol,atol)</code>; <code>cascade(k1,k2)</code>; <code>exponential(a,gamma)</code>
 </td>
 </tr>
-<tr>
+<tr class="even">
 <td>Catchment controls</td>
 <td>
 <code>be</code>, <code>fc</code>, <code>td</code>, <code>qc</code>, <code>area_km2</code>, <code>dt</code>
@@ -171,7 +217,7 @@
 <span>  surface <span class="op">=</span> <span class="fu"><a href="reference/FlodeCascadeRouting.html">FlodeCascadeRouting</a></span><span class="op">(</span>k1 <span class="op">=</span> <span class="fl">2</span>, k2 <span class="op">=</span> <span class="fl">4</span><span class="op">)</span>,</span>
 <span>  groundwater <span class="op">=</span> <span class="fu"><a href="reference/cubic_routing.html">cubic_routing</a></span><span class="op">(</span>kb <span class="op">=</span> <span class="fl">10000</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
-<span><span class="fu">S7</span><span class="fu">::</span><span class="fu"><a href="https://rconsortium.github.io/S7/reference/S7_inherits.html" class="external-link">S7_inherits</a></span><span class="op">(</span><span class="va">model</span>, <span class="va">FlodePdmModel</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">S7</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/S7/man/S7_inherits.html" class="external-link">S7_inherits</a></span><span class="op">(</span><span class="va">model</span>, <span class="va">FlodePdmModel</span><span class="op">)</span></span></code></pre></div>
 <p>All canonical classes carry the <code>Flode</code> prefix. Previous constructor names such as <code>ParetoCapacity</code>, <code>PDMModel</code> and <code>PDMState</code> remain aliases. The legacy <code>run_pdm(model, forcing, state)</code> API retains <code>rain</code>/<code>pet</code> inputs and its list of results, including a data.frame with <code>q_m3s</code> and <code>q_end_m3s</code> columns.</p>
 <p>The unchanged mathematical component names mirror the paper and conventional probability APIs (e.g. <code>capacity_cdf</code>). Their units are documented in help and the parameter catalog. No implicit unit conversion is introduced into these APIs.</p>
 <p><strong>Saved 0.1.0 S7 objects:</strong> rebuild from the saved configuration under 0.2.0; canonical class identity has changed. Newly saved states restart within 0.2.0. Do not change model structure or timestep without transforming/reinitializing states. No compatibility claim is made for 0.1.0 serialized state objects.</p>
@@ -185,7 +231,17 @@
 <span><span class="va">second_dt</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/sim_pdm.html">sim_pdm</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">5</span>, <span class="fl">0</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.05</span>, <span class="fl">0.05</span><span class="op">)</span>, <span class="va">config</span>, <span class="fl">60L</span>,</span>
 <span>  state <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">first_dt</span>, <span class="st">"final_state"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co"># Warm-up rows are retained and flagged; exclude is_warmup rows when scoring.</span></span></code></pre></div>
-<p><code><a href="reference/initial_state.html">initial_state()</a></code> allows explicit soil/routing states. <code><a href="reference/spin_up.html">spin_up()</a></code> repeats a representative forcing period; inspect state convergence. Store checkpoint objects with <code><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">saveRDS()</a></code> and <code><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS()</a></code>, using a caller-configured path.</p>
+<p>Four ways to start a run:</p>
+<ul>
+<li>
+<strong>Cold:</strong> <code>initial_state(model, soil_fraction = 0.5)</code>, with empty routing stores. Explicit soil and routing storages can also be given.</li>
+<li>
+<strong>Warm from an observed flow:</strong> <code>initial_state_from_flow(model, observed_m3s,   baseflow_fraction)</code> sets every store in steady state with the flow at the start of the run. For UK gauged catchments the NRFA baseflow index is a reasonable <code>baseflow_fraction</code>.</li>
+<li>
+<strong>Warm by spin-up:</strong> <code><a href="reference/spin_up.html">spin_up()</a></code> repeats a representative forcing period; inspect state convergence.</li>
+<li>
+<strong>Hot:</strong> pass the final state of one run to the next. Restarts are exactly continuous. Store checkpoint objects with <code><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">saveRDS()</a></code> and <code><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS()</a></code>, using a caller-configured path.</li>
+</ul>
 </div>
 <div class="section level2">
 <h2 id="calibration-and-updating">Calibration and updating<a class="anchor" aria-label="anchor" href="#calibration-and-updating"></a>
@@ -197,8 +253,13 @@
 <span><span class="co">#   lower = c(distribution.b = 0.05, surface.k1 = 0.1),</span></span>
 <span><span class="co">#   upper = c(distribution.b = 3, surface.k1 = 10),</span></span>
 <span><span class="co">#   warmup = 24, objective = "rmse", flow = "q_m3s")</span></span></code></pre></div>
-<p>These bounds are illustrative. Missing observations are excluded; missing forcing is rejected. Inspect convergence and validate on independent periods. Debug logs for rejected parameter trials use <code><a href="https://daroczig.github.io/logger/reference/log_level.html" class="external-link">logger::log_debug()</a></code>; ordinary simulations produce no operational console messages. A calling script can configure logger thresholds/appenders. Runtime code has no tidyverse dependency.</p>
+<p>These bounds are illustrative. Missing observations are excluded; missing forcing is rejected. Inspect convergence and validate on independent periods. Debug logs for rejected parameter trials use <code><a href="https://rdrr.io/pkg/logger/man/log_level.html" class="external-link">logger::log_debug()</a></code>; ordinary simulations produce no operational console messages. A calling script can configure logger thresholds/appenders. Runtime code has no tidyverse dependency.</p>
 <p><code><a href="reference/correct_state.html">correct_state()</a></code> implements proportional, super-proportional, and non-proportional endpoint state correction, with explicit external correction volume. It requires <code>td=0</code>. <code><a href="reference/fit_error_updater.html">fit_error_updater()</a></code> and <code><a href="reference/update_forecast.html">update_forecast()</a></code> implement additive or logarithmic ARMA correction. Use training history available at the forecast origin, never future observations. AR coefficients use R’s sign convention (<code>ar=-phi</code> in the paper).</p>
+</div>
+<div class="section level2">
+<h2 id="fast-fair-calibration">Fast, fair calibration<a class="anchor" aria-label="anchor" href="#fast-fair-calibration"></a>
+</h2>
+<p><code>calibrate_pdm(..., starts = 20L, seed = 42)</code> runs L-BFGS-B from several starting points and returns the best, with a per-start table in <code>start_results</code>. Every PDM model, and the PACK snowpack, runs on a compiled engine hundreds of times faster than the R loop, with output that agrees to rounding. The engine is plain C with an interface that other languages can call; see <code>tools/core/README.md</code>. The Smith groundwater solver is inaccurate above a 1-hour step and now warns. See the <a href="docs/performance.html">performance guide</a> for how these work, parallel runs across basins, and budgeting a large calibration.</p>
 </div>
 <div class="section level2">
 <h2 id="snow-and-multi-objective-calibration">Snow and multi-objective calibration<a class="anchor" aria-label="anchor" href="#snow-and-multi-objective-calibration"></a>
@@ -226,18 +287,26 @@
 </h2>
 <p>From the project root after restoring dependencies:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">roxygen2</span><span class="fu">::</span><span class="fu"><a href="https://roxygen2.r-lib.org/reference/roxygenize.html" class="external-link">roxygenise</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="fu">testthat</span><span class="fu">::</span><span class="fu"><a href="https://testthat.r-lib.org/reference/test_package.html" class="external-link">test_local</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="va">cov</span> <span class="op">&lt;-</span> <span class="fu">covr</span><span class="fu">::</span><span class="fu">package_coverage</span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu">covr</span><span class="fu">::</span><span class="fu">percent_coverage</span><span class="op">(</span><span class="va">cov</span><span class="op">)</span> <span class="op">&gt;=</span> <span class="fl">70</span><span class="op">)</span></span>
-<span><span class="fu">pkgload</span><span class="fu">::</span><span class="fu"><a href="https://pkgload.r-lib.org/reference/load_all.html" class="external-link">load_all</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="fu">lintr</span><span class="fu">::</span><span class="fu"><a href="https://lintr.r-lib.org/reference/lint.html" class="external-link">lint_package</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">==</span> <span class="fl">0</span><span class="op">)</span></span>
-<span><span class="fu">renv</span><span class="fu">::</span><span class="fu"><a href="https://rstudio.github.io/renv/reference/status.html" class="external-link">status</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="fu">rcmdcheck</span><span class="fu">::</span><span class="fu"><a href="http://r-lib.github.io/rcmdcheck/reference/rcmdcheck.html" class="external-link">rcmdcheck</a></span><span class="op">(</span>args <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"--no-manual"</span><span class="op">)</span>, error_on <span class="op">=</span> <span class="st">"warning"</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu">roxygen2</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/roxygen2/man/roxygenize.html" class="external-link">roxygenise</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu">testthat</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/testthat/man/test_package.html" class="external-link">test_local</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">cov</span> <span class="op">&lt;-</span> <span class="fu">covr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/covr/man/package_coverage.html" class="external-link">package_coverage</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu">covr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/covr/man/percent_coverage.html" class="external-link">percent_coverage</a></span><span class="op">(</span><span class="va">cov</span><span class="op">)</span> <span class="op">&gt;=</span> <span class="fl">70</span><span class="op">)</span></span>
+<span><span class="fu">pkgload</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/pkgload/man/load_all.html" class="external-link">load_all</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="fu">lintr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/lintr/man/lint.html" class="external-link">lint_package</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">==</span> <span class="fl">0</span><span class="op">)</span></span>
+<span><span class="fu">renv</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/renv/man/status.html" class="external-link">status</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu">rcmdcheck</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/rcmdcheck/man/rcmdcheck.html" class="external-link">rcmdcheck</a></span><span class="op">(</span>args <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"--no-manual"</span><span class="op">)</span>, error_on <span class="op">=</span> <span class="st">"warning"</span><span class="op">)</span></span></code></pre></div>
 <p>The shared Flode CI workflow is pinned to the style repository commit recorded in <a href="docs/tier3-review.html">the review</a>, with <code>tier: 3</code>. CI configuration is provided; remote CI has not been run in a hosted repository. The review distinguishes completed local checks from outstanding human governance requirements.</p>
 </div>
 </div>
-  </main><aside class="col-md-3"><div class="license">
+  </main><aside class="col-md-3"><div class="links">
+<h2 data-toc-skip>Links</h2>
+<ul class="list-unstyled">
+<li><a href="https://github.com/JonPayneEA/PDMS7/" class="external-link">Browse source code</a></li>
+<li><a href="https://github.com/JonPayneEA/PDMS7/issues" class="external-link">Report a bug</a></li>
+</ul>
+</div>
+
+<div class="license">
 <h2 data-toc-skip>License</h2>
 <ul class="list-unstyled">
 <li>
@@ -272,7 +341,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>

@@ -16,7 +16,9 @@ calibrate_pdm(
   flow = c("q_m3s", "q_end_m3s"),
   log_offset = 0.01,
   control = list(maxit = 200),
-  soil_fraction = 0.5
+  soil_fraction = 0.5,
+  starts = 1L,
+  seed = NULL
 )
 ```
 
@@ -72,10 +74,32 @@ calibrate_pdm(
 
   Initial fraction of basin capacity between zero and one.
 
+- starts:
+
+  Positive integer number of L-BFGS-B starts. The default, 1, runs a
+  single start from the values in config, as earlier versions did. With
+  more than one, the first start is still the values in config and the
+  others are drawn uniformly inside lower and upper. Every start is
+  optimised and the best objective is returned.
+
+- seed:
+
+  Optional finite number that seeds the random starting points. The
+  caller's random number state is restored on exit. It has no effect
+  when starts is 1.
+
 ## Value
 
 A list of config, model, parameters, objective, convergence, message,
-and optim diagnostics.
+optim diagnostics, and start_results. The first six describe the best
+start; optim is its stats::optim result. start_results is a data.table
+with one row per start: start (1 is the configured point), objective (on
+the scale given by objective_name, 1e+30 if no valid evaluation),
+convergence (the stats::optim code), evaluations (every objective call,
+including the finite-difference gradient calls that stats::optim counts
+leave out), best (TRUE for the returned start), and one column per
+calibrated parameter holding the fitted value, which always lies within
+lower and upper.
 
 ## References
 
@@ -222,4 +246,16 @@ calibrate_pdm(config, f, q, lower = c(fc = 0.8), upper = c(fc = 1.2),
 #> [1] "ERROR: ABNORMAL_TERMINATION_IN_LNSRCH"
 #> 
 #> 
+#> $start_results
+#>    start objective convergence evaluations   best    fc
+#>    <int>     <num>       <int>       <int> <lgcl> <num>
+#> 1:     1         0          52          63   TRUE     1
+#> 
+calibrate_pdm(config, f, q, lower = c(fc = 0.8), upper = c(fc = 1.2),
+  control = list(maxit = 2), starts = 3L, seed = 1)$start_results
+#>    start    objective convergence evaluations   best        fc
+#>    <int>        <num>       <int>       <int> <lgcl>     <num>
+#> 1:     1 0.000000e+00          52          63   TRUE 1.0000000
+#> 2:     2 3.400469e-06           1          36  FALSE 0.9999177
+#> 3:     3 5.011836e-06           1          36  FALSE 1.0001213
 ```

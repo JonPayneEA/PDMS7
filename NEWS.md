@@ -1,18 +1,23 @@
 # pdmS7 (development version)
 
+- Five new illustrated articles on the package website: choosing model components, starting
+  states, calibration, forecast updating, and the C core. Articles, guides and the function
+  reference are grouped by topic in the site navigation. DESCRIPTION gains `URL` and
+  `BugReports`.
 - `calibrate_pdm()` gains opt-in multi-start calibration through `starts` and `seed`.
   Start 1 is the configured point; extra starts are drawn uniformly inside the bounds, all
   are optimised, and the best objective is returned. The result gains `start_results`, a
   table of per-start objective, convergence code, evaluation count and fitted parameters.
   The default `starts = 1L` runs the same single optimisation as earlier versions.
 - `run_pdm()`, and so `sim_pdm()` and `calibrate_pdm()`, now run a compiled time loop for
-  Pareto capacity, standard recharge, cascade surface routing and power-law groundwater
-  routing (the default configuration). It is about 430 times faster. Output agrees with the
+  every capacity distribution; standard, split and demand recharge; and cascade, power-law and
+  exponential stores on either route. It is about 430 times
+  faster. Output agrees with the
   R loop to rounding: bit-identical on R 4.3, with last-place differences on R 4.5 and later,
   where calibrated parameters can differ from earlier versions by about 1e-13 relative.
-  Other models use the R loop as before. `options(pdmS7.engine = "r")` forces the R loop,
-  which remains the reference implementation. Building from source now needs a
-  C++ compiler (Rtools on Windows); cpp11 is a build-time dependency only.
+  `options(pdmS7.engine = "r")` forces the R loop, which remains the reference
+  implementation. Building from source now needs a
+  compiler (Rtools on Windows); cpp11 is a build-time dependency only.
 - Added `inst/benchmarks/time_solvers.R` and a report at `docs/benchmarks/solver-timing.md`
   timing both solvers and both engines on daily and 15-minute series.
 - `pdm_model()` (and so `pdm_from_config()` and `sim_pdm()`) warns, once per session, when the
@@ -20,6 +25,36 @@
   step and reaches 60 to 100 per cent of peak flow at a daily step. Results are unchanged; the
   default adaptive solver is unaffected. `inst/benchmarks/smith_step_error.R` reproduces the
   evidence.
+- The compiled time loop now sits behind a language-neutral C interface (`src/pdm_core.h`,
+  interface version 2), so other languages can call the same model code. `src/pdm_engine.cpp` is a thin R wrapper over
+  it, and results are unchanged. The core validates its own inputs and leaves the caller's
+  state untouched on error. `tools/core/README.md` covers building it without R.
+- Golden test files in `inst/golden/` hold inputs and expected outputs from the R reference,
+  for checking any binding of the core. `tools/core/check_golden.c` checks them from plain C.
+- The triangular capacity distribution is now inverted exactly (cube root or the
+  trigonometric solution of a cubic) and the lognormal by safeguarded Newton iteration, in
+  place of `uniroot()` with a 1e-10 tolerance. Storage round trips improve from about 2e-11 to
+  1e-14 mm; model outputs for these two distributions change by at most about 3e-11.
+- Fixed: the rectangular distribution's `capacity_mean()` used (cmin + cmax) / 2 while its
+  other methods used the Pareto b = 1 form, which can differ in the last place. A soil store
+  filled exactly to capacity could then fail with "Soil storage exceeds capacity_mean". Both
+  now use the Pareto form, so `capacity_mean()` can change in the last place.
+- The PACK snowpack also runs in the compiled core, about 540 times faster than its R loop
+  and bit-identical to it on R 4.3. `sim_pack()` and `sim_snow_pdm()` use it automatically.
+  The core gains `pdm_pack_run()` for snow alone and `pdm_snow_run()` for snow feeding PDM.
+- New `initial_state_from_flow()`: a warm start in steady state with the flow observed at
+  the start of a run. Routing stores deliver their share of the flow, the soil store is set so
+  that recharge equals baseflow, and delay queues hold the water in transit. It replaces an
+  arbitrary soil fraction for short test runs and forecasts. Also in the core as
+  `pdm_state_from_flow()`.
+- Forecast updating also runs in the compiled core: `correct_state()` (state correction,
+  Moore 2007 Eq. 28-30) and `update_forecast()` (ARMA error prediction, Eq. 31-42), with
+  `pdm_correct_state()` and `pdm_update_forecast()` for other languages. Results are
+  bit-identical to the R code. Fitting the ARMA coefficients stays in R.
+- The compiled core is now plain C99 (`src/pdm_core.c`), so other languages need only a C
+  compiler to build it. Results are bit-identical to the previous C++ version.
+- Fixed: the compiled engine rejected an initial state whose values were all stored as
+  integers, for example one read with `read.csv()`. The R loop accepted it.
 - A peak timing objective is deferred.
 
 # pdmS7 0.3.1

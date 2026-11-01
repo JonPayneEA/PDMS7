@@ -12,10 +12,42 @@ extern "C" SEXP _pdmS7_pdm_engine_run(SEXP rain, SEXP pet, SEXP par, SEXP state,
     return cpp11::as_sexp(pdm_engine_run(cpp11::as_cpp<cpp11::decay_t<doubles>>(rain), cpp11::as_cpp<cpp11::decay_t<doubles>>(pet), cpp11::as_cpp<cpp11::decay_t<doubles>>(par), cpp11::as_cpp<cpp11::decay_t<doubles>>(state), cpp11::as_cpp<cpp11::decay_t<bool>>(full)));
   END_CPP11
 }
+// pdm_engine.cpp
+cpp11::list pack_engine_run(doubles precipitation, doubles temperature, doubles par, doubles state, double dt);
+extern "C" SEXP _pdmS7_pack_engine_run(SEXP precipitation, SEXP temperature, SEXP par, SEXP state, SEXP dt) {
+  BEGIN_CPP11
+    return cpp11::as_sexp(pack_engine_run(cpp11::as_cpp<cpp11::decay_t<doubles>>(precipitation), cpp11::as_cpp<cpp11::decay_t<doubles>>(temperature), cpp11::as_cpp<cpp11::decay_t<doubles>>(par), cpp11::as_cpp<cpp11::decay_t<doubles>>(state), cpp11::as_cpp<cpp11::decay_t<double>>(dt)));
+  END_CPP11
+}
+// pdm_engine.cpp
+cpp11::list correct_engine_run(doubles par, doubles state, double observed, doubles upd);
+extern "C" SEXP _pdmS7_correct_engine_run(SEXP par, SEXP state, SEXP observed, SEXP upd) {
+  BEGIN_CPP11
+    return cpp11::as_sexp(correct_engine_run(cpp11::as_cpp<cpp11::decay_t<doubles>>(par), cpp11::as_cpp<cpp11::decay_t<doubles>>(state), cpp11::as_cpp<cpp11::decay_t<double>>(observed), cpp11::as_cpp<cpp11::decay_t<doubles>>(upd)));
+  END_CPP11
+}
+// pdm_engine.cpp
+cpp11::list forecast_engine_run(doubles ar, doubles ma, int scale, double offset, doubles observed, doubles simulated, doubles forecast);
+extern "C" SEXP _pdmS7_forecast_engine_run(SEXP ar, SEXP ma, SEXP scale, SEXP offset, SEXP observed, SEXP simulated, SEXP forecast) {
+  BEGIN_CPP11
+    return cpp11::as_sexp(forecast_engine_run(cpp11::as_cpp<cpp11::decay_t<doubles>>(ar), cpp11::as_cpp<cpp11::decay_t<doubles>>(ma), cpp11::as_cpp<cpp11::decay_t<int>>(scale), cpp11::as_cpp<cpp11::decay_t<double>>(offset), cpp11::as_cpp<cpp11::decay_t<doubles>>(observed), cpp11::as_cpp<cpp11::decay_t<doubles>>(simulated), cpp11::as_cpp<cpp11::decay_t<doubles>>(forecast)));
+  END_CPP11
+}
+// pdm_engine.cpp
+cpp11::doubles from_flow_engine_run(doubles par, double observed, double baseflow_fraction, double soil_fraction);
+extern "C" SEXP _pdmS7_from_flow_engine_run(SEXP par, SEXP observed, SEXP baseflow_fraction, SEXP soil_fraction) {
+  BEGIN_CPP11
+    return cpp11::as_sexp(from_flow_engine_run(cpp11::as_cpp<cpp11::decay_t<doubles>>(par), cpp11::as_cpp<cpp11::decay_t<double>>(observed), cpp11::as_cpp<cpp11::decay_t<double>>(baseflow_fraction), cpp11::as_cpp<cpp11::decay_t<double>>(soil_fraction)));
+  END_CPP11
+}
 
 extern "C" {
 static const R_CallMethodDef CallEntries[] = {
-    {"_pdmS7_pdm_engine_run", (DL_FUNC) &_pdmS7_pdm_engine_run, 5},
+    {"_pdmS7_correct_engine_run",   (DL_FUNC) &_pdmS7_correct_engine_run,   4},
+    {"_pdmS7_forecast_engine_run",  (DL_FUNC) &_pdmS7_forecast_engine_run,  7},
+    {"_pdmS7_from_flow_engine_run", (DL_FUNC) &_pdmS7_from_flow_engine_run, 4},
+    {"_pdmS7_pack_engine_run",      (DL_FUNC) &_pdmS7_pack_engine_run,      5},
+    {"_pdmS7_pdm_engine_run",       (DL_FUNC) &_pdmS7_pdm_engine_run,       5},
     {NULL, NULL, 0}
 };
 }

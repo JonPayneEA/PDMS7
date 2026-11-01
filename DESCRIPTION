@@ -10,6 +10,8 @@ Description: An independent, configurable implementation of the Probability Dist
         PACK snow processing, multi-objective calibration, and forecast updating.
         Explicit water accounting and source notes
         distinguish numerical choices from the paper.
+URL: https://jonpayneea.github.io/PDMS7/, https://github.com/JonPayneEA/PDMS7
+BugReports: https://github.com/JonPayneEA/PDMS7/issues
 License: MIT + file LICENSE
 Encoding: UTF-8
 Depends: R (>= 4.3.0)
@@ -26,6 +28,7 @@ Collate: 'utils.R' 'distributions.R' 'distributions_part3.R' 'distributions_part
         'recharge.R' 'model.R' 'model_part2.R' 'model_2.R' 'configuration.R'
         'configuration_part2.R' 'updating.R' 'updating_part2.R' 'compatibility.R'
         'sim_pdm.R' 'read_pdm_config.R' 'pack_model.R' 'pack_step.R' 'sim_pack.R'
-        'calibration_metrics.R' 'calibrate_multi.R' 'cpp11.R' 'engine.R' 'zzz.R'
+        'calibration_metrics.R' 'calibrate_multi.R' 'cpp11.R' 'engine.R' 'initial_flow.R'
+        'zzz.R'
 Config/roxygen2/version: 8.1.0
 RoxygenNote: 7.3.3

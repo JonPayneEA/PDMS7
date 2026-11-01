@@ -1,0 +1,5 @@
+case,precipitation_factor,lower_rate_h,upper_rate_h,retention_fraction,melt_factor_mmh_c,adc_alpha,adc_depth_mm,melt_threshold_c,snow_threshold_c,drain_threshold_c,max_step_min,areal_depletion,dt,expected_code
+adc_alpha_zero,1,0.00677,0.27095000000000002,0.040000000000000001,0.16667000000000001,0,100,1,0,0,60,1,1,1
+retention_one,1,0.00677,0.27095000000000002,1,0.16667000000000001,0.25,100,1,0,0,60,1,1,1
+max_step_zero,1,0.00677,0.27095000000000002,0.040000000000000001,0.16667000000000001,0.25,100,1,0,0,0,1,1,1
+negative_melt_factor,1,0.00677,0.27095000000000002,0.040000000000000001,-0.10000000000000001,0.25,100,1,0,0,60,1,1,1

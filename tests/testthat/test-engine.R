@@ -26,7 +26,7 @@ with_engine <- function(engine, code) {
 }
 
 # The engines agree to rounding, not bit for bit: R's own sum() and ^ changed between R
-# versions (4.3 and 4.6 differ in the last place), so the C++ code cannot track them exactly.
+# versions (4.3 and 4.6 differ in the last place), so the C code cannot track them exactly.
 # Each numeric column must agree within 1e-12 of its own magnitude (at least 1).
 # Non-numeric columns, such as timestamps, must match exactly.
 expect_engines_agree <- function(fast, ref, label = "") {
@@ -66,7 +66,24 @@ engine_models <- function() {
     ),
     linear = pdm_model(groundwater = linear_routing(30)),
     quadratic = pdm_model(groundwater = quadratic_routing(300)),
-    point_mass = pdm_model(distribution = FlodeParetoCapacity(cmin = 0, cmax = 140, b = 0))
+    point_mass = pdm_model(distribution = FlodeParetoCapacity(cmin = 0, cmax = 140, b = 0)),
+    rectangular = pdm_model(distribution = FlodeRectangularCapacity(cmin = 0.4, cmax = 170.7)),
+    exponential_capacity = pdm_model(distribution = FlodeExponentialCapacity(mean = 110)),
+    split = pdm_model(recharge = FlodeSplitRecharge(alpha = 0.7)),
+    demand_power = pdm_model(recharge = FlodeDemandRecharge(alpha = 0.5, beta = 1.5, qsat = 0.5)),
+    demand_exponential = pdm_model(
+      recharge = FlodeDemandRecharge(alpha = 0.4, beta = 2, qsat = 0.3),
+      groundwater = FlodeExponentialRouting(a = 0.02, gamma = -2)
+    ),
+    exponential_routes = pdm_model(
+      surface = FlodeExponentialRouting(a = 0.05, gamma = -5),
+      groundwater = FlodeExponentialRouting(a = 0.02, gamma = -8)
+    ),
+    power_surface = pdm_model(surface = power_routing(k = 0.01, m = 1.7)),
+    smith_surface = pdm_model(surface = power_routing(k = 1e-3, m = 3, solver = "smith")),
+    cascade_groundwater = pdm_model(groundwater = FlodeCascadeRouting(k1 = 30, k2 = 200)),
+    triangular = pdm_model(distribution = FlodeTriangularCapacity(cmin = 10, cmax = 190)),
+    lognormal = pdm_model(distribution = FlodeLognormalCapacity(meanlog = 4.1, sdlog = 1))
   )
 }
 
@@ -113,12 +130,44 @@ test_that(
 )
 
 test_that(
-  "unsupported models and the r option use the R loop",
+  "compiled engine accepts a state held as integers",
   {
-    check(!pdmS7:::.engine_supported(pdm_model(recharge = FlodeSplitRecharge(0.7))))
-    check(!pdmS7:::.engine_supported(pdm_model(surface = linear_routing(5))))
-    check(!pdmS7:::.engine_supported(pdm_model(distribution = FlodeExponentialCapacity(100))))
+    model <- pdm_model()
+    # Every value an integer, as read.csv() returns for whole numbers.
+    state <- FlodePdmState(
+      soil = 50L, surface = c(3L, 4L), groundwater = 20L, step = 0L,
+      delay_surface = 0L, delay_groundwater = 0L,
+      delay_surface_end = 0L, delay_groundwater_end = 0L
+    )
+    forcing <- engine_forcing(50)
+    expect_engines_agree(
+      run_pdm(model, forcing, state)$output,
+      with_engine("r", run_pdm(model, forcing, state))$output
+    )
+  }
+)
+
+test_that(
+  "the r option uses the R loop",
+  {
     check(!with_engine("r", pdmS7:::.engine_supported(pdm_model())))
+  }
+)
+
+test_that(
+  "a rectangular store filled exactly to capacity runs on both engines",
+  {
+    # (cmin + cmax) / 2 and cmin + (cmax - cmin) / 2 differ in the last place for these
+    # bounds; a full store used to fail with "Soil storage exceeds capacity_mean".
+    distribution <- FlodeRectangularCapacity(cmin = 0.2, cmax = 1.0)
+    model <- pdm_model(distribution = distribution)
+    state <- initial_state(model, 1)
+    forcing <- data.frame(rain = c(0, 5, 0), pet = 0.1)
+    expect_engines_agree(
+      run_pdm(model, forcing, state)$output,
+      with_engine("r", run_pdm(model, forcing, state))$output
+    )
+    expect_equal(capacity_from_storage(distribution, capacity_mean(distribution)), 1.0)
   }
 )
 

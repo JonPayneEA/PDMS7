@@ -180,21 +180,22 @@ Each time step of PDM is a few dozen arithmetic operations. In R, the work aroun
 far more: building S7 objects, validating them, and creating a one-row data.table at every
 step. A profile put the groundwater maths itself at under 10 per cent of the run time.
 
-The compiled engine runs the whole time loop in C++. It covers the default configuration:
+The compiled engine runs the whole time loop in C. It covers:
 
-- Pareto capacity distribution
-- standard recharge
-- two-store cascade surface routing
-- power-law groundwater routing, including cubic, with either solver
+- capacity distribution: Pareto, rectangular, exponential, triangular or lognormal;
+- recharge: standard, split or demand;
+- surface and groundwater routes, chosen independently: two-store cascade, power-law store
+  (linear, quadratic, cubic or any exponent, with either solver) or exponential store.
 
-`run_pdm()` checks the model and uses the compiled loop when every component is one of these.
-Anything else, such as split recharge, exponential routing or snow, runs on the original R
-loop exactly as before. You do not choose; it happens automatically. `sim_pdm()` and
+That is every PDM component in the package, so `run_pdm()` always uses the compiled loop
+unless `options(pdmS7.engine = "r")` is set. The PACK snowpack (`sim_pack()`, and so
+`sim_snow_pdm()`) is compiled too, about 540 times faster than its R loop. You do not choose;
+it happens automatically. `sim_pdm()` and
 `calibrate_pdm()` both go through `run_pdm()`, so they speed up too.
 
 ### Is the output the same?
 
-Yes, to rounding. The C++ code repeats the R arithmetic in the same order, so the two engines
+Yes, to rounding. The C code repeats the R arithmetic in the same order, so the two engines
 agree to the last one or two decimal places of a double, around 1e-15 relative. On R 4.3 they
 are bit-identical. On R 4.5 and 4.6 they differ in the last place, because those versions
 changed how R's own `sum()` and `^` round. `tests/testthat/test-engine.R` compares every output
@@ -235,8 +236,8 @@ would have needed about six hours. Full details are in the
 
 ### Installing
 
-The package now contains C++ code, so building from source needs a compiler. On Windows that
-means Rtools matched to your R version; on macOS, the Xcode command line tools; on Linux, the
+The package now contains compiled code: the model core in C and a thin C++ wrapper for R. So
+building from source needs a compiler. On Windows that means Rtools matched to your R version; on macOS, the Xcode command line tools; on Linux, the
 usual build tools. The cpp11 package is needed at build time only; nothing extra is loaded
 when the package runs.
 
@@ -309,25 +310,31 @@ counts from its `start_results`.
   one.
 - Uniform random starts cover the parameter space less evenly than a space-filling design such
   as a Latin hypercube. With 20 starts and three or four parameters this rarely matters.
-- The compiled engine covers the default configuration only. Other components run at R speed.
 - Evaluation counts depend on the basin, the objective, the bounds and the number of
   parameters.
 
 ## For maintainers: extending the engine
 
+The model arithmetic lives in `src/pdm_core.c`, plain C99 behind the interface in `src/pdm_core.h`.
+It has no R dependency, so other languages can call it; `tools/core/README.md` explains how.
+`src/pdm_engine.cpp` is only the R wrapper. The PACK snowpack is in the core too.
+
 To port another component:
 
-1. Add its step to `src/pdm_engine.cpp`, mirroring the R expression in the same evaluation
+1. Add its step to `src/pdm_core.c`, mirroring the R expression in the same evaluation
    order. Use `rpow()` for `^` and the long-double helpers for `sum()`.
-2. Pass its parameters through `.engine_run()` in `R/engine.R`.
-3. Add its class to `.engine_supported()`. Matching is by exact class, so subclasses stay on
+2. Add its parameters to `pdm_params` in `src/pdm_core.h`, with validation rules no stricter
+   than the S7 validator, and raise `PDM_CORE_ABI_VERSION`. Other languages' bindings must
+   follow the new layout.
+3. Pass its parameters through `.engine_run()` in `R/engine.R` and `src/pdm_engine.cpp`.
+4. Add its class to `.engine_supported()`. Matching is by exact class, so subclasses stay on
    the R loop until they are added deliberately.
-4. Add a configuration using it to `engine_models()` in `tests/testthat/test-engine.R`. The
-   test requires both engines to agree within 1e-12.
-5. Run `cpp11::cpp_register()` if a function signature changed, then `roxygen2::roxygenise()`.
+5. Add a configuration using it to `engine_models()` in `tests/testthat/test-engine.R`, and a
+   case to `inst/golden/generate_golden.R`. Regenerate the golden files and review the diff.
+6. Run `cpp11::cpp_register()` if a function signature changed, then `roxygen2::roxygenise()`.
 
-Any change to the model equations in R must be repeated in C++. The equivalence tests will
-fail until both agree.
+Any change to the model equations in R must be repeated in C. The equivalence and golden
+tests will fail until both agree.
 
 ## Files
 
@@ -335,7 +342,10 @@ fail until both agree.
 |---|---|
 | `R/configuration_part2.R` | `calibrate_pdm()`, including multi-start |
 | `R/engine.R` | Engine dispatch, the calibration path and the Smith warning |
-| `src/pdm_engine.cpp` | Compiled time loop |
+| `src/pdm_core.h`, `src/pdm_core.c` | Compiled time loop, in C99 |
+| `src/pdm_engine.cpp` | R wrapper for the core |
+| `inst/golden/` | Golden test files for every language binding |
+| `tools/core/` | Building and checking the core without R |
 | `R/model_2.R` | `run_pdm()`, which chooses the engine |
 | `tests/testthat/test-calibrate_multistart.R` | Multi-start tests |
 | `tests/testthat/test-engine.R` | Engine equivalence and Smith warning tests |

@@ -18,26 +18,43 @@ install.packages(c("S7", "data.table", "yaml", "logger"))
 install.packages("pdmS7_0.3.1.tar.gz", repos = NULL, type = "source")
 ```
 
-The package contains C++ code, so installing from source needs a compiler: Rtools on
-Windows, the Xcode command line tools on macOS, or the usual build tools on Linux. The cpp11
+The package contains compiled code (the model core in C, with a thin C++ wrapper for R), so
+installing from source needs a compiler: Rtools on Windows, the Xcode command line tools on macOS, or the usual build tools on Linux. The cpp11
 package is needed at build time only.
 
 For developers, extract the full project, open R in `pdmS7/`, and use
 `renv::restore()`. The lockfile also records the testing and documentation tools.
 Do not copy the previous machine's `renv/library` directory.
 
-## Illustrated vignettes
+## Articles
 
-**Plain Markdown copies are included in the project:**
+The [package website](https://jonpayneea.github.io/PDMS7/) carries illustrated articles,
+each built from a vignette in `vignettes/` with live examples and plots.
 
-- [PDM explained](docs/vignettes/pdm-explained.md)
-- [PACK snowpack explained](docs/vignettes/snowpack-explained.md)
-- [Example workflow](docs/vignettes/example-workflow.md)
+How the model works:
 
-Start with [the guide index and PACK file map](docs/vignettes/README.md).
-Diagrams are included in `docs/vignettes/figures/`; no documentation build is
-needed to read the `.md` guides. The PACK implementation is in `R/pack_model.R`,
-`R/pack_step.R` and `R/sim_pack.R`, with defaults in `inst/config/pack.yml`.
+- [PDM explained: from rainfall to river flow](https://jonpayneea.github.io/PDMS7/articles/pdm-explained.html)
+- [PACK explained: storing snow and releasing meltwater](https://jonpayneea.github.io/PDMS7/articles/snowpack-explained.html)
+- [Worked example: snow, flow, calibration and restart](https://jonpayneea.github.io/PDMS7/articles/example-workflow.html)
+
+Model options:
+
+- [Choosing model components](https://jonpayneea.github.io/PDMS7/articles/model-options.html):
+  the five capacity distributions, three recharge rules, routing forms and the solver
+- [Starting a run: cold, warm and hot](https://jonpayneea.github.io/PDMS7/articles/starting-states.html)
+
+Calibration and forecasting:
+
+- [Calibration: multi-start, budgets and staged calibration](https://jonpayneea.github.io/PDMS7/articles/calibration.html)
+- [Forecast updating](https://jonpayneea.github.io/PDMS7/articles/forecast-updating.html):
+  state correction and ARMA error prediction
+
+Under the bonnet:
+
+- [The C core: speed, equivalence and other languages](https://jonpayneea.github.io/PDMS7/articles/compiled-core.html)
+
+The PACK implementation is in `R/pack_model.R`, `R/pack_step.R` and `R/sim_pack.R`, with
+defaults in `inst/config/pack.yml`.
 
 The source archive includes built HTML vignettes. After installation:
 
@@ -162,9 +179,17 @@ second_dt <- sim_pdm(c(5, 0), c(0.05, 0.05), config, 60L,
 # Warm-up rows are retained and flagged; exclude is_warmup rows when scoring.
 ```
 
-`initial_state()` allows explicit soil/routing states. `spin_up()` repeats a
-representative forcing period; inspect state convergence. Store checkpoint
-objects with `saveRDS()` and `readRDS()`, using a caller-configured path.
+Four ways to start a run:
+
+- **Cold:** `initial_state(model, soil_fraction = 0.5)`, with empty routing stores. Explicit
+  soil and routing storages can also be given.
+- **Warm from an observed flow:** `initial_state_from_flow(model, observed_m3s,
+  baseflow_fraction)` sets every store in steady state with the flow at the start of the run.
+  For UK gauged catchments the NRFA baseflow index is a reasonable `baseflow_fraction`.
+- **Warm by spin-up:** `spin_up()` repeats a representative forcing period; inspect state
+  convergence.
+- **Hot:** pass the final state of one run to the next. Restarts are exactly continuous. Store
+  checkpoint objects with `saveRDS()` and `readRDS()`, using a caller-configured path.
 
 ## Calibration and updating
 
@@ -194,9 +219,10 @@ convention (`ar=-phi` in the paper).
 ## Fast, fair calibration
 
 `calibrate_pdm(..., starts = 20L, seed = 42)` runs L-BFGS-B from several starting points and
-returns the best, with a per-start table in `start_results`. The default configuration
-(Pareto capacity, standard recharge, cascade surface routing, power-law groundwater) runs on
-a compiled engine about 430 times faster than the R loop, with output that agrees to rounding. The
+returns the best, with a per-start table in `start_results`. Every PDM model, and the PACK
+snowpack, runs on a compiled engine hundreds of times faster than the R loop, with output that
+agrees to rounding. The engine is plain C with an interface
+that other languages can call; see `tools/core/README.md`. The
 Smith groundwater solver is inaccurate above a 1-hour step and now warns. See the
 [performance guide](docs/performance.md) for how these work, parallel runs across basins,
 and budgeting a large calibration.

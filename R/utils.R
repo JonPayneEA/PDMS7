@@ -47,12 +47,6 @@
     "Soil storage exceeds capacity_mean(distribution)"
   )
 }
-.root <- function(f, lo, hi) {
-  stats::uniroot(
-    f, c(lo, hi),
-    tol = 1e-10
-  )$root
-}
 .bounded_params <- function(x, checks) {
   bad <- names(checks)[!vapply(checks, isTRUE, logical(1))]
   if (length(bad)) {
