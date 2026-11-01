@@ -1,269 +1,204 @@
-# PACK explained: storing snow and releasing meltwater
+# How the snow model works
 
-## Why snow needs its own stores
+Snow upsets a rainfall-runoff model. Snow that falls today may not reach
+the river for weeks, and then arrive all at once in a thaw, sometimes on
+top of heavy rain. pdmS7 handles this with PACK, a snow model developed
+at the Institute of Hydrology for real-time forecasting. PACK sits in
+front of the PDM: it takes precipitation and temperature, holds back
+what falls as snow, and passes on water to the PDM only as it melts and
+drains.
 
-Snowfall does not immediately behave like rainfall. It can accumulate
-for days, melt later and briefly retain liquid water before draining.
-PACK represents this with a **dry store** $W$ (ice/snow expressed as
-water equivalent) and a **wet store** $S$ (liquid water inside the
-pack). A temperature rule partitions rain and snow; a second temperature
-rule controls melt. The model passes drainage and rain on bare ground to
-PDM as effective rainfall.
+This article explains how it works in plain terms, with a winter of the
+model running. The equations are in an appendix, and in full on the
+[Model
+equations](https://jonpayneea.github.io/PDMS7/articles/model-equations.md)
+page. For the PDM itself, see [How the PDM
+works](https://jonpayneea.github.io/PDMS7/articles/pdm-explained.md).
 
-![Snow delays precipitation before it reaches PDM. Rain on the snow-free
-fraction bypasses the
-pack.](snowpack-explained_files/figure-html/snow-diagram-1.png)
+## The idea in one picture
 
-Snow delays precipitation before it reaches PDM. Rain on the snow-free
-fraction bypasses the pack.
+![Snow is held back before it reaches the PDM. Rain on bare ground goes
+straight through.](snowpack-explained_files/figure-html/diagram-1.png)
 
-Water equivalent is the depth of water obtained by melting the snow.
-**10 mm of water equivalent is not 10 mm of snow depth.** Stores and
-fluxes are averaged over the catchment area, rather than being local
-depths over snow-covered patches.
+Snow is held back before it reaches the PDM. Rain on bare ground goes
+straight through.
 
-## The nine image parameters, plus implementation controls
+The pack has two parts:
 
-[`pack_presets()`](https://jonpayneea.github.io/PDMS7/reference/pack_presets.md)
-defaults to the supplied parameter-file image, not the adjacent
-typical-values table. The image omits time units. **Hourly rate units
-are assumed, not verified**, and must be confirmed before operational
-use. In particular, the wet-store coefficients are used directly as
-inverse-hour rates; there is no undocumented exponential conversion.
+- a **dry store**: the snow and ice, measured as the depth of water it
+  would make if melted (its *water equivalent*; 10 mm of water
+  equivalent is roughly 10 cm of fresh snow);
+- a **wet store**: liquid water held inside the pack, like water in a
+  sponge.
 
-| Argument               | Meaning                                                           | Image default | Unit             |
-|------------------------|-------------------------------------------------------------------|--------------:|------------------|
-| `precipitation_factor` | Multiplier for measured precipitation                             |             1 | dimensionless    |
-| `lower_rate_h`         | Slow wet-store drainage coefficient $k_{1}$                       |       0.00677 | h⁻¹, assumed     |
-| `upper_rate_h`         | Additional drainage coefficient $k_{2}$                           |       0.27095 | h⁻¹, assumed     |
-| `retention_fraction`   | Liquid fraction setting the upper outlet level $r$                |          0.04 | fraction         |
-| `melt_factor_mmh_c`    | Melt per degree above threshold, $f$                              |       0.16667 | mm/h/°C, assumed |
-| `adc_alpha`            | Final fraction of a fresh-snow excursion over which cover reverts |          0.25 | fraction         |
-| `adc_depth_mm`         | Water content for complete cover, $\theta_{c}$                    |           100 | mm               |
-| `melt_threshold_c`     | Melt threshold $T_{m}$                                            |             1 | °C               |
-| `snow_threshold_c`     | Rain/snow threshold $T_{s}$                                       |             0 | °C               |
-| `drain_threshold_c`    | Below this, drainage stops                                        |             0 | °C; from report  |
-| `areal_depletion`      | Allow partial snow cover                                          |          TRUE | logical          |
-| `max_step_min`         | Largest internal accounting interval                              |            60 | minutes          |
+Each hour, PACK asks three questions:
 
-The separate `report_daily` preset converts the report’s typical
-$k_{1} = 0.15$/day, $k_{2} = 0.85$/day and $f = 4$ mm/day/°C to hours,
-and uses $T_{m} = 0$, $T_{s} = 1$ °C. Those differences are real preset
-differences, not rounding errors.
+1.  **Is it snowing or raining?** Below a threshold temperature,
+    precipitation is snow and joins the dry store. Above it, it is rain.
+2.  **How much melts?** Above a melt threshold, snow melts in proportion
+    to how warm it is. Meltwater moves to the wet store.
+3.  **How much drains out?** The wet store drains, slowly at first and
+    faster once it is holding more than a small fraction of the pack.
+    What drains, plus any rain on snow-free ground, goes on to the PDM
+    as *effective rainfall*.
 
-``` r
-pack_presets("image_hourly")
-#> $precipitation_factor
-#> [1] 1
-#> 
-#> $lower_rate_h
-#> [1] 0.00677
-#> 
-#> $upper_rate_h
-#> [1] 0.27095
-#> 
-#> $retention_fraction
-#> [1] 0.04
-#> 
-#> $melt_factor_mmh_c
-#> [1] 0.16667
-#> 
-#> $adc_alpha
-#> [1] 0.25
-#> 
-#> $adc_depth_mm
-#> [1] 100
-#> 
-#> $melt_threshold_c
-#> [1] 1
-#> 
-#> $snow_threshold_c
-#> [1] 0
-#> 
-#> $drain_threshold_c
-#> [1] 0
-#> 
-#> $areal_depletion
-#> [1] TRUE
-#> 
-#> $max_step_min
-#> [1] 60
-pack_presets("report_daily")[c(
-  "lower_rate_h", "upper_rate_h",
-  "melt_threshold_c", "snow_threshold_c"
-)]
-#> $lower_rate_h
-#> [1] 0.00625
-#> 
-#> $upper_rate_h
-#> [1] 0.03541667
-#> 
-#> $melt_threshold_c
-#> [1] 0
-#> 
-#> $snow_threshold_c
-#> [1] 1
-```
+## A winter
 
-## One step, in equations and words
+Here is a winter of 75 days: mild at first, a long cold spell, then a
+gradual thaw, with one warm, wet day in the thaw.
 
-Let $p$ be corrected precipitation depth during one **internal** step of
-length $h$ hours. Let $T$ be its constant temperature, and $F$ the
-fraction covered by snow. The precipitation multiplier is applied before
-partitioning.
+![A winter in PACK. From the top: temperature against the snow (dashed)
+and melt (dotted) thresholds; precipitation, as snow and rain; the dry
+and wet stores; and the water passed on to the PDM, against the
+precipitation that
+fell.](snowpack-explained_files/figure-html/winter-1.png)
 
-### 1. Rain or snow?
+A winter in PACK. From the top: temperature against the snow (dashed)
+and melt (dotted) thresholds; precipitation, as snow and rain; the dry
+and wet stores; and the water passed on to the PDM, against the
+precipitation that fell.
 
-$$p_{snow} = \begin{cases}
-{p,} & {T < T_{s}} \\
-{0,} & {T \geq T_{s}}
-\end{cases},\qquad p_{rain} = p - p_{snow}.$$
+Three things to see:
 
-At the snow threshold itself, precipitation is rain. New snow enters $W$
-and restores full cover for that step.
+- **Snow is held back.** Through the cold spell the dry store grows to
+  about 110 mm, and the water passed to the PDM falls behind the
+  precipitation (bottom panel): the gap between the lines is the water
+  stored in the pack.
+- **The thaw pays it back.** As temperatures rise, the pack melts and
+  the gap closes. By the end the pack has gone and the two totals meet
+  again: every millimetre comes out eventually.
+- **The wet store stays small.** It holds only a few per cent of the
+  pack before it starts to drain freely, so meltwater passes through
+  within hours.
 
-### 2. How much melts?
+## Rain on snow
 
-$$m = \min\left( W + p_{snow},\; Ff\max\left( 0,T - T_{m} \right)h \right),$$$$W_{new} = W + p_{snow} - m.$$
+The most dangerous moment is warm rain on a ripe pack. The rain itself
+reaches the river, and the warmth melts snow at the same time.
 
-Temperature above the melt threshold supplies the melt demand. The area
-factor scales local melt potential to a catchment average, and the
-minimum prevents melting snow that is not there. At $T = T_{m}$, melt is
-zero.
+![The warm, wet day in the thaw. Hourly precipitation (bars) and the
+water passed to the PDM (line). The pack adds meltwater to the
+rain.](snowpack-explained_files/figure-html/rain-on-snow-1.png)
 
-### 3. Fill the wet store and release drainage
+The warm, wet day in the thaw. Hourly precipitation (bars) and the water
+passed to the PDM (line). The pack adds meltwater to the rain.
 
-Rain on covered area and newly melted water enter the wet store:
+    #>   precipitation_mm released_to_pdm_mm 
+    #>               36.9               73.5
 
-$$S\prime = S + Fp_{rain} + m,\qquad S_{c} = r\left( S\prime + W_{new} \right).$$
+Over these three days 37 mm of precipitation fell, but 74 mm reached the
+PDM: the extra came out of the pack. A forecast that ignored the snow
+would have missed it.
 
-The lower outlet always drains slowly when drainage is permitted. The
-upper outlet adds drainage only above its moving threshold:
+## How much of the catchment is covered?
 
-$$D = \begin{cases}
-{0,} & {T < T_{c},} \\
-{\min\{ S\prime,\; h\left\lbrack k_{1}S\prime + k_{2}\max\left( S\prime - S_{c},0 \right) \right\rbrack\},} & {T \geq T_{c}.}
-\end{cases}$$
+A deep pack covers the whole catchment. As it thins, bare patches appear
+first where the snow was shallowest, and rain on those patches goes
+straight through. PACK tracks the covered share with a *depletion
+curve*: the less water the pack holds, the less ground it covers. Fresh
+snow resets the cover to complete for a while, because new snow falls
+everywhere.
 
-$$S_{new} = S\prime - D,\qquad p_{effective} = D + (1 - F)p_{rain}.$$
+![Snow cover through the winter. Cover is complete while the pack is
+deep or freshly topped up, and shrinks as the pack thins in the
+thaw.](snowpack-explained_files/figure-html/cover-1.png)
 
-The second term is rain on bare ground; it bypasses the pack. Cold
-weather inhibits drainage, but does **not** turn stored liquid water
-back into ice in this implementation. Retention is a moving outlet
-threshold, not a rule that stops all drainage below it: the lower outlet
-can still drain.
+Snow cover through the winter. Cover is complete while the pack is deep
+or freshly topped up, and shrinks as the pack thins in the thaw.
 
-### A hand-checkable example
+## What each setting does
 
-Take 10 mm of dry snow, full cover, 2 mm of rain, $T = 3$, $T_{m} = 1$,
-$f = 1$, $k_{1} = 0.1$, $k_{2} = 0.2$, $r = 0.04$ and $h = 1$. Melt is 2
-mm; dry storage becomes 8 mm; provisional wet storage is 4 mm. The
-threshold is $0.04(4 + 8) = 0.48$ mm, and drainage is
-$0.1(4) + 0.2(4 - 0.48) = 1.104$ mm. Final wet storage is 2.896 mm.
+Each panel changes one setting and shows the running total of water
+passed to the PDM, so the timing of the release can be compared.
 
-``` r
-model <- FlodePackModel(
-  melt_factor_mmh_c = 1, lower_rate_h = 0.1,
-  upper_rate_h = 0.2, retention_fraction = 0.04, areal_depletion = FALSE
-)
-step <- pack_step(model, FlodePackState(dry_mm = 10),
-  precipitation_mm = 2, temperature_c = 3, dt = 1
-)
-step$flux[c("melt_mm", "drainage_mm", "dry_snow_mm", "wet_snow_mm")]
-#>     melt_mm drainage_mm dry_snow_mm wet_snow_mm 
-#>       2.000       1.104       8.000       2.896
-stopifnot(abs(step$flux[["drainage_mm"]] - 1.104) < 1e-12)
-```
+![Cumulative water passed to the PDM as each setting is lowered (light),
+left at its default (dark) and raised (orange). Steeper is
+earlier.](snowpack-explained_files/figure-html/settings-1.png)
 
-## Partial cover and fresh-snow memory
+Cumulative water passed to the PDM as each setting is lowered (light),
+left at its default (dark) and raised (orange). Steeper is earlier.
 
-A shallow pack need not cover the whole catchment. With total water
-content $\theta = W + S$, the ordinary areal depletion curve is
+| Setting                                              | What it changes                                                                                                                                                                                                                                                              |
+|------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `melt_factor_mmh_c`                                  | How fast snow melts for each degree of warmth. Larger means earlier, sharper thaws                                                                                                                                                                                           |
+| `melt_threshold_c`                                   | The temperature above which snow melts. Higher delays the thaw                                                                                                                                                                                                               |
+| `snow_threshold_c`                                   | The temperature below which precipitation falls as snow. Higher means more snow and more held back                                                                                                                                                                           |
+| `adc_depth_mm`                                       | How much water the pack needs to cover the whole catchment. Larger means bare patches appear sooner as the pack thins: more rain passes straight through, but less snow is left in the sun to melt each hour. Here the slower melt wins and the release comes a little later |
+| `lower_rate_h`, `upper_rate_h`, `retention_fraction` | How quickly the wet store drains. These shape the release over hours, not weeks                                                                                                                                                                                              |
+| `precipitation_factor`                               | Scales all precipitation, as the PDM’s `fc` does for rain; use one or the other                                                                                                                                                                                              |
 
-$$F_{0}(\theta) = \min\left( 1,\frac{\log(1 + \theta)}{\log\left( 1 + \theta_{c} \right)} \right).$$
+The defaults come from the parameter file of an operational system;
+their time units are not stated in the source and are assumed to be
+hourly. Treat them as a starting point to calibrate, not as values for a
+particular catchment.
 
-Depths inside this empirical expression are numeric values in
-**millimetres**. Fresh snow temporarily restores cover to one. The state
-records the previous water content $\theta_{a}$, previous cover $F_{a}$
-and fresh-snow excursion $N$. For $N > 0$ and $\theta > \theta_{a}$ the
-implemented return path is
+## Snow and the PDM together
 
-$$F(\theta) = \max\left\lbrack F_{0}(\theta),\; F_{a} + \left( 1 - F_{a} \right)\min\left( 1,\frac{\theta - \theta_{a}}{\alpha N} \right) \right\rbrack.$$
+[`sim_snow_pdm()`](https://jonpayneea.github.io/PDMS7/reference/sim_snow_pdm.md)
+runs PACK and the PDM together: PACK’s water passed on becomes the PDM’s
+rainfall. Here is the river flow from the same winter, with and without
+the snow model.
 
-Below the anchor, return to $F_{0}$. The empty pack has zero cover. With
-areal depletion disabled, any nonempty pack has full cover.
+![River flow from the same winter, treating all precipitation as rain
+(light) and with the snow held back by PACK (dark). The snow model
+removes the winter floods that could not happen and moves the water into
+the thaw.](snowpack-explained_files/figure-html/coupled-1.png)
 
-![Illustrative fresh-snow excursion: cover remains complete until the
-final alpha fraction, then rejoins the ordinary curve. The x-axis is
-total water equivalent, not
-time.](snowpack-explained_files/figure-html/depletion-curve-1.png)
+River flow from the same winter, treating all precipitation as rain
+(light) and with the snow held back by PACK (dark). The snow model
+removes the winter floods that could not happen and moves the water into
+the thaw.
 
-Illustrative fresh-snow excursion: cover remains complete until the
-final alpha fraction, then rejoins the ordinary curve. The x-axis is
-total water equivalent, not time.
+Without the snow model, storms through December and January raise floods
+that could not have happened, because that precipitation fell as snow.
+With it, the cold spell is quiet, and the warm, wet day in the thaw
+brings by far the largest flood: about 16 m3/s, against 6 m3/s without
+the snow, because meltwater adds to the rain.
 
-**Important implementation interpretation:** the report gives prose and
-a diagram, not complete event logic. Here depletion means a fall in
-**total pack water content**, following Figure 2.2’s axis. Melt
-transferring water from $W$ to $S$ alone does not reduce that total.
-Consecutive undepleted snowfall grows one excursion; snowfall during
-depletion starts a new anchor. These choices, and catchment-area scaling
-of melt, require independent scientific review.
+When the two models are used together, keep the PDM’s rainfall factor
+`fc` at 1 and adjust precipitation only with PACK’s
+`precipitation_factor`, so it is not corrected twice.
 
-## Substeps, conservation and coupling
+## The equations, briefly
 
-[`pack_step()`](https://jonpayneea.github.io/PDMS7/reference/pack_step.md)
-divides an interval into
+In this appendix, depths are millimetres of water over the catchment,
+$T$ is temperature and $h$ the internal time step in hours. The full
+set, with the details of the implementation, is on the [Model
+equations](https://jonpayneea.github.io/PDMS7/articles/model-equations.md)
+page.
 
-$$N_{sub} = \left\lceil \max\left( \frac{60\Delta t}{\text{max\_step\_min}},\;\Delta t\left( k_{1} + k_{2} \right),\; 1 \right) \right\rceil.$$
+**Rain or snow.** Precipitation $p$ is snow when $T < T_{s}$ and rain
+otherwise.
 
-This keeps the explicit drainage step stable; forcing is uniform within
-the interval. It is not an exact continuous-time solution. Shorter
-internal steps can change results, so test sensitivity. The snow-only
-residual is
+**Melt.** With snow-covered fraction $F$, melt factor $f$ and melt
+threshold $T_{m}$, the melt is limited by the snow available:
 
-$$\epsilon_{snow} = (W + S)_{old} + p_{corrected} - p_{effective} - (W + S)_{new}.$$
+$$m = \min\left( W + p_{snow},\; Ff\max\left( 0,T - T_{m} \right)\, h \right).$$
 
-When coupled, PDM’s `fc` still multiplies the effective rain. Usually
-set it to one to avoid two precipitation corrections. If not,
-`pdm_correction_mm` records the additional input adjustment. The
-combined residual includes both stores and that adjustment; it excludes
-the external PDM outlet term `qc`.
+**Drainage.** Rain on the covered part and meltwater join the wet store
+$S$. It drains through a slow outlet always, and a faster one above a
+retention level $S_{c} = r\,(S + W)$:
 
-| Task                                         | Function / object                                                                                                                                                                                                                                                |
-|----------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Choose and edit parameters                   | [`pack_presets()`](https://jonpayneea.github.io/PDMS7/reference/pack_presets.md), [`pack_from_config()`](https://jonpayneea.github.io/PDMS7/reference/pack_from_config.md), [`FlodePackModel()`](https://jonpayneea.github.io/PDMS7/reference/FlodePackModel.md) |
-| Set initial dry, wet and cover-history state | [`FlodePackState()`](https://jonpayneea.github.io/PDMS7/reference/FlodePackState.md)                                                                                                                                                                             |
-| Inspect one accounting step                  | [`pack_step()`](https://jonpayneea.github.io/PDMS7/reference/pack_step.md)                                                                                                                                                                                       |
-| Run snow without PDM                         | [`sim_pack()`](https://jonpayneea.github.io/PDMS7/reference/sim_pack.md)                                                                                                                                                                                         |
-| Run snow and PDM together                    | [`sim_snow_pdm()`](https://jonpayneea.github.io/PDMS7/reference/sim_snow_pdm.md)                                                                                                                                                                                 |
+$$D = h\left\lbrack k_{1}S + k_{2}\max\left( S - S_{c},0 \right) \right\rbrack,$$
 
-``` r
-snow <- sim_pack(c(10, 5, 0, 0), c(-2, -1, 3, 6))
-snow[, c("dry_snow_mm", "wet_snow_mm", "effective_rain_mm"), with = FALSE]
-#>    dry_snow_mm wet_snow_mm effective_rain_mm
-#>          <num>       <num>             <num>
-#> 1:    10.00000   0.0000000       0.000000000
-#> 2:    15.00000   0.0000000       0.000000000
-#> 3:    14.66666   0.3310833       0.002256712
-#> 4:    13.83331   1.0035924       0.160840871
-attr(snow, "water_balance")
-#> [1] -7.719519e-16
-```
+limited to what is there, and zero below the drainage threshold
+temperature.
 
-For restart, keep the **whole** `final_state`: dry and wet depths alone
-do not preserve the fresh-snow cover history. Coupled output contains a
-list with both `snow` and `pdm` states. PET passes unchanged to PDM; no
-snow-specific evaporation or sublimation process is implied. Refreezing,
-cold content, elevation bands, wind effects and PACK survey assimilation
-are not implemented.
+**Water passed on.** $p_{effective} = D + (1 - F)\, p_{rain}$: drainage,
+plus rain on bare ground.
 
-### Source and status
+**Cover.** With total water content $\theta = W + S$ and $\theta_{c}$
+the content for full cover,
+$F = \min\left( 1,\log(1 + \theta)/\log\left( 1 + \theta_{c} \right) \right)$,
+reset to full cover by fresh snow.
 
-Institute of Hydrology, *PACK: A Pragmatic Snowmelt Model for Real-time
-Use*, [NORA report
-15304](https://nora.nerc.ac.uk/id/eprint/15304/1/N015304CR.pdf),
-equations 2.1–2.8, Figure 2.2 and Table 2.1. The implementation is
-independent; agreement with an IMFS/RFFS executable has not been
-established. Engineering tests do not replace parameter-unit
-confirmation or catchment validation.
+## Further reading
+
+- [Your first model
+  run](https://jonpayneea.github.io/PDMS7/articles/example-workflow.md)
+  runs the PDM on your own data; add
+  [`sim_snow_pdm()`](https://jonpayneea.github.io/PDMS7/reference/sim_snow_pdm.md)
+  where snow matters.
+- Institute of Hydrology. *PACK: A Pragmatic Snowmelt Model for
+  Real-time Use.* [NORA
+  15304](https://nora.nerc.ac.uk/id/eprint/15304/1/N015304CR.pdf).

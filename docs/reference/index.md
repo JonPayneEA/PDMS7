@@ -12,6 +12,8 @@ Construct a PDM from components, presets or a configuration file.
   : Pdm from config
 - [`read_pdm_config()`](https://jonpayneea.github.io/PDMS7/reference/read_pdm_config.md)
   : Read pdm config
+- [`write_pdm_config()`](https://jonpayneea.github.io/PDMS7/reference/write_pdm_config.md)
+  : Write a PDM configuration to a YAML file
 - [`load_pdm_model()`](https://jonpayneea.github.io/PDMS7/reference/load_pdm_model.md)
   : Load pdm model
 - [`parameter_catalog()`](https://jonpayneea.github.io/PDMS7/reference/parameter_catalog.md)

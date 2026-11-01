@@ -1,239 +1,270 @@
-# Worked example: snow, flow, calibration and restart
+# Your first model run
 
-## What this example demonstrates
+This guide takes you from your own data files to a running, scored,
+saved model in about ten steps. It assumes you know some R, but nothing
+about pdmS7. For what the model does inside, read [How the PDM
+works](https://jonpayneea.github.io/PDMS7/articles/pdm-explained.md)
+alongside.
 
-This is a complete, reproducible **synthetic** example: 48 hourly
-intervals with snow accumulation, thaw and rain. It needs no downloads.
-We create synthetic observations, fit two parameters using only the
-first 32 hours, then evaluate the remaining 16 hours without resetting
-the stores. The tiny calibration budget keeps the vignette quick; it is
-not a recommended operational budget.
+## 1. What you need
 
-![Calibration and physical diagnostics are complementary checks.
-Held-out observations are not used to fit or select parameters in this
-example.](example-workflow_files/figure-html/workflow-diagram-1.png)
+Two files, one row per time step:
 
-Calibration and physical diagnostics are complementary checks. Held-out
-observations are not used to fit or select parameters in this example.
+| File    | Columns               | Units                                                             |
+|---------|-----------------------|-------------------------------------------------------------------|
+| Forcing | `time`, `rain`, `pet` | Rain and potential evaporation as **totals per time step**, in mm |
+| Flow    | `time`, `q_m3s`       | Measured river flow in m3/s; leave gaps empty                     |
 
-## 1. Construct and check the forcing
+Times should be in UTC, written like `2024-01-31T09:00:00Z` or
+`2024-01-31 09:00`, at a fixed step: 15 minutes, an hour, a day. You
+also need the catchment area in km2.
+
+So that this guide runs anywhere, the next step makes example files.
+With your own data, skip it and point the paths at your files.
 
 ``` r
-hour <- seq_len(48)
-forcing <- data.frame(
-  time = seq(as.POSIXct("2020-01-01 01:00:00", tz = "UTC"),
-    by = "hour", length.out = 48
-  ),
-  rain = rep(0, 48),
-  pet = rep(0.02, 48),
-  temperature_c = c(rep(-3, 8), rep(4, 8), rep(-2, 8), rep(6, 24))
-)
-forcing$rain[c(1:6, 19:22)] <- 2
-forcing$rain[c(28:30, 40:42)] <- 3
-stopifnot(
-  !anyNA(forcing), all(forcing$rain >= 0), all(forcing$pet >= 0),
-  all(as.numeric(diff(forcing$time), units = "hours") == 1)
-)
-head(forcing)
-#>                  time rain  pet temperature_c
-#> 1 2020-01-01 01:00:00    2 0.02            -3
-#> 2 2020-01-01 02:00:00    2 0.02            -3
-#> 3 2020-01-01 03:00:00    2 0.02            -3
-#> 4 2020-01-01 04:00:00    2 0.02            -3
-#> 5 2020-01-01 05:00:00    2 0.02            -3
-#> 6 2020-01-01 06:00:00    2 0.02            -3
+folder <- file.path(tempdir(), "my-catchment")
+dir.create(folder, showWarnings = FALSE)
+set.seed(21)
+n <- 24 * 90
+time <- seq(as.POSIXct("2024-01-01", tz = "UTC"), by = 3600, length.out = n)
+rain <- ifelse(stats::runif(n) < 0.07, stats::rgamma(n, 0.7, scale = 3.5), 0)
+truth <- pdm_presets("standard")
+truth$area_km2 <- 64
+truth$recharge$kg <- 250
+truth$fc <- 1.1
+truth$surface$k1 <- 3
+truth$surface$k2 <- 8
+flow <- run_pdm(pdm_from_config(truth), data.frame(rain = rain, pet = 0.06),
+                initial_state_from_flow(pdm_from_config(truth), 0.8, 0.7))$output$q_m3s
+flow <- round(flow * exp(stats::rnorm(n, 0, 0.04)), 3)
+flow[24 * 40 + 1:30] <- NA
+stamp <- format(time, "%Y-%m-%dT%H:%M:%SZ")
+data.table::fwrite(data.frame(time = stamp, rain = round(rain, 2), pet = 0.06),
+                   file.path(folder, "forcing.csv"))
+data.table::fwrite(data.frame(time = stamp, q_m3s = flow), file.path(folder, "flow.csv"))
 ```
 
-Here `rain` is **total precipitation**, including snowfall, in mm per
-interval. Temperature is °C and PET is mm per interval. Timestamps label
-interval ends. For real inputs, verify time zone, duplicates, gaps,
-measurement units and alignment with gauged discharge. Do not silently
-replace missing forcing with zero. The simulator rejects missing inputs;
-missing observations are excluded from metric calculations.
-
-## 2. Configure and simulate
+## 2. Read and check the data
 
 ``` r
-config <- list(pdm = pdm_presets("standard"), snow = pack_presets())
-config$pdm$area_km2 <- 44
-config$pdm$fc <- 1 # keep precipitation correction in one place
-run_model <- function(cfg, rows, state = NULL, warmup = 0L) {
-  sim_snow_pdm(forcing$rain[rows], forcing$temperature_c[rows], forcing$pet[rows],
-    params = cfg, timestep_min = 60L, datetime = forcing$time[rows],
-    state = state, warmup_steps = warmup
-  )
+forcing <- data.table::fread(file.path(folder, "forcing.csv"))
+observed <- data.table::fread(file.path(folder, "flow.csv"))
+forcing$time <- as.POSIXct(forcing$time, tz = "UTC")
+head(forcing, 3)
+#>                   time  rain   pet
+#>                 <POSc> <num> <num>
+#> 1: 2024-01-01 00:00:00     0  0.06
+#> 2: 2024-01-01 01:00:00     0  0.06
+#> 3: 2024-01-01 02:00:00     0  0.06
+c(rows = nrow(forcing), same_length = nrow(forcing) == nrow(observed),
+  step_hours = as.numeric(diff(forcing$time[1:2]), units = "hours"),
+  missing_rain = sum(is.na(forcing$rain)), missing_flow = sum(is.na(observed$q_m3s)))
+#>         rows  same_length   step_hours missing_rain missing_flow 
+#>         2160            1            1            0           30
+```
+
+Check four things before going further: the two files line up row for
+row; the time step is what you think; no rain or evaporation is missing
+(the model cannot run through a gap in its inputs, so fill or trim it);
+and how much flow is missing (gaps in flow are fine: they are simply
+left out of the scores).
+
+## 3. Set up a model
+
+Start from the standard PDM and give it your catchment’s area and time
+step:
+
+``` r
+config <- pdm_presets("standard")
+config$area_km2 <- 64
+config$dt <- 1 # time step in hours
+str(config, max.level = 1)
+#> List of 10
+#>  $ distribution:List of 4
+#>  $ recharge    :List of 4
+#>  $ surface     :List of 3
+#>  $ groundwater :List of 3
+#>  $ be          : num 1
+#>  $ fc          : num 1
+#>  $ td          : num 0
+#>  $ qc          : num 0
+#>  $ area_km2    : num 64
+#>  $ dt          : num 1
+```
+
+A configuration is a plain list. Each part is described in [How the PDM
+works](https://jonpayneea.github.io/PDMS7/articles/pdm-explained.md) and
+[Choosing model
+components](https://jonpayneea.github.io/PDMS7/articles/model-options.md);
+[`parameter_catalog()`](https://jonpayneea.github.io/PDMS7/reference/parameter_catalog.md)
+lists every parameter with its units.
+
+``` r
+model <- pdm_from_config(config)
+```
+
+## 4. Choose a starting state
+
+The model needs to know how wet the catchment is at the start. The
+simplest good choice is to start from the first measured flow, assuming
+the catchment is steady at that moment and that most of the flow is
+groundwater:
+
+``` r
+start <- initial_state_from_flow(model, observed_m3s = observed$q_m3s[1],
+                                 baseflow_fraction = 0.7)
+```
+
+[Starting a
+run](https://jonpayneea.github.io/PDMS7/articles/starting-states.md)
+explains the other options and why this matters.
+
+## 5. Run it
+
+``` r
+result <- run_pdm(model, forcing, start)
+simulated <- result$output
+names(simulated)
+#>  [1] "time"                  "step"                  "rain_mm"              
+#>  [4] "rain_corrected_mm"     "pet_mm"                "aet_mm"               
+#>  [7] "aet_requested_mm"      "recharge_mm"           "recharge_requested_mm"
+#> [10] "direct_runoff_mm"      "surface_input_mm"      "groundwater_input_mm" 
+#> [13] "surface_out_mm"        "baseflow_out_mm"       "q_natural_m3s"        
+#> [16] "q_m3s"                 "q_end_m3s"             "qs_end_unlagged_mmh"  
+#> [19] "qb_end_unlagged_mmh"   "soil_mm"               "surface_mm"           
+#> [22] "groundwater_mm"        "delay_mm"              "saturated_fraction"   
+#> [25] "balance_error_mm"
+```
+
+| Column                              | Meaning                                             |
+|-------------------------------------|-----------------------------------------------------|
+| `q_m3s`                             | Simulated river flow, mean over the time step       |
+| `soil_mm`                           | Water in the soil                                   |
+| `saturated_fraction`                | Share of the catchment where rain runs straight off |
+| `aet_mm`                            | Actual evaporation                                  |
+| `surface_out_mm`, `baseflow_out_mm` | The fast and slow parts of the flow                 |
+| `balance_error_mm`                  | Water-balance check; zero to rounding               |
+
+`result$state` holds the stores at the end, ready to carry on from.
+
+## 6. Look at it
+
+``` r
+plot_flow <- function(sim, label) {
+  par(mar = c(3, 4.2, 0.6, 0.6))
+  plot(forcing$time, observed$q_m3s, pch = 16, cex = 0.25, col = pal[5], xlab = "",
+       ylab = "Flow (m3/s)", ylim = range(c(observed$q_m3s, sim), na.rm = TRUE))
+  lines(forcing$time, sim, col = pal[1], lwd = 1.5)
+  legend("topleft", c("measured", label), col = c(pal[5], pal[1]), pch = c(16, NA),
+         lty = c(NA, 1), lwd = c(NA, 1.5), bty = "n")
 }
-initial_run <- run_model(config, hour, warmup = 8L)
-attr(initial_run, "water_balance")
-#>     residual_mm max_abs_step_mm 
-#>   -2.378306e-15    1.609823e-14
-stopifnot(max(abs(initial_run$combined_balance_error_mm)) < 1e-8)
+plot_flow(simulated$q_m3s, "standard settings")
 ```
 
-The model starts with empty snow stores and PDM’s default half-full
-soil. The first eight rows remain in the result with `is_warmup=TRUE`.
-They are not deleted, and warm-up flags alone do not establish state
-convergence. Real catchments generally need a longer, representative
-warm-up assessment.
+![Measured (points) and simulated (line) flow with the standard
+settings.](example-workflow_files/figure-html/plot-1.png)
 
-![Synthetic forcing and the resulting snow stores. Liquid water can
-remain after the dry pack starts
-melting.](example-workflow_files/figure-html/snow-diagnostics-1.png)
+Measured (points) and simulated (line) flow with the standard settings.
 
-Synthetic forcing and the resulting snow stores. Liquid water can remain
-after the dry pack starts melting.
+## 7. Score it
 
-## 3. Create synthetic observations and reserve a validation period
-
-For teaching purposes only, generate a reference hydrograph with a
-different melt factor, then add a small deterministic multiplicative
-perturbation. These values are **not field observations** and cannot
-establish model skill.
+Leave out the first two weeks, while the model’s stores settle, and
+score the rest:
 
 ``` r
-reference_config <- config
-reference_config$snow$melt_factor_mmh_c <- 0.23
-reference <- run_model(reference_config, hour)
-observed_cms <- reference$qsim_cms * (1 + 0.03 * sin(hour / 3))
-train <- 1:32
-validate <- 33:48
+scored <- (24 * 14 + 1):n
+first <- pdm_scorecard(simulated$q_m3s[scored], observed$q_m3s[scored])
+round(first[c("nse", "kge", "volume_error", "peak_error", "fdc_high", "fdc_low")], 3)
+#>          nse          kge volume_error   peak_error     fdc_high      fdc_low 
+#>        0.111        0.466       -0.014        0.087        0.189       -1.306
 ```
 
-## 4. Fit more than one objective
+NSE and KGE are 1 for a perfect fit, so 0.11 is poor. The total volume
+is close (volume error -1 per cent), so the amount of water is about
+right; the problem is how it is shared out over time. The flow-duration
+scores `fdc_high` and `fdc_low` say the floods and the low flows are
+both off, which points at how quickly water drains to groundwater, and
+how quickly the surface stores empty. [Scoring a
+simulation](https://jonpayneea.github.io/PDMS7/articles/scoring.md)
+explains every score and what it points to.
 
-We minimize RMSE and absolute relative volume bias:
+## 8. Improve it
 
-$$L_{RMSE} = \sqrt{\frac{1}{n}\sum\limits_{i}\left( Q_{i} - O_{i} \right)^{2}},\qquad L_{bias} = \left| \frac{\sum\limits_{i}Q_{i}}{\sum\limits_{i}O_{i}} - 1 \right|.$$
-
-With user-chosen scales $s_{j}$ and nonnegative weights $w_{j}$ summing
-to one, each local search minimizes $J = \sum_{j}w_{j}L_{j}/s_{j}$. The
-scale of 0.1 below means 10% volume bias contributes one scaled unit.
-These tolerances and bounds are illustrative; specify defensible ones
-for the catchment before fitting.
+Let the computer adjust the settings the scores point to: the drainage
+time constant `kg`, the two fast stores’ time constants, and the
+rainfall factor `fc` for good measure. The first half of the record is
+used to fit, and the second half is kept back to check.
 
 ``` r
-fit <- calibrate_pdm_multi(
-  config, forcing[train, ], observed_cms[train],
-  lower = c(snow.melt_factor_mmh_c = 0.08, pdm.surface.k1 = 0.5),
-  upper = c(snow.melt_factor_mmh_c = 0.35, pdm.surface.k1 = 4),
-  objectives = c("rmse", "abs_bias"),
-  scales = c(rmse = 1, abs_bias = 0.1),
-  weights = rbind(c(rmse = 1, abs_bias = 0), c(rmse = 0.5, abs_bias = 0.5)),
-  n_samples = 3L, starts = 1L, seed = 42L, warmup = 8L,
-  control = list(maxit = 3)
-)
-fit$pareto[, c(
-  "snow.melt_factor_mmh_c", "pdm.surface.k1",
-  "loss_rmse", "loss_abs_bias"
-), with = FALSE]
-#>    snow.melt_factor_mmh_c pdm.surface.k1 loss_rmse loss_abs_bias
-#>                     <num>          <num>     <num>         <num>
-#> 1:              0.2286652       1.977475 0.2092782  6.365200e-04
-#> 2:              0.2289352       1.980975 0.2092114  7.456458e-04
-#> 3:              0.2290269       2.004397 0.2087808  7.460150e-04
-#> 4:              0.2292969       2.007897 0.2087209  8.551708e-04
-#> 5:              0.2304737       2.112084 0.2069088  1.188830e-03
-#> 6:              0.2307437       2.115584 0.2068828  1.299277e-03
-#> 7:              0.2400500       3.470852 0.1914300  3.675045e-03
-#> 8:              0.2270754       1.963278 0.2097238  1.658277e-05
-#> 9:              0.2273454       1.966778 0.2096086  9.251524e-05
-vapply(fit$optimization, function(x) x$convergence, integer(1))
-#> [1] 1 1
+bounds <- calibration_bounds(config)
+pick <- c("fc", "recharge.kg", "surface.k1", "surface.k2")
+bounds <- bounds[bounds$path %in% pick, ]
+fit <- calibrate_pdm(config, forcing[1:(24 * 45), ], observed$q_m3s[1:(24 * 45)],
+                     lower = stats::setNames(bounds$lower, bounds$path),
+                     upper = stats::setNames(bounds$upper, bounds$path),
+                     warmup = 24 * 14, objective = "nse", starts = 3, seed = 1,
+                     log_scale = c("recharge.kg", "surface.k1", "surface.k2"),
+                     control = list(maxit = 60))
+round(fit$parameters, 2)
+#>          fc recharge.kg  surface.k1  surface.k2 
+#>        1.06      294.64       11.13        2.03
+better <- run_pdm(fit$model, forcing, initial_state_from_flow(fit$model, observed$q_m3s[1], 0.7))
+check <- (24 * 45 + 1):n
+keep <- c("nse", "kge", "volume_error", "peak_error")
+round(rbind(
+  standard = pdm_scorecard(simulated$q_m3s[check], observed$q_m3s[check])[keep],
+  calibrated = pdm_scorecard(better$output$q_m3s[check], observed$q_m3s[check])[keep]
+), 3)
+#>               nse    kge volume_error peak_error
+#> standard   -4.396 -0.983        0.022      0.870
+#> calibrated  0.919  0.839       -0.042     -0.106
 ```
-
-A nonzero convergence code needs inspection; this deliberately short
-example may stop at the iteration limit. `fit$archive` retains valid
-evaluated candidates, and `fit$configs` aligns with rows of
-`fit$pareto`. The reported compromise uses the **last weight row**, not
-the held-out observations. The Pareto front is only the nondominated set
-among evaluated candidates; it is not a global-optimum claim or a
-probability distribution. Weighted searches may miss nonconvex
-trade-offs. Use more starts, larger budgets and repeated seeds for real
-studies.
-
-Other available losses are `log_rmse`, `nse_loss`, `kge_loss` and
-`peak_relative_error`. The last compares window maxima, not peak timing
-or individual events. NSE/KGE need variable observations. Prefer fewer,
-identifiable parameters over fitting every available coefficient to a
-short record.
-
-## 5. Restart into validation without reinitialising
 
 ``` r
-chosen <- fit$compromise$config
-training_run <- run_model(chosen, train, warmup = 8L)
-checkpoint <- attr(training_run, "final_state")
-validation_run <- run_model(chosen, validate, state = checkpoint)
-full_run <- run_model(chosen, hour)
-stopifnot(isTRUE(all.equal(validation_run$qsim_cms, full_run$qsim_cms[validate])))
-scores <- rbind(
-  training = pdm_objectives(training_run$qsim_cms, observed_cms[train],
-    c("rmse", "log_rmse", "nse_loss", "abs_bias"),
-    warmup = 8L
-  ),
-  validation = pdm_objectives(
-    validation_run$qsim_cms, observed_cms[validate],
-    c("rmse", "log_rmse", "nse_loss", "abs_bias")
-  )
-)
-scores
-#>                 rmse   log_rmse    nse_loss     abs_bias
-#> training   0.2097238 0.02064797 0.007428045 1.658277e-05
-#> validation 0.3103225 0.02215528 0.065685090 8.887364e-03
-attr(validation_run, "water_balance")
-#>     residual_mm max_abs_step_mm 
-#>    7.827072e-15    8.215650e-15
+plot_flow(better$output$q_m3s, "calibrated")
+abline(v = forcing$time[24 * 45], lty = 2, col = pal[7])
 ```
 
-`nse_loss` is $1 - {NSE}$, so smaller is better; it is not NSE itself.
-The validation record here is tiny and synthetic. Real acceptance should
-include independent seasons, snow events, low flows, peak timing and
-water balance. Do not repeatedly choose candidates against the same
-held-out period and still call that period independent validation.
+![After calibration, on the whole record. The second half was not used
+to fit.](example-workflow_files/figure-html/plot-better-1.png)
 
-![Synthetic discharge comparison. The dashed line marks the start of the
-held-out period; those observations were not supplied to
-calibration.](example-workflow_files/figure-html/hydrograph-1.png)
+After calibration, on the whole record. The second half was not used to
+fit.
 
-Synthetic discharge comparison. The dashed line marks the start of the
-held-out period; those observations were not supplied to calibration.
+The scores in the table are on the second half only, which the
+calibration never saw: that is the honest measure of the improvement.
+[Automatic calibration,
+explained](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.md)
+covers the settings used here.
 
-## 6. Save the complete restart context
+## 9. Save it
+
+Save the configuration as a YAML file you can read, edit and share, and
+the final state so the next run can carry on exactly where this one
+stopped. Use
+[`write_pdm_config()`](https://jonpayneea.github.io/PDMS7/reference/write_pdm_config.md)
+rather than a general YAML writer, which would round the calibrated
+values:
 
 ``` r
-checkpoint_path <- tempfile(fileext = ".rds")
-saveRDS(list(
-  package_version = as.character(packageVersion("pdmS7")),
-  config = chosen, timestep_min = 60L,
-  last_time = tail(forcing$time[train], 1), state = checkpoint
-), checkpoint_path)
-restored <- readRDS(checkpoint_path)
-stopifnot(isTRUE(all.equal(restored$state, checkpoint)))
-resumed <- run_model(restored$config, validate, state = restored$state)
-stopifnot(isTRUE(all.equal(resumed$qsim_cms, validation_run$qsim_cms)))
-unlink(checkpoint_path)
+write_pdm_config(fit$config, file.path(folder, "my-catchment.yml"))
+saveRDS(better$state, file.path(folder, "end-state.rds"))
+again <- load_pdm_model(file.path(folder, "my-catchment.yml"))
+identical(pdm_fingerprint(again), pdm_fingerprint(fit$model))
+#> [1] TRUE
 ```
 
-For a real run, use a caller-managed persistent path. Check the recorded
-version, configuration, timestep and last timestamp before reuse: this
-saved list is an example convention, **not an automated compatibility
-validator**. Both snow cover history and PDM delay queues must be
-preserved. Never reset to empty snow halfway through a thaw or change a
-model’s structure while reusing its state.
+The fingerprint check confirms the model read back from the file is
+exactly the one that was calibrated.
 
-## Before pseudo-operational use
+## 10. Where next
 
-- Confirm the image preset’s assumed hourly units and snow-cover event
-  conventions.
-- Replace synthetic data with checked forcing and correctly aligned
-  observations.
-- Assess warm-up, parameter identifiability and timestep sensitivity.
-- Review convergence, rejected evaluations and each objective
-  separately.
-- Obtain independent technical/scientific review and responsible
-  maintainer sign-off.
-
-River-network routing and additional state assimilation remain future
-avenues; this workflow does not implement them. See the PDM and PACK
-companion vignettes for equations and component functions, and
-`docs/roadmap.md` for deferred work.
+| To                                                       | Read                                                                                                                                                                                 |
+|----------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Keep a reviewable record of a calibration, with sign-off | [Logging a manual calibration](https://jonpayneea.github.io/PDMS7/articles/calibration-log.md)                                                                                       |
+| Calibrate many catchments the same way                   | [Calibrating many catchments](https://jonpayneea.github.io/PDMS7/articles/many-catchments.md)                                                                                        |
+| Compare model structures                                 | [Choosing a model structure](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.md)                                                                                      |
+| Add snow                                                 | [How the snow model works](https://jonpayneea.github.io/PDMS7/articles/snowpack-explained.md), then [`sim_snow_pdm()`](https://jonpayneea.github.io/PDMS7/reference/sim_snow_pdm.md) |
+| Use the model for forecasting                            | [Forecast updating](https://jonpayneea.github.io/PDMS7/articles/forecast-updating.md)                                                                                                |
+| Do all this without code                                 | [`calibration_app()`](https://jonpayneea.github.io/PDMS7/reference/calibration_app.md)                                                                                               |

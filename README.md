@@ -31,11 +31,19 @@ Do not copy the previous machine's `renv/library` directory.
 The [package website](https://jonpayneea.github.io/PDMS7/) carries illustrated articles,
 each built from a vignette in `vignettes/` with live examples and plots.
 
+Getting started:
+
+- [Your first model run](https://jonpayneea.github.io/PDMS7/articles/example-workflow.html):
+  from your own data files to a scored, calibrated and saved model
+
 How the model works:
 
-- [PDM explained: from rainfall to river flow](https://jonpayneea.github.io/PDMS7/articles/pdm-explained.html)
-- [PACK explained: storing snow and releasing meltwater](https://jonpayneea.github.io/PDMS7/articles/snowpack-explained.html)
-- [Worked example: snow, flow, calibration and restart](https://jonpayneea.github.io/PDMS7/articles/example-workflow.html)
+- [How the PDM works](https://jonpayneea.github.io/PDMS7/articles/pdm-explained.html): the
+  model in plain English, with pictures of it running and what each setting does
+- [How the snow model works](https://jonpayneea.github.io/PDMS7/articles/snowpack-explained.html):
+  a winter of the PACK snow model, rain on snow, and what each setting does
+- [Model equations](https://jonpayneea.github.io/PDMS7/articles/model-equations.html): every
+  equation, with Moore (2007) numbering and implementation notes
 
 Model options:
 

@@ -1,13 +1,18 @@
 # Articles
 
+### Getting started
+
+- [Your first model
+  run](https://jonpayneea.github.io/PDMS7/articles/example-workflow.md):
+
 ### How the model works
 
-- [PDM explained: from rainfall to river
-  flow](https://jonpayneea.github.io/PDMS7/articles/pdm-explained.md):
-- [PACK explained: storing snow and releasing
-  meltwater](https://jonpayneea.github.io/PDMS7/articles/snowpack-explained.md):
-- [Worked example: snow, flow, calibration and
-  restart](https://jonpayneea.github.io/PDMS7/articles/example-workflow.md):
+- [How the PDM
+  works](https://jonpayneea.github.io/PDMS7/articles/pdm-explained.md):
+- [How the snow model
+  works](https://jonpayneea.github.io/PDMS7/articles/snowpack-explained.md):
+- [Model
+  equations](https://jonpayneea.github.io/PDMS7/articles/model-equations.md):
 
 ### Model options
 

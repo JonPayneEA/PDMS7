@@ -5,12 +5,12 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Worked example: snow, flow, calibration and restart • pdmS7</title>
+<title>Your first model run • pdmS7</title>
 <script src="../deps/jquery-3.6.1/jquery-3.6.1.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.4.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.4.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Worked example: snow, flow, calibration and restart">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Your first model run">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -34,10 +34,13 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Getting started</h6></li>
+    <li><a class="dropdown-item" href="../articles/example-workflow.html">Your first model run</a></li>
+    <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>How the model works</h6></li>
-    <li><a class="dropdown-item" href="../articles/pdm-explained.html">PDM explained: from rainfall to river flow</a></li>
-    <li><a class="dropdown-item" href="../articles/snowpack-explained.html">PACK explained: storing snow and releasing meltwater</a></li>
-    <li><a class="dropdown-item" href="../articles/example-workflow.html">Worked example: snow, flow, calibration and restart</a></li>
+    <li><a class="dropdown-item" href="../articles/pdm-explained.html">How the PDM works</a></li>
+    <li><a class="dropdown-item" href="../articles/snowpack-explained.html">How the snow model works</a></li>
+    <li><a class="dropdown-item" href="../articles/model-equations.html">Model equations</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Model options</h6></li>
     <li><a class="dropdown-item" href="../articles/model-options.html">Choosing model components</a></li>
@@ -96,7 +99,7 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
 
-      <h1>Worked example: snow, flow, calibration and restart</h1>
+      <h1>Your first model run</h1>
                         <h4 data-toc-skip class="author">pdmS7
 documentation</h4>
             
@@ -107,245 +110,333 @@ documentation</h4>
 
     
     
+<p>This guide takes you from your own data files to a running, scored,
+saved model in about ten steps. It assumes you know some R, but nothing
+about pdmS7. For what the model does inside, read <a href="pdm-explained.html">How the PDM works</a> alongside.</p>
 <div class="section level2">
-<h2 id="what-this-example-demonstrates">What this example demonstrates<a class="anchor" aria-label="anchor" href="#what-this-example-demonstrates"></a>
+<h2 id="what-you-need">1. What you need<a class="anchor" aria-label="anchor" href="#what-you-need"></a>
 </h2>
-<p>This is a complete, reproducible <strong>synthetic</strong> example:
-48 hourly intervals with snow accumulation, thaw and rain. It needs no
-downloads. We create synthetic observations, fit two parameters using
-only the first 32 hours, then evaluate the remaining 16 hours without
-resetting the stores. The tiny calibration budget keeps the vignette
-quick; it is not a recommended operational budget.</p>
-<div class="figure">
-<img src="example-workflow_files/figure-html/workflow-diagram-1.png" class="r-plt" alt="Calibration and physical diagnostics are complementary checks. Held-out observations are not used to fit or select parameters in this example." width="840"><p class="caption">
-Calibration and physical diagnostics are complementary checks. Held-out
-observations are not used to fit or select parameters in this example.
-</p>
-</div>
-</div>
-<div class="section level2">
-<h2 id="construct-and-check-the-forcing">1. Construct and check the forcing<a class="anchor" aria-label="anchor" href="#construct-and-check-the-forcing"></a>
-</h2>
+<p>Two files, one row per time step:</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th>File</th>
+<th>Columns</th>
+<th>Units</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>Forcing</td>
+<td>
+<code>time</code>, <code>rain</code>, <code>pet</code>
+</td>
+<td>Rain and potential evaporation as <strong>totals per time
+step</strong>, in mm</td>
+</tr>
+<tr class="even">
+<td>Flow</td>
+<td>
+<code>time</code>, <code>q_m3s</code>
+</td>
+<td>Measured river flow in m3/s; leave gaps empty</td>
+</tr>
+</tbody>
+</table>
+<p>Times should be in UTC, written like
+<code>2024-01-31T09:00:00Z</code> or <code>2024-01-31 09:00</code>, at a
+fixed step: 15 minutes, an hour, a day. You also need the catchment area
+in km2.</p>
+<p>So that this guide runs anywhere, the next step makes example files.
+With your own data, skip it and point the paths at your files.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">hour</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fl">48</span><span class="op">)</span></span>
-<span><span class="va">forcing</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>  time <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.POSIXlt.html" class="external-link">as.POSIXct</a></span><span class="op">(</span><span class="st">"2020-01-01 01:00:00"</span>, tz <span class="op">=</span> <span class="st">"UTC"</span><span class="op">)</span>,</span>
-<span>    by <span class="op">=</span> <span class="st">"hour"</span>, length.out <span class="op">=</span> <span class="fl">48</span></span>
-<span>  <span class="op">)</span>,</span>
-<span>  rain <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">48</span><span class="op">)</span>,</span>
-<span>  pet <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">0.02</span>, <span class="fl">48</span><span class="op">)</span>,</span>
-<span>  temperature_c <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="op">-</span><span class="fl">3</span>, <span class="fl">8</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">4</span>, <span class="fl">8</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="op">-</span><span class="fl">2</span>, <span class="fl">8</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">6</span>, <span class="fl">24</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">forcing</span><span class="op">$</span><span class="va">rain</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">6</span>, <span class="fl">19</span><span class="op">:</span><span class="fl">22</span><span class="op">)</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">2</span></span>
-<span><span class="va">forcing</span><span class="op">$</span><span class="va">rain</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">28</span><span class="op">:</span><span class="fl">30</span>, <span class="fl">40</span><span class="op">:</span><span class="fl">42</span><span class="op">)</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fl">3</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span></span>
-<span>  <span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">anyNA</a></span><span class="op">(</span><span class="va">forcing</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">forcing</span><span class="op">$</span><span class="va">rain</span> <span class="op">&gt;=</span> <span class="fl">0</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="va">forcing</span><span class="op">$</span><span class="va">pet</span> <span class="op">&gt;=</span> <span class="fl">0</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/diff.html" class="external-link">diff</a></span><span class="op">(</span><span class="va">forcing</span><span class="op">$</span><span class="va">time</span><span class="op">)</span>, units <span class="op">=</span> <span class="st">"hours"</span><span class="op">)</span> <span class="op">==</span> <span class="fl">1</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">forcing</span><span class="op">)</span></span>
-<span><span class="co">#&gt;                  time rain  pet temperature_c</span></span>
-<span><span class="co">#&gt; 1 2020-01-01 01:00:00    2 0.02            -3</span></span>
-<span><span class="co">#&gt; 2 2020-01-01 02:00:00    2 0.02            -3</span></span>
-<span><span class="co">#&gt; 3 2020-01-01 03:00:00    2 0.02            -3</span></span>
-<span><span class="co">#&gt; 4 2020-01-01 04:00:00    2 0.02            -3</span></span>
-<span><span class="co">#&gt; 5 2020-01-01 05:00:00    2 0.02            -3</span></span>
-<span><span class="co">#&gt; 6 2020-01-01 06:00:00    2 0.02            -3</span></span></code></pre></div>
-<p>Here <code>rain</code> is <strong>total precipitation</strong>,
-including snowfall, in mm per interval. Temperature is °C and PET is mm
-per interval. Timestamps label interval ends. For real inputs, verify
-time zone, duplicates, gaps, measurement units and alignment with gauged
-discharge. Do not silently replace missing forcing with zero. The
-simulator rejects missing inputs; missing observations are excluded from
-metric calculations.</p>
+<code class="sourceCode R"><span><span class="va">folder</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir</a></span><span class="op">(</span><span class="op">)</span>, <span class="st">"my-catchment"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/files2.html" class="external-link">dir.create</a></span><span class="op">(</span><span class="va">folder</span>, showWarnings <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">21</span><span class="op">)</span></span>
+<span><span class="va">n</span> <span class="op">&lt;-</span> <span class="fl">24</span> <span class="op">*</span> <span class="fl">90</span></span>
+<span><span class="va">time</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.POSIXlt.html" class="external-link">as.POSIXct</a></span><span class="op">(</span><span class="st">"2024-01-01"</span>, tz <span class="op">=</span> <span class="st">"UTC"</span><span class="op">)</span>, by <span class="op">=</span> <span class="fl">3600</span>, length.out <span class="op">=</span> <span class="va">n</span><span class="op">)</span></span>
+<span><span class="va">rain</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/Uniform.html" class="external-link">runif</a></span><span class="op">(</span><span class="va">n</span><span class="op">)</span> <span class="op">&lt;</span> <span class="fl">0.07</span>, <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/GammaDist.html" class="external-link">rgamma</a></span><span class="op">(</span><span class="va">n</span>, <span class="fl">0.7</span>, scale <span class="op">=</span> <span class="fl">3.5</span><span class="op">)</span>, <span class="fl">0</span><span class="op">)</span></span>
+<span><span class="va">truth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pdm_presets.html">pdm_presets</a></span><span class="op">(</span><span class="st">"standard"</span><span class="op">)</span></span>
+<span><span class="va">truth</span><span class="op">$</span><span class="va">area_km2</span> <span class="op">&lt;-</span> <span class="fl">64</span></span>
+<span><span class="va">truth</span><span class="op">$</span><span class="va">recharge</span><span class="op">$</span><span class="va">kg</span> <span class="op">&lt;-</span> <span class="fl">250</span></span>
+<span><span class="va">truth</span><span class="op">$</span><span class="va">fc</span> <span class="op">&lt;-</span> <span class="fl">1.1</span></span>
+<span><span class="va">truth</span><span class="op">$</span><span class="va">surface</span><span class="op">$</span><span class="va">k1</span> <span class="op">&lt;-</span> <span class="fl">3</span></span>
+<span><span class="va">truth</span><span class="op">$</span><span class="va">surface</span><span class="op">$</span><span class="va">k2</span> <span class="op">&lt;-</span> <span class="fl">8</span></span>
+<span><span class="va">flow</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_pdm.html">run_pdm</a></span><span class="op">(</span><span class="fu"><a href="../reference/pdm_from_config.html">pdm_from_config</a></span><span class="op">(</span><span class="va">truth</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>rain <span class="op">=</span> <span class="va">rain</span>, pet <span class="op">=</span> <span class="fl">0.06</span><span class="op">)</span>,</span>
+<span>                <span class="fu"><a href="../reference/initial_state_from_flow.html">initial_state_from_flow</a></span><span class="op">(</span><span class="fu"><a href="../reference/pdm_from_config.html">pdm_from_config</a></span><span class="op">(</span><span class="va">truth</span><span class="op">)</span>, <span class="fl">0.8</span>, <span class="fl">0.7</span><span class="op">)</span><span class="op">)</span><span class="op">$</span><span class="va">output</span><span class="op">$</span><span class="va">q_m3s</span></span>
+<span><span class="va">flow</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">flow</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n</span>, <span class="fl">0</span>, <span class="fl">0.04</span><span class="op">)</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span></span>
+<span><span class="va">flow</span><span class="op">[</span><span class="fl">24</span> <span class="op">*</span> <span class="fl">40</span> <span class="op">+</span> <span class="fl">1</span><span class="op">:</span><span class="fl">30</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="cn">NA</span></span>
+<span><span class="va">stamp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/format.html" class="external-link">format</a></span><span class="op">(</span><span class="va">time</span>, <span class="st">"%Y-%m-%dT%H:%M:%SZ"</span><span class="op">)</span></span>
+<span><span class="fu">data.table</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/data.table/man/fwrite.html" class="external-link">fwrite</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>time <span class="op">=</span> <span class="va">stamp</span>, rain <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">rain</span>, <span class="fl">2</span><span class="op">)</span>, pet <span class="op">=</span> <span class="fl">0.06</span><span class="op">)</span>,</span>
+<span>                   <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">folder</span>, <span class="st">"forcing.csv"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu">data.table</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/data.table/man/fwrite.html" class="external-link">fwrite</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>time <span class="op">=</span> <span class="va">stamp</span>, q_m3s <span class="op">=</span> <span class="va">flow</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">folder</span>, <span class="st">"flow.csv"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="configure-and-simulate">2. Configure and simulate<a class="anchor" aria-label="anchor" href="#configure-and-simulate"></a>
+<h2 id="read-and-check-the-data">2. Read and check the data<a class="anchor" aria-label="anchor" href="#read-and-check-the-data"></a>
 </h2>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">config</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>pdm <span class="op">=</span> <span class="fu"><a href="../reference/pdm_presets.html">pdm_presets</a></span><span class="op">(</span><span class="st">"standard"</span><span class="op">)</span>, snow <span class="op">=</span> <span class="fu"><a href="../reference/pack_presets.html">pack_presets</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">config</span><span class="op">$</span><span class="va">pdm</span><span class="op">$</span><span class="va">area_km2</span> <span class="op">&lt;-</span> <span class="fl">44</span></span>
-<span><span class="va">config</span><span class="op">$</span><span class="va">pdm</span><span class="op">$</span><span class="va">fc</span> <span class="op">&lt;-</span> <span class="fl">1</span> <span class="co"># keep precipitation correction in one place</span></span>
-<span><span class="va">run_model</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">cfg</span>, <span class="va">rows</span>, <span class="va">state</span> <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">warmup</span> <span class="op">=</span> <span class="fl">0L</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="fu"><a href="../reference/sim_snow_pdm.html">sim_snow_pdm</a></span><span class="op">(</span><span class="va">forcing</span><span class="op">$</span><span class="va">rain</span><span class="op">[</span><span class="va">rows</span><span class="op">]</span>, <span class="va">forcing</span><span class="op">$</span><span class="va">temperature_c</span><span class="op">[</span><span class="va">rows</span><span class="op">]</span>, <span class="va">forcing</span><span class="op">$</span><span class="va">pet</span><span class="op">[</span><span class="va">rows</span><span class="op">]</span>,</span>
-<span>    params <span class="op">=</span> <span class="va">cfg</span>, timestep_min <span class="op">=</span> <span class="fl">60L</span>, datetime <span class="op">=</span> <span class="va">forcing</span><span class="op">$</span><span class="va">time</span><span class="op">[</span><span class="va">rows</span><span class="op">]</span>,</span>
-<span>    state <span class="op">=</span> <span class="va">state</span>, warmup_steps <span class="op">=</span> <span class="va">warmup</span></span>
-<span>  <span class="op">)</span></span>
-<span><span class="op">}</span></span>
-<span><span class="va">initial_run</span> <span class="op">&lt;-</span> <span class="fu">run_model</span><span class="op">(</span><span class="va">config</span>, <span class="va">hour</span>, warmup <span class="op">=</span> <span class="fl">8L</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">initial_run</span>, <span class="st">"water_balance"</span><span class="op">)</span></span>
-<span><span class="co">#&gt;     residual_mm max_abs_step_mm </span></span>
-<span><span class="co">#&gt;   -2.378306e-15    1.609823e-14</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">initial_run</span><span class="op">$</span><span class="va">combined_balance_error_mm</span><span class="op">)</span><span class="op">)</span> <span class="op">&lt;</span> <span class="fl">1e-8</span><span class="op">)</span></span></code></pre></div>
-<p>The model starts with empty snow stores and PDM’s default half-full
-soil. The first eight rows remain in the result with
-<code>is_warmup=TRUE</code>. They are not deleted, and warm-up flags
-alone do not establish state convergence. Real catchments generally need
-a longer, representative warm-up assessment.</p>
-<div class="figure">
-<img src="example-workflow_files/figure-html/snow-diagnostics-1.png" class="r-plt" alt="Synthetic forcing and the resulting snow stores. Liquid water can remain after the dry pack starts melting." width="840"><p class="caption">
-Synthetic forcing and the resulting snow stores. Liquid water can remain
-after the dry pack starts melting.
-</p>
-</div>
+<code class="sourceCode R"><span><span class="va">forcing</span> <span class="op">&lt;-</span> <span class="fu">data.table</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/data.table/man/fread.html" class="external-link">fread</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">folder</span>, <span class="st">"forcing.csv"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">observed</span> <span class="op">&lt;-</span> <span class="fu">data.table</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/data.table/man/fread.html" class="external-link">fread</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">folder</span>, <span class="st">"flow.csv"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">forcing</span><span class="op">$</span><span class="va">time</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/as.POSIXlt.html" class="external-link">as.POSIXct</a></span><span class="op">(</span><span class="va">forcing</span><span class="op">$</span><span class="va">time</span>, tz <span class="op">=</span> <span class="st">"UTC"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">forcing</span>, <span class="fl">3</span><span class="op">)</span></span>
+<span><span class="co">#&gt;                   time  rain   pet</span></span>
+<span><span class="co">#&gt;                 &lt;POSc&gt; &lt;num&gt; &lt;num&gt;</span></span>
+<span><span class="co">#&gt; 1: 2024-01-01 00:00:00     0  0.06</span></span>
+<span><span class="co">#&gt; 2: 2024-01-01 01:00:00     0  0.06</span></span>
+<span><span class="co">#&gt; 3: 2024-01-01 02:00:00     0  0.06</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>rows <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">forcing</span><span class="op">)</span>, same_length <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">forcing</span><span class="op">)</span> <span class="op">==</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">observed</span><span class="op">)</span>,</span>
+<span>  step_hours <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/diff.html" class="external-link">diff</a></span><span class="op">(</span><span class="va">forcing</span><span class="op">$</span><span class="va">time</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">2</span><span class="op">]</span><span class="op">)</span>, units <span class="op">=</span> <span class="st">"hours"</span><span class="op">)</span>,</span>
+<span>  missing_rain <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">forcing</span><span class="op">$</span><span class="va">rain</span><span class="op">)</span><span class="op">)</span>, missing_flow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">observed</span><span class="op">$</span><span class="va">q_m3s</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt;         rows  same_length   step_hours missing_rain missing_flow </span></span>
+<span><span class="co">#&gt;         2160            1            1            0           30</span></span></code></pre></div>
+<p>Check four things before going further: the two files line up row for
+row; the time step is what you think; no rain or evaporation is missing
+(the model cannot run through a gap in its inputs, so fill or trim it);
+and how much flow is missing (gaps in flow are fine: they are simply
+left out of the scores).</p>
 </div>
 <div class="section level2">
-<h2 id="create-synthetic-observations-and-reserve-a-validation-period">3. Create synthetic observations and reserve a validation
-period<a class="anchor" aria-label="anchor" href="#create-synthetic-observations-and-reserve-a-validation-period"></a>
+<h2 id="set-up-a-model">3. Set up a model<a class="anchor" aria-label="anchor" href="#set-up-a-model"></a>
 </h2>
-<p>For teaching purposes only, generate a reference hydrograph with a
-different melt factor, then add a small deterministic multiplicative
-perturbation. These values are <strong>not field observations</strong>
-and cannot establish model skill.</p>
+<p>Start from the standard PDM and give it your catchment’s area and
+time step:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">reference_config</span> <span class="op">&lt;-</span> <span class="va">config</span></span>
-<span><span class="va">reference_config</span><span class="op">$</span><span class="va">snow</span><span class="op">$</span><span class="va">melt_factor_mmh_c</span> <span class="op">&lt;-</span> <span class="fl">0.23</span></span>
-<span><span class="va">reference</span> <span class="op">&lt;-</span> <span class="fu">run_model</span><span class="op">(</span><span class="va">reference_config</span>, <span class="va">hour</span><span class="op">)</span></span>
-<span><span class="va">observed_cms</span> <span class="op">&lt;-</span> <span class="va">reference</span><span class="op">$</span><span class="va">qsim_cms</span> <span class="op">*</span> <span class="op">(</span><span class="fl">1</span> <span class="op">+</span> <span class="fl">0.03</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Trig.html" class="external-link">sin</a></span><span class="op">(</span><span class="va">hour</span> <span class="op">/</span> <span class="fl">3</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">train</span> <span class="op">&lt;-</span> <span class="fl">1</span><span class="op">:</span><span class="fl">32</span></span>
-<span><span class="va">validate</span> <span class="op">&lt;-</span> <span class="fl">33</span><span class="op">:</span><span class="fl">48</span></span></code></pre></div>
-</div>
-<div class="section level2">
-<h2 id="fit-more-than-one-objective">4. Fit more than one objective<a class="anchor" aria-label="anchor" href="#fit-more-than-one-objective"></a>
-</h2>
-<p>We minimize RMSE and absolute relative volume bias:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>L</mi><mrow><mi mathvariant="normal">R</mi><mi mathvariant="normal">M</mi><mi mathvariant="normal">S</mi><mi mathvariant="normal">E</mi></mrow></msub><mo>=</mo><msqrt><mrow><mfrac><mn>1</mn><mi>n</mi></mfrac><munder><mo>∑</mo><mi>i</mi></munder><msup><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>Q</mi><mi>i</mi></msub><mo>−</mo><msub><mi>O</mi><mi>i</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mn>2</mn></msup></mrow></msqrt><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>L</mi><mrow><mi mathvariant="normal">b</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">s</mi></mrow></msub><mo>=</mo><mrow><mo stretchy="true" form="prefix">|</mo><mfrac><mrow><munder><mo>∑</mo><mi>i</mi></munder><msub><mi>Q</mi><mi>i</mi></msub></mrow><mrow><munder><mo>∑</mo><mi>i</mi></munder><msub><mi>O</mi><mi>i</mi></msub></mrow></mfrac><mo>−</mo><mn>1</mn><mo stretchy="true" form="postfix">|</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">L_{\mathrm{RMSE}}=\sqrt{\frac{1}{n}\sum_i(Q_i-O_i)^2},\qquad
-L_{\mathrm{bias}}=\left|\frac{\sum_i Q_i}{\sum_i O_i}-1\right|.</annotation></semantics></math></p>
-<p>With user-chosen scales
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>s</mi><mi>j</mi></msub><annotation encoding="application/x-tex">s_j</annotation></semantics></math>
-and nonnegative weights
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>w</mi><mi>j</mi></msub><annotation encoding="application/x-tex">w_j</annotation></semantics></math>
-summing to one, each local search minimizes
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>J</mi><mo>=</mo><msub><mo>∑</mo><mi>j</mi></msub><msub><mi>w</mi><mi>j</mi></msub><msub><mi>L</mi><mi>j</mi></msub><mi>/</mi><msub><mi>s</mi><mi>j</mi></msub></mrow><annotation encoding="application/x-tex">J=\sum_j w_j L_j/s_j</annotation></semantics></math>.
-The scale of 0.1 below means 10% volume bias contributes one scaled
-unit. These tolerances and bounds are illustrative; specify defensible
-ones for the catchment before fitting.</p>
+<code class="sourceCode R"><span><span class="va">config</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pdm_presets.html">pdm_presets</a></span><span class="op">(</span><span class="st">"standard"</span><span class="op">)</span></span>
+<span><span class="va">config</span><span class="op">$</span><span class="va">area_km2</span> <span class="op">&lt;-</span> <span class="fl">64</span></span>
+<span><span class="va">config</span><span class="op">$</span><span class="va">dt</span> <span class="op">&lt;-</span> <span class="fl">1</span> <span class="co"># time step in hours</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/str.html" class="external-link">str</a></span><span class="op">(</span><span class="va">config</span>, max.level <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
+<span><span class="co">#&gt; List of 10</span></span>
+<span><span class="co">#&gt;  $ distribution:List of 4</span></span>
+<span><span class="co">#&gt;  $ recharge    :List of 4</span></span>
+<span><span class="co">#&gt;  $ surface     :List of 3</span></span>
+<span><span class="co">#&gt;  $ groundwater :List of 3</span></span>
+<span><span class="co">#&gt;  $ be          : num 1</span></span>
+<span><span class="co">#&gt;  $ fc          : num 1</span></span>
+<span><span class="co">#&gt;  $ td          : num 0</span></span>
+<span><span class="co">#&gt;  $ qc          : num 0</span></span>
+<span><span class="co">#&gt;  $ area_km2    : num 64</span></span>
+<span><span class="co">#&gt;  $ dt          : num 1</span></span></code></pre></div>
+<p>A configuration is a plain list. Each part is described in <a href="pdm-explained.html">How the PDM works</a> and <a href="model-options.html">Choosing model components</a>;
+<code><a href="../reference/parameter_catalog.html">parameter_catalog()</a></code> lists every parameter with its
+units.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calibrate_pdm_multi.html">calibrate_pdm_multi</a></span><span class="op">(</span></span>
-<span>  <span class="va">config</span>, <span class="va">forcing</span><span class="op">[</span><span class="va">train</span>, <span class="op">]</span>, <span class="va">observed_cms</span><span class="op">[</span><span class="va">train</span><span class="op">]</span>,</span>
-<span>  lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>snow.melt_factor_mmh_c <span class="op">=</span> <span class="fl">0.08</span>, pdm.surface.k1 <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span>,</span>
-<span>  upper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>snow.melt_factor_mmh_c <span class="op">=</span> <span class="fl">0.35</span>, pdm.surface.k1 <span class="op">=</span> <span class="fl">4</span><span class="op">)</span>,</span>
-<span>  objectives <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rmse"</span>, <span class="st">"abs_bias"</span><span class="op">)</span>,</span>
-<span>  scales <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>rmse <span class="op">=</span> <span class="fl">1</span>, abs_bias <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span>,</span>
-<span>  weights <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>rmse <span class="op">=</span> <span class="fl">1</span>, abs_bias <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>rmse <span class="op">=</span> <span class="fl">0.5</span>, abs_bias <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>  n_samples <span class="op">=</span> <span class="fl">3L</span>, starts <span class="op">=</span> <span class="fl">1L</span>, seed <span class="op">=</span> <span class="fl">42L</span>, warmup <span class="op">=</span> <span class="fl">8L</span>,</span>
-<span>  control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>maxit <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">fit</span><span class="op">$</span><span class="va">pareto</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
-<span>  <span class="st">"snow.melt_factor_mmh_c"</span>, <span class="st">"pdm.surface.k1"</span>,</span>
-<span>  <span class="st">"loss_rmse"</span>, <span class="st">"loss_abs_bias"</span></span>
-<span><span class="op">)</span>, with <span class="op">=</span> <span class="cn">FALSE</span><span class="op">]</span></span>
-<span><span class="co">#&gt;    snow.melt_factor_mmh_c pdm.surface.k1 loss_rmse loss_abs_bias</span></span>
-<span><span class="co">#&gt;                     &lt;num&gt;          &lt;num&gt;     &lt;num&gt;         &lt;num&gt;</span></span>
-<span><span class="co">#&gt; 1:              0.2286652       1.977475 0.2092782  6.365200e-04</span></span>
-<span><span class="co">#&gt; 2:              0.2289352       1.980975 0.2092114  7.456458e-04</span></span>
-<span><span class="co">#&gt; 3:              0.2290269       2.004397 0.2087808  7.460150e-04</span></span>
-<span><span class="co">#&gt; 4:              0.2292969       2.007897 0.2087209  8.551708e-04</span></span>
-<span><span class="co">#&gt; 5:              0.2304737       2.112084 0.2069088  1.188830e-03</span></span>
-<span><span class="co">#&gt; 6:              0.2307437       2.115584 0.2068828  1.299277e-03</span></span>
-<span><span class="co">#&gt; 7:              0.2400500       3.470852 0.1914300  3.675045e-03</span></span>
-<span><span class="co">#&gt; 8:              0.2270754       1.963278 0.2097238  1.658277e-05</span></span>
-<span><span class="co">#&gt; 9:              0.2273454       1.966778 0.2096086  9.251524e-05</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="va">optimization</span>, <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="va">x</span><span class="op">$</span><span class="va">convergence</span>, <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 1 1</span></span></code></pre></div>
-<p>A nonzero convergence code needs inspection; this deliberately short
-example may stop at the iteration limit. <code>fit$archive</code>
-retains valid evaluated candidates, and <code>fit$configs</code> aligns
-with rows of <code>fit$pareto</code>. The reported compromise uses the
-<strong>last weight row</strong>, not the held-out observations. The
-Pareto front is only the nondominated set among evaluated candidates; it
-is not a global-optimum claim or a probability distribution. Weighted
-searches may miss nonconvex trade-offs. Use more starts, larger budgets
-and repeated seeds for real studies.</p>
-<p>Other available losses are <code>log_rmse</code>,
-<code>nse_loss</code>, <code>kge_loss</code> and
-<code>peak_relative_error</code>. The last compares window maxima, not
-peak timing or individual events. NSE/KGE need variable observations.
-Prefer fewer, identifiable parameters over fitting every available
-coefficient to a short record.</p>
+<code class="sourceCode R"><span><span class="va">model</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pdm_from_config.html">pdm_from_config</a></span><span class="op">(</span><span class="va">config</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="restart-into-validation-without-reinitialising">5. Restart into validation without reinitialising<a class="anchor" aria-label="anchor" href="#restart-into-validation-without-reinitialising"></a>
+<h2 id="choose-a-starting-state">4. Choose a starting state<a class="anchor" aria-label="anchor" href="#choose-a-starting-state"></a>
 </h2>
+<p>The model needs to know how wet the catchment is at the start. The
+simplest good choice is to start from the first measured flow, assuming
+the catchment is steady at that moment and that most of the flow is
+groundwater:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">chosen</span> <span class="op">&lt;-</span> <span class="va">fit</span><span class="op">$</span><span class="va">compromise</span><span class="op">$</span><span class="va">config</span></span>
-<span><span class="va">training_run</span> <span class="op">&lt;-</span> <span class="fu">run_model</span><span class="op">(</span><span class="va">chosen</span>, <span class="va">train</span>, warmup <span class="op">=</span> <span class="fl">8L</span><span class="op">)</span></span>
-<span><span class="va">checkpoint</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">training_run</span>, <span class="st">"final_state"</span><span class="op">)</span></span>
-<span><span class="va">validation_run</span> <span class="op">&lt;-</span> <span class="fu">run_model</span><span class="op">(</span><span class="va">chosen</span>, <span class="va">validate</span>, state <span class="op">=</span> <span class="va">checkpoint</span><span class="op">)</span></span>
-<span><span class="va">full_run</span> <span class="op">&lt;-</span> <span class="fu">run_model</span><span class="op">(</span><span class="va">chosen</span>, <span class="va">hour</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span><span class="va">validation_run</span><span class="op">$</span><span class="va">qsim_cms</span>, <span class="va">full_run</span><span class="op">$</span><span class="va">qsim_cms</span><span class="op">[</span><span class="va">validate</span><span class="op">]</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">scores</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span></span>
-<span>  training <span class="op">=</span> <span class="fu"><a href="../reference/pdm_objectives.html">pdm_objectives</a></span><span class="op">(</span><span class="va">training_run</span><span class="op">$</span><span class="va">qsim_cms</span>, <span class="va">observed_cms</span><span class="op">[</span><span class="va">train</span><span class="op">]</span>,</span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rmse"</span>, <span class="st">"log_rmse"</span>, <span class="st">"nse_loss"</span>, <span class="st">"abs_bias"</span><span class="op">)</span>,</span>
-<span>    warmup <span class="op">=</span> <span class="fl">8L</span></span>
-<span>  <span class="op">)</span>,</span>
-<span>  validation <span class="op">=</span> <span class="fu"><a href="../reference/pdm_objectives.html">pdm_objectives</a></span><span class="op">(</span></span>
-<span>    <span class="va">validation_run</span><span class="op">$</span><span class="va">qsim_cms</span>, <span class="va">observed_cms</span><span class="op">[</span><span class="va">validate</span><span class="op">]</span>,</span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rmse"</span>, <span class="st">"log_rmse"</span>, <span class="st">"nse_loss"</span>, <span class="st">"abs_bias"</span><span class="op">)</span></span>
-<span>  <span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">scores</span></span>
-<span><span class="co">#&gt;                 rmse   log_rmse    nse_loss     abs_bias</span></span>
-<span><span class="co">#&gt; training   0.2097238 0.02064797 0.007428045 1.658277e-05</span></span>
-<span><span class="co">#&gt; validation 0.3103225 0.02215528 0.065685090 8.887364e-03</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">validation_run</span>, <span class="st">"water_balance"</span><span class="op">)</span></span>
-<span><span class="co">#&gt;     residual_mm max_abs_step_mm </span></span>
-<span><span class="co">#&gt;    7.827072e-15    8.215650e-15</span></span></code></pre></div>
-<p><code>nse_loss</code> is
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><mrow><mi mathvariant="normal">N</mi><mi mathvariant="normal">S</mi><mi mathvariant="normal">E</mi></mrow></mrow><annotation encoding="application/x-tex">1-\mathrm{NSE}</annotation></semantics></math>,
-so smaller is better; it is not NSE itself. The validation record here
-is tiny and synthetic. Real acceptance should include independent
-seasons, snow events, low flows, peak timing and water balance. Do not
-repeatedly choose candidates against the same held-out period and still
-call that period independent validation.</p>
-<div class="figure">
-<img src="example-workflow_files/figure-html/hydrograph-1.png" class="r-plt" alt="Synthetic discharge comparison. The dashed line marks the start of the held-out period; those observations were not supplied to calibration." width="840"><p class="caption">
-Synthetic discharge comparison. The dashed line marks the start of the
-held-out period; those observations were not supplied to calibration.
-</p>
-</div>
+<code class="sourceCode R"><span><span class="va">start</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/initial_state_from_flow.html">initial_state_from_flow</a></span><span class="op">(</span><span class="va">model</span>, observed_m3s <span class="op">=</span> <span class="va">observed</span><span class="op">$</span><span class="va">q_m3s</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
+<span>                                 baseflow_fraction <span class="op">=</span> <span class="fl">0.7</span><span class="op">)</span></span></code></pre></div>
+<p><a href="starting-states.html">Starting a run</a> explains the other
+options and why this matters.</p>
 </div>
 <div class="section level2">
-<h2 id="save-the-complete-restart-context">6. Save the complete restart context<a class="anchor" aria-label="anchor" href="#save-the-complete-restart-context"></a>
+<h2 id="run-it">5. Run it<a class="anchor" aria-label="anchor" href="#run-it"></a>
 </h2>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">checkpoint_path</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span>fileext <span class="op">=</span> <span class="st">".rds"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">saveRDS</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>  package_version <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">as.character</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/utils/packageDescription.html" class="external-link">packageVersion</a></span><span class="op">(</span><span class="st">"pdmS7"</span><span class="op">)</span><span class="op">)</span>,</span>
-<span>  config <span class="op">=</span> <span class="va">chosen</span>, timestep_min <span class="op">=</span> <span class="fl">60L</span>,</span>
-<span>  last_time <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">tail</a></span><span class="op">(</span><span class="va">forcing</span><span class="op">$</span><span class="va">time</span><span class="op">[</span><span class="va">train</span><span class="op">]</span>, <span class="fl">1</span><span class="op">)</span>, state <span class="op">=</span> <span class="va">checkpoint</span></span>
-<span><span class="op">)</span>, <span class="va">checkpoint_path</span><span class="op">)</span></span>
-<span><span class="va">restored</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="va">checkpoint_path</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span><span class="va">restored</span><span class="op">$</span><span class="va">state</span>, <span class="va">checkpoint</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">resumed</span> <span class="op">&lt;-</span> <span class="fu">run_model</span><span class="op">(</span><span class="va">restored</span><span class="op">$</span><span class="va">config</span>, <span class="va">validate</span>, state <span class="op">=</span> <span class="va">restored</span><span class="op">$</span><span class="va">state</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Logic.html" class="external-link">isTRUE</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/all.equal.html" class="external-link">all.equal</a></span><span class="op">(</span><span class="va">resumed</span><span class="op">$</span><span class="va">qsim_cms</span>, <span class="va">validation_run</span><span class="op">$</span><span class="va">qsim_cms</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/unlink.html" class="external-link">unlink</a></span><span class="op">(</span><span class="va">checkpoint_path</span><span class="op">)</span></span></code></pre></div>
-<p>For a real run, use a caller-managed persistent path. Check the
-recorded version, configuration, timestep and last timestamp before
-reuse: this saved list is an example convention, <strong>not an
-automated compatibility validator</strong>. Both snow cover history and
-PDM delay queues must be preserved. Never reset to empty snow halfway
-through a thaw or change a model’s structure while reusing its
-state.</p>
+<code class="sourceCode R"><span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_pdm.html">run_pdm</a></span><span class="op">(</span><span class="va">model</span>, <span class="va">forcing</span>, <span class="va">start</span><span class="op">)</span></span>
+<span><span class="va">simulated</span> <span class="op">&lt;-</span> <span class="va">result</span><span class="op">$</span><span class="va">output</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">simulated</span><span class="op">)</span></span>
+<span><span class="co">#&gt;  [1] "time"                  "step"                  "rain_mm"              </span></span>
+<span><span class="co">#&gt;  [4] "rain_corrected_mm"     "pet_mm"                "aet_mm"               </span></span>
+<span><span class="co">#&gt;  [7] "aet_requested_mm"      "recharge_mm"           "recharge_requested_mm"</span></span>
+<span><span class="co">#&gt; [10] "direct_runoff_mm"      "surface_input_mm"      "groundwater_input_mm" </span></span>
+<span><span class="co">#&gt; [13] "surface_out_mm"        "baseflow_out_mm"       "q_natural_m3s"        </span></span>
+<span><span class="co">#&gt; [16] "q_m3s"                 "q_end_m3s"             "qs_end_unlagged_mmh"  </span></span>
+<span><span class="co">#&gt; [19] "qb_end_unlagged_mmh"   "soil_mm"               "surface_mm"           </span></span>
+<span><span class="co">#&gt; [22] "groundwater_mm"        "delay_mm"              "saturated_fraction"   </span></span>
+<span><span class="co">#&gt; [25] "balance_error_mm"</span></span></code></pre></div>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th>Column</th>
+<th>Meaning</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>q_m3s</code></td>
+<td>Simulated river flow, mean over the time step</td>
+</tr>
+<tr class="even">
+<td><code>soil_mm</code></td>
+<td>Water in the soil</td>
+</tr>
+<tr class="odd">
+<td><code>saturated_fraction</code></td>
+<td>Share of the catchment where rain runs straight off</td>
+</tr>
+<tr class="even">
+<td><code>aet_mm</code></td>
+<td>Actual evaporation</td>
+</tr>
+<tr class="odd">
+<td>
+<code>surface_out_mm</code>, <code>baseflow_out_mm</code>
+</td>
+<td>The fast and slow parts of the flow</td>
+</tr>
+<tr class="even">
+<td><code>balance_error_mm</code></td>
+<td>Water-balance check; zero to rounding</td>
+</tr>
+</tbody>
+</table>
+<p><code>result$state</code> holds the stores at the end, ready to carry
+on from.</p>
 </div>
 <div class="section level2">
-<h2 id="before-pseudo-operational-use">Before pseudo-operational use<a class="anchor" aria-label="anchor" href="#before-pseudo-operational-use"></a>
+<h2 id="look-at-it">6. Look at it<a class="anchor" aria-label="anchor" href="#look-at-it"></a>
 </h2>
-<ul>
-<li>Confirm the image preset’s assumed hourly units and snow-cover event
-conventions.</li>
-<li>Replace synthetic data with checked forcing and correctly aligned
-observations.</li>
-<li>Assess warm-up, parameter identifiability and timestep
-sensitivity.</li>
-<li>Review convergence, rejected evaluations and each objective
-separately.</li>
-<li>Obtain independent technical/scientific review and responsible
-maintainer sign-off.</li>
-</ul>
-<p>River-network routing and additional state assimilation remain future
-avenues; this workflow does not implement them. See the PDM and PACK
-companion vignettes for equations and component functions, and
-<code>docs/roadmap.md</code> for deferred work.</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">plot_flow</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">sim</span>, <span class="va">label</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span>mar <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">4.2</span>, <span class="fl">0.6</span>, <span class="fl">0.6</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">forcing</span><span class="op">$</span><span class="va">time</span>, <span class="va">observed</span><span class="op">$</span><span class="va">q_m3s</span>, pch <span class="op">=</span> <span class="fl">16</span>, cex <span class="op">=</span> <span class="fl">0.25</span>, col <span class="op">=</span> <span class="va">pal</span><span class="op">[</span><span class="fl">5</span><span class="op">]</span>, xlab <span class="op">=</span> <span class="st">""</span>,</span>
+<span>       ylab <span class="op">=</span> <span class="st">"Flow (m3/s)"</span>, ylim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/range.html" class="external-link">range</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">observed</span><span class="op">$</span><span class="va">q_m3s</span>, <span class="va">sim</span><span class="op">)</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/graphics/lines.html" class="external-link">lines</a></span><span class="op">(</span><span class="va">forcing</span><span class="op">$</span><span class="va">time</span>, <span class="va">sim</span>, col <span class="op">=</span> <span class="va">pal</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>, lwd <span class="op">=</span> <span class="fl">1.5</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/graphics/legend.html" class="external-link">legend</a></span><span class="op">(</span><span class="st">"topleft"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"measured"</span>, <span class="va">label</span><span class="op">)</span>, col <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">pal</span><span class="op">[</span><span class="fl">5</span><span class="op">]</span>, <span class="va">pal</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span>, pch <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">16</span>, <span class="cn">NA</span><span class="op">)</span>,</span>
+<span>         lty <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="cn">NA</span>, <span class="fl">1</span><span class="op">)</span>, lwd <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="cn">NA</span>, <span class="fl">1.5</span><span class="op">)</span>, bty <span class="op">=</span> <span class="st">"n"</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span><span class="fu">plot_flow</span><span class="op">(</span><span class="va">simulated</span><span class="op">$</span><span class="va">q_m3s</span>, <span class="st">"standard settings"</span><span class="op">)</span></span></code></pre></div>
+<div class="figure">
+<img src="example-workflow_files/figure-html/plot-1.png" class="r-plt" alt="Measured (points) and simulated (line) flow with the standard settings." width="880"><p class="caption">
+Measured (points) and simulated (line) flow with the standard settings.
+</p>
+</div>
+</div>
+<div class="section level2">
+<h2 id="score-it">7. Score it<a class="anchor" aria-label="anchor" href="#score-it"></a>
+</h2>
+<p>Leave out the first two weeks, while the model’s stores settle, and
+score the rest:</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">scored</span> <span class="op">&lt;-</span> <span class="op">(</span><span class="fl">24</span> <span class="op">*</span> <span class="fl">14</span> <span class="op">+</span> <span class="fl">1</span><span class="op">)</span><span class="op">:</span><span class="va">n</span></span>
+<span><span class="va">first</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pdm_scorecard.html">pdm_scorecard</a></span><span class="op">(</span><span class="va">simulated</span><span class="op">$</span><span class="va">q_m3s</span><span class="op">[</span><span class="va">scored</span><span class="op">]</span>, <span class="va">observed</span><span class="op">$</span><span class="va">q_m3s</span><span class="op">[</span><span class="va">scored</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">first</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nse"</span>, <span class="st">"kge"</span>, <span class="st">"volume_error"</span>, <span class="st">"peak_error"</span>, <span class="st">"fdc_high"</span>, <span class="st">"fdc_low"</span><span class="op">)</span><span class="op">]</span>, <span class="fl">3</span><span class="op">)</span></span>
+<span><span class="co">#&gt;          nse          kge volume_error   peak_error     fdc_high      fdc_low </span></span>
+<span><span class="co">#&gt;        0.111        0.466       -0.014        0.087        0.189       -1.306</span></span></code></pre></div>
+<p>NSE and KGE are 1 for a perfect fit, so 0.11 is poor. The total
+volume is close (volume error -1 per cent), so the amount of water is
+about right; the problem is how it is shared out over time. The
+flow-duration scores <code>fdc_high</code> and <code>fdc_low</code> say
+the floods and the low flows are both off, which points at how quickly
+water drains to groundwater, and how quickly the surface stores empty.
+<a href="scoring.html">Scoring a simulation</a> explains every score and
+what it points to.</p>
+</div>
+<div class="section level2">
+<h2 id="improve-it">8. Improve it<a class="anchor" aria-label="anchor" href="#improve-it"></a>
+</h2>
+<p>Let the computer adjust the settings the scores point to: the
+drainage time constant <code>kg</code>, the two fast stores’ time
+constants, and the rainfall factor <code>fc</code> for good measure. The
+first half of the record is used to fit, and the second half is kept
+back to check.</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">bounds</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calibration_bounds.html">calibration_bounds</a></span><span class="op">(</span><span class="va">config</span><span class="op">)</span></span>
+<span><span class="va">pick</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"fc"</span>, <span class="st">"recharge.kg"</span>, <span class="st">"surface.k1"</span>, <span class="st">"surface.k2"</span><span class="op">)</span></span>
+<span><span class="va">bounds</span> <span class="op">&lt;-</span> <span class="va">bounds</span><span class="op">[</span><span class="va">bounds</span><span class="op">$</span><span class="va">path</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="va">pick</span>, <span class="op">]</span></span>
+<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calibrate_pdm.html">calibrate_pdm</a></span><span class="op">(</span><span class="va">config</span>, <span class="va">forcing</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="op">(</span><span class="fl">24</span> <span class="op">*</span> <span class="fl">45</span><span class="op">)</span>, <span class="op">]</span>, <span class="va">observed</span><span class="op">$</span><span class="va">q_m3s</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="op">(</span><span class="fl">24</span> <span class="op">*</span> <span class="fl">45</span><span class="op">)</span><span class="op">]</span>,</span>
+<span>                     lower <span class="op">=</span> <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="va">bounds</span><span class="op">$</span><span class="va">lower</span>, <span class="va">bounds</span><span class="op">$</span><span class="va">path</span><span class="op">)</span>,</span>
+<span>                     upper <span class="op">=</span> <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="va">bounds</span><span class="op">$</span><span class="va">upper</span>, <span class="va">bounds</span><span class="op">$</span><span class="va">path</span><span class="op">)</span>,</span>
+<span>                     warmup <span class="op">=</span> <span class="fl">24</span> <span class="op">*</span> <span class="fl">14</span>, objective <span class="op">=</span> <span class="st">"nse"</span>, starts <span class="op">=</span> <span class="fl">3</span>, seed <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>                     log_scale <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"recharge.kg"</span>, <span class="st">"surface.k1"</span>, <span class="st">"surface.k2"</span><span class="op">)</span>,</span>
+<span>                     control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>maxit <span class="op">=</span> <span class="fl">60</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="va">parameters</span>, <span class="fl">2</span><span class="op">)</span></span>
+<span><span class="co">#&gt;          fc recharge.kg  surface.k1  surface.k2 </span></span>
+<span><span class="co">#&gt;        1.06      294.64       11.13        2.03</span></span>
+<span><span class="va">better</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_pdm.html">run_pdm</a></span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="va">model</span>, <span class="va">forcing</span>, <span class="fu"><a href="../reference/initial_state_from_flow.html">initial_state_from_flow</a></span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="va">model</span>, <span class="va">observed</span><span class="op">$</span><span class="va">q_m3s</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>, <span class="fl">0.7</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">check</span> <span class="op">&lt;-</span> <span class="op">(</span><span class="fl">24</span> <span class="op">*</span> <span class="fl">45</span> <span class="op">+</span> <span class="fl">1</span><span class="op">)</span><span class="op">:</span><span class="va">n</span></span>
+<span><span class="va">keep</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nse"</span>, <span class="st">"kge"</span>, <span class="st">"volume_error"</span>, <span class="st">"peak_error"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span></span>
+<span>  standard <span class="op">=</span> <span class="fu"><a href="../reference/pdm_scorecard.html">pdm_scorecard</a></span><span class="op">(</span><span class="va">simulated</span><span class="op">$</span><span class="va">q_m3s</span><span class="op">[</span><span class="va">check</span><span class="op">]</span>, <span class="va">observed</span><span class="op">$</span><span class="va">q_m3s</span><span class="op">[</span><span class="va">check</span><span class="op">]</span><span class="op">)</span><span class="op">[</span><span class="va">keep</span><span class="op">]</span>,</span>
+<span>  calibrated <span class="op">=</span> <span class="fu"><a href="../reference/pdm_scorecard.html">pdm_scorecard</a></span><span class="op">(</span><span class="va">better</span><span class="op">$</span><span class="va">output</span><span class="op">$</span><span class="va">q_m3s</span><span class="op">[</span><span class="va">check</span><span class="op">]</span>, <span class="va">observed</span><span class="op">$</span><span class="va">q_m3s</span><span class="op">[</span><span class="va">check</span><span class="op">]</span><span class="op">)</span><span class="op">[</span><span class="va">keep</span><span class="op">]</span></span>
+<span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span></span>
+<span><span class="co">#&gt;               nse    kge volume_error peak_error</span></span>
+<span><span class="co">#&gt; standard   -4.396 -0.983        0.022      0.870</span></span>
+<span><span class="co">#&gt; calibrated  0.919  0.839       -0.042     -0.106</span></span></code></pre></div>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">plot_flow</span><span class="op">(</span><span class="va">better</span><span class="op">$</span><span class="va">output</span><span class="op">$</span><span class="va">q_m3s</span>, <span class="st">"calibrated"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/abline.html" class="external-link">abline</a></span><span class="op">(</span>v <span class="op">=</span> <span class="va">forcing</span><span class="op">$</span><span class="va">time</span><span class="op">[</span><span class="fl">24</span> <span class="op">*</span> <span class="fl">45</span><span class="op">]</span>, lty <span class="op">=</span> <span class="fl">2</span>, col <span class="op">=</span> <span class="va">pal</span><span class="op">[</span><span class="fl">7</span><span class="op">]</span><span class="op">)</span></span></code></pre></div>
+<div class="figure">
+<img src="example-workflow_files/figure-html/plot-better-1.png" class="r-plt" alt="After calibration, on the whole record. The second half was not used to fit." width="880"><p class="caption">
+After calibration, on the whole record. The second half was not used to
+fit.
+</p>
+</div>
+<p>The scores in the table are on the second half only, which the
+calibration never saw: that is the honest measure of the improvement. <a href="auto-calibration.html">Automatic calibration, explained</a> covers
+the settings used here.</p>
+</div>
+<div class="section level2">
+<h2 id="save-it">9. Save it<a class="anchor" aria-label="anchor" href="#save-it"></a>
+</h2>
+<p>Save the configuration as a YAML file you can read, edit and share,
+and the final state so the next run can carry on exactly where this one
+stopped. Use <code><a href="../reference/write_pdm_config.html">write_pdm_config()</a></code> rather than a general YAML
+writer, which would round the calibrated values:</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/write_pdm_config.html">write_pdm_config</a></span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="va">config</span>, <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">folder</span>, <span class="st">"my-catchment.yml"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">saveRDS</a></span><span class="op">(</span><span class="va">better</span><span class="op">$</span><span class="va">state</span>, <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">folder</span>, <span class="st">"end-state.rds"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">again</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/load_pdm_model.html">load_pdm_model</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">folder</span>, <span class="st">"my-catchment.yml"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="fu"><a href="../reference/pdm_fingerprint.html">pdm_fingerprint</a></span><span class="op">(</span><span class="va">again</span><span class="op">)</span>, <span class="fu"><a href="../reference/pdm_fingerprint.html">pdm_fingerprint</a></span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="va">model</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] TRUE</span></span></code></pre></div>
+<p>The fingerprint check confirms the model read back from the file is
+exactly the one that was calibrated.</p>
+</div>
+<div class="section level2">
+<h2 id="where-next">10. Where next<a class="anchor" aria-label="anchor" href="#where-next"></a>
+</h2>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th>To</th>
+<th>Read</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>Keep a reviewable record of a calibration, with sign-off</td>
+<td><a href="calibration-log.html">Logging a manual calibration</a></td>
+</tr>
+<tr class="even">
+<td>Calibrate many catchments the same way</td>
+<td><a href="many-catchments.html">Calibrating many catchments</a></td>
+</tr>
+<tr class="odd">
+<td>Compare model structures</td>
+<td><a href="choosing-structure.html">Choosing a model
+structure</a></td>
+</tr>
+<tr class="even">
+<td>Add snow</td>
+<td>
+<a href="snowpack-explained.html">How the snow model works</a>, then
+<code><a href="../reference/sim_snow_pdm.html">sim_snow_pdm()</a></code>
+</td>
+</tr>
+<tr class="odd">
+<td>Use the model for forecasting</td>
+<td><a href="forecast-updating.html">Forecast updating</a></td>
+</tr>
+<tr class="even">
+<td>Do all this without code</td>
+<td><code><a href="../reference/calibration_app.html">calibration_app()</a></code></td>
+</tr>
+</tbody>
+</table>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>
