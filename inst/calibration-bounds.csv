@@ -1,0 +1,21 @@
+slot,type,parameter,lower,upper,scale,note
+model,model,fc,0.6,1.6,linear,Rainfall factor; outside this range question the rain gauge rather than the model
+distribution,pareto,cmax,20,800,linear,Maximum store capacity (mm)
+distribution,pareto,b,0.05,2,linear,Shape: low values give a near-uniform store
+distribution,rectangular,cmax,20,800,linear,Maximum store capacity (mm)
+distribution,triangular,cmax,20,800,linear,Maximum store capacity (mm)
+distribution,exponential,mean,10,400,linear,Mean store capacity (mm)
+distribution,lognormal,meanlog,2.3,6,linear,Log of capacity (log mm); 10 to 400 mm
+distribution,lognormal,sdlog,0.1,2,linear,Spread of log capacity
+recharge,standard,kg,1,5000,log,Recharge time constant (h); spans orders of magnitude
+recharge,split,alpha,0,1,linear,Share of drainage sent to the surface store
+recharge,demand,alpha,0.05,1,linear,Demand recharge shape
+recharge,demand,beta,0.1,5,log,Demand recharge exponent
+recharge,demand,qsat,0.01,10,log,Saturated recharge rate (mm/h)
+route,cascade,k1,0.5,72,log,Time constant of the first store (h)
+route,cascade,k2,0.5,72,log,Time constant of the second store (h)
+route,linear,kb,10,5000,log,Linear store time constant (h)
+route,quadratic,kb,10,1e5,log,Quadratic store constant
+route,cubic,kb,100,1e6,log,Cubic store constant
+route,exponential,a,0.001,1,log,Exponential store rate (1/mm)
+route,exponential,gamma,-15,0,linear,Exponential store offset (log mm/h)

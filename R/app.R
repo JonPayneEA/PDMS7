@@ -182,6 +182,10 @@ calibration_app <- function(project = NULL) {
       shiny::textInput("val_start", "Validation from"),
       shiny::textInput("val_end", "to")
     ),
+    shiny::splitLayout(
+      shiny::textInput("test_start", "Final test from (optional)"),
+      shiny::textInput("test_end", "to")
+    ),
     .text_area("thresholds", "Thresholds, one per line: name, value, flow or level",
                "Flood Alert, 12.5, flow\nFlood Warning, 1.85, level"),
     shiny::textInput("rating_path", "Rating CSV (stage_m, q_m3s), for level thresholds",
@@ -286,7 +290,11 @@ calibration_app <- function(project = NULL) {
     shiny::h4("Validate the latest candidate"),
     .text_area("validation_reasoning", "Your reading of the validation"),
     shiny::actionButton("validate", "Run validation", class = "btn-primary"),
-    shiny::tableOutput("validation_scores")
+    shiny::tableOutput("validation_scores"),
+    shiny::h4("Final test"),
+    shiny::helpText("Scored once, after the structure and parameters are final."),
+    .text_area("test_reasoning", "Your reading of the test"),
+    shiny::actionButton("final_test", "Run final test", class = "btn-warning")
   )
   shiny::fluidRow(
     shiny::column(12, shiny::plotOutput("path", height = "320px")),

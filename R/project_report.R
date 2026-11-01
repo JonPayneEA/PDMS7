@@ -135,10 +135,12 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
       md5 = vapply(r$data, function(d) d$md5, character(1)), row.names = NULL
     )
     windows <- data.frame(
-      window = c("warm-up", "calibration", "validation"),
+      window = c("warm-up", "calibration", "validation", "test"),
       rows = c(if (card$warmup_rows) paste0("1-", card$warmup_rows) else "none",
-               .window_text(card$calibration, FALSE), .window_text(card$validation, FALSE)),
-      period = c("", .window_text(card$calibration, TRUE), .window_text(card$validation, TRUE))
+               .window_text(card$calibration, FALSE), .window_text(card$validation, FALSE),
+               .window_text(card$test, FALSE)),
+      period = c("", .window_text(card$calibration, TRUE), .window_text(card$validation, TRUE),
+                 .window_text(card$test, TRUE))
     )
     quality <- data.frame(
       item = c("Rows", "Period", "Time step", "Observed missing", "Longest gap",
@@ -264,10 +266,24 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
   } else {
     out <- c(out, list(.blk_alert("The candidate has not been validated.", FALSE)))
   }
+  test <- .candidate_test(entries, candidate)
+  if (!is.null(test)) {
+    scores$test <- vapply(test$test_scores[core], .num_or_na, numeric(1))
+    out <- c(out, list(.blk_p(paste0(
+      "Tested once on the final window in entry ", test$id, " (", test$author$name, "): ",
+      test$reasoning
+    ))))
+  } else if (!is.null(card$test)) {
+    out <- c(out, list(.blk_p(paste(
+      "A test window is registered but has not been scored. It is scored once, by",
+      "test_candidate(), after the structure and parameters are final."
+    ))))
+  }
   out <- c(out, list(.blk_table(scores, "Scorecard")))
   if (length(card$thresholds)) {
     out <- c(out, .rpt_thresholds(card, candidate$scores,
-                                  if (validated) validation$validation_scores))
+                                  if (validated) validation$validation_scores,
+                                  if (!is.null(test)) test$test_scores))
   }
   for (w in c("calibration", if (validated) "validation")) {
     rows <- .window_rows(card[[w]])
@@ -310,9 +326,10 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
   do.call(rbind, rows)
 }
 
-.rpt_thresholds <- function(card, calibration, validation) {
+.rpt_thresholds <- function(card, calibration, validation, test = NULL) {
   table <- rbind(.threshold_table(card, calibration, "calibration"),
-                 if (!is.null(validation)) .threshold_table(card, validation, "validation"))
+                 if (!is.null(validation)) .threshold_table(card, validation, "validation"),
+                 if (!is.null(test)) .threshold_table(card, test, "test"))
   table <- table[order(match(table$threshold, table$threshold)), ]
   list(
     .blk_h("Threshold crossings", 3L),
@@ -551,11 +568,14 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
   for (i in seq_along(thresholds)) {
     rows <- table[table$threshold == thresholds[i], ]
     graphics::points(1 - rows$far, rows$pod, col = cols[i], cex = 1.6, lwd = 2,
-                     pch = ifelse(rows$window == "calibration", 16, 2))
+                     pch = c(calibration = 16, validation = 2, test = 5)[rows$window])
   }
-  graphics::legend("bottomright", c(thresholds, "calibration", "validation"),
-                   col = c(cols, .pal[["grey"]], .pal[["grey"]]),
-                   pch = c(rep(15, length(thresholds)), 16, 2), bty = "n", cex = 0.8)
+  windows <- unique(table$window)
+  graphics::legend("bottomright", c(thresholds, windows),
+                   col = c(cols, rep(.pal[["grey"]], length(windows))),
+                   pch = c(rep(15, length(thresholds)),
+                           c(calibration = 16, validation = 2, test = 5)[windows]),
+                   bty = "n", cex = 0.8)
 }
 
 .plot_sensitivity <- function(curves, factors, headline) {

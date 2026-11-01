@@ -51,6 +51,10 @@
 #' `pod_step`, `far_step`, `ets_step` or `pss_step`.
 #' @param event_settings List of `tolerance_h`, `gap_h` and `min_duration_h` for event
 #' matching; see [pdm_threshold_scores()].
+#' @param log_scale Names of parameters to search on a logarithmic scale, so that each
+#' tenfold step gets equal room. Use it for parameters spanning orders of magnitude, such as
+#' recharge.kg or groundwater.kb. Their lower bounds must be positive. Results stay in the
+#' parameters' own units.
 #'
 #' @return A list of config, model, parameters, objective, convergence, message, optim
 #' diagnostics, and start_results. The first six describe the best start; optim is its
@@ -79,7 +83,8 @@ calibrate_pdm <- function(
   log_offset = 0.01, control = list(maxit = 200),
   soil_fraction = 0.5, starts = 1L, seed = NULL, method = c("lbfgsb", "nelder_mead"),
   thresholds = NULL, threshold_weight = 1, threshold_score = "csi",
-  event_settings = list(tolerance_h = 6, gap_h = 24, min_duration_h = 0)
+  event_settings = list(tolerance_h = 6, gap_h = 24, min_duration_h = 0),
+  log_scale = character(0)
 ) {
   objective <- match.arg(objective)
   flow <- match.arg(flow)
@@ -126,6 +131,23 @@ calibrate_pdm <- function(
     all(initial >= lower & initial <= upper),
     "Initial parameters outside bounds"
   )
+  # Unit box <-> parameter values; log-scaled parameters are uniform in log(value).
+  .check(is.character(log_scale) && all(log_scale %in% names(lower)) &&
+           all(lower[log_scale] > 0), "log_scale must name parameters with positive lower bounds")
+  logged <- names(lower) %in% log_scale
+  lo <- ifelse(logged, log(lower), lower)
+  hi <- ifelse(logged, log(upper), upper)
+  to_value <- function(z) {
+    v <- lo + z * (hi - lo)
+    v[logged] <- exp(v[logged])
+    v[logged] <- pmin(pmax(v[logged], lower[logged]), upper[logged])
+    stats::setNames(v, names(lower))
+  }
+  to_unit <- function(v) {
+    v <- unname(v)
+    v[logged] <- log(v[logged])
+    (v - lo) / (hi - lo)
+  }
   .check(
     .scalar(starts, 1) && starts == floor(starts),
     "starts must be a positive whole number"
@@ -169,7 +191,7 @@ calibrate_pdm <- function(
   counter$calls <- 0L
   loss <- function(z) {
     counter$calls <- counter$calls + 1L
-    par <- lower + z * (upper - lower)
+    par <- to_value(z)
     tryCatch(
       {
         mod <- pdm_from_config(build(par))
@@ -211,7 +233,7 @@ calibrate_pdm <- function(
     )
   }
   # Unit-box scaling helps parameters with very different physical units.
-  z0 <- (initial - lower) / (upper - lower)
+  z0 <- to_unit(initial)
   starts <- as.integer(starts)
   z_start <- list(z0)
   if (starts > 1L) {
@@ -253,7 +275,7 @@ calibrate_pdm <- function(
   .check(fit$value < 1e+29, "No valid calibration evaluation; inspect configuration and bounds")
   # One row per start and one column per parameter, including the single-parameter case.
   fitted <- matrix(
-    unlist(lapply(fits, function(f) lower + f$par * (upper - lower)), use.names = FALSE),
+    unlist(lapply(fits, function(f) to_value(f$par)), use.names = FALSE),
     nrow = length(fits), byrow = TRUE, dimnames = list(NULL, names(lower))
   )
   start_results <- data.table::data.table(
@@ -264,7 +286,7 @@ calibrate_pdm <- function(
     best = seq_along(fits) == best_index
   )
   start_results <- cbind(start_results, data.table::as.data.table(fitted))
-  parameters <- lower + fit$par * (upper - lower)
+  parameters <- to_value(fit$par)
   best <- build(parameters)
   list(
     config = best, model = pdm_from_config(best),

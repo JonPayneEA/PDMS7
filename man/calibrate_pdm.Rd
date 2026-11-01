@@ -22,7 +22,8 @@ calibrate_pdm(
   thresholds = NULL,
   threshold_weight = 1,
   threshold_score = "csi",
-  event_settings = list(tolerance_h = 6, gap_h = 24, min_duration_h = 0)
+  event_settings = list(tolerance_h = 6, gap_h = 24, min_duration_h = 0),
+  log_scale = character(0)
 )
 }
 \arguments{
@@ -80,6 +81,11 @@ Requires \code{method = "nelder_mead"}, and at least one observed event at each 
 
 \item{event_settings}{List of \code{tolerance_h}, \code{gap_h} and \code{min_duration_h} for event
 matching; see \code{\link[=pdm_threshold_scores]{pdm_threshold_scores()}}.}
+
+\item{log_scale}{Names of parameters to search on a logarithmic scale, so that each
+tenfold step gets equal room. Use it for parameters spanning orders of magnitude, such as
+recharge.kg or groundwater.kb. Their lower bounds must be positive. Results stay in the
+parameters' own units.}
 }
 \value{
 A list of config, model, parameters, objective, convergence, message, optim

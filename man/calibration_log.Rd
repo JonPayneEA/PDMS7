@@ -11,6 +11,7 @@
 \alias{log_note}
 \alias{propose_candidate}
 \alias{validate_candidate}
+\alias{test_candidate}
 \alias{sign_off_project}
 \alias{reopen_project}
 \title{Calibration log}
@@ -42,7 +43,8 @@ register_data(
   rating = NULL,
   event_tolerance_h = 6,
   event_gap_h = 24,
-  event_min_duration_h = 0
+  event_min_duration_h = 0,
+  test = NULL
 )
 
 select_structure(project, configuration, reasoning)
@@ -72,6 +74,8 @@ log_note(project, text, refers_to = NULL)
 propose_candidate(project, entry, reasoning)
 
 validate_candidate(project, reasoning)
+
+test_candidate(project, reasoning)
 
 sign_off_project(
   project,
@@ -104,9 +108,11 @@ interval and an optional \code{time} column.}
 \item{observed}{Path of a CSV file with a \code{q_m3s} column, a data frame, or a numeric
 vector of observed flow, m3/s, aligned with \code{forcing}. Missing values are allowed.}
 
-\item{calibration, validation}{Scoring windows as \code{c(start, end)}: row numbers, or times
-when the forcing has a time column. Rows before the calibration window are warm-up.
-\code{validation} may be \code{NULL} until it is needed.}
+\item{calibration, validation, test}{Scoring windows as \code{c(start, end)}: row numbers, or
+times when the forcing has a time column. Rows before the calibration window are
+warm-up. \code{validation} may be \code{NULL} until it is needed. \code{test} is an optional final
+window, scored once by \code{test_candidate()} after every choice is made, and by nothing
+else; the three windows must not overlap.}
 
 \item{headline}{Score used to rank runs: one of \code{nse}, \code{log_nse}, \code{kge}, \code{rmse},
 \code{log_rmse}, \code{abs_volume_error}, or a threshold score written as \code{metric:name}, such as
@@ -177,6 +183,7 @@ below writes one entry; none edits or deletes an earlier one.
    \code{log_note()} \tab \code{note} \tab Any \cr
    \code{propose_candidate()} \tab \code{candidate} \tab Custodian \cr
    \code{validate_candidate()} \tab \code{validation} \tab Custodian \cr
+   \code{test_candidate()} \tab \code{test} \tab Custodian \cr
    \code{sign_off_project()} \tab \code{sign_off} \tab Steward or Delegated Steward \cr
    \code{reopen_project()} \tab \code{reopen} \tab Steward or Delegated Steward \cr
 }
@@ -189,7 +196,8 @@ operating-system login. A Steward cannot sign off a project in which they wrote 
 automatic calibration, candidate or validation.
 
 Every run simulates the whole registered record from \code{initial_state(model, soil_fraction)}. Trials and automatic calibrations are scored on the calibration window
-only; the validation window is scored once, by \code{validate_candidate()}. See
+only; the validation window is scored once, by \code{validate_candidate()}, and an optional
+test window once more, by \code{test_candidate()}, after every choice is made. See
 \code{\link[=pdm_scorecard]{pdm_scorecard()}} for the scores and \code{\link[=verify_project]{verify_project()}} for the integrity checks.
 }
 \examples{

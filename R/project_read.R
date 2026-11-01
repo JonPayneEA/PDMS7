@@ -59,6 +59,7 @@ read_project <- function(project) {
     note = e$text,
     candidate = paste("Entry", e$entry),
     validation = paste("Candidate", e$candidate),
+    test = paste("Candidate", e$candidate, "tested"),
     sign_off = paste("Candidate", e$candidate, "signed off as", e$capacity),
     reopen = e$reason
   )
@@ -127,6 +128,8 @@ read_projects <- function(projects) {
       candidate_score = if (is.null(candidate) || is.na(headline)) NA_real_ else
         .num_or_na(candidate$scores[[headline]]),
       validation_score = .validation_score(entries, candidate, headline),
+      test_score = if (is.na(headline)) NA_real_ else
+        .num_or_na(.candidate_test(entries, candidate)$test_scores[[headline]]),
       signed_off_by = .text_or_na(sign_off$author$name),
       signed_off_at = .text_or_na(sign_off$timestamp), path = info$path
     )
@@ -241,13 +244,14 @@ verify_project <- function(project, rerun = FALSE) {
 .verify_reruns <- function(path, entries) {
   info <- .project_info(entries)
   out <- NULL
-  targets <- Filter(function(e) e$type %in% c(.model_entry_types, "validation"), entries)
+  targets <- Filter(function(e) e$type %in% c(.model_entry_types, "validation", "test"),
+                    entries)
   for (e in targets) {
     registration <- .find_entry(entries, e$registration)
     result <- tryCatch({
-      if (e$type == "validation") {
+      if (e$type %in% c("validation", "test")) {
         config <- .find_entry(entries, e$candidate)$configuration
-        window <- "validation"
+        window <- e$type
       } else {
         config <- e$configuration
         window <- "calibration"
