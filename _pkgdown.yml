@@ -158,6 +158,7 @@ reference:
   - read_project
   - verify_project
   - build_report
+  - calibration_app
 - title: Run log
   desc: An opt-in record of every model run, checked against signed-off calibrations.
   contents:

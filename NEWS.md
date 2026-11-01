@@ -1,5 +1,12 @@
 # pdmS7 (development version)
 
+- New `calibration_app()`: a Shiny app over the calibration log for staff who prefer not
+  to script. Setup (start, register data, select structure), Trial (adjust parameters,
+  preview the hydrograph and scorecard against the parent, save with a verdict and
+  reasoning; notes; automatic calibration), History (path, every run, compare two runs,
+  propose and validate a candidate), Report (integrity, build and download) and Sign-off.
+  Every button calls the exported function a script would, so the same rules apply.
+  shiny is a suggested package, needed only for the app.
 - New opt-in run log. With `options(pdmS7.run_log = "runs.csv")` or `PDMS7_RUN_LOG` set,
   every `run_pdm()` call, and so `sim_pdm()` and `sim_snow_pdm()`, appends one row: who,
   when, an optional tag, the model's `pdm_fingerprint()`, a checksum of the forcing, period,
