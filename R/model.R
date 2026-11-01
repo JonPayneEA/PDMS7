@@ -112,38 +112,30 @@ FlodePdmState <- S7::new_class(
     delay_groundwater_end = S7::class_numeric, step = S7::class_numeric
   ),
   validator = function(self) {
-    finite <- function(x) {
-      is.numeric(x) &&
-        length(x) >
-          0 && all(is.finite(x))
-    }
-    errors <- .bounded_params(
-      self, list(
-        soil = .scalar(self@soil, 0),
-        surface = finite(self@surface) &&
-          length(self@surface) %in%
-            1:2, groundwater = finite(self@groundwater) &&
-          length(self@groundwater) %in%
-            1:2, step = .scalar(self@step, 0) &&
-          self@step == floor(self@step)
-      )
-    )
+    errors <- .bounded_params(self, list(
+      soil = .scalar(self@soil, 0),
+      surface = .store_vector(self@surface),
+      groundwater = .store_vector(self@groundwater),
+      step = .whole(self@step, 0, Inf)
+    ))
     if (!is.null(errors)) {
       return(errors)
     }
-    for (name in c("delay_surface",
-                   "delay_groundwater",
-                   "delay_surface_end",
+    for (name in c("delay_surface", "delay_groundwater", "delay_surface_end",
                    "delay_groundwater_end")) {
       value <- S7::prop(self, name)
-      if (!finite(value) ||
-            any(value < 0)) {
+      if (!.finite_vector(value) || any(value < 0)) {
         return(paste(name, "must be finite and nonnegative"))
       }
     }
     NULL
   }
 )
+
+.finite_vector <- function(x) is.numeric(x) && length(x) > 0 && all(is.finite(x))
+
+# One store, or the two stores of a cascade.
+.store_vector <- function(x) .finite_vector(x) && length(x) %in% 1:2
 
 #' Pdm model
 #'

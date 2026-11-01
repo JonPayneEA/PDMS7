@@ -17,6 +17,7 @@ calibrate_batch(
   seed = 1,
   control = list(maxit = 200),
   method = c("lbfgsb", "nelder_mead"),
+  staged = FALSE,
   test = FALSE,
   cores = 1L,
   only = NULL,
@@ -41,6 +42,10 @@ names none; the standard PDM if \code{NULL}. The basin's area is always applied.
 
 \item{objective, starts, seed, control, method}{Passed to \code{\link[=calibrate_pdm]{calibrate_pdm()}}. Search scales
 come from the bounds table.}
+
+\item{staged}{If \code{TRUE}, calibrate in stages, as \code{\link[=calibrate_staged]{calibrate_staged()}} does, with stages from
+\code{\link[=pdm_stages]{pdm_stages()}}: one \code{auto_calibration} entry per stage. An interrupted basin resumes
+from its last finished stage. \code{objective} then applies to no stage; each stage has its own.}
 
 \item{test}{If \code{TRUE}, score each validated candidate once on its test window, if it has
 one. Use it when the protocol is final; the test window is scored only once.}
@@ -74,9 +79,16 @@ calibration it had.
 \item \code{flow.csv}: column \code{q_m3s} (and optionally \code{time}), aligned with the forcing;
 \item \code{basin.yml}: \code{area_km2} and \code{calibration} (start and end) are required; \code{catchment},
 \code{gauge}, \code{validation}, \code{test}, \code{config} (a YAML configuration file in the folder),
-\code{headline}, \code{thresholds} (a list of \code{name}, \code{value}, \code{unit}) and \code{rating} (a CSV in the
-folder) are optional.
+\code{headline}, \code{thresholds} (a list of \code{name}, \code{value}, \code{unit}), \code{rating} (a CSV in the
+folder) and \code{snow} are optional.
 }
+
+\strong{Snow.} For a basin with \code{snow: true} in \code{basin.yml}, \code{forcing.csv} also needs a
+\code{temperature} column (deg C), and \code{rain} holds all precipitation. The PACK snow model turns
+them into the rain and melt reaching the ground, with fixed parameters: the default preset,
+or a preset named by \code{snow}, or a PACK YAML file in the basin folder named by \code{snow}. PACK
+is not calibrated; only the PDM is. The series PACK produces is registered as the rain, and a
+note in the log records the PACK parameters and the checksum of the original forcing.
 
 \strong{Steps for each basin}, each written to its project as it completes: start the project,
 register the data, select the structure, run the automatic calibration, propose the best

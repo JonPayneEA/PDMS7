@@ -11,7 +11,7 @@ calibrate_pdm(
   lower,
   upper,
   warmup = 0,
-  objective = c("rmse", "nse", "log_rmse", "threshold"),
+  objective = c("rmse", "nse", "log_rmse", "log_nse", "threshold"),
   flow = c("q_m3s", "q_end_m3s"),
   log_offset = 0.01,
   control = list(maxit = 200),
@@ -23,7 +23,8 @@ calibrate_pdm(
   threshold_weight = 1,
   threshold_score = "csi",
   event_settings = list(tolerance_h = 6, gap_h = 24, min_duration_h = 0),
-  log_scale = character(0)
+  log_scale = character(0),
+  volume_weight = 0
 )
 }
 \arguments{
@@ -43,13 +44,14 @@ surface.k1.}
 \item{warmup}{Number of initial forcing steps excluded from calibration scoring, but still
 simulated.}
 
-\item{objective}{Calibration objective: rmse, nse (minimizes 1-NSE), log_rmse, or
-threshold (the threshold term alone; needs thresholds).}
+\item{objective}{Calibration objective: rmse, nse (minimizes 1-NSE), log_rmse, log_nse
+(minimizes 1 minus NSE of log flows, which weights low flows), or threshold (the threshold
+term alone; needs thresholds).}
 
 \item{flow}{Series to score: q_m3s (interval mean) or q_end_m3s (endpoint flow).}
 
-\item{log_offset}{Positive offset added before logarithms in log-RMSE, cubic metres per
-second.}
+\item{log_offset}{Positive offset added before logarithms in log-RMSE and log NSE, cubic
+metres per second.}
 
 \item{control}{Named control list forwarded to stats::optim.}
 
@@ -86,6 +88,11 @@ matching; see \code{\link[=pdm_threshold_scores]{pdm_threshold_scores()}}.}
 tenfold step gets equal room. Use it for parameters spanning orders of magnitude, such as
 recharge.kg or groundwater.kb. Their lower bounds must be positive. Results stay in the
 parameters' own units.}
+
+\item{volume_weight}{Nonnegative weight of a volume penalty added to the objective: the
+weight times the absolute relative error in total flow over the scored rows. Zero, the
+default, adds nothing. \code{\link[=calibrate_staged]{calibrate_staged()}} uses it to hold the water balance while fitting
+low flows.}
 }
 \value{
 A list of config, model, parameters, objective, convergence, message, optim

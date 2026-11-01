@@ -1,6 +1,64 @@
 # Changelog
 
-## pdmS7 (development version)
+## pdmS7 0.4.0
+
+- New
+  [`pdm_hindcast()`](https://jonpayneea.github.io/PDMS7/reference/pdm_hindcast.md)
+  reruns past forecasts from many origins, using the rain that fell,
+  with no updating, persistence, AR post-processing as in IMFS (the
+  Environment Agency 2024 default, a default-family set from the model’s
+  response time, and optionally a set fitted to the calibration period)
+  and state correction.
+  [`hindcast_scores()`](https://jonpayneea.github.io/PDMS7/reference/hindcast_scores.md)
+  scores each lead time: NSE, RMSE, bias, skill against persistence,
+  threshold POD, FAR and CSI, and lead time over time to peak, so
+  catchments and models line up on one axis. It also scores another
+  model’s forecasts given as a table.
+  [`plot_hindcast()`](https://jonpayneea.github.io/PDMS7/reference/plot_hindcast.md)
+  plots any score against lead time.
+
+- New
+  [`pdm_response_time()`](https://jonpayneea.github.io/PDMS7/reference/pdm_response_time.md)
+  measures a model’s time to peak, recession and centroid lag from a
+  pulse of rain, with an optional check against an FEH time to peak.
+
+- New
+  [`ar_ea_default()`](https://jonpayneea.github.io/PDMS7/reference/ar_from_response_time.md)
+  and
+  [`ar_from_response_time()`](https://jonpayneea.github.io/PDMS7/reference/ar_from_response_time.md)
+  give AR coefficients in the Deltares convention used by IMFS and
+  reach.postproc; the second follows
+  [`reach.postproc::default_family_ar_parameters()`](https://rdrr.io/pkg/reach.postproc/man/default_family_ar_parameters.html)
+  exactly.
+
+- New
+  [`calibrate_staged()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_staged.md)
+  and
+  [`pdm_stages()`](https://jonpayneea.github.io/PDMS7/reference/pdm_stages.md)
+  calibrate in stages: water balance and slow stores on log NSE with a
+  volume penalty, then the fast stores on NSE, then a joint polish
+  within narrowed bounds.
+  [`log_staged_calibration()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_staged.md)
+  writes one `auto_calibration` entry per stage, each recording its
+  stage; `calibrate_batch(staged = TRUE)` does the same per basin and
+  resumes from the last finished stage.
+
+- [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md)
+  gains `objective = "log_nse"` and `volume_weight`, a penalty on the
+  absolute volume error.
+
+- [`calibrate_batch()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md)
+  handles snow basins: with `snow: true` in `basin.yml` and a
+  `temperature` column, PACK at fixed parameters turns precipitation
+  into rain and melt, the PDM is calibrated on that, and a log note
+  records the PACK settings and the raw forcing’s checksum.
+
+- New article, “Testing forecasts with hindcasts”. “Automatic
+  calibration” and “Calibrating many catchments” cover staged
+  calibration and snow basins.
+
+- Internal: the calibration functions are split into smaller helpers; no
+  results change.
 
 - The introductory articles are rewritten in plain English with figures
   of the model running: “How the PDM works” (buckets, dry and wet
@@ -10,17 +68,20 @@
   “Your first model run” (from data files to a calibrated, saved model).
   Each ends with a short equations appendix; the new “Model equations”
   page holds the full reference.
+
 - New
   [`write_pdm_config()`](https://jonpayneea.github.io/PDMS7/reference/write_pdm_config.md)
   writes a configuration that
   [`read_pdm_config()`](https://jonpayneea.github.io/PDMS7/reference/read_pdm_config.md)
   reads back exactly; general YAML writers round numbers to seven
   significant figures.
+
 - “Calibrating many catchments” is rewritten as a plain-English,
   step-by-step guide to
   [`calibrate_batch()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md),
   run live with an interruption and a failure. “Automatic calibration”
   is rewritten in plain English.
+
 - New
   [`calibrate_batch()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md)
   runs one calibration protocol on every basin in a folder (each with
@@ -33,6 +94,7 @@
   shows progress from `batch-status.csv`;
   [`batch_results()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md)
   collects the projects.
+
 - Three new articles: “Scoring a simulation” (every score, with the
   contingency table, event matching, events against steps and the
   performance diagram), “Automatic calibration” (bounds, log-scale
@@ -40,6 +102,7 @@
   logs” (project folders, entry files, the checksum chain, the run log
   and the register). The site’s articles are regrouped into Calibration,
   Records and review, and Forecasting.
+
 - New
   [`compare_structures()`](https://jonpayneea.github.io/PDMS7/reference/compare_structures.md)
   calibrates several model structures alike, in parallel with `cores`,
@@ -53,26 +116,32 @@
   [`calibration_bounds()`](https://jonpayneea.github.io/PDMS7/reference/calibration_bounds.md)
   gives default bounds from `inst/calibration-bounds.csv`. The report
   and the app (a new Structures tab) show comparisons.
+
 - [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md)
   and
   [`log_auto_calibration()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
   gain `log_scale`, searching named parameters uniformly in log(value).
+
 - [`register_data()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
   gains an optional `test` window, scored once by the new
   [`test_candidate()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
   entry after every choice is made, and required before sign-off when
   registered.
+
 - New article, “Choosing a model structure”.
+
 - New article, “Calibrating many catchments”: one logged protocol
   applied to a batch of basins, budgeting, catching failures, judging
   scores as a distribution, checking whether multi-start runs agreed,
   and how well calibration recovers known parameters.
+
 - New
   [`read_entry()`](https://jonpayneea.github.io/PDMS7/reference/read_project.md)
   returns one calibration-log entry in full, and
   [`read_projects()`](https://jonpayneea.github.io/PDMS7/reference/read_project.md)
   gains `validation_score`, the candidate’s headline score on the
   validation window.
+
 - New threshold verification.
   [`pdm_threshold_scores()`](https://jonpayneea.github.io/PDMS7/reference/pdm_threshold_scores.md)
   scores one or more thresholds at once: events (episodes above a
@@ -82,12 +151,14 @@
   peak, duration and volume errors for each hit; a step-by-step count
   adds probability of false detection, equitable threat score and Peirce
   skill score.
+
 - [`register_data()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
   gains `thresholds` (flows, or levels converted through a registered
   `rating` table and never extrapolated) and event settings. Every
   logged run is scored at every threshold, and a threshold score such as
   `csi:Flood Warning` may be the headline. The report adds a threshold
   table and a performance diagram.
+
 - [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md)
   gains `method = "nelder_mead"`, a derivative-free optimiser kept
   within the bounds, and an optional threshold term in the objective
@@ -97,9 +168,11 @@
   passes registered thresholds by name and records the method, objective
   and number of model runs. The default method and objective are
   unchanged.
+
 - New article, “Logging a manual calibration”: a complete project from
   start to sign-off, integrity checks and tampering, the report, and
   tracing operational runs with the run log.
+
 - New
   [`calibration_app()`](https://jonpayneea.github.io/PDMS7/reference/calibration_app.md):
   a Shiny app over the calibration log for staff who prefer not to
@@ -110,6 +183,7 @@
   candidate), Report (integrity, build and download) and Sign-off. Every
   button calls the exported function a script would, so the same rules
   apply. shiny is a suggested package, needed only for the app.
+
 - New opt-in run log. With `options(pdmS7.run_log = "runs.csv")` or
   `PDMS7_RUN_LOG` set, every
   [`run_pdm()`](https://jonpayneea.github.io/PDMS7/reference/run_pdm.md)
@@ -130,6 +204,7 @@
   and
   [`pdm_fingerprint()`](https://jonpayneea.github.io/PDMS7/reference/pdm_fingerprint.md).
   Logging is off by default and a logging failure never stops a run.
+
 - New calibration log: an append-only, tamper-evident record of a
   calibration project.
   [`start_calibration_project()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md),
@@ -155,6 +230,7 @@
   and
   [`read_projects()`](https://jonpayneea.github.io/PDMS7/reference/read_project.md)
   read the record. Design: `calibration-log-design.md`.
+
 - New
   [`build_report()`](https://jonpayneea.github.io/PDMS7/reference/build_report.md)
   writes a calibration report generated from the log: a self-contained
@@ -164,15 +240,18 @@
   hydrographs, flow-duration curves and scorecard for both windows,
   parameter sensitivity on a shared scale, sign-off history, and the
   final configuration. It uses base graphics only.
+
 - New
   [`pdm_scorecard()`](https://jonpayneea.github.io/PDMS7/reference/pdm_scorecard.md):
   NSE, log NSE, KGE and its components, RMSE, signed and absolute volume
   error, peak error, and the Yilmaz et al. (2008) flow-duration-curve
   signatures.
+
 - Five new illustrated articles on the package website: choosing model
   components, starting states, calibration, forecast updating, and the C
   core. Articles, guides and the function reference are grouped by topic
   in the site navigation. DESCRIPTION gains `URL` and `BugReports`.
+
 - [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md)
   gains opt-in multi-start calibration through `starts` and `seed`.
   Start 1 is the configured point; extra starts are drawn uniformly
@@ -181,6 +260,7 @@
   objective, convergence code, evaluation count and fitted parameters.
   The default `starts = 1L` runs the same single optimisation as earlier
   versions.
+
 - [`run_pdm()`](https://jonpayneea.github.io/PDMS7/reference/run_pdm.md),
   and so
   [`sim_pdm()`](https://jonpayneea.github.io/PDMS7/reference/sim_pdm.md)
@@ -195,9 +275,11 @@
   `options(pdmS7.engine = "r")` forces the R loop, which remains the
   reference implementation. Building from source now needs a compiler
   (Rtools on Windows); cpp11 is a build-time dependency only.
+
 - Added `inst/benchmarks/time_solvers.R` and a report at
   `docs/benchmarks/solver-timing.md` timing both solvers and both
   engines on daily and 15-minute series.
+
 - [`pdm_model()`](https://jonpayneea.github.io/PDMS7/reference/pdm_model.md)
   (and so
   [`pdm_from_config()`](https://jonpayneea.github.io/PDMS7/reference/pdm_from_config.md)
@@ -208,15 +290,18 @@
   reaches 60 to 100 per cent of peak flow at a daily step. Results are
   unchanged; the default adaptive solver is unaffected.
   `inst/benchmarks/smith_step_error.R` reproduces the evidence.
+
 - The compiled time loop now sits behind a language-neutral C interface
   (`src/pdm_core.h`, interface version 2), so other languages can call
   the same model code. `src/pdm_engine.cpp` is a thin R wrapper over it,
   and results are unchanged. The core validates its own inputs and
   leaves the caller’s state untouched on error. `tools/core/README.md`
   covers building it without R.
+
 - Golden test files in `inst/golden/` hold inputs and expected outputs
   from the R reference, for checking any binding of the core.
   `tools/core/check_golden.c` checks them from plain C.
+
 - The triangular capacity distribution is now inverted exactly (cube
   root or the trigonometric solution of a cubic) and the lognormal by
   safeguarded Newton iteration, in place of
@@ -224,6 +309,7 @@
   tolerance. Storage round trips improve from about 2e-11 to 1e-14 mm;
   model outputs for these two distributions change by at most about
   3e-11.
+
 - Fixed: the rectangular distribution’s
   [`capacity_mean()`](https://jonpayneea.github.io/PDMS7/reference/capacity_mean.md)
   used (cmin + cmax) / 2 while its other methods used the Pareto b = 1
@@ -232,6 +318,7 @@
   Both now use the Pareto form, so
   [`capacity_mean()`](https://jonpayneea.github.io/PDMS7/reference/capacity_mean.md)
   can change in the last place.
+
 - The PACK snowpack also runs in the compiled core, about 540 times
   faster than its R loop and bit-identical to it on R 4.3.
   [`sim_pack()`](https://jonpayneea.github.io/PDMS7/reference/sim_pack.md)
@@ -239,6 +326,7 @@
   [`sim_snow_pdm()`](https://jonpayneea.github.io/PDMS7/reference/sim_snow_pdm.md)
   use it automatically. The core gains `pdm_pack_run()` for snow alone
   and `pdm_snow_run()` for snow feeding PDM.
+
 - New
   [`initial_state_from_flow()`](https://jonpayneea.github.io/PDMS7/reference/initial_state_from_flow.md):
   a warm start in steady state with the flow observed at the start of a
@@ -246,6 +334,7 @@
   set so that recharge equals baseflow, and delay queues hold the water
   in transit. It replaces an arbitrary soil fraction for short test runs
   and forecasts. Also in the core as `pdm_state_from_flow()`.
+
 - Forecast updating also runs in the compiled core:
   [`correct_state()`](https://jonpayneea.github.io/PDMS7/reference/correct_state.md)
   (state correction, Moore 2007 Eq. 28-30) and
@@ -253,13 +342,16 @@
   (ARMA error prediction, Eq. 31-42), with `pdm_correct_state()` and
   `pdm_update_forecast()` for other languages. Results are bit-identical
   to the R code. Fitting the ARMA coefficients stays in R.
+
 - The compiled core is now plain C99 (`src/pdm_core.c`), so other
   languages need only a C compiler to build it. Results are
   bit-identical to the previous C++ version.
+
 - Fixed: the compiled engine rejected an initial state whose values were
   all stored as integers, for example one read with
   [`read.csv()`](https://rdrr.io/r/utils/read.table.html). The R loop
   accepted it.
+
 - A peak timing objective is deferred.
 
 ## pdmS7 0.3.1

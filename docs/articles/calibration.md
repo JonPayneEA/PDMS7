@@ -209,3 +209,12 @@ fast <- calibrate_pdm(fast_config, storm_forcing, storm_observed,
 This mirrors multi-timescale machine learning models, which also
 separate slow and fast dynamics. In a benchmark against such models,
 staged calibration is the fair counterpart.
+
+At a single time step,
+[`calibrate_staged()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_staged.md)
+makes the same split for you: the water balance and slow stores first,
+on log flows with a volume penalty, then the fast stores, then a short
+joint polish. [Automatic calibration,
+explained](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.html#calibrating-in-stages)
+shows it at work, and `calibrate_batch(staged = TRUE)` applies it to
+every basin in a batch.

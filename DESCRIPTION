@@ -1,7 +1,7 @@
 Package: pdmS7
 Type: Package
 Title: Configurable Probability Distributed Rainfall Runoff Model
-Version: 0.3.1
+Version: 0.4.0
 Authors@R: person("PDM", "Contributors", role = c("aut", "cre"), email =
         "pdm@example.org")
 Description: An independent, configurable implementation of the Probability Distributed
@@ -31,6 +31,7 @@ Collate: 'utils.R' 'distributions.R' 'distributions_part3.R' 'distributions_part
         'calibration_metrics.R' 'calibrate_multi.R' 'cpp11.R' 'engine.R' 'initial_flow.R'
         'scorecard.R' 'thresholds.R' 'structures.R' 'project_log.R' 'project_data.R' 'project_entries.R'
         'project_read.R' 'report_render.R' 'project_report.R' 'run_log.R'
-        'app.R' 'app_server.R' 'compare_structures.R' 'batch.R' 'zzz.R'
+        'app.R' 'app_server.R' 'compare_structures.R' 'batch.R' 'response_time.R' 'hindcast.R'
+        'staged.R' 'zzz.R'
 Config/roxygen2/version: 8.1.0
 RoxygenNote: 7.3.3

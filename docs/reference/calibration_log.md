@@ -50,7 +50,7 @@ log_auto_calibration(
   parent,
   lower,
   upper,
-  objective = c("nse", "rmse", "log_rmse", "threshold"),
+  objective = c("nse", "rmse", "log_rmse", "log_nse", "threshold"),
   starts = 1L,
   seed = NULL,
   control = list(maxit = 200),
@@ -59,7 +59,9 @@ log_auto_calibration(
   threshold_objective = NULL,
   threshold_weight = 1,
   threshold_score = "csi",
-  log_scale = character(0)
+  log_scale = character(0),
+  volume_weight = 0,
+  stage = NULL
 )
 
 log_note(project, text, refers_to = NULL)
@@ -195,7 +197,8 @@ reopen_project(project, reason)
 
   Your judgement of the trial: `better`, `worse` or `inconclusive`.
 
-- lower, upper, objective, starts, seed, control, method, log_scale:
+- lower, upper, objective, starts, seed, control, method, log_scale,
+  volume_weight:
 
   Passed to
   [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md).
@@ -211,6 +214,13 @@ reopen_project(project, reason)
 
   Weight and score of the threshold term; see
   [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md).
+
+- stage:
+
+  Optional label recorded with an automatic calibration, such as
+  `1 of 3: volume and baseflow`;
+  [`log_staged_calibration()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_staged.md)
+  sets it.
 
 - refers_to:
 
@@ -273,7 +283,7 @@ old <- options(pdmS7.user = "A Hydrologist", pdmS7.role = "custodian")
 start_calibration_project(folder, catchment = "Example", gauge = "00000",
   purpose = "Illustration", area_km2 = 50, owner = "Deputy Director",
   steward = "A Steward")
-#> INFO [2026-11-01 19:37:01] Started calibration project example-project in /tmp/Rtmp3FiuoL/example-project
+#> INFO [2026-11-01 21:12:29] Started calibration project example-project in /tmp/RtmpAzzLbV/example-project
 set.seed(1)
 forcing <- data.frame(rain = ifelse(runif(500) < 0.1, rexp(500, 0.3), 0), pet = 0.1)
 truth <- pdm_presets("standard")
@@ -281,19 +291,19 @@ truth$area_km2 <- 50
 observed <- run_pdm(pdm_from_config(truth), forcing)$output$q_m3s
 register_data(folder, forcing, observed, calibration = c(101, 350),
   validation = c(351, 500))
-#> INFO [2026-11-01 19:37:01] Registered data 0002: 500 rows
+#> INFO [2026-11-01 21:12:29] Registered data 0002: 500 rows
 select_structure(folder, truth, reasoning = "Standard structure as a starting point")
 #> Warning: Column name 'time' (colClasses[[1]][1]) not found
-#> INFO [2026-11-01 19:37:01] Structure 0003: nse 1
+#> INFO [2026-11-01 21:12:29] Structure 0003: nse 1
 log_trial(folder, parent = 3, changes = c(surface.k1 = 3), verdict = "worse",
   reasoning = "Testing a slower first store")
 #> Warning: Column name 'time' (colClasses[[1]][1]) not found
-#> INFO [2026-11-01 19:37:01] Trial 0004 from 0003: nse 0.9995
+#> INFO [2026-11-01 21:12:29] Trial 0004 from 0003: nse 0.9995
 project_trials(folder)
 #>        id               type parent            timestamp        author
 #>    <char>             <char> <char>               <char>        <char>
-#> 1:   0003 structure_selected   <NA> 2026-11-01T19:37:01Z A Hydrologist
-#> 2:   0004              trial   0003 2026-11-01T19:37:01Z A Hydrologist
+#> 1:   0003 structure_selected   <NA> 2026-11-01T21:12:29Z A Hydrologist
+#> 2:   0004              trial   0003 2026-11-01T21:12:29Z A Hydrologist
 #>              changes verdict                              reasoning       nse
 #>               <char>  <char>                                 <char>     <num>
 #> 1:                      <NA> Standard structure as a starting point 1.0000000

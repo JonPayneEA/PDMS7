@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -44,6 +44,7 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Forecasting</h6></li>
     <li><a class="dropdown-item" href="../articles/forecast-updating.html">Forecast updating</a></li>
+    <li><a class="dropdown-item" href="../articles/hindcasts.html">Testing forecasts with hindcasts</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Under the bonnet</h6></li>
     <li><a class="dropdown-item" href="../articles/compiled-core.html">The C core: speed, equivalence and other languages</a></li>
@@ -618,6 +619,20 @@
 
         <dt>
 
+          <code><a href="calibrate_staged.html">calibrate_staged()</a></code> <code><a href="calibrate_staged.html">log_staged_calibration()</a></code>
+
+        </dt>
+        <dd>Staged calibration</dd>
+
+        <dt>
+
+          <code><a href="pdm_stages.html">pdm_stages()</a></code>
+
+        </dt>
+        <dd>Calibration stages</dd>
+
+        <dt>
+
           <code><a href="calibrate_pdm_multi.html">calibrate_pdm_multi()</a></code>
 
         </dt>
@@ -770,6 +785,50 @@
 
         </dt>
         <dd>Fingerprint a model configuration</dd>
+      </dl></div><div class="section level2">
+      <h2 id="hindcasts-and-lead-time-scores">Hindcasts and lead-time scores<a class="anchor" aria-label="anchor" href="#hindcasts-and-lead-time-scores"></a></h2>
+
+      <div class="section-desc"><p>Rerun past forecasts from many origins and score each lead time against persistence.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="pdm_hindcast.html">pdm_hindcast()</a></code>
+
+        </dt>
+        <dd>Hindcast forecasts from many origins</dd>
+
+        <dt>
+
+          <code><a href="hindcast_scores.html">hindcast_scores()</a></code>
+
+        </dt>
+        <dd>Score a hindcast by lead time</dd>
+
+        <dt>
+
+          <code><a href="plot_hindcast.html">plot_hindcast()</a></code>
+
+        </dt>
+        <dd>Plot hindcast scores against lead time</dd>
+
+        <dt>
+
+          <code><a href="pdm_response_time.html">pdm_response_time()</a></code>
+
+        </dt>
+        <dd>Response time of a calibrated model</dd>
+
+        <dt>
+
+          <code><a href="ar_from_response_time.html">ar_from_response_time()</a></code> <code><a href="ar_from_response_time.html">ar_ea_default()</a></code>
+
+        </dt>
+        <dd>AR coefficients for forecast updating</dd>
       </dl></div><div class="section level2">
       <h2 id="forecast-updating">Forecast updating<a class="anchor" aria-label="anchor" href="#forecast-updating"></a></h2>
 

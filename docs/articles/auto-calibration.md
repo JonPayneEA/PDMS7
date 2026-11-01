@@ -234,7 +234,13 @@ possible: it decides what “good” means.
 | `nse`       | 1 - NSE                          | Floods; the usual choice                      |
 | `rmse`      | The typical error, in m3/s       | Floods, measured in flow                      |
 | `log_rmse`  | The typical error of log flows   | Low flows                                     |
+| `log_nse`   | 1 - NSE of log flows             | Low flows, scored like NSE                    |
 | `threshold` | The threshold part alone (below) | Crossing warning thresholds, and nothing else |
+
+Any of these can carry a volume penalty: `volume_weight = 1` adds the
+absolute volume error, so that 5 per cent too much water in total costs
+0.05. Staged calibration, below, uses it to hold the water balance while
+fitting low flows.
 
 ### Rewarding threshold skill
 
@@ -308,6 +314,83 @@ Some guidance:
   `method = "lbfgsb"` stops with an explanation, because it would
   quietly fail.
 
+## Calibrating in stages
+
+A hydrologist calibrating by hand rarely moves everything at once. They
+settle the water balance and the slow response first, then the fast
+response, then make a final adjustment.
+[`calibrate_staged()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_staged.md)
+does the same:
+
+| Stage                   | Fits                                                                       | Objective                          |
+|-------------------------|----------------------------------------------------------------------------|------------------------------------|
+| 1\. Volume and baseflow | `fc`, the soil store, recharge and groundwater                             | 1 - log NSE, plus the volume error |
+| 2\. Fast response       | The surface stores, and the store shape `b` again                          | 1 - NSE                            |
+| 3\. Polish              | Everything, within a quarter of each range either side of stage 2’s values | 1 - NSE                            |
+
+Log flows in stage 1 stop the floods dominating, so the slow stores are
+fitted to the low flows and recessions they control. Stage 2 then fits
+peaks and timing with the slow stores held. Stage 3 fixes any
+interaction between the two without drifting far.
+[`pdm_stages()`](https://jonpayneea.github.io/PDMS7/reference/pdm_stages.md)
+builds this list for any structure from the bounds table: a split
+recharge adds its share to stage 1, an exponential store its two
+parameters. Each stage is a plain list, so you can move parameters
+between stages or drop the polish.
+
+Here both approaches start from the standard settings, a long way from
+the truth (NSE below zero). One calibrates all seven parameters at once,
+the other in stages:
+
+``` r
+begin <- pdm_presets("standard")
+begin$area_km2 <- 50
+b <- calibration_bounds(begin)
+all_at_once <- calibrate_pdm(begin, forcing, observed, stats::setNames(b$lower, b$path),
+                             stats::setNames(b$upper, b$path), warmup = 240, objective = "nse",
+                             log_scale = b$path[b$scale == "log"], starts = 2, seed = 1)
+staged <- calibrate_staged(begin, forcing, observed, warmup = 240, starts = 2, seed = 1)
+fit_scores <- function(config) {
+  pdm_scorecard(run(config)[scored], observed[scored])[c("nse", "log_nse", "volume_error")]
+}
+runs <- function(fit) sum(fit$start_results$evaluations)
+comparison <- rbind(
+  start = c(fit_scores(begin), model_runs = 0),
+  all_at_once = c(fit_scores(all_at_once$config), model_runs = runs(all_at_once)),
+  stage_1 = c(fit_scores(staged$stages[[1]]$config), model_runs = runs(staged$stages[[1]])),
+  stage_2 = c(fit_scores(staged$stages[[2]]$config), model_runs = runs(staged$stages[[2]])),
+  staged = c(fit_scores(staged$config), model_runs = sum(vapply(staged$stages, runs, 0)))
+)
+round(comparison, 3)
+#>                nse log_nse volume_error model_runs
+#> start       -1.400  -1.657        0.182          0
+#> all_at_once  0.990   0.986        0.000       2100
+#> stage_1      0.989   0.983        0.000       1419
+#> stage_2      0.989   0.984        0.000        217
+#> staged       0.990   0.986        0.000       3796
+```
+
+In this example both reach the same answer: NSE 0.990 at once and 0.990
+in stages. Stage 1 alone reaches 0.989, which shows how much of the fit
+comes from the water balance and the slow stores. Staging took more
+model runs here, 3,796 against 2,100.
+
+So why stage? A made-up catchment with a known truth and clean data is
+the easy case. On real data, with rating errors at the top end and a
+long record of low flows, fitting everything to NSE at once can let the
+fast stores make up for a wrong water balance, and the result can look
+good for the wrong reasons. Staging makes each group of parameters
+answer to the part of the hydrograph it controls. Each stage is also a
+separate, reviewable step: a Steward can see what the water balance did
+before the peaks were touched.
+
+In a project,
+[`log_staged_calibration()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_staged.md)
+writes one `auto_calibration` entry per stage, each the parent of the
+next, with its stage recorded, and `calibrate_batch(staged = TRUE)` does
+the same for every basin, resuming from the last finished stage after an
+interruption.
+
 ## In a calibration project
 
 Inside a calibration project,
@@ -332,10 +415,11 @@ log_auto_calibration(
 
 ## Which settings to use
 
-| Situation                        | Settings                                                                                                                                                                                                                                   |
-|----------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| First calibration of a catchment | `objective = "nse"`, the default method, several starts, fences from [`calibration_bounds()`](https://jonpayneea.github.io/PDMS7/reference/calibration_bounds.md), log scale where the table says                                          |
-| Low flows matter most            | `objective = "log_rmse"`                                                                                                                                                                                                                   |
-| A flood warning service          | Add `thresholds` and use `method = "nelder_mead"`; keep NSE as the main score                                                                                                                                                              |
-| Comparing model structures       | [`compare_structures()`](https://jonpayneea.github.io/PDMS7/reference/compare_structures.md) applies all of this the same way to each; see [Choosing a model structure](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.md) |
-| Many catchments                  | [`calibrate_batch()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md); see [Calibrating many catchments](https://jonpayneea.github.io/PDMS7/articles/many-catchments.md)                                                  |
+| Situation                                        | Settings                                                                                                                                                                                                                                   |
+|--------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| First calibration of a catchment                 | `objective = "nse"`, the default method, several starts, fences from [`calibration_bounds()`](https://jonpayneea.github.io/PDMS7/reference/calibration_bounds.md), log scale where the table says                                          |
+| Low flows matter most                            | `objective = "log_nse"` or `"log_rmse"`                                                                                                                                                                                                    |
+| Calibrating as a hydrologist would, step by step | [`calibrate_staged()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_staged.md), or [`log_staged_calibration()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_staged.md) in a project                                   |
+| A flood warning service                          | Add `thresholds` and use `method = "nelder_mead"`; keep NSE as the main score                                                                                                                                                              |
+| Comparing model structures                       | [`compare_structures()`](https://jonpayneea.github.io/PDMS7/reference/compare_structures.md) applies all of this the same way to each; see [Choosing a model structure](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.md) |
+| Many catchments                                  | [`calibrate_batch()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md); see [Calibrating many catchments](https://jonpayneea.github.io/PDMS7/articles/many-catchments.md)                                                  |

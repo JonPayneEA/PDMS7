@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -44,6 +44,7 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Forecasting</h6></li>
     <li><a class="dropdown-item" href="../articles/forecast-updating.html">Forecast updating</a></li>
+    <li><a class="dropdown-item" href="../articles/hindcasts.html">Testing forecasts with hindcasts</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Under the bonnet</h6></li>
     <li><a class="dropdown-item" href="../articles/compiled-core.html">The C core: speed, equivalence and other languages</a></li>
@@ -91,7 +92,7 @@
 <span>  <span class="va">lower</span>,</span>
 <span>  <span class="va">upper</span>,</span>
 <span>  warmup <span class="op">=</span> <span class="fl">0</span>,</span>
-<span>  objective <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rmse"</span>, <span class="st">"nse"</span>, <span class="st">"log_rmse"</span>, <span class="st">"threshold"</span><span class="op">)</span>,</span>
+<span>  objective <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rmse"</span>, <span class="st">"nse"</span>, <span class="st">"log_rmse"</span>, <span class="st">"log_nse"</span>, <span class="st">"threshold"</span><span class="op">)</span>,</span>
 <span>  flow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"q_m3s"</span>, <span class="st">"q_end_m3s"</span><span class="op">)</span>,</span>
 <span>  log_offset <span class="op">=</span> <span class="fl">0.01</span>,</span>
 <span>  control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>maxit <span class="op">=</span> <span class="fl">200</span><span class="op">)</span>,</span>
@@ -103,7 +104,8 @@
 <span>  threshold_weight <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  threshold_score <span class="op">=</span> <span class="st">"csi"</span>,</span>
 <span>  event_settings <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>tolerance_h <span class="op">=</span> <span class="fl">6</span>, gap_h <span class="op">=</span> <span class="fl">24</span>, min_duration_h <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>,</span>
-<span>  log_scale <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span></span>
+<span>  log_scale <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
+<span>  volume_weight <span class="op">=</span> <span class="fl">0</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -140,8 +142,9 @@ simulated.</p></dd>
 
 
 <dt id="arg-objective">objective<a class="anchor" aria-label="anchor" href="#arg-objective"></a></dt>
-<dd><p>Calibration objective: rmse, nse (minimizes 1-NSE), log_rmse, or
-threshold (the threshold term alone; needs thresholds).</p></dd>
+<dd><p>Calibration objective: rmse, nse (minimizes 1-NSE), log_rmse, log_nse
+(minimizes 1 minus NSE of log flows, which weights low flows), or threshold (the threshold
+term alone; needs thresholds).</p></dd>
 
 
 <dt id="arg-flow">flow<a class="anchor" aria-label="anchor" href="#arg-flow"></a></dt>
@@ -149,8 +152,8 @@ threshold (the threshold term alone; needs thresholds).</p></dd>
 
 
 <dt id="arg-log-offset">log_offset<a class="anchor" aria-label="anchor" href="#arg-log-offset"></a></dt>
-<dd><p>Positive offset added before logarithms in log-RMSE, cubic metres per
-second.</p></dd>
+<dd><p>Positive offset added before logarithms in log-RMSE and log NSE, cubic
+metres per second.</p></dd>
 
 
 <dt id="arg-control">control<a class="anchor" aria-label="anchor" href="#arg-control"></a></dt>
@@ -207,6 +210,13 @@ matching; see <code><a href="pdm_threshold_scores.html">pdm_threshold_scores()</
 tenfold step gets equal room. Use it for parameters spanning orders of magnitude, such as
 recharge.kg or groundwater.kb. Their lower bounds must be positive. Results stay in the
 parameters' own units.</p></dd>
+
+
+<dt id="arg-volume-weight">volume_weight<a class="anchor" aria-label="anchor" href="#arg-volume-weight"></a></dt>
+<dd><p>Nonnegative weight of a volume penalty added to the objective: the
+weight times the absolute relative error in total flow over the scored rows. Zero, the
+default, adds nothing. <code><a href="calibrate_staged.html">calibrate_staged()</a></code> uses it to hold the water balance while fitting
+low flows.</p></dd>
 
 </dl></div>
     <div class="section level2">

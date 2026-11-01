@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -59,6 +59,7 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Forecasting</h6></li>
     <li><a class="dropdown-item" href="../articles/forecast-updating.html">Forecast updating</a></li>
+    <li><a class="dropdown-item" href="../articles/hindcasts.html">Testing forecasts with hindcasts</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Under the bonnet</h6></li>
     <li><a class="dropdown-item" href="../articles/compiled-core.html">The C core: speed, equivalence and other languages</a></li>
@@ -195,8 +196,8 @@ compiled core, measured as this article was built.
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">timings</span>, <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="co">#&gt;         R   C</span></span>
-<span><span class="co">#&gt; PDM  1814 3.6</span></span>
-<span><span class="co">#&gt; PACK  403 0.9</span></span></code></pre></div>
+<span><span class="co">#&gt; PDM  1889 3.4</span></span>
+<span><span class="co">#&gt; PACK  352 1.2</span></span></code></pre></div>
 <p>The exact figures depend on the machine, but the ratio is in the
 hundreds. For a calibration that needs a million model runs, that is the
 difference between weeks and hours. The <a href="../performance.html">performance guide</a> gives measured figures

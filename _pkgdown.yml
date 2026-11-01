@@ -70,6 +70,7 @@ articles:
   navbar: Forecasting
   contents:
   - forecast-updating
+  - hindcasts
 - title: Under the bonnet
   navbar: Under the bonnet
   contents:
@@ -164,6 +165,8 @@ reference:
 - title: Calibration
   contents:
   - calibrate_pdm
+  - calibrate_staged
+  - pdm_stages
   - calibrate_pdm_multi
   - pdm_objectives
   - pdm_scorecard
@@ -193,6 +196,14 @@ reference:
   - read_run_log
   - approved_configurations
   - pdm_fingerprint
+- title: Hindcasts and lead-time scores
+  desc: Rerun past forecasts from many origins and score each lead time against persistence.
+  contents:
+  - pdm_hindcast
+  - hindcast_scores
+  - plot_hindcast
+  - pdm_response_time
+  - ar_from_response_time
 - title: Forecast updating
   desc: State correction and ARMA error prediction (Moore 2007, Eq. 28-42).
   contents:

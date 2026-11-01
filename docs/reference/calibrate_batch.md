@@ -25,6 +25,7 @@ calibrate_batch(
   seed = 1,
   control = list(maxit = 200),
   method = c("lbfgsb", "nelder_mead"),
+  staged = FALSE,
   test = FALSE,
   cores = 1L,
   only = NULL,
@@ -64,6 +65,16 @@ batch_results(output)
   Passed to
   [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md).
   Search scales come from the bounds table.
+
+- staged:
+
+  If `TRUE`, calibrate in stages, as
+  [`calibrate_staged()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_staged.md)
+  does, with stages from
+  [`pdm_stages()`](https://jonpayneea.github.io/PDMS7/reference/pdm_stages.md):
+  one `auto_calibration` entry per stage. An interrupted basin resumes
+  from its last finished stage. `objective` then applies to no stage;
+  each stage has its own.
 
 - test:
 
@@ -106,8 +117,17 @@ holding:
 - `basin.yml`: `area_km2` and `calibration` (start and end) are
   required; `catchment`, `gauge`, `validation`, `test`, `config` (a YAML
   configuration file in the folder), `headline`, `thresholds` (a list of
-  `name`, `value`, `unit`) and `rating` (a CSV in the folder) are
-  optional.
+  `name`, `value`, `unit`), `rating` (a CSV in the folder) and `snow`
+  are optional.
+
+**Snow.** For a basin with `snow: true` in `basin.yml`, `forcing.csv`
+also needs a `temperature` column (deg C), and `rain` holds all
+precipitation. The PACK snow model turns them into the rain and melt
+reaching the ground, with fixed parameters: the default preset, or a
+preset named by `snow`, or a PACK YAML file in the basin folder named by
+`snow`. PACK is not calibrated; only the PDM is. The series PACK
+produces is registered as the rain, and a note in the log records the
+PACK parameters and the checksum of the original forcing.
 
 **Steps for each basin**, each written to its project as it completes:
 start the project, register the data, select the structure, run the

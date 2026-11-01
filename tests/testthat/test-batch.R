@@ -115,3 +115,33 @@ test_that("a parallel batch gives the same results as a serial one", {
   expect_equal(batch_results(parallel_run)$candidate_score,
                batch_results(serial)$candidate_score)
 })
+
+test_that("a snow basin is calibrated on PACK rain and melt at fixed parameters", {
+  b <- make_basins(1)
+  as_person("Ann Custodian", "custodian", "ann") # nolint: object_usage_linter.
+  folder <- file.path(b$root, "B01")
+  forcing <- data.table::fread(file.path(folder, "forcing.csv"))
+  n <- nrow(forcing)
+  forcing$temperature <- 2 + 6 * sin(2 * pi * seq_len(n) / (24 * 10))
+  data.table::fwrite(forcing, file.path(folder, "forcing.csv"))
+  cat("snow: true\n", file = file.path(folder, "basin.yml"), append = TRUE)
+  status <- do.call(calibrate_batch, c(list(b$root, b$output), quick))
+  expect_equal(status$state, "done")
+  project <- file.path(b$output, "B01")
+  entries <- read_project(project)$entries
+  expect_equal(entries$type[1:3], c("project_start", "note", "data_registered"))
+  note <- read_entry(project, entries$id[2])
+  expect_match(note$text, "^Snow: .*not calibrated")
+  expect_match(note$text, pdmS7:::.md5_file(file.path(folder, "forcing.csv")), fixed = TRUE)
+  stored <- data.table::fread(list.files(file.path(project, "data"), "forcing",
+                                         recursive = TRUE, full.names = TRUE)[1])
+  melt <- sim_pack(forcing$rain, forcing$temperature, pack_presets())$effective_rain_mm
+  expect_equal(stored$rain, melt, tolerance = 1e-6)
+  expect_false(isTRUE(all.equal(stored$rain, forcing$rain)))
+  # A rerun neither repeats the note nor the registration.
+  do.call(calibrate_batch, c(list(b$root, b$output), quick))
+  expect_equal(nrow(read_project(project)$entries), nrow(entries))
+  writeLines(c(readLines(file.path(folder, "basin.yml"))[1:4], "snow: [1, 2]"),
+             file.path(folder, "basin.yml"))
+  expect_error(pdmS7:::.basin_pack(list(snow = c(1, 2), folder = folder)), "snow in basin.yml")
+})

@@ -11,7 +11,7 @@ below writes one entry; none edits or deletes an earlier one."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -48,6 +48,7 @@ below writes one entry; none edits or deletes an earlier one."></head><body>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Forecasting</h6></li>
     <li><a class="dropdown-item" href="../articles/forecast-updating.html">Forecast updating</a></li>
+    <li><a class="dropdown-item" href="../articles/hindcasts.html">Testing forecasts with hindcasts</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Under the bonnet</h6></li>
     <li><a class="dropdown-item" href="../articles/compiled-core.html">The C core: speed, equivalence and other languages</a></li>
@@ -132,7 +133,7 @@ below writes one entry; none edits or deletes an earlier one.</p>
 <span>  <span class="va">parent</span>,</span>
 <span>  <span class="va">lower</span>,</span>
 <span>  <span class="va">upper</span>,</span>
-<span>  objective <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nse"</span>, <span class="st">"rmse"</span>, <span class="st">"log_rmse"</span>, <span class="st">"threshold"</span><span class="op">)</span>,</span>
+<span>  objective <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nse"</span>, <span class="st">"rmse"</span>, <span class="st">"log_rmse"</span>, <span class="st">"log_nse"</span>, <span class="st">"threshold"</span><span class="op">)</span>,</span>
 <span>  starts <span class="op">=</span> <span class="fl">1L</span>,</span>
 <span>  seed <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>maxit <span class="op">=</span> <span class="fl">200</span><span class="op">)</span>,</span>
@@ -141,7 +142,9 @@ below writes one entry; none edits or deletes an earlier one.</p>
 <span>  threshold_objective <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  threshold_weight <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  threshold_score <span class="op">=</span> <span class="st">"csi"</span>,</span>
-<span>  log_scale <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span></span>
+<span>  log_scale <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
+<span>  volume_weight <span class="op">=</span> <span class="fl">0</span>,</span>
+<span>  stage <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">log_note</span><span class="op">(</span><span class="va">project</span>, <span class="va">text</span>, refers_to <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
@@ -270,7 +273,7 @@ hours; see <code><a href="pdm_threshold_scores.html">pdm_threshold_scores()</a><
 <dd><p>Your judgement of the trial: <code>better</code>, <code>worse</code> or <code>inconclusive</code>.</p></dd>
 
 
-<dt id="arg-lower-upper-objective-starts-seed-control-method-log-scale">lower, upper, objective, starts, seed, control, method, log_scale<a class="anchor" aria-label="anchor" href="#arg-lower-upper-objective-starts-seed-control-method-log-scale"></a></dt>
+<dt id="arg-lower-upper-objective-starts-seed-control-method-log-scale-volume-weight">lower, upper, objective, starts, seed, control, method, log_scale, volume_weight<a class="anchor" aria-label="anchor" href="#arg-lower-upper-objective-starts-seed-control-method-log-scale-volume-weight"></a></dt>
 <dd><p>Passed to
 <code><a href="calibrate_pdm.html">calibrate_pdm()</a></code>.</p></dd>
 
@@ -284,6 +287,11 @@ the registered event settings are used, so the calibration and the scorecard agr
 <dt id="arg-threshold-weight-threshold-score">threshold_weight, threshold_score<a class="anchor" aria-label="anchor" href="#arg-threshold-weight-threshold-score"></a></dt>
 <dd><p>Weight and score of the threshold term; see
 <code><a href="calibrate_pdm.html">calibrate_pdm()</a></code>.</p></dd>
+
+
+<dt id="arg-stage">stage<a class="anchor" aria-label="anchor" href="#arg-stage"></a></dt>
+<dd><p>Optional label recorded with an automatic calibration, such as
+<code>1 of 3: volume and baseflow</code>; <code><a href="calibrate_staged.html">log_staged_calibration()</a></code> sets it.</p></dd>
 
 
 <dt id="arg-refers-to">refers_to<a class="anchor" aria-label="anchor" href="#arg-refers-to"></a></dt>
@@ -325,7 +333,7 @@ test window once more, by <code>test_candidate()</code>, after every choice is m
 <span class="r-in"><span><span class="fu">start_calibration_project</span><span class="op">(</span><span class="va">folder</span>, catchment <span class="op">=</span> <span class="st">"Example"</span>, gauge <span class="op">=</span> <span class="st">"00000"</span>,</span></span>
 <span class="r-in"><span>  purpose <span class="op">=</span> <span class="st">"Illustration"</span>, area_km2 <span class="op">=</span> <span class="fl">50</span>, owner <span class="op">=</span> <span class="st">"Deputy Director"</span>,</span></span>
 <span class="r-in"><span>  steward <span class="op">=</span> <span class="st">"A Steward"</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> INFO [2026-11-01 19:37:01] Started calibration project example-project in /tmp/Rtmp3FiuoL/example-project</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> INFO [2026-11-01 21:19:07] Started calibration project example-project in /tmp/RtmpKbAfAv/example-project</span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">forcing</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>rain <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Uniform.html" class="external-link">runif</a></span><span class="op">(</span><span class="fl">500</span><span class="op">)</span> <span class="op">&lt;</span> <span class="fl">0.1</span>, <span class="fu"><a href="https://rdrr.io/r/stats/Exponential.html" class="external-link">rexp</a></span><span class="op">(</span><span class="fl">500</span>, <span class="fl">0.3</span><span class="op">)</span>, <span class="fl">0</span><span class="op">)</span>, pet <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">truth</span> <span class="op">&lt;-</span> <span class="fu"><a href="pdm_presets.html">pdm_presets</a></span><span class="op">(</span><span class="st">"standard"</span><span class="op">)</span></span></span>
@@ -333,19 +341,19 @@ test window once more, by <code>test_candidate()</code>, after every choice is m
 <span class="r-in"><span><span class="va">observed</span> <span class="op">&lt;-</span> <span class="fu"><a href="run_pdm.html">run_pdm</a></span><span class="op">(</span><span class="fu"><a href="pdm_from_config.html">pdm_from_config</a></span><span class="op">(</span><span class="va">truth</span><span class="op">)</span>, <span class="va">forcing</span><span class="op">)</span><span class="op">$</span><span class="va">output</span><span class="op">$</span><span class="va">q_m3s</span></span></span>
 <span class="r-in"><span><span class="fu">register_data</span><span class="op">(</span><span class="va">folder</span>, <span class="va">forcing</span>, <span class="va">observed</span>, calibration <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">101</span>, <span class="fl">350</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>  validation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">351</span>, <span class="fl">500</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> INFO [2026-11-01 19:37:01] Registered data 0002: 500 rows</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> INFO [2026-11-01 21:19:07] Registered data 0002: 500 rows</span>
 <span class="r-in"><span><span class="fu">select_structure</span><span class="op">(</span><span class="va">folder</span>, <span class="va">truth</span>, reasoning <span class="op">=</span> <span class="st">"Standard structure as a starting point"</span><span class="op">)</span></span></span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Column name 'time' (colClasses[[1]][1]) not found</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> INFO [2026-11-01 19:37:01] Structure 0003: nse 1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> INFO [2026-11-01 21:19:07] Structure 0003: nse 1</span>
 <span class="r-in"><span><span class="fu">log_trial</span><span class="op">(</span><span class="va">folder</span>, parent <span class="op">=</span> <span class="fl">3</span>, changes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>surface.k1 <span class="op">=</span> <span class="fl">3</span><span class="op">)</span>, verdict <span class="op">=</span> <span class="st">"worse"</span>,</span></span>
 <span class="r-in"><span>  reasoning <span class="op">=</span> <span class="st">"Testing a slower first store"</span><span class="op">)</span></span></span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Column name 'time' (colClasses[[1]][1]) not found</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> INFO [2026-11-01 19:37:01] Trial 0004 from 0003: nse 0.9995</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> INFO [2026-11-01 21:19:08] Trial 0004 from 0003: nse 0.9995</span>
 <span class="r-in"><span><span class="fu"><a href="read_project.html">project_trials</a></span><span class="op">(</span><span class="va">folder</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>        id               type parent            timestamp        author</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    &lt;char&gt;             &lt;char&gt; &lt;char&gt;               &lt;char&gt;        &lt;char&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1:   0003 structure_selected   &lt;NA&gt; 2026-11-01T19:37:01Z A Hydrologist</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2:   0004              trial   0003 2026-11-01T19:37:01Z A Hydrologist</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1:   0003 structure_selected   &lt;NA&gt; 2026-11-01T21:19:07Z A Hydrologist</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2:   0004              trial   0003 2026-11-01T21:19:08Z A Hydrologist</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>              changes verdict                              reasoning       nse</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>               &lt;char&gt;  &lt;char&gt;                                 &lt;char&gt;     &lt;num&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1:                      &lt;NA&gt; Standard structure as a starting point 1.0000000</span>

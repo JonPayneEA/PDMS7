@@ -72,8 +72,8 @@ Calibration:
   calibration](https://jonpayneea.github.io/PDMS7/articles/calibration.html)
 - [Automatic calibration,
   explained](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.html):
-  in plain terms: bounds, search scales, the two search methods, and
-  rewarding flood warnings
+  in plain terms: bounds, search scales, the two search methods,
+  rewarding flood warnings, and calibrating in stages
 - [Scoring a
   simulation](https://jonpayneea.github.io/PDMS7/articles/scoring.html):
   NSE, KGE, flow-duration signatures, and POD, FAR and CSI at warning
@@ -105,6 +105,10 @@ Forecasting:
 - [Forecast
   updating](https://jonpayneea.github.io/PDMS7/articles/forecast-updating.html):
   state correction and ARMA error prediction
+- [Testing forecasts with
+  hindcasts](https://jonpayneea.github.io/PDMS7/articles/hindcasts.html):
+  the model’s response time, IMFS-style AR post-processing, and skill
+  against persistence at every lead time
 
 Under the bonnet:
 
@@ -550,6 +554,11 @@ The PACK snow model, alone or feeding the PDM.
 
 - [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md)
   : Calibrate pdm
+- [`calibrate_staged()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_staged.md)
+  [`log_staged_calibration()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_staged.md)
+  : Staged calibration
+- [`pdm_stages()`](https://jonpayneea.github.io/PDMS7/reference/pdm_stages.md)
+  : Calibration stages
 - [`calibrate_pdm_multi()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm_multi.md)
   : Calibrate PDM or coupled snow-PDM against multiple objectives
 - [`pdm_objectives()`](https://jonpayneea.github.io/PDMS7/reference/pdm_objectives.md)
@@ -625,6 +634,23 @@ calibrations.
 - [`pdm_fingerprint()`](https://jonpayneea.github.io/PDMS7/reference/pdm_fingerprint.md)
   : Fingerprint a model configuration
 
+## Hindcasts and lead-time scores
+
+Rerun past forecasts from many origins and score each lead time against
+persistence.
+
+- [`pdm_hindcast()`](https://jonpayneea.github.io/PDMS7/reference/pdm_hindcast.md)
+  : Hindcast forecasts from many origins
+- [`hindcast_scores()`](https://jonpayneea.github.io/PDMS7/reference/hindcast_scores.md)
+  : Score a hindcast by lead time
+- [`plot_hindcast()`](https://jonpayneea.github.io/PDMS7/reference/plot_hindcast.md)
+  : Plot hindcast scores against lead time
+- [`pdm_response_time()`](https://jonpayneea.github.io/PDMS7/reference/pdm_response_time.md)
+  : Response time of a calibrated model
+- [`ar_from_response_time()`](https://jonpayneea.github.io/PDMS7/reference/ar_from_response_time.md)
+  [`ar_ea_default()`](https://jonpayneea.github.io/PDMS7/reference/ar_from_response_time.md)
+  : AR coefficients for forecast updating
+
 ## Forecast updating
 
 State correction and ARMA error prediction (Moore 2007, Eq. 28-42).
@@ -695,6 +721,8 @@ State correction and ARMA error prediction (Moore 2007, Eq. 28-42).
 
 - [Forecast
   updating](https://jonpayneea.github.io/PDMS7/articles/forecast-updating.md):
+- [Testing forecasts with
+  hindcasts](https://jonpayneea.github.io/PDMS7/articles/hindcasts.md):
 
 ### Under the bonnet
 

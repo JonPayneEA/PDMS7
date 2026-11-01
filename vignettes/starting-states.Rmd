@@ -11,7 +11,7 @@ vignette: >
 library(pdmS7)
 knitr::opts_chunk$set(
   error = FALSE, collapse = TRUE, comment = "#>", fig.width = 8,
-  fig.height = 3.8, dpi = 120
+  fig.height = 3.8, dpi = if (nzchar(Sys.getenv("IN_PKGDOWN"))) 120 else 60
 )
 pal <- c("#236b83", "#a26421", "#5b8c3a", "#8a3b6b", "#444444", "#b23b3b")
 ```

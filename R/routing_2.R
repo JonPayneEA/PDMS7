@@ -39,6 +39,22 @@ S7::method(route_step, FlodeExponentialRouting) <- function(x, storage, inflow, 
   new <- (lognext - x@gamma) / x@a
   .route_result(x, storage, new, inflow, dt)
 }
+# One trial step of step doubling: accepted if the error estimate is within tolerance and the
+# result stays between the start and the equilibrium. Returns the new storage and the factor
+# by which to change the step.
+.adaptive_try <- function(x, s, h, u, target) {
+  one <- .rk4(s, h, u, x@k, x@m)
+  half <- .rk4(s, h / 2, u, x@k, x@m)
+  two <- .rk4(half, h / 2, u, x@k, x@m)
+  err <- abs(two - one) / 15
+  tol <- x@atol + x@rtol * max(abs(s), abs(two))
+  inside <- is.finite(two) && two >= min(s, target) && two <= max(s, target)
+  if (!(is.finite(err) && inside && err <= tol)) {
+    return(list(ok = FALSE, s = s, factor = 0.5))
+  }
+  list(ok = TRUE, s = two, factor = if (err == 0) 2 else min(2, max(0.2, 0.9 * (tol / err)^0.2)))
+}
+
 .power_adaptive <- function(x, s, u, dt) {
   target <- (u / x@k)^(1 / x@m)
   if (s == target) {
@@ -54,26 +70,15 @@ S7::method(route_step, FlodeExponentialRouting) <- function(x, storage, inflow, 
       "Routing integration did not converge; adjust tolerances/parameters"
     )
     h <- min(h, dt - time)
-    one <- .rk4(s, h, u, x@k, x@m)
-    half <- .rk4(s, h / 2, u, x@k, x@m)
-    two <- .rk4(half, h / 2, u, x@k, x@m)
-    err <- abs(two - one) / 15
-    tol <- x@atol + x@rtol * max(abs(s), abs(two))
-    inside <- is.finite(two) && two >= min(s, target) && two <= max(s, target)
-    if (is.finite(err) && inside && err <= tol) {
-      s <- two
+    step <- .adaptive_try(x, s, h, u, target)
+    if (step$ok) {
+      s <- step$s
       time <- time + h
       if (dt - time < 1e-14 * dt) {
         time <- dt
       }
-      h <- h * if (err == 0) {
-        2
-      } else {
-        min(2, max(0.2, 0.9 * (tol / err)^0.2))
-      }
-    } else {
-      h <- h / 2
     }
+    h <- h * step$factor
     .check(h > .Machine$double.eps * max(dt, 1), "Routing step underflow")
   }
   s

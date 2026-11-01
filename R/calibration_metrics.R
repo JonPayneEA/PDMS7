@@ -29,29 +29,9 @@
 pdm_objectives <- function(simulated, observed,
                            objectives = c("nse_loss", "log_rmse", "abs_bias"),
                            warmup = 0L, log_offset = 0.01) {
-  allowed <- c("rmse", "log_rmse", "nse_loss", "kge_loss", "abs_bias", "peak_relative_error")
-  .check(is.character(objectives) && length(objectives) > 0 &&
-           !anyDuplicated(objectives) && all(objectives %in% allowed), "Invalid objectives")
-  .check(is.numeric(observed) && is.numeric(simulated) &&
-           length(observed) == length(simulated), "Flow vectors must have equal length")
-  .check(
-    .scalar(warmup, 0) && warmup == floor(warmup) && warmup < length(observed),
-    "Invalid warmup"
-  )
-  .check(.scalar(log_offset, 0, strict = TRUE), "log_offset must be positive")
-  keep <- is.finite(observed) & seq_along(observed) > warmup
-  obs <- observed[keep]
-  sim <- simulated[keep]
-  .check(
-    length(obs) >= 2 && all(obs >= 0) && all(is.finite(sim)) && all(sim >= 0),
-    "Need two nonnegative scored observations and finite nonnegative simulations"
-  )
-  if (any(c("nse_loss", "kge_loss") %in% objectives)) {
-    .check(stats::sd(obs) > 0, "NSE/KGE require variable observations")
-  }
-  if (any(c("abs_bias", "peak_relative_error", "kge_loss") %in% objectives)) {
-    .check(sum(obs) > 0, "Relative metrics require positive observed volume")
-  }
+  pair <- .objective_pairs(simulated, observed, objectives, warmup, log_offset)
+  obs <- pair$obs
+  sim <- pair$sim
   vapply(objectives, function(metric) {
     switch(metric,
       rmse = sqrt(mean((sim - obs)^2)),
@@ -66,6 +46,31 @@ pdm_objectives <- function(simulated, observed,
       peak_relative_error = abs(max(sim) / max(obs) - 1)
     )
   }, numeric(1))
+}
+
+# Checks the inputs of pdm_objectives() and returns the scored pairs.
+.objective_pairs <- function(simulated, observed, objectives, warmup, log_offset) {
+  allowed <- c("rmse", "log_rmse", "nse_loss", "kge_loss", "abs_bias", "peak_relative_error")
+  .check(.all_of(is.character(objectives), length(objectives) > 0, !anyDuplicated(objectives),
+                 all(objectives %in% allowed)), "Invalid objectives")
+  .check(.all_of(is.numeric(observed), is.numeric(simulated),
+                 length(observed) == length(simulated)), "Flow vectors must have equal length")
+  .check(.whole(warmup, 0, Inf) && warmup < length(observed), "Invalid warmup")
+  .check(.scalar(log_offset, 0, strict = TRUE), "log_offset must be positive")
+  keep <- is.finite(observed) & seq_along(observed) > warmup
+  obs <- observed[keep]
+  sim <- simulated[keep]
+  .check(
+    .all_of(length(obs) >= 2, all(obs >= 0), all(is.finite(sim)), all(sim >= 0)),
+    "Need two nonnegative scored observations and finite nonnegative simulations"
+  )
+  if (any(c("nse_loss", "kge_loss") %in% objectives)) {
+    .check(stats::sd(obs) > 0, "NSE/KGE require variable observations")
+  }
+  if (any(c("abs_bias", "peak_relative_error", "kge_loss") %in% objectives)) {
+    .check(sum(obs) > 0, "Relative metrics require positive observed volume")
+  }
+  list(obs = obs, sim = sim)
 }
 
 #' Identify nondominated loss vectors

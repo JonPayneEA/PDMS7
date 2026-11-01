@@ -12,7 +12,7 @@ calibrate_pdm(
   lower,
   upper,
   warmup = 0,
-  objective = c("rmse", "nse", "log_rmse", "threshold"),
+  objective = c("rmse", "nse", "log_rmse", "log_nse", "threshold"),
   flow = c("q_m3s", "q_end_m3s"),
   log_offset = 0.01,
   control = list(maxit = 200),
@@ -24,7 +24,8 @@ calibrate_pdm(
   threshold_weight = 1,
   threshold_score = "csi",
   event_settings = list(tolerance_h = 6, gap_h = 24, min_duration_h = 0),
-  log_scale = character(0)
+  log_scale = character(0),
+  volume_weight = 0
 )
 ```
 
@@ -61,7 +62,8 @@ calibrate_pdm(
 
 - objective:
 
-  Calibration objective: rmse, nse (minimizes 1-NSE), log_rmse, or
+  Calibration objective: rmse, nse (minimizes 1-NSE), log_rmse, log_nse
+  (minimizes 1 minus NSE of log flows, which weights low flows), or
   threshold (the threshold term alone; needs thresholds).
 
 - flow:
@@ -70,8 +72,8 @@ calibrate_pdm(
 
 - log_offset:
 
-  Positive offset added before logarithms in log-RMSE, cubic metres per
-  second.
+  Positive offset added before logarithms in log-RMSE and log NSE, cubic
+  metres per second.
 
 - control:
 
@@ -135,6 +137,14 @@ calibrate_pdm(
   tenfold step gets equal room. Use it for parameters spanning orders of
   magnitude, such as recharge.kg or groundwater.kb. Their lower bounds
   must be positive. Results stay in the parameters' own units.
+
+- volume_weight:
+
+  Nonnegative weight of a volume penalty added to the objective: the
+  weight times the absolute relative error in total flow over the scored
+  rows. Zero, the default, adds nothing.
+  [`calibrate_staged()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_staged.md)
+  uses it to hold the water balance while fitting low flows.
 
 ## Value
 
