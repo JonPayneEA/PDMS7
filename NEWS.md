@@ -1,5 +1,22 @@
 # pdmS7 (development version)
 
+- New calibration log: an append-only, tamper-evident record of a calibration project.
+  `start_calibration_project()`, `register_data()`, `select_structure()`, `log_trial()`,
+  `log_auto_calibration()`, `log_note()`, `propose_candidate()`, `validate_candidate()`,
+  `sign_off_project()` and `reopen_project()` each write one YAML entry recording who,
+  when, which data and parameters, the scores and the reasoning. Entries are chained by
+  MD5, data are copied and checksummed, and every run records a checksum of its output.
+  `verify_project()` detects edits, gaps, changed data and runs that no longer reproduce.
+  A Steward cannot sign off their own calibration. `read_project()`, `project_trials()` and
+  `read_projects()` read the record. Design: `calibration-log-design.md`.
+- New `build_report()` writes a calibration report generated from the log: a
+  self-contained HTML file with embedded figures, and a Markdown copy. It shows integrity
+  status first, then data and scoring windows, model structure, the calibration path as a
+  tree and a table, the candidate's hydrographs, flow-duration curves and scorecard for both
+  windows, parameter sensitivity on a shared scale, sign-off history, and the final
+  configuration. It uses base graphics only.
+- New `pdm_scorecard()`: NSE, log NSE, KGE and its components, RMSE, signed and absolute
+  volume error, peak error, and the Yilmaz et al. (2008) flow-duration-curve signatures.
 - Five new illustrated articles on the package website: choosing model components, starting
   states, calibration, forecast updating, and the C core. Articles, guides and the function
   reference are grouped by topic in the site navigation. DESCRIPTION gains `URL` and
