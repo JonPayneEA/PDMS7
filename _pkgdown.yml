@@ -2,3 +2,161 @@ url: https://jonpayneea.github.io/PDMS7/
 
 template:
   bootstrap: 5
+
+navbar:
+  structure:
+    left: [intro, articles, reference, guides, news]
+    right: [search, github, lightswitch]
+  components:
+    intro:
+      text: Get started
+      href: articles/example-workflow.html
+    guides:
+      text: Guides
+      menu:
+      - text: Performance and the compiled core
+        href: performance.html
+      - text: Solver timing
+        href: https://github.com/JonPayneEA/PDMS7/blob/master/docs/benchmarks/solver-timing.md
+      - text: Benchmark protocol
+        href: benchmark-protocol.html
+      - text: Validation
+        href: validation.html
+      - text: Multi-objective calibration
+        href: multi-objective.html
+      - text: Snow model notes
+        href: snow-model.html
+      - text: Source notes
+        href: source-notes.html
+      - text: Roadmap
+        href: roadmap.html
+    github:
+      icon: fa-github
+      href: https://github.com/JonPayneEA/PDMS7
+      aria-label: GitHub
+
+articles:
+- title: How the model works
+  navbar: How the model works
+  contents:
+  - pdm-explained
+  - snowpack-explained
+  - example-workflow
+- title: Model options
+  navbar: Model options
+  contents:
+  - model-options
+  - starting-states
+- title: Calibration and forecasting
+  navbar: Calibration and forecasting
+  contents:
+  - calibration
+  - forecast-updating
+- title: Under the bonnet
+  navbar: Under the bonnet
+  contents:
+  - compiled-core
+
+reference:
+- title: Building a model
+  desc: Construct a PDM from components, presets or a configuration file.
+  contents:
+  - pdm_model
+  - pdm_presets
+  - pdm_from_config
+  - read_pdm_config
+  - load_pdm_model
+  - parameter_catalog
+  - FlodePdmModel
+  - PDMModel
+- title: Soil moisture capacity distributions
+  desc: The probability-distributed store that gives the model its name.
+  contents:
+  - FlodeCapacityDistribution
+  - CapacityDistribution
+  - FlodeParetoCapacity
+  - ParetoCapacity
+  - FlodeRectangularCapacity
+  - RectangularCapacity
+  - FlodeExponentialCapacity
+  - ExponentialCapacity
+  - FlodeTriangularCapacity
+  - TriangularCapacity
+  - FlodeLognormalCapacity
+  - LognormalCapacity
+  - capacity_cdf
+  - capacity_pdf
+  - capacity_mean
+  - capacity_from_storage
+  - storage_from_capacity
+- title: Recharge
+  desc: Drainage from the soil store to groundwater.
+  contents:
+  - FlodeRecharge
+  - Recharge
+  - FlodeStandardRecharge
+  - StandardRecharge
+  - FlodeSplitRecharge
+  - SplitRecharge
+  - FlodeDemandRecharge
+  - DemandRecharge
+  - recharge_depth
+- title: Routing
+  desc: Surface and groundwater stores.
+  contents:
+  - FlodeRouting
+  - Routing
+  - FlodeCascadeRouting
+  - CascadeRouting
+  - FlodePowerRouting
+  - PowerRouting
+  - FlodeExponentialRouting
+  - ExponentialRouting
+  - linear_routing
+  - quadratic_routing
+  - cubic_routing
+  - power_routing
+  - routing_flow
+  - storage_for_flow
+  - transfer_coefficients
+- title: Running the model
+  desc: States, starts and simulation.
+  contents:
+  - FlodePdmState
+  - PDMState
+  - initial_state
+  - initial_state_from_flow
+  - spin_up
+  - run_pdm
+  - sim_pdm
+  - pdm_step
+  - soil_step
+  - route_step
+- title: Snowpack
+  desc: The PACK snow model, alone or feeding the PDM.
+  contents:
+  - FlodePackModel
+  - FlodePackState
+  - pack_presets
+  - pack_from_config
+  - pack_step
+  - sim_pack
+  - sim_snow_pdm
+- title: Calibration
+  contents:
+  - calibrate_pdm
+  - calibrate_pdm_multi
+  - pdm_objectives
+  - pareto_front
+- title: Forecast updating
+  desc: State correction and ARMA error prediction (Moore 2007, Eq. 28-42).
+  contents:
+  - FlodeStateUpdater
+  - StateUpdater
+  - state_updater
+  - correct_state
+  - FlodeErrorUpdater
+  - ErrorUpdater
+  - error_updater
+  - fit_error_updater
+  - update_forecast

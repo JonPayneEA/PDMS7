@@ -1,5 +1,9 @@
 # pdmS7 (development version)
 
+- Five new illustrated articles on the package website: choosing model components, starting
+  states, calibration, forecast updating, and the C core. Articles, guides and the function
+  reference are grouped by topic in the site navigation. DESCRIPTION gains `URL` and
+  `BugReports`.
 - `calibrate_pdm()` gains opt-in multi-start calibration through `starts` and `seed`.
   Start 1 is the configured point; extra starts are drawn uniformly inside the bounds, all
   are optimised, and the best objective is returned. The result gains `start_results`, a

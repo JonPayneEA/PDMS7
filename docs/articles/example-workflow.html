@@ -6,10 +6,10 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <title>Worked example: snow, flow, calibration and restart • pdmS7</title>
-<script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<script src="../deps/jquery-3.6.1/jquery-3.6.1.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
-<link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.4.2/css/all.min.css" rel="stylesheet">
+<link href="../deps/font-awesome-6.4.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Worked example: snow, flow, calibration and restart">
 </head>
 <body>
@@ -29,13 +29,40 @@
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto">
-<li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
-<li class="active nav-item dropdown">
+<li class="active nav-item"><a class="nav-link" href="../articles/example-workflow.html">Get started</a></li>
+<li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/example-workflow.html">Worked example: snow, flow, calibration and restart</a></li>
+<li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>How the model works</h6></li>
     <li><a class="dropdown-item" href="../articles/pdm-explained.html">PDM explained: from rainfall to river flow</a></li>
     <li><a class="dropdown-item" href="../articles/snowpack-explained.html">PACK explained: storing snow and releasing meltwater</a></li>
+    <li><a class="dropdown-item" href="../articles/example-workflow.html">Worked example: snow, flow, calibration and restart</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Model options</h6></li>
+    <li><a class="dropdown-item" href="../articles/model-options.html">Choosing model components</a></li>
+    <li><a class="dropdown-item" href="../articles/starting-states.html">Starting a run: cold, warm and hot</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Calibration and forecasting</h6></li>
+    <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: multi-start, budgets and staged calibration</a></li>
+    <li><a class="dropdown-item" href="../articles/forecast-updating.html">Forecast updating</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Under the bonnet</h6></li>
+    <li><a class="dropdown-item" href="../articles/compiled-core.html">The C core: speed, equivalence and other languages</a></li>
+  </ul>
+</li>
+<li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-guides" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Guides</button>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-guides">
+<li><a class="dropdown-item" href="../performance.html">Performance and the compiled core</a></li>
+    <li><a class="external-link dropdown-item" href="https://github.com/JonPayneEA/PDMS7/blob/master/docs/benchmarks/solver-timing.md">Solver timing</a></li>
+    <li><a class="dropdown-item" href="../benchmark-protocol.html">Benchmark protocol</a></li>
+    <li><a class="dropdown-item" href="../validation.html">Validation</a></li>
+    <li><a class="dropdown-item" href="../multi-objective.html">Multi-objective calibration</a></li>
+    <li><a class="dropdown-item" href="../snow-model.html">Snow model notes</a></li>
+    <li><a class="dropdown-item" href="../source-notes.html">Source notes</a></li>
+    <li><a class="dropdown-item" href="../roadmap.html">Roadmap</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -44,6 +71,7 @@
 <li class="nav-item"><form class="form-inline" role="search">
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json">
 </form></li>
+<li class="nav-item"><a class="external-link nav-link" href="https://github.com/JonPayneEA/PDMS7" aria-label="GitHub"><span class="fa fa-github"></span></a></li>
       </ul>
 </div>
 
@@ -62,7 +90,7 @@
 documentation</h4>
             
       
-
+      <small class="dont-index">Source: <a href="https://github.com/JonPayneEA/PDMS7/blob/HEAD/vignettes/example-workflow.Rmd" class="external-link"><code>vignettes/example-workflow.Rmd</code></a></small>
       <div class="d-none name"><code>example-workflow.Rmd</code></div>
     </div>
 
@@ -250,7 +278,7 @@ coefficient to a short record.</p>
 <span><span class="co">#&gt; validation 0.3103225 0.02215528 0.065685090 8.887364e-03</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">validation_run</span>, <span class="st">"water_balance"</span><span class="op">)</span></span>
 <span><span class="co">#&gt;     residual_mm max_abs_step_mm </span></span>
-<span><span class="co">#&gt;    1.537659e-14    7.549517e-15</span></span></code></pre></div>
+<span><span class="co">#&gt;    7.827072e-15    8.215650e-15</span></span></code></pre></div>
 <p><code>nse_loss</code> is
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mo>−</mo><mrow><mi mathvariant="normal">N</mi><mi mathvariant="normal">S</mi><mi mathvariant="normal">E</mi></mrow></mrow><annotation encoding="application/x-tex">1-\mathrm{NSE}</annotation></semantics></math>,
 so smaller is better; it is not NSE itself. The validation record here
@@ -319,7 +347,7 @@ companion vignettes for equations and component functions, and
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer>

@@ -103,16 +103,13 @@ validate <- 33:48
 
 We minimize RMSE and absolute relative volume bias:
 
-``` math
-L_{\mathrm{RMSE}}=\sqrt{\frac{1}{n}\sum_i(Q_i-O_i)^2},\qquad
-L_{\mathrm{bias}}=\left|\frac{\sum_i Q_i}{\sum_i O_i}-1\right|.
-```
+$$L_{RMSE} = \sqrt{\frac{1}{n}\sum\limits_{i}\left( Q_{i} - O_{i} \right)^{2}},\qquad L_{bias} = \left| \frac{\sum\limits_{i}Q_{i}}{\sum\limits_{i}O_{i}} - 1 \right|.$$
 
-With user-chosen scales $`s_j`$ and nonnegative weights $`w_j`$ summing
-to one, each local search minimizes $`J=\sum_j w_j L_j/s_j`$. The scale
-of 0.1 below means 10% volume bias contributes one scaled unit. These
-tolerances and bounds are illustrative; specify defensible ones for the
-catchment before fitting.
+With user-chosen scales $s_{j}$ and nonnegative weights $w_{j}$ summing
+to one, each local search minimizes $J = \sum_{j}w_{j}L_{j}/s_{j}$. The
+scale of 0.1 below means 10% volume bias contributes one scaled unit.
+These tolerances and bounds are illustrative; specify defensible ones
+for the catchment before fitting.
 
 ``` r
 fit <- calibrate_pdm_multi(
@@ -185,15 +182,14 @@ scores
 #> validation 0.3103225 0.02215528 0.065685090 8.887364e-03
 attr(validation_run, "water_balance")
 #>     residual_mm max_abs_step_mm 
-#>    1.537659e-14    7.549517e-15
+#>    7.827072e-15    8.215650e-15
 ```
 
-`nse_loss` is $`1-\mathrm{NSE}`$, so smaller is better; it is not NSE
-itself. The validation record here is tiny and synthetic. Real
-acceptance should include independent seasons, snow events, low flows,
-peak timing and water balance. Do not repeatedly choose candidates
-against the same held-out period and still call that period independent
-validation.
+`nse_loss` is $1 - {NSE}$, so smaller is better; it is not NSE itself.
+The validation record here is tiny and synthetic. Real acceptance should
+include independent seasons, snow events, low flows, peak timing and
+water balance. Do not repeatedly choose candidates against the same
+held-out period and still call that period independent validation.
 
 ![Synthetic discharge comparison. The dashed line marks the start of the
 held-out period; those observations were not supplied to

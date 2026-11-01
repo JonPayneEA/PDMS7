@@ -10,6 +10,8 @@ Description: An independent, configurable implementation of the Probability Dist
         PACK snow processing, multi-objective calibration, and forecast updating.
         Explicit water accounting and source notes
         distinguish numerical choices from the paper.
+URL: https://jonpayneea.github.io/PDMS7/, https://github.com/JonPayneEA/PDMS7
+BugReports: https://github.com/JonPayneEA/PDMS7/issues
 License: MIT + file LICENSE
 Encoding: UTF-8
 Depends: R (>= 4.3.0)

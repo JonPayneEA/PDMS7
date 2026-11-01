@@ -2,19 +2,19 @@
 
 Local verification: 2026-10-06; R 4.3.3, S7 0.2.2, Linux x86_64.
 
-| Gate | Observed result |
-|----|----|
-| testthat numerical/interface suite | 1,277 expectations passed; zero failures, warnings or skips |
-| covr package coverage | 98.17937% measured on 0.3.0; numerical code unchanged in this documentation-only release |
-| lintr, with current package loaded | Zero findings |
-| Baseline equivalence | Original PDM engine unchanged from 0.2.0; the 0.2.0 record verified all 13 presets against 0.1.0 |
-| renv | Runtime and development dependencies recorded; consistent status |
-| roxygen2 | Help and namespace regenerated successfully |
-| R CMD build | Source archive built successfully |
-| R CMD check backend | Status: OK; no errors, warnings or notes; no-manual; vignette checks enabled |
-| Vignettes | Three built, their extracted R code rerun, and outputs rebuilt successfully |
-| Standalone HTML | Three offline readers; embedded figures and native MathML; no remote script/image/style dependencies |
-| Remote CI / Windows | Configured, not executed here |
+| Gate                               | Observed result                                                                                      |
+|------------------------------------|------------------------------------------------------------------------------------------------------|
+| testthat numerical/interface suite | 1,277 expectations passed; zero failures, warnings or skips                                          |
+| covr package coverage              | 98.17937% measured on 0.3.0; numerical code unchanged in this documentation-only release             |
+| lintr, with current package loaded | Zero findings                                                                                        |
+| Baseline equivalence               | Original PDM engine unchanged from 0.2.0; the 0.2.0 record verified all 13 presets against 0.1.0     |
+| renv                               | Runtime and development dependencies recorded; consistent status                                     |
+| roxygen2                           | Help and namespace regenerated successfully                                                          |
+| R CMD build                        | Source archive built successfully                                                                    |
+| R CMD check backend                | Status: OK; no errors, warnings or notes; no-manual; vignette checks enabled                         |
+| Vignettes                          | Three built, their extracted R code rerun, and outputs rebuilt successfully                          |
+| Standalone HTML                    | Three offline readers; embedded figures and native MathML; no remote script/image/style dependencies |
+| Remote CI / Windows                | Configured, not executed here                                                                        |
 
 Tests exercise all five capacity distributions; density/storage
 quadrature and inverse round trips; exact and adaptive routing; Smith

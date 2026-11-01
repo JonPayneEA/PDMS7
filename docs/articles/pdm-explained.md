@@ -22,16 +22,16 @@ groundwater. Split recharge instead divides runoff between both paths.
 
 ## Units and symbols
 
-| Symbol | Meaning | Unit |
-|----|----|----|
-| $`p`$, $`e`$, $`d`$, $`v`$ | Rain, actual evaporation, recharge and runoff **depths per interval** | mm |
-| $`s`$ | Catchment-average soil water | mm |
-| $`c`$ | A local store’s capacity | mm |
-| $`C`$ | Common filling level used by the capacity distribution | mm |
-| $`F(c)`$ | Fraction of catchment with capacity no greater than $`c`$ | fraction |
-| $`X`$, $`u`$, $`q`$ | Routing storage, inflow rate and outflow rate | mm; mm/h; mm/h |
-| $`\Delta t`$ | Model interval | hours internally |
-| $`A`$ | Catchment area | km² |
+| Symbol             | Meaning                                                               | Unit             |
+|--------------------|-----------------------------------------------------------------------|------------------|
+| $p$, $e$, $d$, $v$ | Rain, actual evaporation, recharge and runoff **depths per interval** | mm               |
+| $s$                | Catchment-average soil water                                          | mm               |
+| $c$                | A local store’s capacity                                              | mm               |
+| $C$                | Common filling level used by the capacity distribution                | mm               |
+| $F(c)$             | Fraction of catchment with capacity no greater than $c$               | fraction         |
+| $X$, $u$, $q$      | Routing storage, inflow rate and outflow rate                         | mm; mm/h; mm/h   |
+| $\Delta t$         | Model interval                                                        | hours internally |
+| $A$                | Catchment area                                                        | km²              |
 
 [`sim_pdm()`](https://jonpayneea.github.io/PDMS7/reference/sim_pdm.md)
 takes integer **minutes**, while component functions take hours. Rain
@@ -42,38 +42,37 @@ calibrated hourly is not automatically a daily coefficient.
 
 ## 1. How the soil distribution works
 
-For a filling level $`C`$, the mean water stored across the catchment is
+For a filling level $C$, the mean water stored across the catchment is
 
-``` math
-s(C)=\int_0^C [1-F(c)]\,dc, \qquad s_{\max}=E[c].
-```
+$$s(C) = \int_{0}^{C}\left\lbrack 1 - F(c) \right\rbrack\, dc,\qquad s_{\max} = E\lbrack c\rbrack.$$
 
 In words: integrate the fraction of stores that can still hold water at
 each depth.
 [`capacity_mean()`](https://jonpayneea.github.io/PDMS7/reference/capacity_mean.md)
-returns $`s_{\max}`$, **not** the largest local capacity.
+returns $s_{\max}$, **not** the largest local capacity.
 [`storage_from_capacity()`](https://jonpayneea.github.io/PDMS7/reference/storage_from_capacity.md)
-evaluates $`s(C)`$;
+evaluates $s(C)$;
 [`capacity_from_storage()`](https://jonpayneea.github.io/PDMS7/reference/capacity_from_storage.md)
 reverses it.
 [`capacity_cdf()`](https://jonpayneea.github.io/PDMS7/reference/capacity_cdf.md)
-returns $`F(C)`$, the saturated area fraction.
+returns $F(C)$, the saturated area fraction.
 
 ### Five configurable capacity families
 
 Outside bounded supports, CDFs are zero below the lower limit and one
-above the upper limit. Let $`a=c_{\min}`$, $`z=c_{\max}`$ and $`w=z-a`$.
+above the upper limit. Let $a = c_{\min}$, $z = c_{\max}$ and
+$w = z - a$.
 
-| Family / configuration type | CDF inside its support | Mean capacity |
-|----|----|----|
-| Pareto / `pareto` | $`1-[(z-c)/w]^b`$ | $`a+w/(b+1)`$ |
-| Rectangular / `rectangular` | $`(c-a)/w`$ | $`(a+z)/2`$ |
-| Symmetric triangular / `triangular` | $`2(c-a)^2/w^2`$ below midpoint; $`1-2(z-c)^2/w^2`$ above | $`(a+z)/2`$ |
-| Exponential / `exponential` | $`1-\exp(-c/\mu)`$ for $`c\geq0`$ | $`\mu`$ |
-| Lognormal / `lognormal` | $`\Phi((\log c-\mu_L)/\sigma_L)`$ for $`c>0`$ | $`\exp(\mu_L+\sigma_L^2/2)`$ |
+| Family / configuration type         | CDF inside its support                                                      | Mean capacity                                   |
+|-------------------------------------|-----------------------------------------------------------------------------|-------------------------------------------------|
+| Pareto / `pareto`                   | $1 - \left\lbrack (z - c)/w \right\rbrack^{b}$                              | $a + w/(b + 1)$                                 |
+| Rectangular / `rectangular`         | $(c - a)/w$                                                                 | $(a + z)/2$                                     |
+| Symmetric triangular / `triangular` | $2(c - a)^{2}/w^{2}$ below midpoint; $1 - 2(z - c)^{2}/w^{2}$ above         | $(a + z)/2$                                     |
+| Exponential / `exponential`         | $1 - \exp( - c/\mu)$ for $c \geq 0$                                         | $\mu$                                           |
+| Lognormal / `lognormal`             | $\Phi\left( \left( \log c - \mu_{L} \right)/\sigma_{L} \right)$ for $c > 0$ | $\exp\left( \mu_{L} + \sigma_{L}^{2}/2 \right)$ |
 
-$`\Phi`$ is the standard normal CDF. Pareto with `b=0` is a point mass
-at `cmax`, not an ordinary density;
+$\Phi$ is the standard normal CDF. Pareto with `b=0` is a point mass at
+`cmax`, not an ordinary density;
 [`capacity_pdf()`](https://jonpayneea.github.io/PDMS7/reference/capacity_pdf.md)
 deliberately rejects that case. Infinite filling level is a valid
 saturated limit for unbounded families. The implementation corrects
@@ -97,31 +96,23 @@ than the common filling level as more stores saturate.
 
 ## 2. Evaporation, recharge and runoff
 
-Rain is first multiplied by `fc`. With current soil storage $`s`$ and
-PET depth $`e_p`$, the requested actual evaporation is
+Rain is first multiplied by `fc`. With current soil storage $s$ and PET
+depth $e_{p}$, the requested actual evaporation is
 
-``` math
-e_{\mathrm{req}}=e_p\left[1-\left(1-\frac{s}{s_{\max}}\right)^{b_e}\right].
-```
+$$e_{req} = e_{p}\left\lbrack 1 - \left( 1 - \frac{s}{s_{\max}} \right)^{b_{e}} \right\rbrack.$$
 
 Wet soil supplies more of the potential demand. Requests are evaluated
 at the start of the interval. To prevent overdrawing the store, this
 implementation allocates available water to evaporation first and
 recharge second:
 
-``` math
-p=f_c p_{\mathrm{input}},\quad e=\min(e_{\mathrm{req}},s+p),\quad
-d=\min(d_{\mathrm{req}},\max(0,s+p-e)).
-```
+$$p = f_{c}p_{input},\quad e = \min\left( e_{req},s + p \right),\quad d = \min\left( d_{req},\max(0,s + p - e) \right).$$
 
-The remaining net depth is $`n=p-e-d`$. When $`n>0`$:
+The remaining net depth is $n = p - e - d$. When $n > 0$:
 
-``` math
-C=s^{-1}(s_{\mathrm{old}}),\quad
-s_{\mathrm{new}}=s(C+n),\quad v=n-(s_{\mathrm{new}}-s_{\mathrm{old}}).
-```
+$$C = s^{- 1}\left( s_{old} \right),\quad s_{new} = s(C + n),\quad v = n - \left( s_{new} - s_{old} \right).$$
 
-Whatever cannot increase storage becomes runoff. For $`n\leq0`$, storage
+Whatever cannot increase storage becomes runoff. For $n \leq 0$, storage
 decreases and runoff is zero. The complete model’s water-limiting rules
 prevent negative storage; standalone
 [`soil_step()`](https://jonpayneea.github.io/PDMS7/reference/soil_step.md)
@@ -139,54 +130,47 @@ soil_step(soil, storage = 50, net_depth = 20)
 
 ### Three recharge choices
 
-**Standard:** water drains only above threshold $`s_t`$:
+**Standard:** water drains only above threshold $s_{t}$:
 
-``` math
-d_{\mathrm{req}}=\frac{\max(0,s-s_t)^{b_g}}{k_g}\Delta t.
-```
+$$d_{req} = \frac{\max\left( 0,s - s_{t} \right)^{b_{g}}}{k_{g}}\Delta t.$$
 
-`kg` has units consistent with the exponent: h·mm$`^{b_g-1}`$, not
+`kg` has units consistent with the exponent: h·mm$^{b_{g} - 1}$, not
 always hours.
 
-**Demand:** groundwater deficit controls soil drainage. Let $`X_{\max}`$
+**Demand:** groundwater deficit controls soil drainage. Let $X_{\max}$
 be the groundwater storage giving `qsat`, and clip
-$`g=(X_{\max}-X)/X_{\max}`$ to \[0,1\]. Then, with
-$`d_{\mathrm{sat}}=q_{\mathrm{sat}}\Delta t`$,
+$g = \left( X_{\max} - X \right)/X_{\max}$ to \[0,1\]. Then, with
+$d_{sat} = q_{sat}\Delta t$,
 
-``` math
-d_{\mathrm{req}}=\left[d_{\mathrm{sat}}+(s_{\max}-d_{\mathrm{sat}})
-\min\left(1,(g/\alpha)^\beta\right)\right]\frac{s}{s_{\max}}.
-```
+$$d_{req} = \left\lbrack d_{sat} + \left( s_{\max} - d_{sat} \right)\min\left( 1,(g/\alpha)^{\beta} \right) \right\rbrack\frac{s}{s_{\max}}.$$
 
 This is an interval-depth rule: it is timestep-sensitive and requires
-$`q_{\mathrm{sat}}\Delta t\leq s_{\max}`$. It also requires a single
-groundwater store with a positive implied $`X_{\max}`$; it cannot use
-the two-store cascade.
+$q_{sat}\Delta t \leq s_{\max}$. It also requires a single groundwater
+store with a positive implied $X_{\max}$; it cannot use the two-store
+cascade.
 
 **Split:** no separate soil drainage. Divide generated runoff into fast
-$`\alpha v`$ and slow $`(1-\alpha)v`$ inputs. This changes the diagram’s
+$\alpha v$ and slow $(1 - \alpha)v$ inputs. This changes the diagram’s
 connections, not just a coefficient in the standard drainage equation.
 
 ## 3. Routing and the reported discharge
 
 Routing answers “when does generated water reach the outlet?”
 
-``` math
-\frac{dX}{dt}=u-q(X).
-```
+$$\frac{dX}{dt} = u - q(X).$$
 
-| Routing option | Flow law / structure | Main configuration |
-|----|----|----|
-| Linear | $`q=X/k_b`$ | `linear(kb)` |
-| Quadratic | $`q=X^2/k_b`$ | `quadratic(kb)` |
-| Cubic | $`q=X^3/k_b`$ | `cubic(kb, solver)` |
-| General power | $`q=kX^m`$ | `power(k, m, solver, rtol, atol)` |
-| Cascade | $`dX_1/dt=u-X_1/k_1`$; $`dX_2/dt=X_1/k_1-X_2/k_2`$ | `cascade(k1, k2)` |
-| Exponential | $`q=\exp(\gamma+aX)`$ | `exponential(a, gamma)` |
+| Routing option | Flow law / structure                                                   | Main configuration                |
+|----------------|------------------------------------------------------------------------|-----------------------------------|
+| Linear         | $q = X/k_{b}$                                                          | `linear(kb)`                      |
+| Quadratic      | $q = X^{2}/k_{b}$                                                      | `quadratic(kb)`                   |
+| Cubic          | $q = X^{3}/k_{b}$                                                      | `cubic(kb, solver)`               |
+| General power  | $q = kX^{m}$                                                           | `power(k, m, solver, rtol, atol)` |
+| Cascade        | $dX_{1}/dt = u - X_{1}/k_{1}$; $dX_{2}/dt = X_{1}/k_{1} - X_{2}/k_{2}$ | `cascade(k1, k2)`                 |
+| Exponential    | $q = \exp(\gamma + aX)$                                                | `exponential(a, gamma)`           |
 
 Here the notation `linear(kb)` denotes a configuration choice, not an R
 function call; the constructor is `linear_routing(kb)`. The exponential
-model’s $`X`$ is a **signed log-storage coordinate**, not an ordinary
+model’s $X$ is a **signed log-storage coordinate**, not an ordinary
 nonnegative tank. Power routing uses exact solutions where available and
 adaptive integration otherwise; the cubic `smith` option reproduces the
 report’s approximate recurrence.
@@ -196,9 +180,7 @@ Inputs are treated as constant rates during each routing interval.
 
 After a common outlet delay `td`, conversion to m³/s is
 
-``` math
-Q_{\mathrm{mean}}=\frac{A}{3.6}\frac{V_{\mathrm{fast}}+V_{\mathrm{slow}}}{\Delta t}+q_c.
-```
+$$Q_{mean} = \frac{A}{3.6}\frac{V_{fast} + V_{slow}}{\Delta t} + q_{c}.$$
 
 Fractional delays split water conservatively between neighbouring
 intervals. Delay queues are part of the stored restart state. `qc` is an
@@ -207,14 +189,14 @@ stores.
 
 ## Function map and a short run
 
-| Task | Public functions |
-|----|----|
-| Configure | [`pdm_presets()`](https://jonpayneea.github.io/PDMS7/reference/pdm_presets.md), [`parameter_catalog()`](https://jonpayneea.github.io/PDMS7/reference/parameter_catalog.md), [`read_pdm_config()`](https://jonpayneea.github.io/PDMS7/reference/read_pdm_config.md), [`load_pdm_model()`](https://jonpayneea.github.io/PDMS7/reference/load_pdm_model.md), [`pdm_from_config()`](https://jonpayneea.github.io/PDMS7/reference/pdm_from_config.md), [`pdm_model()`](https://jonpayneea.github.io/PDMS7/reference/pdm_model.md) |
-| Inspect soil | [`capacity_cdf()`](https://jonpayneea.github.io/PDMS7/reference/capacity_cdf.md), [`capacity_pdf()`](https://jonpayneea.github.io/PDMS7/reference/capacity_pdf.md), [`capacity_mean()`](https://jonpayneea.github.io/PDMS7/reference/capacity_mean.md), [`storage_from_capacity()`](https://jonpayneea.github.io/PDMS7/reference/storage_from_capacity.md), [`capacity_from_storage()`](https://jonpayneea.github.io/PDMS7/reference/capacity_from_storage.md), [`soil_step()`](https://jonpayneea.github.io/PDMS7/reference/soil_step.md) |
-| Inspect pathways | [`recharge_depth()`](https://jonpayneea.github.io/PDMS7/reference/recharge_depth.md), [`routing_flow()`](https://jonpayneea.github.io/PDMS7/reference/routing_flow.md), [`storage_for_flow()`](https://jonpayneea.github.io/PDMS7/reference/storage_for_flow.md), [`route_step()`](https://jonpayneea.github.io/PDMS7/reference/route_step.md), [`transfer_coefficients()`](https://jonpayneea.github.io/PDMS7/reference/transfer_coefficients.md) |
-| Run and restart | [`initial_state()`](https://jonpayneea.github.io/PDMS7/reference/initial_state.md), [`pdm_step()`](https://jonpayneea.github.io/PDMS7/reference/pdm_step.md), [`run_pdm()`](https://jonpayneea.github.io/PDMS7/reference/run_pdm.md), [`sim_pdm()`](https://jonpayneea.github.io/PDMS7/reference/sim_pdm.md), [`spin_up()`](https://jonpayneea.github.io/PDMS7/reference/spin_up.md) |
-| Fit and evaluate | [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md), [`calibrate_pdm_multi()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm_multi.md), [`pdm_objectives()`](https://jonpayneea.github.io/PDMS7/reference/pdm_objectives.md), [`pareto_front()`](https://jonpayneea.github.io/PDMS7/reference/pareto_front.md) |
-| Existing updating | [`state_updater()`](https://jonpayneea.github.io/PDMS7/reference/state_updater.md), [`correct_state()`](https://jonpayneea.github.io/PDMS7/reference/correct_state.md), [`error_updater()`](https://jonpayneea.github.io/PDMS7/reference/error_updater.md), [`fit_error_updater()`](https://jonpayneea.github.io/PDMS7/reference/fit_error_updater.md), [`update_forecast()`](https://jonpayneea.github.io/PDMS7/reference/update_forecast.md) |
+| Task              | Public functions                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+|-------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Configure         | [`pdm_presets()`](https://jonpayneea.github.io/PDMS7/reference/pdm_presets.md), [`parameter_catalog()`](https://jonpayneea.github.io/PDMS7/reference/parameter_catalog.md), [`read_pdm_config()`](https://jonpayneea.github.io/PDMS7/reference/read_pdm_config.md), [`load_pdm_model()`](https://jonpayneea.github.io/PDMS7/reference/load_pdm_model.md), [`pdm_from_config()`](https://jonpayneea.github.io/PDMS7/reference/pdm_from_config.md), [`pdm_model()`](https://jonpayneea.github.io/PDMS7/reference/pdm_model.md)               |
+| Inspect soil      | [`capacity_cdf()`](https://jonpayneea.github.io/PDMS7/reference/capacity_cdf.md), [`capacity_pdf()`](https://jonpayneea.github.io/PDMS7/reference/capacity_pdf.md), [`capacity_mean()`](https://jonpayneea.github.io/PDMS7/reference/capacity_mean.md), [`storage_from_capacity()`](https://jonpayneea.github.io/PDMS7/reference/storage_from_capacity.md), [`capacity_from_storage()`](https://jonpayneea.github.io/PDMS7/reference/capacity_from_storage.md), [`soil_step()`](https://jonpayneea.github.io/PDMS7/reference/soil_step.md) |
+| Inspect pathways  | [`recharge_depth()`](https://jonpayneea.github.io/PDMS7/reference/recharge_depth.md), [`routing_flow()`](https://jonpayneea.github.io/PDMS7/reference/routing_flow.md), [`storage_for_flow()`](https://jonpayneea.github.io/PDMS7/reference/storage_for_flow.md), [`route_step()`](https://jonpayneea.github.io/PDMS7/reference/route_step.md), [`transfer_coefficients()`](https://jonpayneea.github.io/PDMS7/reference/transfer_coefficients.md)                                                                                         |
+| Run and restart   | [`initial_state()`](https://jonpayneea.github.io/PDMS7/reference/initial_state.md), [`pdm_step()`](https://jonpayneea.github.io/PDMS7/reference/pdm_step.md), [`run_pdm()`](https://jonpayneea.github.io/PDMS7/reference/run_pdm.md), [`sim_pdm()`](https://jonpayneea.github.io/PDMS7/reference/sim_pdm.md), [`spin_up()`](https://jonpayneea.github.io/PDMS7/reference/spin_up.md)                                                                                                                                                       |
+| Fit and evaluate  | [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md), [`calibrate_pdm_multi()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm_multi.md), [`pdm_objectives()`](https://jonpayneea.github.io/PDMS7/reference/pdm_objectives.md), [`pareto_front()`](https://jonpayneea.github.io/PDMS7/reference/pareto_front.md)                                                                                                                                                                                 |
+| Existing updating | [`state_updater()`](https://jonpayneea.github.io/PDMS7/reference/state_updater.md), [`correct_state()`](https://jonpayneea.github.io/PDMS7/reference/correct_state.md), [`error_updater()`](https://jonpayneea.github.io/PDMS7/reference/error_updater.md), [`fit_error_updater()`](https://jonpayneea.github.io/PDMS7/reference/fit_error_updater.md), [`update_forecast()`](https://jonpayneea.github.io/PDMS7/reference/update_forecast.md)                                                                                             |
 
 ``` r
 config <- pdm_presets("standard")
@@ -250,9 +232,7 @@ Those extensions remain future work.
 
 The per-step residual is
 
-``` math
-\epsilon=\text{old storage}+p-e-\text{natural outflow}-\text{new storage}.
-```
+$$\epsilon = \text{old storage} + p - e - \text{natural outflow} - \text{new storage}.$$
 
 “Storage” includes soil, routing states and water in delay queues. A
 near-zero residual checks accounting. It does **not** establish good

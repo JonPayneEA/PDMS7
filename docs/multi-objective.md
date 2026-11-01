@@ -7,14 +7,14 @@ nondominated set, corresponding configurations and optimizer convergence
 codes. A nondominated candidate cannot improve one objective without
 worsening another within the evaluated set. Ties remain available.
 
-| Objective | Quantity minimized | Interpretation |
-|----|----|----|
-| rmse | Square root of mean squared discharge error | Absolute flow error, m³/s |
-| log_rmse | RMSE of log(Q + offset) | Greater emphasis on relative/low-flow error |
-| nse_loss | SSE / observed squared deviations | 1 minus NSE |
-| kge_loss | Distance from correlation, SD ratio and mean ratio to one | 1 minus original KGE |
-| abs_bias | Absolute simulated/observed volume ratio minus one | Relative volume error |
-| peak_relative_error | Absolute simulated/observed maximum ratio minus one | Single window’s peak magnitude |
+| Objective           | Quantity minimized                                        | Interpretation                              |
+|---------------------|-----------------------------------------------------------|---------------------------------------------|
+| rmse                | Square root of mean squared discharge error               | Absolute flow error, m³/s                   |
+| log_rmse            | RMSE of log(Q + offset)                                   | Greater emphasis on relative/low-flow error |
+| nse_loss            | SSE / observed squared deviations                         | 1 minus NSE                                 |
+| kge_loss            | Distance from correlation, SD ratio and mean ratio to one | 1 minus original KGE                        |
+| abs_bias            | Absolute simulated/observed volume ratio minus one        | Relative volume error                       |
+| peak_relative_error | Absolute simulated/observed maximum ratio minus one       | Single window’s peak magnitude              |
 
 Peak magnitude does not measure timing and does not identify individual
 events. NSE and KGE require variable observations; KGE also requires
