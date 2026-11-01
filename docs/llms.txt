@@ -59,10 +59,10 @@ Calibration:
 
 - [Calibration: multi-start, budgets and staged
   calibration](https://jonpayneea.github.io/PDMS7/articles/calibration.html)
-- [Automatic
-  calibration](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.html):
-  bounds, log-scale search, gradient and derivative-free optimisers,
-  threshold objectives
+- [Automatic calibration,
+  explained](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.html):
+  in plain terms: bounds, search scales, the two search methods, and
+  rewarding flood warnings
 - [Scoring a
   simulation](https://jonpayneea.github.io/PDMS7/articles/scoring.html):
   NSE, KGE, flow-duration signatures, and POD, FAR and CSI at warning
@@ -73,8 +73,10 @@ Calibration:
   test window
 - [Calibrating many
   catchments](https://jonpayneea.github.io/PDMS7/articles/many-catchments.html):
-  one protocol for a large sample, budgets, failures, start agreement
-  and parameter recovery
+  a step-by-step guide to
+  [`calibrate_batch()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md):
+  preparing folders, running, resuming after an interruption, fixing
+  failures, and reading the results
 
 Records and review:
 
@@ -546,6 +548,16 @@ The PACK snow model, alone or feeding the PDM.
 - [`pareto_front()`](https://jonpayneea.github.io/PDMS7/reference/pareto_front.md)
   : Identify nondominated loss vectors
 
+## Batch calibration
+
+The same logged protocol for many basins, resumable after any
+interruption.
+
+- [`calibrate_batch()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md)
+  [`batch_status()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md)
+  [`batch_results()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md)
+  : Calibrate many basins in one batch
+
 ## Comparing structures
 
 Calibrate several model structures alike and rank them on held-out data.
@@ -645,8 +657,8 @@ State correction and ARMA error prediction (Moore 2007, Eq. 28-42).
 
 - [Calibration: multi-start, budgets and staged
   calibration](https://jonpayneea.github.io/PDMS7/articles/calibration.md):
-- [Automatic calibration: bounds, search scales, optimisers and
-  objectives](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.md):
+- [Automatic calibration,
+  explained](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.md):
 - [Scoring a simulation: from NSE to POD, FAR and
   CSI](https://jonpayneea.github.io/PDMS7/articles/scoring.md):
 - [Choosing a model

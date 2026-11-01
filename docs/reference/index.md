@@ -177,6 +177,16 @@ The PACK snow model, alone or feeding the PDM.
 - [`pareto_front()`](https://jonpayneea.github.io/PDMS7/reference/pareto_front.md)
   : Identify nondominated loss vectors
 
+## Batch calibration
+
+The same logged protocol for many basins, resumable after any
+interruption.
+
+- [`calibrate_batch()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md)
+  [`batch_status()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md)
+  [`batch_results()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md)
+  : Calibrate many basins in one batch
+
 ## Comparing structures
 
 Calibrate several model structures alike and rank them on held-out data.

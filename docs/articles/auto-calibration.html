@@ -5,12 +5,12 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Automatic calibration: bounds, search scales, optimisers and objectives • pdmS7</title>
+<title>Automatic calibration, explained • pdmS7</title>
 <script src="../deps/jquery-3.6.1/jquery-3.6.1.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.4.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.4.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Automatic calibration: bounds, search scales, optimisers and objectives">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Automatic calibration, explained">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -45,7 +45,7 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Calibration</h6></li>
     <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: multi-start, budgets and staged calibration</a></li>
-    <li><a class="dropdown-item" href="../articles/auto-calibration.html">Automatic calibration: bounds, search scales, optimisers and objectives</a></li>
+    <li><a class="dropdown-item" href="../articles/auto-calibration.html">Automatic calibration, explained</a></li>
     <li><a class="dropdown-item" href="../articles/scoring.html">Scoring a simulation: from NSE to POD, FAR and CSI</a></li>
     <li><a class="dropdown-item" href="../articles/choosing-structure.html">Choosing a model structure</a></li>
     <li><a class="dropdown-item" href="../articles/many-catchments.html">Calibrating many catchments</a></li>
@@ -96,7 +96,7 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
 
-      <h1>Automatic calibration: bounds, search scales, optimisers and objectives</h1>
+      <h1>Automatic calibration, explained</h1>
                         <h4 data-toc-skip class="author">pdmS7
 documentation</h4>
             
@@ -107,15 +107,32 @@ documentation</h4>
 
     
     
-<p><code><a href="../reference/calibrate_pdm.html">calibrate_pdm()</a></code> searches for parameter values that make
-simulated flow match observed flow. Four choices decide how well it
-does: the <strong>bounds</strong> it searches within, the
-<strong>scale</strong> it searches on, the <strong>optimiser</strong>
-that moves through that space, and the <strong>objective</strong> that
-says what “match” means. This article takes each in turn. Multi-start
-and computing budgets are covered in <a href="calibration.html">Calibration</a>; the scores themselves in <a href="scoring.html">Scoring a simulation</a>.</p>
-<p>The examples use a storm-driven catchment with a known truth, and
-Flood Warning set at 3.7 m3/s.</p>
+<p>Automatic calibration means letting the computer try parameter values
+until the simulated flow matches the measured flow as well as it can.
+<code><a href="../reference/calibrate_pdm.html">calibrate_pdm()</a></code> does this. It helps to picture it as a
+walker trying to reach the lowest point of a landscape in thick fog:</p>
+<ul>
+<li>
+<strong>where the walker may go</strong> is set by the
+<em>bounds</em>: the lowest and highest value each parameter may
+take;</li>
+<li>
+<strong>how the ground is laid out</strong> is the <em>search
+scale</em>: whether each step of distance means the same change
+everywhere;</li>
+<li>
+<strong>how the walker moves</strong> is the <em>method</em>:
+feeling for the slope, or comparing a few points;</li>
+<li>
+<strong>what “low” means</strong> is the <em>objective</em>: the
+score being minimised, such as 1 - NSE.</li>
+</ul>
+<p>This article takes each in turn, in plain terms, with an example. How
+many starting points to use and how long a calibration takes are covered
+in <a href="calibration.html">Calibration</a>; the scores themselves in
+<a href="scoring.html">Scoring a simulation</a>.</p>
+<p>The examples use a made-up catchment whose true parameters we know,
+with a Flood Warning threshold at 3.7 m3/s.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">8</span><span class="op">)</span></span>
 <span><span class="va">n</span> <span class="op">&lt;-</span> <span class="fl">24</span> <span class="op">*</span> <span class="fl">40</span></span>
@@ -136,22 +153,26 @@ Flood Warning set at 3.7 m3/s.</p>
 <div class="section level2">
 <h2 id="how-the-search-works">How the search works<a class="anchor" aria-label="anchor" href="#how-the-search-works"></a>
 </h2>
-<p>Every parameter is mapped onto a unit interval, from its lower bound
-at 0 to its upper bound at 1, so that parameters measured in
-millimetres, hours and fractions can be searched together. The optimiser
-moves through this unit box; each point it tries is turned back into
-parameter values, the model is run, and the objective is scored over the
-calibration rows. With several starts, the search begins from several
-points and the best end point wins.</p>
+<p>Parameters come in different units: millimetres, hours, fractions. To
+search them together, each is stretched or squeezed onto the same scale,
+from 0 at its lowest allowed value to 1 at its highest. The search moves
+around on that common scale. Every point it tries is turned back into
+real parameter values, the model is run, and the result is scored on the
+calibration period.</p>
+<p>With several <em>starts</em>, the search is begun from several
+different places and the best place anyone reaches wins. That guards
+against stopping in a dip that is not the deepest.</p>
 </div>
 <div class="section level2">
 <h2 id="bounds">Bounds<a class="anchor" aria-label="anchor" href="#bounds"></a>
 </h2>
-<p>Bounds should enclose every physically plausible value and nothing
-else. Too narrow, and the true value is excluded; too wide, and the
-search wastes effort on nonsense. <code><a href="../reference/calibration_bounds.html">calibration_bounds()</a></code>
-looks up defaults for every component of a structure from a table
-shipped with the package:</p>
+<p>Bounds are the fences around the search: the lowest and highest value
+each parameter may take. They should take in every value that makes
+physical sense and nothing more. Too narrow, and the right answer may be
+fenced out; too wide, and the search wastes time on values no real
+catchment has. <code><a href="../reference/calibration_bounds.html">calibration_bounds()</a></code> gives sensible fences
+for every part of the model, from a table that comes with the
+package:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">show_bounds</span><span class="op">(</span><span class="fu"><a href="../reference/calibration_bounds.html">calibration_bounds</a></span><span class="op">(</span><span class="fu"><a href="../reference/pdm_presets.html">pdm_presets</a></span><span class="op">(</span><span class="st">"standard"</span><span class="op">)</span><span class="op">)</span>, note <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="co">#&gt;                path lower   upper  scale</span></span>
@@ -170,8 +191,8 @@ shipped with the package:</p>
 <span><span class="co">#&gt; 5                                              Time constant of the first store (h)</span></span>
 <span><span class="co">#&gt; 6                                             Time constant of the second store (h)</span></span>
 <span><span class="co">#&gt; 7                                                              Cubic store constant</span></span></code></pre></div>
-<p>Override any range for a catchment you know, add a parameter, or hold
-one fixed:</p>
+<p>If you know a catchment, move any fence, add a parameter to
+calibrate, or hold one fixed at its current value:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">b</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calibration_bounds.html">calibration_bounds</a></span><span class="op">(</span><span class="fu"><a href="../reference/pdm_presets.html">pdm_presets</a></span><span class="op">(</span><span class="st">"standard"</span><span class="op">)</span>,</span>
 <span>                        overrides <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>fc <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.9</span>, <span class="fl">1.2</span><span class="op">)</span>, td <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span>,</span>
@@ -189,10 +210,16 @@ one fixed:</p>
 <div class="section level2">
 <h2 id="search-scale">Search scale<a class="anchor" aria-label="anchor" href="#search-scale"></a>
 </h2>
-<p>The recharge constant <code>kg</code> may sensibly lie anywhere from
-about 1 to 5,000 hours. Searched evenly, the whole range from 1 to 50
-hours, where many responsive catchments sit, is 1 per cent of the search
-space. Searched on a log scale, each tenfold step gets equal room.</p>
+<p>Some parameters can sensibly be anywhere across a huge range. The
+recharge time constant <code>kg</code>, for instance, might be 2 hours
+in one catchment and 2,000 in another. If the search spreads its effort
+evenly between 1 and 5,000, the whole stretch from 1 to 50 hours, where
+many quick-responding catchments sit, gets only 1 per cent of the
+attention.</p>
+<p>A <em>log scale</em> fixes this by giving each tenfold step the same
+room: 1 to 10 gets as much attention as 10 to 100, and as 1,000 to
+5,000. The picture shows where twenty random starting values land each
+way.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
 <span><span class="va">even</span> <span class="op">&lt;-</span> <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/Uniform.html" class="external-link">runif</a></span><span class="op">(</span><span class="fl">20</span>, <span class="fl">1</span>, <span class="fl">5000</span><span class="op">)</span></span>
@@ -207,8 +234,8 @@ Twenty random starting values for kg between 1 and 5,000 hours, drawn
 evenly (top) and on a log scale (bottom), plotted on a log axis.
 </p>
 </div>
-<p>On an example where the true <code>kg</code> is 40 hours, starting
-from 1,000:</p>
+<p>Here is the difference in practice, for a catchment whose true
+<code>kg</code> is 40 hours, with the search starting from 1,000:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">flat</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pdm_presets.html">pdm_presets</a></span><span class="op">(</span><span class="st">"standard"</span><span class="op">)</span></span>
 <span><span class="va">flat</span><span class="op">$</span><span class="va">recharge</span><span class="op">$</span><span class="va">kg</span> <span class="op">&lt;-</span> <span class="fl">40</span></span>
@@ -226,16 +253,18 @@ from 1,000:</p>
 <span><span class="co">#&gt;   scale   kg model_runs</span></span>
 <span><span class="co">#&gt; 1  even 40.4         84</span></span>
 <span><span class="co">#&gt; 2   log 40.0         27</span></span></code></pre></div>
-<p>Both find it; the log-scale search takes a fraction of the model
-runs. The bounds table marks which parameters to search this way, and
-<code><a href="../reference/compare_structures.html">compare_structures()</a></code> uses it automatically. With
+<p>Both find the right answer; the log-scale search gets there in about
+a third of the model runs. The bounds table marks which parameters
+should be searched this way, and <code><a href="../reference/compare_structures.html">compare_structures()</a></code> and
+<code><a href="../reference/calibrate_batch.html">calibrate_batch()</a></code> follow it automatically. With
 <code><a href="../reference/calibrate_pdm.html">calibrate_pdm()</a></code> and <code><a href="../reference/calibration_log.html">log_auto_calibration()</a></code>,
-name them in <code>log_scale</code>.</p>
+list them in <code>log_scale</code>.</p>
 </div>
 <div class="section level2">
-<h2 id="optimisers">Optimisers<a class="anchor" aria-label="anchor" href="#optimisers"></a>
+<h2 id="how-the-search-moves">How the search moves<a class="anchor" aria-label="anchor" href="#how-the-search-moves"></a>
 </h2>
-<p><code><a href="../reference/calibrate_pdm.html">calibrate_pdm()</a></code> offers two.</p>
+<p><code><a href="../reference/calibrate_pdm.html">calibrate_pdm()</a></code> has two ways of moving through the
+fog.</p>
 <table class="table">
 <colgroup>
 <col width="25%">
@@ -246,29 +275,34 @@ name them in <code>log_scale</code>.</p>
 <thead><tr class="header">
 <th>Method</th>
 <th>How it moves</th>
-<th>Suits</th>
+<th>Good for</th>
 <th>Cost</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
 <td>
-<code>lbfgsb</code> (default)</td>
-<td>Follows the slope of the objective, estimated from small steps</td>
-<td>Smooth objectives: NSE, RMSE, log RMSE</td>
+<code>lbfgsb</code> (the default)</td>
+<td>Feels which way the ground slopes and steps downhill</td>
+<td>Smooth scores: NSE, RMSE, log RMSE</td>
 <td>Fewest model runs</td>
 </tr>
 <tr class="even">
 <td><code>nelder_mead</code></td>
-<td>Moves a simplex of points by comparing their values, no slopes</td>
-<td>Objectives with steps or flat stretches</td>
-<td>Several times more runs</td>
+<td>Keeps a small group of points, compares their scores, and moves the
+group towards the best</td>
+<td>Scores with sudden jumps or flat stretches</td>
+<td>Several times more model runs</td>
 </tr>
 </tbody>
 </table>
-<p>The difference matters because some scores are not smooth. NSE
-changes a little for every small change of a parameter. CSI counts
-events, so it stays exactly the same until a simulated peak crosses the
-threshold, and then jumps.</p>
+<p>Which one to use depends on the shape of the ground. Most scores are
+like a smooth hillside: change a parameter a little and the score
+changes a little, so there is always a slope to feel. But a score that
+counts floods, such as CSI, is like a staircase. It only changes when a
+simulated peak moves from one side of the warning threshold to the
+other, and between those moments it stays exactly the same. The two
+pictures show the two scores as one parameter, the first surface time
+constant, is changed and everything else is held at the truth.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">grid</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">1.5</span>, <span class="fl">6</span>, length.out <span class="op">=</span> <span class="fl">60</span><span class="op">)</span></span>
 <span><span class="va">profile</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/t.html" class="external-link">t</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">grid</span>, <span class="kw">function</span><span class="op">(</span><span class="va">k</span><span class="op">)</span> <span class="op">{</span></span>
@@ -290,42 +324,53 @@ with everything else at the truth. NSE changes smoothly; CSI at Flood
 Warning is a staircase.
 </p>
 </div>
-<p>On a flat stretch the slope is zero, so a gradient method has nothing
-to follow and stops where it started; at a step, the slope it estimates
-is meaningless. Nelder-Mead only compares values, so it can cross the
-flats. pdmS7 runs Nelder-Mead on a logistic transform of the unit box,
-so every point it tries stays inside the bounds.</p>
+<p>On the left there is always a slope to follow down to the best value.
+On the right, the score sits at 0.75 for every value from about 2.3 to
+3.8 hours. Standing anywhere on that step, the slope-feeling method
+feels no slope at all, decides it has arrived, and stops. At the edge of
+a step, the slope it feels is a sudden cliff that tells it nothing
+useful.</p>
+<p>The comparing method does not need slopes. It looks at the scores of
+a few points spread around, and moves towards the best of them, so it
+can walk across a flat step to the next one down. pdmS7 keeps every
+point it tries inside the fences.</p>
 </div>
 <div class="section level2">
 <h2 id="objectives">Objectives<a class="anchor" aria-label="anchor" href="#objectives"></a>
 </h2>
-<p>The objective is what the optimiser is rewarded for:</p>
+<p>The objective is the score the search tries to make as small as
+possible: it decides what “good” means.</p>
 <table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
 <thead><tr class="header">
 <th><code>objective</code></th>
-<th>Minimises</th>
-<th>Emphasis</th>
+<th>Makes smallest</th>
+<th>Pays most attention to</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
 <td><code>nse</code></td>
 <td>1 - NSE</td>
-<td>Floods; the usual default</td>
+<td>Floods; the usual choice</td>
 </tr>
 <tr class="even">
 <td><code>rmse</code></td>
-<td>Root mean square error, m3/s</td>
-<td>Floods, in flow units</td>
+<td>The typical error, in m3/s</td>
+<td>Floods, measured in flow</td>
 </tr>
 <tr class="odd">
 <td><code>log_rmse</code></td>
-<td>RMSE of log flows</td>
+<td>The typical error of log flows</td>
 <td>Low flows</td>
 </tr>
 <tr class="even">
 <td><code>threshold</code></td>
-<td>The threshold term alone</td>
-<td>Threshold crossings only</td>
+<td>The threshold part alone (below)</td>
+<td>Crossing warning thresholds, and nothing else</td>
 </tr>
 </tbody>
 </table>
@@ -333,15 +378,19 @@ so every point it tries stays inside the bounds.</p>
 <h3 id="rewarding-threshold-skill">Rewarding threshold skill<a class="anchor" aria-label="anchor" href="#rewarding-threshold-skill"></a>
 </h3>
 <p>A model for a warning service should cross the warning threshold when
-the river does. <code><a href="../reference/calibrate_pdm.html">calibrate_pdm()</a></code> can add a threshold term to
-the continuous objective:</p>
+the river does. So <code><a href="../reference/calibrate_pdm.html">calibrate_pdm()</a></code> can reward that as well
+as the overall fit:</p>
 <blockquote>
-<p>objective = (1 - NSE) + weight × mean over thresholds of (1 -
-CSI)</p>
+<p>score to minimise = (1 - NSE) + weight × (1 - CSI)</p>
 </blockquote>
-<p>The continuous part keeps a slope everywhere and breaks ties between
-parameter sets with the same CSI; the threshold part rewards getting the
-crossings right. Because the sum has steps, it needs Nelder-Mead.</p>
+<p>The NSE part keeps a gentle slope everywhere, so the search always
+has something to go on, and it decides between parameter sets that catch
+the same floods. The CSI part rewards catching the floods. Because the
+CSI part comes in steps, this needs the comparing method,
+<code>nelder_mead</code>. With several thresholds, their CSI values are
+averaged.</p>
+<p>Here are the two side by side: first the overall fit alone, then the
+overall fit plus the Flood Warning:</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">start</span> <span class="op">&lt;-</span> <span class="va">truth</span></span>
 <span><span class="va">start</span><span class="op">$</span><span class="va">fc</span> <span class="op">&lt;-</span> <span class="fl">0.9</span></span>
@@ -369,40 +418,45 @@ crossings right. Because the sum has steps, it needs Nelder-Mead.</p>
 <span><span class="co">#&gt; with_threshold  1       2.03       3.97 0.9900 1.00             0.25        468</span></span>
 <span><span class="va">with_threshold</span><span class="op">$</span><span class="va">objective_name</span></span>
 <span><span class="co">#&gt; [1] "1-NSE + 1 x mean threshold loss (csi at Flood Warning)"</span></span></code></pre></div>
-<p>Here the threshold term catches the remaining Flood Warning event at
-almost no cost in NSE, for about twice the model runs. That is the
-typical bargain: a small change in parameters, chosen with the warning
-in mind, rather than a different model.</p>
+<p>Asking for the Flood Warning as well made the search find parameters
+that catch the one Flood Warning event the first calibration missed: CSI
+went from 0.89 to a perfect 1. The overall fit hardly changed (NSE fell
+in the fourth decimal place, too little to see on a hydrograph). The
+price was computer time: about twice as many model runs. That is the
+usual bargain: a small, deliberate nudge to the parameters for the sake
+of the warnings, not a different model.</p>
 <p>Some guidance:</p>
 <ul>
 <li>
 <strong>Weight.</strong> NSE and CSI both run from about 0 to 1 for
-useful models, so a weight of 1 is a neutral start. Larger weights
-favour crossings over the hydrograph as a whole.</li>
+a useful model, so a weight of 1 treats them evenly. A larger weight
+cares more about the warnings than the hydrograph as a whole.</li>
 <li>
-<strong>Events.</strong> A threshold the river crosses only once or
-twice gives the optimiser almost nothing to work with, and the result
-can be luck. <code><a href="../reference/calibrate_pdm.html">calibrate_pdm()</a></code> refuses a threshold never
-crossed in the calibration period.</li>
+<strong>Enough floods.</strong> A threshold the river crosses only
+once or twice in the calibration period gives the search almost nothing
+to learn from, and the result can be luck. <code><a href="../reference/calibrate_pdm.html">calibrate_pdm()</a></code>
+refuses a threshold that is never crossed.</li>
 <li>
-<strong>Other scores.</strong> <code>threshold_score</code> may be
-<code>pod</code>, <code>far</code>, or a step-based score such as
-<code>ets_step</code>; false alarm ratios are minimised directly.</li>
+<strong>Other scores.</strong> <code>threshold_score</code> can also
+be <code>pod</code> (catching floods), <code>far</code> (avoiding false
+alarms), or a step-by-step score such as <code>ets_step</code>.</li>
 <li>
-<strong>Gradient methods refuse.</strong> A threshold term with
-<code>method = "lbfgsb"</code> is an error, with the reason.</li>
+<strong>The slope-feeling method refuses.</strong> Asking for a
+threshold part with <code>method = "lbfgsb"</code> stops with an
+explanation, because it would quietly fail.</li>
 </ul>
 </div>
 </div>
 <div class="section level2">
 <h2 id="in-a-calibration-project">In a calibration project<a class="anchor" aria-label="anchor" href="#in-a-calibration-project"></a>
 </h2>
-<p><code><a href="../reference/calibration_log.html">log_auto_calibration()</a></code> runs the same search on a
-project’s registered data and windows, using the thresholds registered
-with the data by name, and records everything a reviewer needs to repeat
-it: bounds, search scales, method, objective and weights, starts and
-seed, every start’s result, the number of model runs, and the
-reasoning.</p>
+<p>Inside a calibration project, <code><a href="../reference/calibration_log.html">log_auto_calibration()</a></code>
+runs the same search on the project’s own data and periods, using the
+warning thresholds registered with the data, by name. It writes down
+everything a reviewer would need to repeat it exactly: the fences, the
+search scales, the method, the score and its weights, the starting
+points and seed, where every start ended, how many model runs it took,
+and why it was run.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/calibration_log.html">log_auto_calibration</a></span><span class="op">(</span></span>
 <span>  <span class="va">project</span>, parent <span class="op">=</span> <span class="fl">7</span>,</span>
@@ -414,7 +468,7 @@ reasoning.</p>
 <span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="choosing">Choosing<a class="anchor" aria-label="anchor" href="#choosing"></a>
+<h2 id="which-settings-to-use">Which settings to use<a class="anchor" aria-label="anchor" href="#which-settings-to-use"></a>
 </h2>
 <table class="table">
 <colgroup>
@@ -429,31 +483,31 @@ reasoning.</p>
 <tr class="odd">
 <td>First calibration of a catchment</td>
 <td>
-<code>objective = "nse"</code>, default method, several starts,
-bounds from <code><a href="../reference/calibration_bounds.html">calibration_bounds()</a></code>, log scale where
-marked</td>
+<code>objective = "nse"</code>, the default method, several starts,
+fences from <code><a href="../reference/calibration_bounds.html">calibration_bounds()</a></code>, log scale where the table
+says</td>
 </tr>
 <tr class="even">
-<td>Low flows matter</td>
+<td>Low flows matter most</td>
 <td><code>objective = "log_rmse"</code></td>
 </tr>
 <tr class="odd">
-<td>A warning service</td>
-<td>Add <code>thresholds</code> with
-<code>method = "nelder_mead"</code>; keep a continuous objective</td>
+<td>A flood warning service</td>
+<td>Add <code>thresholds</code> and use
+<code>method = "nelder_mead"</code>; keep NSE as the main score</td>
 </tr>
 <tr class="even">
-<td>Several structures</td>
+<td>Comparing model structures</td>
 <td>
-<code><a href="../reference/compare_structures.html">compare_structures()</a></code>, which applies all of the above
-alike; see <a href="choosing-structure.html">Choosing a model
+<code><a href="../reference/compare_structures.html">compare_structures()</a></code> applies all of this the same way
+to each; see <a href="choosing-structure.html">Choosing a model
 structure</a>
 </td>
 </tr>
 <tr class="odd">
 <td>Many catchments</td>
-<td>One protocol for all; see <a href="many-catchments.html">Calibrating
-many catchments</a>
+<td>
+<code><a href="../reference/calibrate_batch.html">calibrate_batch()</a></code>; see <a href="many-catchments.html">Calibrating many catchments</a>
 </td>
 </tr>
 </tbody>

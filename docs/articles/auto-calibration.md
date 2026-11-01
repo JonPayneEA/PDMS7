@@ -1,18 +1,29 @@
-# Automatic calibration: bounds, search scales, optimisers and objectives
+# Automatic calibration, explained
 
+Automatic calibration means letting the computer try parameter values
+until the simulated flow matches the measured flow as well as it can.
 [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md)
-searches for parameter values that make simulated flow match observed
-flow. Four choices decide how well it does: the **bounds** it searches
-within, the **scale** it searches on, the **optimiser** that moves
-through that space, and the **objective** that says what “match” means.
-This article takes each in turn. Multi-start and computing budgets are
-covered in
+does this. It helps to picture it as a walker trying to reach the lowest
+point of a landscape in thick fog:
+
+- **where the walker may go** is set by the *bounds*: the lowest and
+  highest value each parameter may take;
+- **how the ground is laid out** is the *search scale*: whether each
+  step of distance means the same change everywhere;
+- **how the walker moves** is the *method*: feeling for the slope, or
+  comparing a few points;
+- **what “low” means** is the *objective*: the score being minimised,
+  such as 1 - NSE.
+
+This article takes each in turn, in plain terms, with an example. How
+many starting points to use and how long a calibration takes are covered
+in
 [Calibration](https://jonpayneea.github.io/PDMS7/articles/calibration.md);
 the scores themselves in [Scoring a
 simulation](https://jonpayneea.github.io/PDMS7/articles/scoring.md).
 
-The examples use a storm-driven catchment with a known truth, and Flood
-Warning set at 3.7 m3/s.
+The examples use a made-up catchment whose true parameters we know, with
+a Flood Warning threshold at 3.7 m3/s.
 
 ``` r
 set.seed(8)
@@ -35,22 +46,27 @@ scored <- 241:n # the first ten days are warm-up
 
 ## How the search works
 
-Every parameter is mapped onto a unit interval, from its lower bound at
-0 to its upper bound at 1, so that parameters measured in millimetres,
-hours and fractions can be searched together. The optimiser moves
-through this unit box; each point it tries is turned back into parameter
-values, the model is run, and the objective is scored over the
-calibration rows. With several starts, the search begins from several
-points and the best end point wins.
+Parameters come in different units: millimetres, hours, fractions. To
+search them together, each is stretched or squeezed onto the same scale,
+from 0 at its lowest allowed value to 1 at its highest. The search moves
+around on that common scale. Every point it tries is turned back into
+real parameter values, the model is run, and the result is scored on the
+calibration period.
+
+With several *starts*, the search is begun from several different places
+and the best place anyone reaches wins. That guards against stopping in
+a dip that is not the deepest.
 
 ## Bounds
 
-Bounds should enclose every physically plausible value and nothing else.
-Too narrow, and the true value is excluded; too wide, and the search
-wastes effort on nonsense.
+Bounds are the fences around the search: the lowest and highest value
+each parameter may take. They should take in every value that makes
+physical sense and nothing more. Too narrow, and the right answer may be
+fenced out; too wide, and the search wastes time on values no real
+catchment has.
 [`calibration_bounds()`](https://jonpayneea.github.io/PDMS7/reference/calibration_bounds.md)
-looks up defaults for every component of a structure from a table
-shipped with the package:
+gives sensible fences for every part of the model, from a table that
+comes with the package:
 
 ``` r
 show_bounds(calibration_bounds(pdm_presets("standard")), note = TRUE)
@@ -72,8 +88,8 @@ show_bounds(calibration_bounds(pdm_presets("standard")), note = TRUE)
 #> 7                                                              Cubic store constant
 ```
 
-Override any range for a catchment you know, add a parameter, or hold
-one fixed:
+If you know a catchment, move any fence, add a parameter to calibrate,
+or hold one fixed at its current value:
 
 ``` r
 b <- calibration_bounds(pdm_presets("standard"),
@@ -92,10 +108,15 @@ show_bounds(b)
 
 ## Search scale
 
-The recharge constant `kg` may sensibly lie anywhere from about 1 to
-5,000 hours. Searched evenly, the whole range from 1 to 50 hours, where
-many responsive catchments sit, is 1 per cent of the search space.
-Searched on a log scale, each tenfold step gets equal room.
+Some parameters can sensibly be anywhere across a huge range. The
+recharge time constant `kg`, for instance, might be 2 hours in one
+catchment and 2,000 in another. If the search spreads its effort evenly
+between 1 and 5,000, the whole stretch from 1 to 50 hours, where many
+quick-responding catchments sit, gets only 1 per cent of the attention.
+
+A *log scale* fixes this by giving each tenfold step the same room: 1 to
+10 gets as much attention as 10 to 100, and as 1,000 to 5,000. The
+picture shows where twenty random starting values land each way.
 
 ``` r
 set.seed(1)
@@ -114,7 +135,8 @@ axis.](auto-calibration_files/figure-html/scale-1.png)
 Twenty random starting values for kg between 1 and 5,000 hours, drawn
 evenly (top) and on a log scale (bottom), plotted on a log axis.
 
-On an example where the true `kg` is 40 hours, starting from 1,000:
+Here is the difference in practice, for a catchment whose true `kg` is
+40 hours, with the search starting from 1,000:
 
 ``` r
 flat <- pdm_presets("standard")
@@ -135,29 +157,36 @@ data.frame(scale = c("even", "log"),
 #> 2   log 40.0         27
 ```
 
-Both find it; the log-scale search takes a fraction of the model runs.
-The bounds table marks which parameters to search this way, and
+Both find the right answer; the log-scale search gets there in about a
+third of the model runs. The bounds table marks which parameters should
+be searched this way, and
 [`compare_structures()`](https://jonpayneea.github.io/PDMS7/reference/compare_structures.md)
-uses it automatically. With
+and
+[`calibrate_batch()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md)
+follow it automatically. With
 [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md)
 and
 [`log_auto_calibration()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md),
-name them in `log_scale`.
+list them in `log_scale`.
 
-## Optimisers
+## How the search moves
 
 [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md)
-offers two.
+has two ways of moving through the fog.
 
-| Method             | How it moves                                                   | Suits                                   | Cost                    |
-|--------------------|----------------------------------------------------------------|-----------------------------------------|-------------------------|
-| `lbfgsb` (default) | Follows the slope of the objective, estimated from small steps | Smooth objectives: NSE, RMSE, log RMSE  | Fewest model runs       |
-| `nelder_mead`      | Moves a simplex of points by comparing their values, no slopes | Objectives with steps or flat stretches | Several times more runs |
+| Method                 | How it moves                                                                               | Good for                                   | Cost                          |
+|------------------------|--------------------------------------------------------------------------------------------|--------------------------------------------|-------------------------------|
+| `lbfgsb` (the default) | Feels which way the ground slopes and steps downhill                                       | Smooth scores: NSE, RMSE, log RMSE         | Fewest model runs             |
+| `nelder_mead`          | Keeps a small group of points, compares their scores, and moves the group towards the best | Scores with sudden jumps or flat stretches | Several times more model runs |
 
-The difference matters because some scores are not smooth. NSE changes a
-little for every small change of a parameter. CSI counts events, so it
-stays exactly the same until a simulated peak crosses the threshold, and
-then jumps.
+Which one to use depends on the shape of the ground. Most scores are
+like a smooth hillside: change a parameter a little and the score
+changes a little, so there is always a slope to feel. But a score that
+counts floods, such as CSI, is like a staircase. It only changes when a
+simulated peak moves from one side of the warning threshold to the
+other, and between those moments it stays exactly the same. The two
+pictures show the two scores as one parameter, the first surface time
+constant, is changed and everything else is held at the truth.
 
 ``` r
 grid <- seq(1.5, 6, length.out = 60)
@@ -184,35 +213,46 @@ The two objectives along one parameter, the first surface time constant,
 with everything else at the truth. NSE changes smoothly; CSI at Flood
 Warning is a staircase.
 
-On a flat stretch the slope is zero, so a gradient method has nothing to
-follow and stops where it started; at a step, the slope it estimates is
-meaningless. Nelder-Mead only compares values, so it can cross the
-flats. pdmS7 runs Nelder-Mead on a logistic transform of the unit box,
-so every point it tries stays inside the bounds.
+On the left there is always a slope to follow down to the best value. On
+the right, the score sits at 0.75 for every value from about 2.3 to 3.8
+hours. Standing anywhere on that step, the slope-feeling method feels no
+slope at all, decides it has arrived, and stops. At the edge of a step,
+the slope it feels is a sudden cliff that tells it nothing useful.
+
+The comparing method does not need slopes. It looks at the scores of a
+few points spread around, and moves towards the best of them, so it can
+walk across a flat step to the next one down. pdmS7 keeps every point it
+tries inside the fences.
 
 ## Objectives
 
-The objective is what the optimiser is rewarded for:
+The objective is the score the search tries to make as small as
+possible: it decides what “good” means.
 
-| `objective` | Minimises                    | Emphasis                  |
-|-------------|------------------------------|---------------------------|
-| `nse`       | 1 - NSE                      | Floods; the usual default |
-| `rmse`      | Root mean square error, m3/s | Floods, in flow units     |
-| `log_rmse`  | RMSE of log flows            | Low flows                 |
-| `threshold` | The threshold term alone     | Threshold crossings only  |
+| `objective` | Makes smallest                   | Pays most attention to                        |
+|-------------|----------------------------------|-----------------------------------------------|
+| `nse`       | 1 - NSE                          | Floods; the usual choice                      |
+| `rmse`      | The typical error, in m3/s       | Floods, measured in flow                      |
+| `log_rmse`  | The typical error of log flows   | Low flows                                     |
+| `threshold` | The threshold part alone (below) | Crossing warning thresholds, and nothing else |
 
 ### Rewarding threshold skill
 
 A model for a warning service should cross the warning threshold when
-the river does.
+the river does. So
 [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md)
-can add a threshold term to the continuous objective:
+can reward that as well as the overall fit:
 
-> objective = (1 - NSE) + weight × mean over thresholds of (1 - CSI)
+> score to minimise = (1 - NSE) + weight × (1 - CSI)
 
-The continuous part keeps a slope everywhere and breaks ties between
-parameter sets with the same CSI; the threshold part rewards getting the
-crossings right. Because the sum has steps, it needs Nelder-Mead.
+The NSE part keeps a gentle slope everywhere, so the search always has
+something to go on, and it decides between parameter sets that catch the
+same floods. The CSI part rewards catching the floods. Because the CSI
+part comes in steps, this needs the comparing method, `nelder_mead`.
+With several thresholds, their CSI values are averaged.
+
+Here are the two side by side: first the overall fit alone, then the
+overall fit plus the Flood Warning:
 
 ``` r
 start <- truth
@@ -243,34 +283,41 @@ with_threshold$objective_name
 #> [1] "1-NSE + 1 x mean threshold loss (csi at Flood Warning)"
 ```
 
-Here the threshold term catches the remaining Flood Warning event at
-almost no cost in NSE, for about twice the model runs. That is the
-typical bargain: a small change in parameters, chosen with the warning
-in mind, rather than a different model.
+Asking for the Flood Warning as well made the search find parameters
+that catch the one Flood Warning event the first calibration missed: CSI
+went from 0.89 to a perfect 1. The overall fit hardly changed (NSE fell
+in the fourth decimal place, too little to see on a hydrograph). The
+price was computer time: about twice as many model runs. That is the
+usual bargain: a small, deliberate nudge to the parameters for the sake
+of the warnings, not a different model.
 
 Some guidance:
 
-- **Weight.** NSE and CSI both run from about 0 to 1 for useful models,
-  so a weight of 1 is a neutral start. Larger weights favour crossings
-  over the hydrograph as a whole.
-- **Events.** A threshold the river crosses only once or twice gives the
-  optimiser almost nothing to work with, and the result can be luck.
+- **Weight.** NSE and CSI both run from about 0 to 1 for a useful model,
+  so a weight of 1 treats them evenly. A larger weight cares more about
+  the warnings than the hydrograph as a whole.
+- **Enough floods.** A threshold the river crosses only once or twice in
+  the calibration period gives the search almost nothing to learn from,
+  and the result can be luck.
   [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md)
-  refuses a threshold never crossed in the calibration period.
-- **Other scores.** `threshold_score` may be `pod`, `far`, or a
-  step-based score such as `ets_step`; false alarm ratios are minimised
-  directly.
-- **Gradient methods refuse.** A threshold term with `method = "lbfgsb"`
-  is an error, with the reason.
+  refuses a threshold that is never crossed.
+- **Other scores.** `threshold_score` can also be `pod` (catching
+  floods), `far` (avoiding false alarms), or a step-by-step score such
+  as `ets_step`.
+- **The slope-feeling method refuses.** Asking for a threshold part with
+  `method = "lbfgsb"` stops with an explanation, because it would
+  quietly fail.
 
 ## In a calibration project
 
+Inside a calibration project,
 [`log_auto_calibration()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
-runs the same search on a project’s registered data and windows, using
-the thresholds registered with the data by name, and records everything
-a reviewer needs to repeat it: bounds, search scales, method, objective
-and weights, starts and seed, every start’s result, the number of model
-runs, and the reasoning.
+runs the same search on the project’s own data and periods, using the
+warning thresholds registered with the data, by name. It writes down
+everything a reviewer would need to repeat it exactly: the fences, the
+search scales, the method, the score and its weights, the starting
+points and seed, where every start ended, how many model runs it took,
+and why it was run.
 
 ``` r
 log_auto_calibration(
@@ -283,12 +330,12 @@ log_auto_calibration(
 )
 ```
 
-## Choosing
+## Which settings to use
 
-| Situation                        | Settings                                                                                                                                                                                                                                |
-|----------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| First calibration of a catchment | `objective = "nse"`, default method, several starts, bounds from [`calibration_bounds()`](https://jonpayneea.github.io/PDMS7/reference/calibration_bounds.md), log scale where marked                                                   |
-| Low flows matter                 | `objective = "log_rmse"`                                                                                                                                                                                                                |
-| A warning service                | Add `thresholds` with `method = "nelder_mead"`; keep a continuous objective                                                                                                                                                             |
-| Several structures               | [`compare_structures()`](https://jonpayneea.github.io/PDMS7/reference/compare_structures.md), which applies all of the above alike; see [Choosing a model structure](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.md) |
-| Many catchments                  | One protocol for all; see [Calibrating many catchments](https://jonpayneea.github.io/PDMS7/articles/many-catchments.md)                                                                                                                 |
+| Situation                        | Settings                                                                                                                                                                                                                                   |
+|----------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| First calibration of a catchment | `objective = "nse"`, the default method, several starts, fences from [`calibration_bounds()`](https://jonpayneea.github.io/PDMS7/reference/calibration_bounds.md), log scale where the table says                                          |
+| Low flows matter most            | `objective = "log_rmse"`                                                                                                                                                                                                                   |
+| A flood warning service          | Add `thresholds` and use `method = "nelder_mead"`; keep NSE as the main score                                                                                                                                                              |
+| Comparing model structures       | [`compare_structures()`](https://jonpayneea.github.io/PDMS7/reference/compare_structures.md) applies all of this the same way to each; see [Choosing a model structure](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.md) |
+| Many catchments                  | [`calibrate_batch()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md); see [Calibrating many catchments](https://jonpayneea.github.io/PDMS7/articles/many-catchments.md)                                                  |

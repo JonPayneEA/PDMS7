@@ -266,6 +266,8 @@ batch_results <- function(output) {
   folders <- folders[file.exists(file.path(folders, .marker))]
   .check(length(folders) > 0, "No projects have been started yet")
   results <- read_projects(folders)
-  merge(results, status[, c("basin", "state", "step", "message")], by.x = "project",
-        by.y = "basin", all.x = TRUE)
+  out <- merge(results, status[, c("basin", "state", "step", "message")], by.x = "project",
+               by.y = "basin", all.x = TRUE, sort = FALSE)
+  data.table::setkey(out, NULL)
+  out[order(out$project)]
 }

@@ -2,6 +2,23 @@
 
 ## pdmS7 (development version)
 
+- “Calibrating many catchments” is rewritten as a plain-English,
+  step-by-step guide to
+  [`calibrate_batch()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md),
+  run live with an interruption and a failure. “Automatic calibration”
+  is rewritten in plain English.
+- New
+  [`calibrate_batch()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md)
+  runs one calibration protocol on every basin in a folder (each with
+  `forcing.csv`, `flow.csv` and `basin.yml`), giving each basin its own
+  calibration-log project, in parallel with `cores`. It can be stopped
+  and restarted at any point: each basin carries on from its last
+  completed step and finished steps are never repeated. Failures are
+  recorded with their reason without stopping the batch.
+  [`batch_status()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md)
+  shows progress from `batch-status.csv`;
+  [`batch_results()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md)
+  collects the projects.
 - Three new articles: “Scoring a simulation” (every score, with the
   contingency table, event matching, events against steps and the
   performance diagram), “Automatic calibration” (bounds, log-scale

@@ -46,14 +46,15 @@ Model options:
 Calibration:
 
 - [Calibration: multi-start, budgets and staged calibration](https://jonpayneea.github.io/PDMS7/articles/calibration.html)
-- [Automatic calibration](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.html):
-  bounds, log-scale search, gradient and derivative-free optimisers, threshold objectives
+- [Automatic calibration, explained](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.html):
+  in plain terms: bounds, search scales, the two search methods, and rewarding flood warnings
 - [Scoring a simulation](https://jonpayneea.github.io/PDMS7/articles/scoring.html): NSE, KGE,
   flow-duration signatures, and POD, FAR and CSI at warning thresholds
 - [Choosing a model structure](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.html):
   calibrate the alternatives alike, rank on validation, and keep a final test window
 - [Calibrating many catchments](https://jonpayneea.github.io/PDMS7/articles/many-catchments.html):
-  one protocol for a large sample, budgets, failures, start agreement and parameter recovery
+  a step-by-step guide to `calibrate_batch()`: preparing folders, running, resuming after an
+  interruption, fixing failures, and reading the results
 
 Records and review:
 

@@ -45,7 +45,7 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Calibration</h6></li>
     <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: multi-start, budgets and staged calibration</a></li>
-    <li><a class="dropdown-item" href="../articles/auto-calibration.html">Automatic calibration: bounds, search scales, optimisers and objectives</a></li>
+    <li><a class="dropdown-item" href="../articles/auto-calibration.html">Automatic calibration, explained</a></li>
     <li><a class="dropdown-item" href="../articles/scoring.html">Scoring a simulation: from NSE to POD, FAR and CSI</a></li>
     <li><a class="dropdown-item" href="../articles/choosing-structure.html">Choosing a model structure</a></li>
     <li><a class="dropdown-item" href="../articles/many-catchments.html">Calibrating many catchments</a></li>
@@ -107,33 +107,65 @@ documentation</h4>
 
     
     
-<p>Calibrating one catchment is craft. Calibrating sixty is logistics:
-every basin must be treated the same way, the computing must be
-budgeted, failures must be caught without stopping the rest, and the
-results must be judged as a set. A large-sample comparison, such as PDM
-against a machine learning model across many gauges, is only as fair as
-this consistency.</p>
-<p>This article runs a small version live: eight synthetic catchments,
-each with known “true” parameters. Real data cannot tell you whether
-calibration found the truth; synthetic data can, so they show where
-calibration succeeds and where it cannot. The full-scale recipe is at
-the end.</p>
+<p>Calibrating one catchment is careful, hands-on work. Calibrating
+sixty is a different job: every catchment must be treated the same way,
+the run will take hours, something will go wrong part way through, and
+the results only mean something when looked at together.
+<code><a href="../reference/calibrate_batch.html">calibrate_batch()</a></code> does that job. This article shows how to
+use it, step by step, and how to read what comes out.</p>
+<p>The example runs live on eight made-up catchments. Because we made
+them up, we know the “true” parameter values, so at the end we can check
+how close calibration got. A real batch works the same way, only
+bigger.</p>
 <div class="section level2">
-<h2 id="the-catchments">The catchments<a class="anchor" aria-label="anchor" href="#the-catchments"></a>
+<h2 id="what-you-need-one-folder-per-catchment">What you need: one folder per catchment<a class="anchor" aria-label="anchor" href="#what-you-need-one-folder-per-catchment"></a>
 </h2>
-<p>Each basin has its own area, climate and parameters, drawn from
-plausible ranges. Its “observed” flow is the true model’s output with 4
-per cent gauging noise.</p>
+<p>Put each catchment in its own folder, named after it, inside one
+parent folder. Each folder holds three files:</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th>File</th>
+<th>Contents</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>forcing.csv</code></td>
+<td>Columns <code>time</code>, <code>rain</code> and <code>pet</code>:
+rainfall and potential evaporation in mm per time step</td>
+</tr>
+<tr class="even">
+<td><code>flow.csv</code></td>
+<td>Column <code>q_m3s</code>: the measured river flow, one row per time
+step; gaps can be left empty</td>
+</tr>
+<tr class="odd">
+<td><code>basin.yml</code></td>
+<td>A few lines describing the catchment</td>
+</tr>
+</tbody>
+</table>
+<p>Here we build eight such folders. One of them, B06, has a fault, as
+real collections often do: a stretch of negative evaporation from a
+corrupted file.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">2024</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">basins</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir</a></span><span class="op">(</span><span class="op">)</span>, <span class="st">"basins"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">2024</span><span class="op">)</span></span>
 <span><span class="va">n</span> <span class="op">&lt;-</span> <span class="fl">24</span> <span class="op">*</span> <span class="fl">60</span></span>
-<span><span class="va">make_basin</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">i</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">time</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.POSIXlt.html" class="external-link">as.POSIXct</a></span><span class="op">(</span><span class="st">"2023-10-01"</span>, tz <span class="op">=</span> <span class="st">"UTC"</span><span class="op">)</span>, by <span class="op">=</span> <span class="fl">3600</span>, length.out <span class="op">=</span> <span class="va">n</span><span class="op">)</span></span>
+<span><span class="va">time</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.POSIXlt.html" class="external-link">as.POSIXct</a></span><span class="op">(</span><span class="st">"2023-10-01"</span>, tz <span class="op">=</span> <span class="st">"UTC"</span><span class="op">)</span>, by <span class="op">=</span> <span class="fl">3600</span>, length.out <span class="op">=</span> <span class="va">n</span><span class="op">)</span></span>
+<span><span class="va">truths</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="fl">8</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">id</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"B%02d"</span>, <span class="va">i</span><span class="op">)</span></span>
+<span>  <span class="va">folder</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">basins</span>, <span class="va">id</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/files2.html" class="external-link">dir.create</a></span><span class="op">(</span><span class="va">folder</span>, recursive <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span>  <span class="va">wet</span> <span class="op">&lt;-</span> <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/Uniform.html" class="external-link">runif</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">0.04</span>, <span class="fl">0.09</span><span class="op">)</span></span>
-<span>  <span class="va">scale</span> <span class="op">&lt;-</span> <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/Uniform.html" class="external-link">runif</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">4</span><span class="op">)</span></span>
 <span>  <span class="va">forcing</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
-<span>    time <span class="op">=</span> <span class="va">time</span>, pet <span class="op">=</span> <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/Uniform.html" class="external-link">runif</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">0.04</span>, <span class="fl">0.09</span><span class="op">)</span>,</span>
-<span>    rain <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/Uniform.html" class="external-link">runif</a></span><span class="op">(</span><span class="va">n</span><span class="op">)</span> <span class="op">&lt;</span> <span class="va">wet</span>, <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/GammaDist.html" class="external-link">rgamma</a></span><span class="op">(</span><span class="va">n</span>, <span class="fl">0.7</span>, scale <span class="op">=</span> <span class="va">scale</span><span class="op">)</span>, <span class="fl">0</span><span class="op">)</span></span>
+<span>    time <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/format.html" class="external-link">format</a></span><span class="op">(</span><span class="va">time</span>, <span class="st">"%Y-%m-%dT%H:%M:%SZ"</span><span class="op">)</span>,</span>
+<span>    rain <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/Uniform.html" class="external-link">runif</a></span><span class="op">(</span><span class="va">n</span><span class="op">)</span> <span class="op">&lt;</span> <span class="va">wet</span>, <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/GammaDist.html" class="external-link">rgamma</a></span><span class="op">(</span><span class="va">n</span>, <span class="fl">0.7</span>, scale <span class="op">=</span> <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/Uniform.html" class="external-link">runif</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">4</span><span class="op">)</span><span class="op">)</span>, <span class="fl">0</span><span class="op">)</span>,</span>
+<span>    pet <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/Uniform.html" class="external-link">runif</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">0.04</span>, <span class="fl">0.09</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span></span>
 <span>  <span class="op">)</span></span>
 <span>  <span class="va">truth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pdm_presets.html">pdm_presets</a></span><span class="op">(</span><span class="st">"standard"</span><span class="op">)</span></span>
 <span>  <span class="va">truth</span><span class="op">$</span><span class="va">area_km2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/Uniform.html" class="external-link">runif</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">10</span>, <span class="fl">200</span><span class="op">)</span><span class="op">)</span></span>
@@ -143,191 +175,286 @@ per cent gauging noise.</p>
 <span>  <span class="va">k</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sort.html" class="external-link">sort</a></span><span class="op">(</span><span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/Uniform.html" class="external-link">runif</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">1</span>, <span class="fl">12</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="va">truth</span><span class="op">$</span><span class="va">surface</span><span class="op">$</span><span class="va">k1</span> <span class="op">&lt;-</span> <span class="va">k</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span></span>
 <span>  <span class="va">truth</span><span class="op">$</span><span class="va">surface</span><span class="op">$</span><span class="va">k2</span> <span class="op">&lt;-</span> <span class="va">k</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span></span>
-<span>  <span class="va">observed</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_pdm.html">run_pdm</a></span><span class="op">(</span><span class="fu"><a href="../reference/pdm_from_config.html">pdm_from_config</a></span><span class="op">(</span><span class="va">truth</span><span class="op">)</span>, <span class="va">forcing</span><span class="op">)</span><span class="op">$</span><span class="va">output</span><span class="op">$</span><span class="va">q_m3s</span> <span class="op">*</span></span>
+<span>  <span class="va">truths</span><span class="op">[[</span><span class="va">id</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">truth</span></span>
+<span>  <span class="va">flow</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_pdm.html">run_pdm</a></span><span class="op">(</span><span class="fu"><a href="../reference/pdm_from_config.html">pdm_from_config</a></span><span class="op">(</span><span class="va">truth</span><span class="op">)</span>, <span class="va">forcing</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rain"</span>, <span class="st">"pet"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span><span class="op">$</span><span class="va">output</span><span class="op">$</span><span class="va">q_m3s</span> <span class="op">*</span></span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n</span>, <span class="fl">0</span>, <span class="fl">0.04</span><span class="op">)</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>id <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"B%02d"</span>, <span class="va">i</span><span class="op">)</span>, forcing <span class="op">=</span> <span class="va">forcing</span>, observed <span class="op">=</span> <span class="va">observed</span>, truth <span class="op">=</span> <span class="va">truth</span><span class="op">)</span></span>
+<span>  <span class="kw">if</span> <span class="op">(</span><span class="va">id</span> <span class="op">==</span> <span class="st">"B06"</span><span class="op">)</span> <span class="va">forcing</span><span class="op">$</span><span class="va">pet</span><span class="op">[</span><span class="fl">100</span><span class="op">:</span><span class="fl">110</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="fl">0.05</span></span>
+<span>  <span class="fu">data.table</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/data.table/man/fwrite.html" class="external-link">fwrite</a></span><span class="op">(</span><span class="va">forcing</span>, <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">folder</span>, <span class="st">"forcing.csv"</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu">data.table</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/data.table/man/fwrite.html" class="external-link">fwrite</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>q_m3s <span class="op">=</span> <span class="va">flow</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">folder</span>, <span class="st">"flow.csv"</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/writeLines.html" class="external-link">writeLines</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"catchment:"</span>, <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"Example"</span>, <span class="va">id</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"gauge:"</span>, <span class="va">id</span><span class="op">)</span>,</span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"area_km2:"</span>, <span class="va">truth</span><span class="op">$</span><span class="va">area_km2</span><span class="op">)</span>,</span>
+<span>    <span class="st">"calibration: [2023-10-11, 2023-11-14]"</span>,</span>
+<span>    <span class="st">"validation: [2023-11-15, 2023-11-29]"</span></span>
+<span>  <span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">folder</span>, <span class="st">"basin.yml"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
-<span><span class="va">basins</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">8</span>, <span class="va">make_basin</span><span class="op">)</span></span></code></pre></div>
-<p>One basin has a data fault, as real collections do: a run of negative
-evaporation from a corrupted file.</p>
+<span><span class="fu"><a href="https://rdrr.io/r/base/list.files.html" class="external-link">list.files</a></span><span class="op">(</span><span class="va">basins</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] "B01" "B02" "B03" "B04" "B05" "B06" "B07" "B08"</span></span></code></pre></div>
+<p>A <code>basin.yml</code> is short. Only the area and the calibration
+period are required:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">basins</span><span class="op">[[</span><span class="fl">6</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">forcing</span><span class="op">$</span><span class="va">pet</span><span class="op">[</span><span class="fl">100</span><span class="op">:</span><span class="fl">110</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="fl">0.05</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">basins</span>, <span class="st">"B01"</span>, <span class="st">"basin.yml"</span><span class="op">)</span><span class="op">)</span>, sep <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; catchment: Example B01</span></span>
+<span><span class="co">#&gt; gauge: B01</span></span>
+<span><span class="co">#&gt; area_km2: 80</span></span>
+<span><span class="co">#&gt; calibration: [2023-10-11, 2023-11-14]</span></span>
+<span><span class="co">#&gt; validation: [2023-11-15, 2023-11-29]</span></span></code></pre></div>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th>Line</th>
+<th>Meaning</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>area_km2</code></td>
+<td>Catchment area, used to turn millimetres into cubic metres per
+second</td>
+</tr>
+<tr class="even">
+<td><code>calibration</code></td>
+<td>First and last date of the period the calibration is fitted to.
+Anything before it is warm-up: simulated, so the model’s stores settle,
+but not scored</td>
+</tr>
+<tr class="odd">
+<td><code>validation</code></td>
+<td>A later period the calibration never sees, used to check the result
+honestly</td>
+</tr>
+<tr class="even">
+<td>
+<code>test</code> (optional)</td>
+<td>A final period kept back until everything is decided, scored
+once</td>
+</tr>
+<tr class="odd">
+<td>
+<code>config</code> (optional)</td>
+<td>A model configuration file in the folder, if this catchment needs a
+different model</td>
+</tr>
+<tr class="even">
+<td>
+<code>thresholds</code>, <code>rating</code> (optional)</td>
+<td>Warning thresholds to score; see <a href="scoring.html">Scoring a
+simulation</a>
+</td>
+</tr>
+</tbody>
+</table>
 </div>
 <div class="section level2">
-<h2 id="one-protocol-for-every-basin">One protocol for every basin<a class="anchor" aria-label="anchor" href="#one-protocol-for-every-basin"></a>
+<h2 id="before-you-start-how-long-will-it-take">Before you start: how long will it take?<a class="anchor" aria-label="anchor" href="#before-you-start-how-long-will-it-take"></a>
 </h2>
-<p>The protocol is a function, so every basin gets exactly the same
-treatment: the same structure, bounds, windows, starts and seed. Each
-basin gets its own calibration-log project, so every calibration is
-recorded and can be reviewed and signed off like a manual one. A failure
-is caught and returned, not allowed to stop the batch.</p>
+<p>Time one model run, then multiply. A calibration of five parameters
+with three starting points uses roughly 1,000 to 2,000 model runs.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">lower</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>fc <span class="op">=</span> <span class="fl">0.7</span>, distribution.cmax <span class="op">=</span> <span class="fl">50</span>, recharge.kg <span class="op">=</span> <span class="fl">5</span>, surface.k1 <span class="op">=</span> <span class="fl">0.5</span>,</span>
-<span>           surface.k2 <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></span>
-<span><span class="va">upper</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>fc <span class="op">=</span> <span class="fl">1.4</span>, distribution.cmax <span class="op">=</span> <span class="fl">400</span>, recharge.kg <span class="op">=</span> <span class="fl">600</span>, surface.k1 <span class="op">=</span> <span class="fl">20</span>,</span>
-<span>           surface.k2 <span class="op">=</span> <span class="fl">20</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">calibrate_basin</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">basin</span>, <span class="va">root</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">folder</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">root</span>, <span class="va">basin</span><span class="op">$</span><span class="va">id</span><span class="op">)</span></span>
-<span>  <span class="kw"><a href="https://rdrr.io/r/base/conditions.html" class="external-link">tryCatch</a></span><span class="op">(</span><span class="op">{</span></span>
-<span>    <span class="fu"><a href="../reference/calibration_log.html">start_calibration_project</a></span><span class="op">(</span><span class="va">folder</span>, catchment <span class="op">=</span> <span class="va">basin</span><span class="op">$</span><span class="va">id</span>, gauge <span class="op">=</span> <span class="va">basin</span><span class="op">$</span><span class="va">id</span>,</span>
-<span>                              purpose <span class="op">=</span> <span class="st">"Large-sample benchmark"</span>,</span>
-<span>                              area_km2 <span class="op">=</span> <span class="va">basin</span><span class="op">$</span><span class="va">truth</span><span class="op">$</span><span class="va">area_km2</span>, owner <span class="op">=</span> <span class="st">"Deputy Director"</span>,</span>
-<span>                              steward <span class="op">=</span> <span class="st">"Sam Steward"</span><span class="op">)</span></span>
-<span>    <span class="fu"><a href="../reference/calibration_log.html">register_data</a></span><span class="op">(</span><span class="va">folder</span>, <span class="va">basin</span><span class="op">$</span><span class="va">forcing</span>, <span class="va">basin</span><span class="op">$</span><span class="va">observed</span>,</span>
-<span>                  calibration <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"2023-10-11"</span>, <span class="st">"2023-11-14"</span><span class="op">)</span>,</span>
-<span>                  validation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"2023-11-15"</span>, <span class="st">"2023-11-29"</span><span class="op">)</span><span class="op">)</span></span>
-<span>    <span class="va">start</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pdm_presets.html">pdm_presets</a></span><span class="op">(</span><span class="st">"standard"</span><span class="op">)</span></span>
-<span>    <span class="va">start</span><span class="op">$</span><span class="va">area_km2</span> <span class="op">&lt;-</span> <span class="va">basin</span><span class="op">$</span><span class="va">truth</span><span class="op">$</span><span class="va">area_km2</span></span>
-<span>    <span class="fu"><a href="../reference/calibration_log.html">select_structure</a></span><span class="op">(</span><span class="va">folder</span>, <span class="va">start</span>, <span class="st">"Benchmark protocol: standard PDM for every basin."</span><span class="op">)</span></span>
-<span>    <span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calibration_log.html">log_auto_calibration</a></span><span class="op">(</span><span class="va">folder</span>, parent <span class="op">=</span> <span class="fl">3</span>, lower <span class="op">=</span> <span class="va">lower</span>, upper <span class="op">=</span> <span class="va">upper</span>,</span>
-<span>                                objective <span class="op">=</span> <span class="st">"nse"</span>, starts <span class="op">=</span> <span class="fl">3</span>, seed <span class="op">=</span> <span class="fl">1</span>,</span>
-<span>                                control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>maxit <span class="op">=</span> <span class="fl">25</span><span class="op">)</span>,</span>
-<span>                                reasoning <span class="op">=</span> <span class="st">"Benchmark protocol: 3 starts, fixed bounds."</span><span class="op">)</span></span>
-<span>    <span class="fu"><a href="../reference/calibration_log.html">propose_candidate</a></span><span class="op">(</span><span class="va">folder</span>, <span class="va">fit</span><span class="op">$</span><span class="va">id</span>, <span class="st">"Benchmark protocol: best of the automatic starts."</span><span class="op">)</span></span>
-<span>    <span class="fu"><a href="../reference/calibration_log.html">validate_candidate</a></span><span class="op">(</span><span class="va">folder</span>, <span class="st">"Benchmark protocol."</span><span class="op">)</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>id <span class="op">=</span> <span class="va">basin</span><span class="op">$</span><span class="va">id</span>, folder <span class="op">=</span> <span class="va">folder</span>, fit <span class="op">=</span> <span class="va">fit</span><span class="op">$</span><span class="va">id</span>, error <span class="op">=</span> <span class="cn">NA_character_</span><span class="op">)</span></span>
-<span>  <span class="op">}</span>, error <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">e</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>id <span class="op">=</span> <span class="va">basin</span><span class="op">$</span><span class="va">id</span>, folder <span class="op">=</span> <span class="va">folder</span>, fit <span class="op">=</span> <span class="cn">NA_character_</span>, error <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/conditions.html" class="external-link">conditionMessage</a></span><span class="op">(</span><span class="va">e</span><span class="op">)</span><span class="op">)</span></span>
-<span>  <span class="op">}</span><span class="op">)</span></span>
-<span><span class="op">}</span></span></code></pre></div>
-<p>The first ten days of each record are warm-up, the next five weeks
-calibration and the last two weeks validation. Real records are far
-longer; the shape of the protocol is the same.</p>
-</div>
-<div class="section level2">
-<h2 id="what-it-will-cost">What it will cost<a class="anchor" aria-label="anchor" href="#what-it-will-cost"></a>
-</h2>
-<p>Budget before running. One model run of these two-month records
-takes:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">model</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pdm_from_config.html">pdm_from_config</a></span><span class="op">(</span><span class="va">basins</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">truth</span><span class="op">)</span></span>
-<span><span class="va">per_run</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="fl">20</span><span class="op">)</span> <span class="fu"><a href="../reference/run_pdm.html">run_pdm</a></span><span class="op">(</span><span class="va">model</span>, <span class="va">basins</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">forcing</span><span class="op">)</span><span class="op">)</span><span class="op">[[</span><span class="st">"elapsed"</span><span class="op">]</span><span class="op">]</span> <span class="op">/</span> <span class="fl">20</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">signif</a></span><span class="op">(</span><span class="va">per_run</span>, <span class="fl">2</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 0.0037</span></span></code></pre></div>
-<p>A calibration of five parameters with three starts uses roughly 1,000
-to 2,000 model runs, so the batch should take about 39 seconds. Measure
-runs per start on a pilot before committing a large computer:
-<code>inst/examples/pilot_calibration.R</code> does this, and the <a href="calibration.html">calibration article</a> explains the
-formula.</p>
+<code class="sourceCode R"><span><span class="va">one_run</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span></span>
+<span>  <span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="fl">20</span><span class="op">)</span> <span class="fu"><a href="../reference/run_pdm.html">run_pdm</a></span><span class="op">(</span><span class="fu"><a href="../reference/pdm_from_config.html">pdm_from_config</a></span><span class="op">(</span><span class="va">truths</span><span class="op">$</span><span class="va">B01</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>rain <span class="op">=</span> <span class="fl">0</span>, pet <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">0.05</span>, <span class="va">n</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">)</span><span class="op">[[</span><span class="st">"elapsed"</span><span class="op">]</span><span class="op">]</span> <span class="op">/</span> <span class="fl">20</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>seconds_per_run <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">signif</a></span><span class="op">(</span><span class="va">one_run</span>, <span class="fl">2</span><span class="op">)</span>,</span>
+<span>  estimated_minutes_for_8 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fl">8</span> <span class="op">*</span> <span class="fl">1500</span> <span class="op">*</span> <span class="va">one_run</span> <span class="op">/</span> <span class="fl">60</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt;         seconds_per_run estimated_minutes_for_8 </span></span>
+<span><span class="co">#&gt;                  0.0048                  1.0000</span></span></code></pre></div>
+<p>For a real batch, measure on a few catchments first; see the pilot
+script in <a href="calibration.html">Calibration</a>.</p>
 </div>
 <div class="section level2">
 <h2 id="running-the-batch">Running the batch<a class="anchor" aria-label="anchor" href="#running-the-batch"></a>
 </h2>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<p>Say who you are, then give the folder of catchments and a folder for
+the results. The rest of the settings are the protocol, the same for
+every catchment: how many starting points, how many steps each search
+may take, which parameters to leave alone.</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>pdmS7.user <span class="op">=</span> <span class="st">"Ann Hydrologist"</span>, pdmS7.role <span class="op">=</span> <span class="st">"custodian"</span><span class="op">)</span></span>
-<span><span class="va">root</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir</a></span><span class="op">(</span><span class="op">)</span>, <span class="st">"benchmark"</span><span class="op">)</span></span>
-<span><span class="va">elapsed</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">basins</span>, <span class="va">calibrate_basin</span>, root <span class="op">=</span> <span class="va">root</span><span class="op">)</span><span class="op">)</span><span class="op">[[</span><span class="st">"elapsed"</span><span class="op">]</span><span class="op">]</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">elapsed</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 30</span></span>
-<span><span class="kw">for</span> <span class="op">(</span><span class="va">r</span> <span class="kw">in</span> <span class="va">results</span><span class="op">)</span> <span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">r</span><span class="op">$</span><span class="va">error</span><span class="op">)</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="va">r</span><span class="op">$</span><span class="va">id</span>, <span class="st">"failed:"</span>, <span class="va">r</span><span class="op">$</span><span class="va">error</span>, <span class="st">"\n"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; B06 failed: pet must contain finite nonnegative numbers</span></span></code></pre></div>
-<p>The faulty basin was refused at registration, with the reason, and
-the other seven ran. Its project holds its start entry, so the failure
-is on record too; fix the data and register again.</p>
-<p>On a server the same function runs basins in parallel. Each worker
-writes only its own project folder, so there is no contention, and each
-needs the user declared:</p>
+<span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir</a></span><span class="op">(</span><span class="op">)</span>, <span class="st">"results"</span><span class="op">)</span></span>
+<span><span class="va">protocol</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>starts <span class="op">=</span> <span class="fl">3</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>maxit <span class="op">=</span> <span class="fl">25</span><span class="op">)</span>,</span>
+<span>                 exclude <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"distribution.b"</span>, <span class="st">"groundwater.kb"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">part</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">calibrate_batch</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">basins</span>, <span class="va">results</span>, only <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"B01"</span>, <span class="st">"B02"</span>, <span class="st">"B03"</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>                                   <span class="va">protocol</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">part</span></span>
+<span><span class="co">#&gt;     basin  state     step seconds message</span></span>
+<span><span class="co">#&gt;    &lt;char&gt; &lt;char&gt;   &lt;char&gt;   &lt;num&gt;  &lt;char&gt;</span></span>
+<span><span class="co">#&gt; 1:    B01   done complete     4.2        </span></span>
+<span><span class="co">#&gt; 2:    B02   done complete     4.1        </span></span>
+<span><span class="co">#&gt; 3:    B03   done complete     5.1</span></span></code></pre></div>
+<p>Suppose the computer was switched off at this point, after three
+catchments. Nothing is lost: each catchment has its own project folder
+recording exactly how far it got. Run the same command again, this time
+for all of them:</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">elapsed</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span></span>
+<span>  <span class="va">status</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">calibrate_batch</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">basins</span>, <span class="va">results</span><span class="op">)</span>, <span class="va">protocol</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">)</span><span class="op">[[</span><span class="st">"elapsed"</span><span class="op">]</span><span class="op">]</span></span>
+<span><span class="va">status</span></span>
+<span><span class="co">#&gt;     basin  state     step seconds                                     message</span></span>
+<span><span class="co">#&gt;    &lt;char&gt; &lt;char&gt;   &lt;char&gt;   &lt;num&gt;                                      &lt;char&gt;</span></span>
+<span><span class="co">#&gt; 1:    B01   done complete     0.0                                            </span></span>
+<span><span class="co">#&gt; 2:    B02   done complete     0.0                                            </span></span>
+<span><span class="co">#&gt; 3:    B03   done complete     0.0                                            </span></span>
+<span><span class="co">#&gt; 4:    B04   done complete     5.3                                            </span></span>
+<span><span class="co">#&gt; 5:    B05   done complete     4.3                                            </span></span>
+<span><span class="co">#&gt; 6:    B06 failed register     0.0 pet must contain finite nonnegative numbers</span></span>
+<span><span class="co">#&gt; 7:    B07   done complete     4.1                                            </span></span>
+<span><span class="co">#&gt; 8:    B08   done complete     5.0</span></span></code></pre></div>
+<p>The three finished catchments took a moment each: the batch read
+their records, saw every step already done, and moved on. The others ran
+in full. Each catchment’s random starting points come from its own name,
+so B01 gets the same result whether it runs alone or with a hundred
+others.</p>
+<div class="section level3">
+<h3 id="while-it-runs">While it runs<a class="anchor" aria-label="anchor" href="#while-it-runs"></a>
+</h3>
+<p>On a long batch, open a second R session and look at progress at any
+time:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">cl</span> <span class="op">&lt;-</span> <span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/makeCluster.html" class="external-link">makeCluster</a></span><span class="op">(</span><span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/detectCores.html" class="external-link">detectCores</a></span><span class="op">(</span><span class="op">)</span> <span class="op">-</span> <span class="fl">1L</span><span class="op">)</span></span>
-<span><span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/clusterApply.html" class="external-link">clusterEvalQ</a></span><span class="op">(</span><span class="va">cl</span>, <span class="op">{</span></span>
-<span>  <span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://jonpayneea.github.io/PDMS7/">pdmS7</a></span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>pdmS7.user <span class="op">=</span> <span class="st">"Ann Hydrologist"</span>, pdmS7.role <span class="op">=</span> <span class="st">"custodian"</span><span class="op">)</span></span>
-<span><span class="op">}</span><span class="op">)</span></span>
-<span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/clusterApply.html" class="external-link">parLapply</a></span><span class="op">(</span><span class="va">cl</span>, <span class="va">basins</span>, <span class="va">calibrate_basin</span>, root <span class="op">=</span> <span class="va">root</span><span class="op">)</span></span>
-<span><span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/makeCluster.html" class="external-link">stopCluster</a></span><span class="op">(</span><span class="va">cl</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/calibrate_batch.html">batch_status</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></span></code></pre></div>
+<p>It reads <code>batch-status.csv</code> in the results folder, which
+records each catchment as <code>queued</code>, <code>running</code>,
+<code>done</code> or <code>failed</code>.</p>
+</div>
+<div class="section level3">
+<h3 id="when-a-catchment-fails">When a catchment fails<a class="anchor" aria-label="anchor" href="#when-a-catchment-fails"></a>
+</h3>
+<p>One catchment failed, and the batch carried on without it:</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">status</span><span class="op">[</span><span class="va">state</span> <span class="op">==</span> <span class="st">"failed"</span>, <span class="fu">.</span><span class="op">(</span><span class="va">basin</span>, <span class="va">step</span>, <span class="va">message</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="co">#&gt;     basin     step                                     message</span></span>
+<span><span class="co">#&gt;    &lt;char&gt;   &lt;char&gt;                                      &lt;char&gt;</span></span>
+<span><span class="co">#&gt; 1:    B06 register pet must contain finite nonnegative numbers</span></span></code></pre></div>
+<p>The message says what is wrong and the step says where it stopped:
+the data were refused before anything was calibrated. Fix the file and
+run the batch again for just that catchment:</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fixed</span> <span class="op">&lt;-</span> <span class="fu">data.table</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/data.table/man/fread.html" class="external-link">fread</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">basins</span>, <span class="st">"B06"</span>, <span class="st">"forcing.csv"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">fixed</span><span class="op">$</span><span class="va">pet</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">fixed</span><span class="op">$</span><span class="va">pet</span><span class="op">)</span></span>
+<span><span class="fu">data.table</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/data.table/man/fwrite.html" class="external-link">fwrite</a></span><span class="op">(</span><span class="va">fixed</span>, <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">basins</span>, <span class="st">"B06"</span>, <span class="st">"forcing.csv"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">status</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">calibrate_batch</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">basins</span>, <span class="va">results</span>, only <span class="op">=</span> <span class="st">"B06"</span><span class="op">)</span>, <span class="va">protocol</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">status</span></span>
+<span><span class="co">#&gt;     basin  state     step seconds message</span></span>
+<span><span class="co">#&gt;    &lt;char&gt; &lt;char&gt;   &lt;char&gt;   &lt;num&gt;  &lt;char&gt;</span></span>
+<span><span class="co">#&gt; 1:    B01   done complete     0.0        </span></span>
+<span><span class="co">#&gt; 2:    B02   done complete     0.0        </span></span>
+<span><span class="co">#&gt; 3:    B03   done complete     0.0        </span></span>
+<span><span class="co">#&gt; 4:    B04   done complete     5.3        </span></span>
+<span><span class="co">#&gt; 5:    B05   done complete     4.3        </span></span>
+<span><span class="co">#&gt; 6:    B06   done complete     4.9        </span></span>
+<span><span class="co">#&gt; 7:    B07   done complete     4.1        </span></span>
+<span><span class="co">#&gt; 8:    B08   done complete     5.0</span></span></code></pre></div>
+<p>The failed attempt is still on record in B06’s project, followed by
+the successful one.</p>
+</div>
+<div class="section level3">
+<h3 id="on-a-server">On a server<a class="anchor" aria-label="anchor" href="#on-a-server"></a>
+</h3>
+<p>On a shared server, put the call in a script and start it so that it
+keeps running after you log off. Use one core per catchment, up to what
+the server can spare:</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># batch.R</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://jonpayneea.github.io/PDMS7/">pdmS7</a></span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>pdmS7.user <span class="op">=</span> <span class="st">"Ann Hydrologist"</span>, pdmS7.role <span class="op">=</span> <span class="st">"custodian"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/calibrate_batch.html">calibrate_batch</a></span><span class="op">(</span><span class="st">"basins"</span>, <span class="st">"results"</span>, starts <span class="op">=</span> <span class="fl">20</span>, cores <span class="op">=</span> <span class="fl">32</span>,</span>
+<span>                owner <span class="op">=</span> <span class="st">"Deputy Director"</span>, steward <span class="op">=</span> <span class="st">"Sam Steward"</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb10"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="fu">nohup</span> Rscript batch.R <span class="op">&gt;</span> batch.log <span class="dv">2</span><span class="op">&gt;&amp;</span><span class="dv">1</span> <span class="kw">&amp;</span></span></code></pre></div>
+<p>If the server is restarted, run the same command again.</p>
+</div>
 </div>
 <div class="section level2">
-<h2 id="the-results-as-a-set">The results as a set<a class="anchor" aria-label="anchor" href="#the-results-as-a-set"></a>
+<h2 id="reading-the-results">Reading the results<a class="anchor" aria-label="anchor" href="#reading-the-results"></a>
 </h2>
-<p><code><a href="../reference/read_project.html">read_projects()</a></code> gathers every project into one table,
-with the candidate’s headline score on both windows.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">ok</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/funprog.html" class="external-link">Filter</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">r</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">r</span><span class="op">$</span><span class="va">error</span><span class="op">)</span>, <span class="va">results</span><span class="op">)</span></span>
-<span><span class="va">folders</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">ok</span>, <span class="kw">function</span><span class="op">(</span><span class="va">r</span><span class="op">)</span> <span class="va">r</span><span class="op">$</span><span class="va">folder</span>, <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">summary</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_project.html">read_projects</a></span><span class="op">(</span><span class="va">folders</span><span class="op">)</span></span>
-<span><span class="va">summary</span><span class="op">[</span>, <span class="fu">.</span><span class="op">(</span><span class="va">project</span>, <span class="va">status</span>, <span class="va">runs</span>, <span class="va">headline</span>, calibration <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">candidate_score</span>, <span class="fl">3</span><span class="op">)</span>,</span>
-<span>            validation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">validation_score</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span><span class="op">]</span></span>
-<span><span class="co">#&gt;    project status  runs headline calibration validation</span></span>
-<span><span class="co">#&gt;     &lt;char&gt; &lt;char&gt; &lt;int&gt;   &lt;char&gt;       &lt;num&gt;      &lt;num&gt;</span></span>
-<span><span class="co">#&gt; 1:     B01   open     2      nse       0.988      0.987</span></span>
-<span><span class="co">#&gt; 2:     B02   open     2      nse       0.977      0.980</span></span>
-<span><span class="co">#&gt; 3:     B03   open     2      nse       0.982      0.983</span></span>
-<span><span class="co">#&gt; 4:     B04   open     2      nse       0.994      0.997</span></span>
-<span><span class="co">#&gt; 5:     B05   open     2      nse       0.966      0.973</span></span>
-<span><span class="co">#&gt; 6:     B07   open     2      nse       0.982      0.967</span></span>
-<span><span class="co">#&gt; 7:     B08   open     2      nse       0.997      0.994</span></span></code></pre></div>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<p><code><a href="../reference/calibrate_batch.html">batch_results()</a></code> gathers every catchment into one table,
+with the headline score (here NSE) on the calibration and validation
+periods:</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">table</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calibrate_batch.html">batch_results</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></span>
+<span><span class="va">table</span><span class="op">[</span>, <span class="fu">.</span><span class="op">(</span><span class="va">project</span>, <span class="va">state</span>, calibration <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">candidate_score</span>, <span class="fl">3</span><span class="op">)</span>,</span>
+<span>          validation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">validation_score</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="co">#&gt;    project  state calibration validation</span></span>
+<span><span class="co">#&gt;     &lt;char&gt; &lt;char&gt;       &lt;num&gt;      &lt;num&gt;</span></span>
+<span><span class="co">#&gt; 1:     B01   done       0.982      0.980</span></span>
+<span><span class="co">#&gt; 2:     B02   done       0.989      0.995</span></span>
+<span><span class="co">#&gt; 3:     B03   done       0.971      0.968</span></span>
+<span><span class="co">#&gt; 4:     B04   done       0.981      0.995</span></span>
+<span><span class="co">#&gt; 5:     B05   done       0.982      0.921</span></span>
+<span><span class="co">#&gt; 6:     B06   done       0.977      0.979</span></span>
+<span><span class="co">#&gt; 7:     B07   done       0.992      0.994</span></span>
+<span><span class="co">#&gt; 8:     B08   done       0.989      0.993</span></span></code></pre></div>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span>mfrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span>, mar <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">4</span>, <span class="fl">4.2</span>, <span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">range_nse</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/range.html" class="external-link">range</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">summary</span><span class="op">$</span><span class="va">candidate_score</span>, <span class="va">summary</span><span class="op">$</span><span class="va">validation_score</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">summary</span><span class="op">$</span><span class="va">candidate_score</span>, <span class="va">summary</span><span class="op">$</span><span class="va">validation_score</span>, pch <span class="op">=</span> <span class="fl">16</span>, col <span class="op">=</span> <span class="va">pal</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
-<span>     xlim <span class="op">=</span> <span class="va">range_nse</span>, ylim <span class="op">=</span> <span class="va">range_nse</span>, xlab <span class="op">=</span> <span class="st">"Calibration NSE"</span>, ylab <span class="op">=</span> <span class="st">"Validation NSE"</span><span class="op">)</span></span>
+<span><span class="va">lim</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/range.html" class="external-link">range</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">table</span><span class="op">$</span><span class="va">candidate_score</span>, <span class="va">table</span><span class="op">$</span><span class="va">validation_score</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">table</span><span class="op">$</span><span class="va">candidate_score</span>, <span class="va">table</span><span class="op">$</span><span class="va">validation_score</span>, pch <span class="op">=</span> <span class="fl">16</span>, col <span class="op">=</span> <span class="va">pal</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>, xlim <span class="op">=</span> <span class="va">lim</span>,</span>
+<span>     ylim <span class="op">=</span> <span class="va">lim</span>, xlab <span class="op">=</span> <span class="st">"Calibration NSE"</span>, ylab <span class="op">=</span> <span class="st">"Validation NSE"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/abline.html" class="external-link">abline</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">1</span>, col <span class="op">=</span> <span class="va">pal</span><span class="op">[</span><span class="fl">7</span><span class="op">]</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/text.html" class="external-link">text</a></span><span class="op">(</span><span class="va">summary</span><span class="op">$</span><span class="va">candidate_score</span>, <span class="va">summary</span><span class="op">$</span><span class="va">validation_score</span>, <span class="va">summary</span><span class="op">$</span><span class="va">project</span>, pos <span class="op">=</span> <span class="fl">4</span>,</span>
-<span>     cex <span class="op">=</span> <span class="fl">0.7</span>, col <span class="op">=</span> <span class="va">pal</span><span class="op">[</span><span class="fl">5</span><span class="op">]</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sort.html" class="external-link">sort</a></span><span class="op">(</span><span class="va">summary</span><span class="op">$</span><span class="va">validation_score</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">summary</span><span class="op">)</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">summary</span><span class="op">)</span>, type <span class="op">=</span> <span class="st">"s"</span>,</span>
-<span>     lwd <span class="op">=</span> <span class="fl">2</span>, col <span class="op">=</span> <span class="va">pal</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>, xlab <span class="op">=</span> <span class="st">"Validation NSE"</span>, ylab <span class="op">=</span> <span class="st">"Share of basins"</span>, ylim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/text.html" class="external-link">text</a></span><span class="op">(</span><span class="va">table</span><span class="op">$</span><span class="va">candidate_score</span>, <span class="va">table</span><span class="op">$</span><span class="va">validation_score</span>, <span class="va">table</span><span class="op">$</span><span class="va">project</span>, pos <span class="op">=</span> <span class="fl">4</span>, cex <span class="op">=</span> <span class="fl">0.7</span>,</span>
+<span>     col <span class="op">=</span> <span class="va">pal</span><span class="op">[</span><span class="fl">5</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sort.html" class="external-link">sort</a></span><span class="op">(</span><span class="va">table</span><span class="op">$</span><span class="va">validation_score</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">table</span><span class="op">)</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">table</span><span class="op">)</span>, type <span class="op">=</span> <span class="st">"s"</span>, lwd <span class="op">=</span> <span class="fl">2</span>,</span>
+<span>     col <span class="op">=</span> <span class="va">pal</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>, xlab <span class="op">=</span> <span class="st">"Validation NSE"</span>, ylab <span class="op">=</span> <span class="st">"Share of catchments"</span>, ylim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <div class="figure">
-<img src="many-catchments_files/figure-html/scores-1.png" class="r-plt" alt="Left: calibration against validation NSE. Points below the line did worse on data the calibration never saw. Right: the share of basins reaching each validation NSE." width="880"><p class="caption">
-Left: calibration against validation NSE. Points below the line did
-worse on data the calibration never saw. Right: the share of basins
-reaching each validation NSE.
+<img src="many-catchments_files/figure-html/scores-1.png" class="r-plt" alt="Left: each catchment's score on the calibration period against the validation period; points below the line did worse on data the calibration never saw. Right: the share of catchments reaching each validation score." width="880"><p class="caption">
+Left: each catchment’s score on the calibration period against the
+validation period; points below the line did worse on data the
+calibration never saw. Right: the share of catchments reaching each
+validation score.
 </p>
 </div>
-<p>The distribution across basins, not any single basin, is the result
-of a large-sample calibration. Report it whole: the median says how good
-the model usually is, the lower tail where it fails.</p>
-</div>
-<div class="section level2">
-<h2 id="did-the-starts-agree">Did the starts agree?<a class="anchor" aria-label="anchor" href="#did-the-starts-agree"></a>
-</h2>
-<p>Each automatic calibration logged its table of starts. When starts
-end at different objectives, the convergence codes say why.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">agreement</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">rbind</span>, <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">ok</span>, <span class="kw">function</span><span class="op">(</span><span class="va">r</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">starts</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_project.html">read_entry</a></span><span class="op">(</span><span class="va">r</span><span class="op">$</span><span class="va">folder</span>, <span class="va">r</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span><span class="op">$</span><span class="va">start_results</span></span>
-<span>  <span class="va">objective</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/unlist.html" class="external-link">unlist</a></span><span class="op">(</span><span class="va">starts</span><span class="op">$</span><span class="va">objective</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>basin <span class="op">=</span> <span class="va">r</span><span class="op">$</span><span class="va">id</span>, best <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">signif</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="va">objective</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span>,</span>
-<span>             worst <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">signif</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">objective</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span>,</span>
-<span>             converged <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/unlist.html" class="external-link">unlist</a></span><span class="op">(</span><span class="va">starts</span><span class="op">$</span><span class="va">convergence</span><span class="op">)</span> <span class="op">==</span> <span class="fl">0</span><span class="op">)</span>,</span>
-<span>             evaluations <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/unlist.html" class="external-link">unlist</a></span><span class="op">(</span><span class="va">starts</span><span class="op">$</span><span class="va">evaluations</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<p>Report the whole spread, not just the average. The middle says how
+good the model usually is; the worst few say where it fails, and those
+are the catchments to look at first.</p>
+<div class="section level3">
+<h3 id="did-the-search-find-the-best-answer">Did the search find the best answer?<a class="anchor" aria-label="anchor" href="#did-the-search-find-the-best-answer"></a>
+</h3>
+<p>Each calibration started from three different points. If they all
+ended at the same score, the answer is probably the best there is. If
+they ended at different scores, the search may have stopped in the wrong
+place.</p>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">agreement</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">rbind</span>, <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">table</span><span class="op">$</span><span class="va">project</span>, <span class="kw">function</span><span class="op">(</span><span class="va">id</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_project.html">read_entry</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">results</span>, <span class="va">id</span><span class="op">)</span>, <span class="fl">4</span><span class="op">)</span></span>
+<span>  <span class="va">scores</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/unlist.html" class="external-link">unlist</a></span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="va">start_results</span><span class="op">$</span><span class="va">objective</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>basin <span class="op">=</span> <span class="va">id</span>, best <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">signif</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="va">scores</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span>, worst <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">signif</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">scores</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span>,</span>
+<span>             finished <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/unlist.html" class="external-link">unlist</a></span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="va">start_results</span><span class="op">$</span><span class="va">convergence</span><span class="op">)</span> <span class="op">==</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">agreement</span><span class="op">$</span><span class="va">agree</span> <span class="op">&lt;-</span> <span class="op">(</span><span class="va">agreement</span><span class="op">$</span><span class="va">worst</span> <span class="op">-</span> <span class="va">agreement</span><span class="op">$</span><span class="va">best</span><span class="op">)</span> <span class="op">&lt;</span> <span class="fl">1e-3</span></span>
 <span><span class="va">agreement</span></span>
-<span><span class="co">#&gt;   basin    best  worst converged evaluations agree</span></span>
-<span><span class="co">#&gt; 1   B01 0.01190 0.0320         0        1199 FALSE</span></span>
-<span><span class="co">#&gt; 2   B02 0.02300 0.0230         2        1001  TRUE</span></span>
-<span><span class="co">#&gt; 3   B03 0.01780 0.0535         3         825 FALSE</span></span>
-<span><span class="co">#&gt; 4   B04 0.00599 0.0587         0        1045 FALSE</span></span>
-<span><span class="co">#&gt; 5   B05 0.03360 0.0338         0        1056  TRUE</span></span>
-<span><span class="co">#&gt; 6   B07 0.01830 0.0183         1        1122  TRUE</span></span>
-<span><span class="co">#&gt; 7   B08 0.00274 0.0827         3         660 FALSE</span></span></code></pre></div>
-<p>Two different problems show here. Where every start converged (code
-0) yet the objectives differ, as for B03 and B08, the surface has
-separate optima, and a single-start calibration could have stopped at
-the worse one: those basins need more starts. Where starts stopped at
-the iteration limit (code 1), the disagreement only means the budget was
-too small; this article caps each start at 25 iterations to run quickly,
-and a real run should allow 200 or more. Either way, a batch should flag
-such basins automatically rather than trust the best start.</p>
+<span><span class="co">#&gt;   basin    best  worst finished agree</span></span>
+<span><span class="co">#&gt; 1   B01 0.01760 0.0176        0  TRUE</span></span>
+<span><span class="co">#&gt; 2   B02 0.01060 0.1920        1 FALSE</span></span>
+<span><span class="co">#&gt; 3   B03 0.02910 0.0302        0 FALSE</span></span>
+<span><span class="co">#&gt; 4   B04 0.01910 0.0633        0 FALSE</span></span>
+<span><span class="co">#&gt; 5   B05 0.01790 0.0181        1  TRUE</span></span>
+<span><span class="co">#&gt; 6   B06 0.02260 0.3070        0 FALSE</span></span>
+<span><span class="co">#&gt; 7   B07 0.00814 0.0260        1 FALSE</span></span>
+<span><span class="co">#&gt; 8   B08 0.01140 0.0149        1 FALSE</span></span></code></pre></div>
+<p><code>finished</code> counts the starts that ended because they could
+improve no further, rather than because they ran out of steps. Where
+starts disagree but all finished, the catchment has more than one “best”
+answer and needs more starting points. Where they ran out of steps, the
+search simply needs longer; this example allows only 25 steps to keep it
+quick, and a real batch should allow 200 or more.</p>
 </div>
-<div class="section level2">
-<h2 id="did-calibration-find-the-truth">Did calibration find the truth?<a class="anchor" aria-label="anchor" href="#did-calibration-find-the-truth"></a>
-</h2>
-<p>Synthetic basins allow what real ones cannot: comparing each fitted
-parameter with the value that generated the data. The two surface time
-constants are interchangeable in a cascade, so they are compared as the
-faster and the slower of the pair.</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">pairs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">rbind</span>, <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">ok</span>, <span class="kw">function</span><span class="op">(</span><span class="va">r</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">fitted</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_project.html">read_entry</a></span><span class="op">(</span><span class="va">r</span><span class="op">$</span><span class="va">folder</span>, <span class="va">r</span><span class="op">$</span><span class="va">fit</span><span class="op">)</span><span class="op">$</span><span class="va">configuration</span></span>
-<span>  <span class="va">truth</span> <span class="op">&lt;-</span> <span class="va">basins</span><span class="op">[[</span><span class="fu"><a href="https://rdrr.io/r/base/match.html" class="external-link">match</a></span><span class="op">(</span><span class="va">r</span><span class="op">$</span><span class="va">id</span>, <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">basins</span>, <span class="kw">function</span><span class="op">(</span><span class="va">b</span><span class="op">)</span> <span class="va">b</span><span class="op">$</span><span class="va">id</span>, <span class="st">""</span><span class="op">)</span><span class="op">)</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">truth</span></span>
+<div class="section level3">
+<h3 id="did-it-find-the-truth">Did it find the truth?<a class="anchor" aria-label="anchor" href="#did-it-find-the-truth"></a>
+</h3>
+<p>Only possible here, because we made the catchments up: compare each
+fitted value with the true one. The two surface time constants can swap
+places without changing the flow, so they are compared as the faster and
+the slower of the pair.</p>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">pairs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">rbind</span>, <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">table</span><span class="op">$</span><span class="va">project</span>, <span class="kw">function</span><span class="op">(</span><span class="va">id</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">fitted</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_project.html">read_entry</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">results</span>, <span class="va">id</span><span class="op">)</span>, <span class="fl">4</span><span class="op">)</span><span class="op">$</span><span class="va">configuration</span></span>
 <span>  <span class="va">value</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">cfg</span><span class="op">)</span> <span class="op">{</span></span>
 <span>    <span class="va">k</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sort.html" class="external-link">sort</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">cfg</span><span class="op">$</span><span class="va">surface</span><span class="op">$</span><span class="va">k1</span>, <span class="va">cfg</span><span class="op">$</span><span class="va">surface</span><span class="op">$</span><span class="va">k2</span><span class="op">)</span><span class="op">)</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>fc <span class="op">=</span> <span class="va">cfg</span><span class="op">$</span><span class="va">fc</span>, cmax <span class="op">=</span> <span class="va">cfg</span><span class="op">$</span><span class="va">distribution</span><span class="op">$</span><span class="va">cmax</span>, kg <span class="op">=</span> <span class="va">cfg</span><span class="op">$</span><span class="va">recharge</span><span class="op">$</span><span class="va">kg</span>,</span>
-<span>      k_fast <span class="op">=</span> <span class="va">k</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>, k_slow <span class="op">=</span> <span class="va">k</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span><span class="op">)</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>fc <span class="op">=</span> <span class="va">cfg</span><span class="op">$</span><span class="va">fc</span>, cmax <span class="op">=</span> <span class="va">cfg</span><span class="op">$</span><span class="va">distribution</span><span class="op">$</span><span class="va">cmax</span>, kg <span class="op">=</span> <span class="va">cfg</span><span class="op">$</span><span class="va">recharge</span><span class="op">$</span><span class="va">kg</span>, k_fast <span class="op">=</span> <span class="va">k</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
+<span>      k_slow <span class="op">=</span> <span class="va">k</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span><span class="op">)</span></span>
 <span>  <span class="op">}</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>basin <span class="op">=</span> <span class="va">r</span><span class="op">$</span><span class="va">id</span>, parameter <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="fu">value</span><span class="op">(</span><span class="va">truth</span><span class="op">)</span><span class="op">)</span>, truth <span class="op">=</span> <span class="fu">value</span><span class="op">(</span><span class="va">truth</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>basin <span class="op">=</span> <span class="va">id</span>, parameter <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="fu">value</span><span class="op">(</span><span class="va">truths</span><span class="op">[[</span><span class="va">id</span><span class="op">]</span><span class="op">]</span><span class="op">)</span><span class="op">)</span>, truth <span class="op">=</span> <span class="fu">value</span><span class="op">(</span><span class="va">truths</span><span class="op">[[</span><span class="va">id</span><span class="op">]</span><span class="op">]</span><span class="op">)</span>,</span>
 <span>             fitted <span class="op">=</span> <span class="fu">value</span><span class="op">(</span><span class="va">fitted</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span>mfrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">5</span><span class="op">)</span>, mar <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">4</span>, <span class="fl">4</span>, <span class="fl">2</span>, <span class="fl">0.5</span><span class="op">)</span>, mgp <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2.2</span>, <span class="fl">0.7</span>, <span class="fl">0</span><span class="op">)</span><span class="op">)</span></span>
@@ -339,74 +466,109 @@ faster and the slower of the pair.</p>
 <span>  <span class="fu"><a href="https://rdrr.io/r/graphics/abline.html" class="external-link">abline</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">1</span>, col <span class="op">=</span> <span class="va">pal</span><span class="op">[</span><span class="fl">7</span><span class="op">]</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
 <div class="figure">
-<img src="many-catchments_files/figure-html/recovery-1.png" class="r-plt" alt="Fitted against true parameter values, each basin a point. Points on the line are recovered exactly." width="880"><p class="caption">
-Fitted against true parameter values, each basin a point. Points on the
-line are recovered exactly.
+<img src="many-catchments_files/figure-html/recovery-1.png" class="r-plt" alt="Fitted against true values, one point per catchment. Points on the line are exact." width="880"><p class="caption">
+Fitted against true values, one point per catchment. Points on the line
+are exact.
 </p>
 </div>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">pairs</span><span class="op">$</span><span class="va">error</span> <span class="op">&lt;-</span> <span class="va">pairs</span><span class="op">$</span><span class="va">fitted</span> <span class="op">/</span> <span class="va">pairs</span><span class="op">$</span><span class="va">truth</span> <span class="op">-</span> <span class="fl">1</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/stats/aggregate.html" class="external-link">aggregate</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span>median_abs_error <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">error</span><span class="op">)</span><span class="op">)</span> <span class="op">~</span> <span class="va">parameter</span>, data <span class="op">=</span> <span class="va">pairs</span>,</span>
-<span>          FUN <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt;   parameter median_abs_error</span></span>
-<span><span class="co">#&gt; 1      cmax            0.040</span></span>
-<span><span class="co">#&gt; 2        fc            0.001</span></span>
-<span><span class="co">#&gt; 3    k_fast            0.061</span></span>
-<span><span class="co">#&gt; 4    k_slow            0.050</span></span>
-<span><span class="co">#&gt; 5        kg            0.010</span></span></code></pre></div>
-<p>The rainfall factor and the recharge constant come back almost
-exactly: they control the water balance and the baseflow that every week
-of record shows. The soil capacity comes back well except in one basin,
-where a large store that two autumn months never fill leaves the data
-little to say about its size. The surface time constants are recovered
-in most basins, but in one the pair trades off, the fast store fitted
-slower and the slow store faster, giving much the same hydrographs.</p>
-<p>The lesson for real catchments, where the truth is unknown, is that
-an excellent fit does not prove the parameters are right. Longer records
-that include a dry summer and a wet winter, the <a href="calibration-log.html">parameter sensitivity</a> in each project’s
-report, and a <a href="calibration.html">staged calibration</a> that
-fits the water balance on years of daily data all help. Parameters
-matter whenever the model is used outside the conditions it was
-calibrated on.</p>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">pairs</span><span class="op">$</span><span class="va">error</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">pairs</span><span class="op">$</span><span class="va">fitted</span> <span class="op">/</span> <span class="va">pairs</span><span class="op">$</span><span class="va">truth</span> <span class="op">-</span> <span class="fl">1</span><span class="op">)</span></span>
+<span><span class="va">typical</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/aggregate.html" class="external-link">aggregate</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span>typical_error <span class="op">=</span> <span class="va">error</span><span class="op">)</span> <span class="op">~</span> <span class="va">parameter</span>, data <span class="op">=</span> <span class="va">pairs</span>,</span>
+<span>                     FUN <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">typical</span></span>
+<span><span class="co">#&gt;   parameter typical_error</span></span>
+<span><span class="co">#&gt; 1      cmax         0.015</span></span>
+<span><span class="co">#&gt; 2        fc         0.002</span></span>
+<span><span class="co">#&gt; 3    k_fast         0.142</span></span>
+<span><span class="co">#&gt; 4    k_slow         0.131</span></span>
+<span><span class="co">#&gt; 5        kg         0.004</span></span>
+<span><span class="va">best</span> <span class="op">&lt;-</span> <span class="va">typical</span><span class="op">$</span><span class="va">parameter</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="va">typical</span><span class="op">$</span><span class="va">typical_error</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
+<p>The typical error is the middle value across catchments, as a
+fraction: 0.01 means 1 per cent out. Here fc and kg come back almost
+exactly: they control how much water there is and how the river recedes,
+which every week of record shows. k_fast and k_slow are the furthest
+out, typically about 14 per cent, partly because this example stops each
+search after 25 steps, before most of them had finished. In other cases
+a parameter is badly off even when the fit is excellent, because the
+data hold little information about it: the size of a soil store that two
+autumn months never fill, for example.</p>
+<p>The lesson for real catchments, where the truth is unknown: a good
+score does not prove the parameters are right. Longer records, the
+parameter sensitivity plots in each catchment’s report, and <a href="calibration.html">staged calibration</a> all help.</p>
+</div>
 </div>
 <div class="section level2">
-<h2 id="review-at-scale">Review at scale<a class="anchor" aria-label="anchor" href="#review-at-scale"></a>
+<h2 id="checking-the-work">Checking the work<a class="anchor" aria-label="anchor" href="#checking-the-work"></a>
 </h2>
-<p>A Steward reviewing sixty basins starts from the summary table,
-checks the integrity of every project, and reads the report of each
-basin in the lower tail.</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">integrity</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">folders</span>, <span class="kw">function</span><span class="op">(</span><span class="va">f</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="fu"><a href="../reference/verify_project.html">verify_project</a></span><span class="op">(</span><span class="va">f</span><span class="op">)</span><span class="op">$</span><span class="va">ok</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/logical.html" class="external-link">logical</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span>intact <span class="op">=</span> <span class="va">integrity</span><span class="op">)</span></span>
+<p>Every catchment’s record can be checked for tampering, and reviewed
+and signed off like any other calibration (see <a href="calibration-log.html">Logging a manual calibration</a>). Start the
+review with the worst performers:</p>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">folders</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">results</span>, <span class="va">table</span><span class="op">$</span><span class="va">project</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span>intact <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">folders</span>, <span class="kw">function</span><span class="op">(</span><span class="va">f</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="fu"><a href="../reference/verify_project.html">verify_project</a></span><span class="op">(</span><span class="va">f</span><span class="op">)</span><span class="op">$</span><span class="va">ok</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/logical.html" class="external-link">logical</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; intact</span></span>
 <span><span class="co">#&gt; TRUE </span></span>
-<span><span class="co">#&gt;    7</span></span></code></pre></div>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">worst</span> <span class="op">&lt;-</span> <span class="va">summary</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="va">validation_score</span><span class="op">)</span><span class="op">]</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">]</span></span>
-<span><span class="kw">for</span> <span class="op">(</span><span class="va">f</span> <span class="kw">in</span> <span class="va">worst</span><span class="op">$</span><span class="va">path</span><span class="op">)</span> <span class="fu"><a href="../reference/build_report.html">build_report</a></span><span class="op">(</span><span class="va">f</span><span class="op">)</span></span></code></pre></div>
-<p>Every project can then be signed off one by one, as in <a href="calibration-log.html">Logging a manual calibration</a>. A batch
-protocol does not remove the Steward; it lets them spend their time on
-the basins that need it.</p>
+<span><span class="co">#&gt;    8</span></span></code></pre></div>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">worst</span> <span class="op">&lt;-</span> <span class="va">table</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="va">validation_score</span><span class="op">)</span><span class="op">]</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">]</span></span>
+<span><span class="kw">for</span> <span class="op">(</span><span class="va">f</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">results</span>, <span class="va">worst</span><span class="op">$</span><span class="va">project</span><span class="op">)</span><span class="op">)</span> <span class="fu"><a href="../reference/build_report.html">build_report</a></span><span class="op">(</span><span class="va">f</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="the-full-scale-recipe">The full-scale recipe<a class="anchor" aria-label="anchor" href="#the-full-scale-recipe"></a>
+<h2 id="summary">Summary<a class="anchor" aria-label="anchor" href="#summary"></a>
 </h2>
-<p>For 60 basins with 29 years at 15 minutes, the shape is the same;
-only the data loading and the budget change. One run of 29 years at 15
-minutes takes about a second with the compiled engine (<a href="../performance.html">performance guide</a>), so 60 basins of 20
-starts at roughly 1,500 runs each take about 500 hours of computing:
-about eight hours on 64 cores. Staged calibration can cut that several
-times over.</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">load_basin</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">id</span>, <span class="va">data_root</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="va">forcing</span> <span class="op">&lt;-</span> <span class="fu">data.table</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/data.table/man/fread.html" class="external-link">fread</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">data_root</span>, <span class="va">id</span>, <span class="st">"forcing.csv"</span><span class="op">)</span><span class="op">)</span></span>
-<span>  <span class="va">flow</span> <span class="op">&lt;-</span> <span class="fu">data.table</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/data.table/man/fread.html" class="external-link">fread</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">data_root</span>, <span class="va">id</span>, <span class="st">"flow.csv"</span><span class="op">)</span><span class="op">)</span></span>
-<span>  <span class="va">config</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_pdm_config.html">read_pdm_config</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">data_root</span>, <span class="va">id</span>, <span class="st">"config.yml"</span><span class="op">)</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>id <span class="op">=</span> <span class="va">id</span>, forcing <span class="op">=</span> <span class="va">forcing</span>, observed <span class="op">=</span> <span class="va">flow</span><span class="op">$</span><span class="va">q_m3s</span>, truth <span class="op">=</span> <span class="va">config</span><span class="op">)</span></span>
-<span><span class="op">}</span></span>
-<span><span class="va">ids</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.files.html" class="external-link">list.dirs</a></span><span class="op">(</span><span class="st">"basins"</span>, full.names <span class="op">=</span> <span class="cn">FALSE</span>, recursive <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
-<span><span class="va">basins</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">ids</span>, <span class="va">load_basin</span>, data_root <span class="op">=</span> <span class="st">"basins"</span><span class="op">)</span></span>
-<span><span class="co"># calibrate_basin() as above, with starts = 20, the real windows and control = list(maxit = 200)</span></span></code></pre></div>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th>Task</th>
+<th>How</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>Prepare</td>
+<td>One folder per catchment: <code>forcing.csv</code>,
+<code>flow.csv</code>, <code>basin.yml</code>
+</td>
+</tr>
+<tr class="even">
+<td>Estimate the time</td>
+<td>Time one run; multiply by catchments, starts and about 1,500 runs
+per calibration</td>
+</tr>
+<tr class="odd">
+<td>Run</td>
+<td><code>calibrate_batch(basins, results, starts = , cores = )</code></td>
+</tr>
+<tr class="even">
+<td>Check progress</td>
+<td>
+<code>batch_status(results)</code> from another session</td>
+</tr>
+<tr class="odd">
+<td>After a crash or restart</td>
+<td>Run the same command again</td>
+</tr>
+<tr class="even">
+<td>Fix a failure</td>
+<td>Correct the data, then
+<code>calibrate_batch(..., only = "ID")</code>
+</td>
+</tr>
+<tr class="odd">
+<td>Collect</td>
+<td><code>batch_results(results)</code></td>
+</tr>
+<tr class="even">
+<td>Review</td>
+<td>
+<code><a href="../reference/verify_project.html">verify_project()</a></code>, <code><a href="../reference/build_report.html">build_report()</a></code> on the
+worst first, then sign off</td>
+</tr>
+</tbody>
+</table>
+<p>For many model structures in each catchment rather than one, see <a href="choosing-structure.html">Choosing a model structure</a>.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

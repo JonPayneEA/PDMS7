@@ -1,5 +1,8 @@
 # pdmS7 (development version)
 
+- "Calibrating many catchments" is rewritten as a plain-English, step-by-step guide to
+  `calibrate_batch()`, run live with an interruption and a failure. "Automatic calibration"
+  is rewritten in plain English.
 - New `calibrate_batch()` runs one calibration protocol on every basin in a folder (each
   with `forcing.csv`, `flow.csv` and `basin.yml`), giving each basin its own calibration-log
   project, in parallel with `cores`. It can be stopped and restarted at any point: each

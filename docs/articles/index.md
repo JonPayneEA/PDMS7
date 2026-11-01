@@ -20,8 +20,8 @@
 
 - [Calibration: multi-start, budgets and staged
   calibration](https://jonpayneea.github.io/PDMS7/articles/calibration.md):
-- [Automatic calibration: bounds, search scales, optimisers and
-  objectives](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.md):
+- [Automatic calibration,
+  explained](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.md):
 - [Scoring a simulation: from NSE to POD, FAR and
   CSI](https://jonpayneea.github.io/PDMS7/articles/scoring.md):
 - [Choosing a model
