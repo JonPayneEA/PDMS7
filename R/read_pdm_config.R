@@ -58,3 +58,28 @@ read_pdm_config <- function(path) {
 #' @references Moore (2007), doi:10.5194/hess-11-483-2007.
 #' @export
 load_pdm_model <- function(path) pdm_from_config(read_pdm_config(path))
+
+#' Write a PDM configuration to a YAML file
+#'
+#' Writes a configuration list so that [read_pdm_config()] reads back exactly the same
+#' numbers. `yaml::write_yaml()` rounds to seven significant figures by default, which can
+#' change a calibrated model; this function writes each number with the fewest digits that
+#' reproduce it exactly.
+#'
+#' @param config A configuration list accepted by [pdm_from_config()].
+#' @param path File to write.
+#' @return `path`, invisibly.
+#' @examples
+#' path <- tempfile(fileext = ".yml")
+#' config <- pdm_presets("standard")
+#' config$fc <- 1 / 3
+#' write_pdm_config(config, path)
+#' identical(read_pdm_config(path)$fc, 1 / 3)
+#' @export
+write_pdm_config <- function(config, path) {
+  pdm_from_config(config)
+  .check(is.character(path) && length(path) == 1L && !is.na(path), "path must be a file path")
+  text <- yaml::as.yaml(.yaml_ready(config))
+  writeBin(charToRaw(enc2utf8(paste0("# pdmS7 configuration\n", text))), path)
+  invisible(path)
+}

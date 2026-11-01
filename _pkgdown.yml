@@ -38,12 +38,16 @@ navbar:
       aria-label: GitHub
 
 articles:
+- title: Getting started
+  navbar: Getting started
+  contents:
+  - example-workflow
 - title: How the model works
   navbar: How the model works
   contents:
   - pdm-explained
   - snowpack-explained
-  - example-workflow
+  - model-equations
 - title: Model options
   navbar: Model options
   contents:
@@ -79,6 +83,7 @@ reference:
   - pdm_presets
   - pdm_from_config
   - read_pdm_config
+  - write_pdm_config
   - load_pdm_model
   - parameter_catalog
   - FlodePdmModel

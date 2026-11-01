@@ -2,6 +2,20 @@
 
 ## pdmS7 (development version)
 
+- The introductory articles are rewritten in plain English with figures
+  of the model running: “How the PDM works” (buckets, dry and wet
+  ground, the saturated area, the two paths to the river, the water
+  balance, and what each setting does), “How the snow model works” (a
+  winter, rain on snow, snow cover, settings, and snow with the PDM) and
+  “Your first model run” (from data files to a calibrated, saved model).
+  Each ends with a short equations appendix; the new “Model equations”
+  page holds the full reference.
+- New
+  [`write_pdm_config()`](https://jonpayneea.github.io/PDMS7/reference/write_pdm_config.md)
+  writes a configuration that
+  [`read_pdm_config()`](https://jonpayneea.github.io/PDMS7/reference/read_pdm_config.md)
+  reads back exactly; general YAML writers round numbers to seven
+  significant figures.
 - “Calibrating many catchments” is rewritten as a plain-English,
   step-by-step guide to
   [`calibrate_batch()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md),

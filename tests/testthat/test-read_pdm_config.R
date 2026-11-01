@@ -50,3 +50,18 @@ test_that(
     )
   }
 )
+
+test_that("write_pdm_config round-trips every number exactly", {
+  path <- tempfile(fileext = ".yml")
+  on.exit(unlink(path))
+  config <- pdm_presets("standard")
+  config$fc <- 1 / 3
+  config$surface$k1 <- 2.000000123456789
+  config$groundwater$kb <- 12345.678901234
+  write_pdm_config(config, path)
+  back <- read_pdm_config(path)
+  expect_identical(back$fc, config$fc)
+  expect_identical(back$surface$k1, config$surface$k1)
+  expect_identical(pdm_fingerprint(back), pdm_fingerprint(config))
+  expect_error(write_pdm_config(list(nope = 1), path), "unknown")
+})

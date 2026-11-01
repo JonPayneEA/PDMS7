@@ -1,248 +1,219 @@
-# PDM explained: from rainfall to river flow
+# How the PDM works
 
-## The idea in plain English
+The Probability Distributed Model, or PDM, turns rainfall into river
+flow. It was developed by Bob Moore at the Institute of Hydrology and is
+widely used for flood forecasting in the UK. This article explains how
+it works in plain terms, one idea at a time, with pictures of the model
+running. The equations are in an appendix at the end, and in full on the
+[Model
+equations](https://jonpayneea.github.io/PDMS7/articles/model-equations.md)
+page.
 
-PDM treats a catchment as many small soil stores with different
-capacities. Shallow stores fill first. As rain continues, more of the
-catchment becomes saturated and produces runoff. The model then delays
-that water through fast and slow routing stores before reporting river
-flow.
+## The idea in one picture
 
-It does **not** map individual fields or hillslopes. A probability
-distribution describes how storage capacity varies across the catchment.
-The S7 components let you exchange that distribution, the recharge rule
-and the routing rule without rewriting the simulation.
+![The path water takes through the
+model.](pdm-explained_files/figure-html/diagram-1.png)
 
-![Default pathway: soil runoff feeds fast routing; recharge feeds
-groundwater. Split recharge instead divides runoff between both
-paths.](pdm-explained_files/figure-html/pdm-diagram-1.png)
+The path water takes through the model.
 
-Default pathway: soil runoff feeds fast routing; recharge feeds
-groundwater. Split recharge instead divides runoff between both paths.
+Rain falls on the soil. Some evaporates. Some soaks in and slowly drains
+down to groundwater. Where the soil is already full, the rain cannot
+soak in and runs off quickly over or near the surface. The quick water
+reaches the river within hours; the groundwater seeps out over days and
+weeks. The river flow is the sum of the two.
 
-## Units and symbols
+Everything else in the model is detail about *how much* goes each way,
+and *how fast*.
 
-| Symbol             | Meaning                                                               | Unit             |
-|--------------------|-----------------------------------------------------------------------|------------------|
-| $p$, $e$, $d$, $v$ | Rain, actual evaporation, recharge and runoff **depths per interval** | mm               |
-| $s$                | Catchment-average soil water                                          | mm               |
-| $c$                | A local store’s capacity                                              | mm               |
-| $C$                | Common filling level used by the capacity distribution                | mm               |
-| $F(c)$             | Fraction of catchment with capacity no greater than $c$               | fraction         |
-| $X$, $u$, $q$      | Routing storage, inflow rate and outflow rate                         | mm; mm/h; mm/h   |
-| $\Delta t$         | Model interval                                                        | hours internally |
-| $A$                | Catchment area                                                        | km²              |
+## A catchment is many buckets of different sizes
 
-[`sim_pdm()`](https://jonpayneea.github.io/PDMS7/reference/sim_pdm.md)
-takes integer **minutes**, while component functions take hours. Rain
-and PET are interval totals, not mm/hour rates. `qsim_cms` is an
-interval average in m³/s; `qsim_end_cms` is flow at the interval end.
-Use the series that matches the observations. A factor or coefficient
-calibrated hourly is not automatically a daily coefficient.
+The soil in a real catchment is not the same everywhere. A thin soil on
+a hilltop fills with a few millimetres of rain; a deep soil in a valley
+can hold a hundred. The PDM does not try to map where each soil is.
+Instead it imagines the catchment as a great many small buckets of
+different sizes, and describes only how many buckets there are of each
+size.
 
-## 1. How the soil distribution works
+![Thirty buckets standing for a catchment's soils, sorted by size. Rain
+fills them all to the same level; the dark buckets are full, so any more
+rain on them runs off. Left: after a little rain. Right: after a
+lot.](pdm-explained_files/figure-html/buckets-1.png)
 
-For a filling level $C$, the mean water stored across the catchment is
+Thirty buckets standing for a catchment’s soils, sorted by size. Rain
+fills them all to the same level; the dark buckets are full, so any more
+rain on them runs off. Left: after a little rain. Right: after a lot.
 
-$$s(C) = \int_{0}^{C}\left\lbrack 1 - F(c) \right\rbrack\, dc,\qquad s_{\max} = E\lbrack c\rbrack.$$
+Two things follow from this simple picture:
 
-In words: integrate the fraction of stores that can still hold water at
-each depth.
-[`capacity_mean()`](https://jonpayneea.github.io/PDMS7/reference/capacity_mean.md)
-returns $s_{\max}$, **not** the largest local capacity.
-[`storage_from_capacity()`](https://jonpayneea.github.io/PDMS7/reference/storage_from_capacity.md)
-evaluates $s(C)$;
-[`capacity_from_storage()`](https://jonpayneea.github.io/PDMS7/reference/capacity_from_storage.md)
-reverses it.
-[`capacity_cdf()`](https://jonpayneea.github.io/PDMS7/reference/capacity_cdf.md)
-returns $F(C)$, the saturated area fraction.
+- **The same storm does different things on dry and wet ground.** When
+  the soil is dry, few buckets are full and most rain soaks in. When it
+  is wet, many are full and much of the rain runs straight off.
+- **The share of ground that is “full” grows during a storm.** The model
+  calls this the *saturated fraction*: the share of the catchment where
+  new rain runs off.
 
-### Five configurable capacity families
+Three numbers describe the buckets: the size of the largest (`cmax`),
+the size of the smallest (`cmin`, usually zero), and the shape `b`,
+which says whether most buckets are small or most are large. The Pareto
+distribution shown here is the standard choice; four others are
+described in [Choosing model
+components](https://jonpayneea.github.io/PDMS7/articles/model-options.md).
 
-Outside bounded supports, CDFs are zero below the lower limit and one
-above the upper limit. Let $a = c_{\min}$, $z = c_{\max}$ and
-$w = z - a$.
+## The same storm on dry and wet ground
 
-| Family / configuration type         | CDF inside its support                                                      | Mean capacity                                   |
-|-------------------------------------|-----------------------------------------------------------------------------|-------------------------------------------------|
-| Pareto / `pareto`                   | $1 - \left\lbrack (z - c)/w \right\rbrack^{b}$                              | $a + w/(b + 1)$                                 |
-| Rectangular / `rectangular`         | $(c - a)/w$                                                                 | $(a + z)/2$                                     |
-| Symmetric triangular / `triangular` | $2(c - a)^{2}/w^{2}$ below midpoint; $1 - 2(z - c)^{2}/w^{2}$ above         | $(a + z)/2$                                     |
-| Exponential / `exponential`         | $1 - \exp( - c/\mu)$ for $c \geq 0$                                         | $\mu$                                           |
-| Lognormal / `lognormal`             | $\Phi\left( \left( \log c - \mu_{L} \right)/\sigma_{L} \right)$ for $c > 0$ | $\exp\left( \mu_{L} + \sigma_{L}^{2}/2 \right)$ |
+Here one storm, 20 mm over six hours, falls on the same catchment three
+times: once when the soil is 20 per cent full, once at half full, and
+once at 85 per cent full.
 
-$\Phi$ is the standard normal CDF. Pareto with `b=0` is a point mass at
-`cmax`, not an ordinary density;
-[`capacity_pdf()`](https://jonpayneea.github.io/PDMS7/reference/capacity_pdf.md)
-deliberately rejects that case. Infinite filling level is a valid
-saturated limit for unbounded families. The implementation corrects
-apparent normalization/printing errors in the paper’s Appendix A; see
-`docs/source-notes.md` in the full project.
+![The same 20 mm storm (shaded) on dry, middling and wet soil. The
+wetter the soil, the more of the storm runs off and the higher the
+flood.](pdm-explained_files/figure-html/dry-wet-1.png)
 
-``` r
-soil <- FlodeParetoCapacity(cmin = 0, cmax = 140, b = 0.4)
-capacity_mean(soil) # 100 mm, not 140 mm
-#> [1] 100
-storage_from_capacity(soil, c(0, 50, 100, 140))
-#> [1]   0.00000  46.12835  82.68969 100.00000
-```
+The same 20 mm storm (shaded) on dry, middling and wet soil. The wetter
+the soil, the more of the storm runs off and the higher the flood.
 
-![For the example Pareto distribution, mean soil storage grows more
-slowly than the common filling level as more stores
-saturate.](pdm-explained_files/figure-html/capacity-figure-1.png)
+On dry ground under 2 mm of the 20 runs off; on wet ground over a third
+does. This is the heart of the PDM, and why the state of the soil before
+a storm matters so much to a flood forecast.
 
-For the example Pareto distribution, mean soil storage grows more slowly
-than the common filling level as more stores saturate.
+## Through a wet spell
 
-## 2. Evaporation, recharge and runoff
+Over two months of showers and storms, the soil wets up and dries out,
+and the saturated fraction rises and falls with it.
 
-Rain is first multiplied by `fc`. With current soil storage $s$ and PET
-depth $e_{p}$, the requested actual evaporation is
+![Two months of hourly rain (top), the water in the soil (middle) and
+the saturated fraction (bottom). Rain wets the soil and spreads the
+saturated area; dry days let evaporation and drainage pull both back
+down.](pdm-explained_files/figure-html/season-1.png)
 
-$$e_{req} = e_{p}\left\lbrack 1 - \left( 1 - \frac{s}{s_{\max}} \right)^{b_{e}} \right\rbrack.$$
+Two months of hourly rain (top), the water in the soil (middle) and the
+saturated fraction (bottom). Rain wets the soil and spreads the
+saturated area; dry days let evaporation and drainage pull both back
+down.
 
-Wet soil supplies more of the potential demand. Requests are evaluated
-at the start of the interval. To prevent overdrawing the store, this
-implementation allocates available water to evaporation first and
-recharge second:
+Between storms the soil loses water two ways: **evaporation**, which
+takes more when the soil is wetter, and **drainage** down to groundwater
+(called *recharge*), which also runs faster when the soil is fuller.
+Both are why the curves sag through the long dry spell in late January,
+and recover quickly when rain returns.
 
-$$p = f_{c}p_{input},\quad e = \min\left( e_{req},s + p \right),\quad d = \min\left( d_{req},\max(0,s + p - e) \right).$$
+## Two paths to the river
 
-The remaining net depth is $n = p - e - d$. When $n > 0$:
+Water that runs off goes through a **fast store**: in the standard
+model, two small reservoirs one after the other, which smooth and delay
+the runoff by a few hours. Water that drains to groundwater goes through
+a **slow store**, which releases it over days and weeks. The river flow
+is the two added together.
 
-$$C = s^{- 1}\left( s_{old} \right),\quad s_{new} = s(C + n),\quad v = n - \left( s_{new} - s_{old} \right).$$
+![River flow split into its two parts. The quick surface part makes the
+peaks; the slow groundwater part makes the steady flow between them and
+the long recession.](pdm-explained_files/figure-html/paths-1.png)
 
-Whatever cannot increase storage becomes runoff. For $n \leq 0$, storage
-decreases and runoff is zero. The complete model’s water-limiting rules
-prevent negative storage; standalone
-[`soil_step()`](https://jonpayneea.github.io/PDMS7/reference/soil_step.md)
-clips a requested excessive deficit at zero, so do not interpret an
-impossible standalone withdrawal as an actual flux.
+River flow split into its two parts. The quick surface part makes the
+peaks; the slow groundwater part makes the steady flow between them and
+the long recession.
 
-``` r
-soil_step(soil, storage = 50, net_depth = 20)
-#> $storage
-#> [1] 65.59771
-#> 
-#> $runoff
-#> [1] 4.402291
-```
+How fast each store empties is set by its *time constant*: how long,
+roughly, water stays in it. The fast stores have time constants of hours
+(`k1`, `k2`); the groundwater store’s constant (`kb`) is much longer.
 
-### Three recharge choices
+## Where the water went
 
-**Standard:** water drains only above threshold $s_{t}$:
+Over the two months, every millimetre of rain is accounted for:
 
-$$d_{req} = \frac{\max\left( 0,s - s_{t} \right)^{b_{g}}}{k_{g}}\Delta t.$$
+![Where the two months' rain went, in millimetres over the
+catchment.](pdm-explained_files/figure-html/balance-1.png)
 
-`kg` has units consistent with the exponent: h·mm$^{b_{g} - 1}$, not
-always hours.
+Where the two months’ rain went, in millimetres over the catchment.
 
-**Demand:** groundwater deficit controls soil drainage. Let $X_{\max}$
-be the groundwater storage giving `qsat`, and clip
-$g = \left( X_{\max} - X \right)/X_{\max}$ to \[0,1\]. Then, with
-$d_{sat} = q_{sat}\Delta t$,
+    #>        Rain Evaporation   Fast flow   Slow flow      Stored 
+    #>       228.1        32.7        23.4       142.3        29.8
 
-$$d_{req} = \left\lbrack d_{sat} + \left( s_{\max} - d_{sat} \right)\min\left( 1,(g/\alpha)^{\beta} \right) \right\rbrack\frac{s}{s_{\max}}.$$
+What is not evaporated or carried to the river stays in the stores.
+pdmS7 checks this balance at every time step; it closes to rounding
+error.
 
-This is an interval-depth rule: it is timestep-sensitive and requires
-$q_{sat}\Delta t \leq s_{\max}$. It also requires a single groundwater
-store with a positive implied $X_{\max}$; it cannot use the two-store
-cascade.
+## What each setting does
 
-**Split:** no separate soil drainage. Divide generated runoff into fast
-$\alpha v$ and slow $(1 - \alpha)v$ inputs. This changes the diagram’s
-connections, not just a coefficient in the standard drainage equation.
+Calibrating a PDM by hand means knowing which setting changes which part
+of the hydrograph. Each panel below changes one setting, holding the
+others fixed, over the same week of the wet spell.
 
-## 3. Routing and the reported discharge
+![One week of flow as each setting is lowered (light), left at its value
+(dark) and raised
+(orange).](pdm-explained_files/figure-html/knobs-1.png)
 
-Routing answers “when does generated water reach the outlet?”
+One week of flow as each setting is lowered (light), left at its value
+(dark) and raised (orange).
 
-$$\frac{dX}{dt} = u - q(X).$$
+| Setting    | What it changes                                                                                                                      | Raise it when the model is…              |
+|------------|--------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------|
+| `fc`       | All rain, before anything else. The whole hydrograph scales with it                                                                  | Too dry overall                          |
+| `cmax`     | How much the soil can hold. Larger means less runoff and more evaporation                                                            | Too flashy, peaks too high               |
+| `b`        | Whether the catchment has mostly large or mostly small buckets. Larger `b` means more small buckets, so more runoff and higher peaks | Peaks too low for the size of the storms |
+| `kg`       | How slowly soil drains to groundwater. Larger means more surface runoff, less baseflow                                               | Peaks too low and baseflow too high      |
+| `k1`, `k2` | How quickly runoff reaches the river. Larger means later, lower, broader peaks                                                       | Peaks too early or too sharp             |
+| `kb`       | How slowly groundwater empties. Larger means flatter, longer recessions                                                              | Recessions too steep                     |
+| `td`       | A pure delay before water reaches the outlet                                                                                         | Everything is early by a fixed time      |
 
-| Routing option | Flow law / structure                                                   | Main configuration                |
-|----------------|------------------------------------------------------------------------|-----------------------------------|
-| Linear         | $q = X/k_{b}$                                                          | `linear(kb)`                      |
-| Quadratic      | $q = X^{2}/k_{b}$                                                      | `quadratic(kb)`                   |
-| Cubic          | $q = X^{3}/k_{b}$                                                      | `cubic(kb, solver)`               |
-| General power  | $q = kX^{m}$                                                           | `power(k, m, solver, rtol, atol)` |
-| Cascade        | $dX_{1}/dt = u - X_{1}/k_{1}$; $dX_{2}/dt = X_{1}/k_{1} - X_{2}/k_{2}$ | `cascade(k1, k2)`                 |
-| Exponential    | $q = \exp(\gamma + aX)$                                                | `exponential(a, gamma)`           |
+The [scorecard](https://jonpayneea.github.io/PDMS7/articles/scoring.md)
+points to the right setting: a volume error suggests `fc`, peaks too
+small suggest the fast stores or `kg`, and a poor low-flow score
+suggests `kb`.
 
-Here the notation `linear(kb)` denotes a configuration choice, not an R
-function call; the constructor is `linear_routing(kb)`. The exponential
-model’s $X$ is a **signed log-storage coordinate**, not an ordinary
-nonnegative tank. Power routing uses exact solutions where available and
-adaptive integration otherwise; the cubic `smith` option reproduces the
-report’s approximate recurrence.
-[`route_step()`](https://jonpayneea.github.io/PDMS7/reference/route_step.md)
-returns a new state, discharged depth and both mean and endpoint rates.
-Inputs are treated as constant rates during each routing interval.
+## The equations, briefly
 
-After a common outlet delay `td`, conversion to m³/s is
+In this appendix, depths are millimetres over the catchment and
+$\Delta t$ is the time step in hours. The full set, with Moore’s (2007)
+equation numbers and every detail of the implementation, is on the
+[Model
+equations](https://jonpayneea.github.io/PDMS7/articles/model-equations.md)
+page.
 
-$$Q_{mean} = \frac{A}{3.6}\frac{V_{fast} + V_{slow}}{\Delta t} + q_{c}.$$
+**Buckets.** If $F(c)$ is the share of the catchment whose bucket holds
+no more than $c$ mm, and every bucket is filled to the same level $C$,
+the soil water averaged over the catchment is
 
-Fractional delays split water conservatively between neighbouring
-intervals. Delay queues are part of the stored restart state. `qc` is an
-external signed outlet adjustment, not a withdrawal from the model
-stores.
+$$s(C) = \int_{0}^{C}\left\lbrack 1 - F(c) \right\rbrack\, dc.$$
 
-## Function map and a short run
+For the Pareto distribution,
+$F(c) = 1 - \left( 1 - c/c_{\max} \right)^{b}$, and the saturated
+fraction is $F(C)$.
 
-| Task              | Public functions                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-|-------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Configure         | [`pdm_presets()`](https://jonpayneea.github.io/PDMS7/reference/pdm_presets.md), [`parameter_catalog()`](https://jonpayneea.github.io/PDMS7/reference/parameter_catalog.md), [`read_pdm_config()`](https://jonpayneea.github.io/PDMS7/reference/read_pdm_config.md), [`load_pdm_model()`](https://jonpayneea.github.io/PDMS7/reference/load_pdm_model.md), [`pdm_from_config()`](https://jonpayneea.github.io/PDMS7/reference/pdm_from_config.md), [`pdm_model()`](https://jonpayneea.github.io/PDMS7/reference/pdm_model.md)               |
-| Inspect soil      | [`capacity_cdf()`](https://jonpayneea.github.io/PDMS7/reference/capacity_cdf.md), [`capacity_pdf()`](https://jonpayneea.github.io/PDMS7/reference/capacity_pdf.md), [`capacity_mean()`](https://jonpayneea.github.io/PDMS7/reference/capacity_mean.md), [`storage_from_capacity()`](https://jonpayneea.github.io/PDMS7/reference/storage_from_capacity.md), [`capacity_from_storage()`](https://jonpayneea.github.io/PDMS7/reference/capacity_from_storage.md), [`soil_step()`](https://jonpayneea.github.io/PDMS7/reference/soil_step.md) |
-| Inspect pathways  | [`recharge_depth()`](https://jonpayneea.github.io/PDMS7/reference/recharge_depth.md), [`routing_flow()`](https://jonpayneea.github.io/PDMS7/reference/routing_flow.md), [`storage_for_flow()`](https://jonpayneea.github.io/PDMS7/reference/storage_for_flow.md), [`route_step()`](https://jonpayneea.github.io/PDMS7/reference/route_step.md), [`transfer_coefficients()`](https://jonpayneea.github.io/PDMS7/reference/transfer_coefficients.md)                                                                                         |
-| Run and restart   | [`initial_state()`](https://jonpayneea.github.io/PDMS7/reference/initial_state.md), [`pdm_step()`](https://jonpayneea.github.io/PDMS7/reference/pdm_step.md), [`run_pdm()`](https://jonpayneea.github.io/PDMS7/reference/run_pdm.md), [`sim_pdm()`](https://jonpayneea.github.io/PDMS7/reference/sim_pdm.md), [`spin_up()`](https://jonpayneea.github.io/PDMS7/reference/spin_up.md)                                                                                                                                                       |
-| Fit and evaluate  | [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md), [`calibrate_pdm_multi()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm_multi.md), [`pdm_objectives()`](https://jonpayneea.github.io/PDMS7/reference/pdm_objectives.md), [`pareto_front()`](https://jonpayneea.github.io/PDMS7/reference/pareto_front.md)                                                                                                                                                                                 |
-| Existing updating | [`state_updater()`](https://jonpayneea.github.io/PDMS7/reference/state_updater.md), [`correct_state()`](https://jonpayneea.github.io/PDMS7/reference/correct_state.md), [`error_updater()`](https://jonpayneea.github.io/PDMS7/reference/error_updater.md), [`fit_error_updater()`](https://jonpayneea.github.io/PDMS7/reference/fit_error_updater.md), [`update_forecast()`](https://jonpayneea.github.io/PDMS7/reference/update_forecast.md)                                                                                             |
+**Evaporation.** Actual evaporation is the potential rate $e_{p}$
+reduced as the soil dries, with $s_{\max}$ the mean bucket size:
 
-``` r
-config <- pdm_presets("standard")
-config$area_km2 <- 44
-flow <- sim_pdm(c(0, 10, 5, 0), rep(0.05, 4), config, timestep_min = 60L)
-flow[, c("qsim_cms", "soil_moisture_mm", "balance_error_mm"), with = FALSE]
-#>       qsim_cms soil_moisture_mm balance_error_mm
-#>          <num>            <num>            <num>
-#> 1: 0.002762403         47.89167     7.105427e-15
-#> 2: 0.352909552         54.39355     0.000000e+00
-#> 3: 1.776898979         56.54137     1.421085e-14
-#> 4: 3.198890757         54.15721     0.000000e+00
-attr(flow, "water_balance")
-#>     residual_mm max_abs_step_mm 
-#>    2.131628e-14    1.421085e-14
-```
+$$e = e_{p}\left\lbrack 1 - \left( 1 - s/s_{\max} \right)^{b_{e}} \right\rbrack.$$
 
-Presets other than identified paper examples are illustrative, not
-calibrated catchments.
-[`sim_pdm()`](https://jonpayneea.github.io/PDMS7/reference/sim_pdm.md)
-initializes half-full soil by default; explicit states or an adequate
-spin-up period may be needed.
-[`spin_up()`](https://jonpayneea.github.io/PDMS7/reference/spin_up.md)
-repeats forcing; it does not automatically prove convergence. Do not
-change structure/timestep while reusing a checkpoint.
+**Drainage to groundwater.** Above a threshold $s_{t}$ (usually zero),
 
-The existing updating functions alter model states or forecast errors;
-state correction needs zero outlet delay and reports added/removed
-water. They are not a river-network or ensemble-assimilation system.
-Those extensions remain future work.
+$$d = \frac{\left( s - s_{t} \right)^{b_{g}}}{k_{g}}\Delta t.$$
 
-## What the balance check does, and does not, prove
+**Runoff.** Rain left after evaporation and drainage raises the filling
+level; whatever cannot be stored runs off:
 
-The per-step residual is
+$$v = n - \left\lbrack s(C + n) - s(C) \right\rbrack.$$
 
-$$\epsilon = \text{old storage} + p - e - \text{natural outflow} - \text{new storage}.$$
+**Routing.** Each store empties at a rate set by how much it holds:
+$dX/dt = u - q(X)$, with $q = X/k$ for a linear store and
+$q = X^{3}/k_{b}$ for the standard cubic groundwater store.
 
-“Storage” includes soil, routing states and water in delay queues. A
-near-zero residual checks accounting. It does **not** establish good
-forecasts, correct forcing, a calibrated parameter set, or operational
-approval.
+**Flow.** The routed depths become flow in m³/s through the catchment
+area $A$ in km²:
+$Q = \frac{A}{3.6}\,\frac{V_{fast} + V_{slow}}{\Delta t}$.
 
-### Source
+## Further reading
 
-Moore, R. J. (2007), *The PDM rainfall-runoff model*, HESS 11, 483–499,
-[doi:10.5194/hess-11-483-2007](https://doi.org/10.5194/hess-11-483-2007).
-Equations above describe this library’s implementation; its source notes
-identify the Appendix A corrections and additional numerical
-conventions.
+- [Your first model
+  run](https://jonpayneea.github.io/PDMS7/articles/example-workflow.md)
+  puts this into practice on your own data.
+- [Choosing model
+  components](https://jonpayneea.github.io/PDMS7/articles/model-options.md)
+  compares the alternative soil stores, drainage rules and routing.
+- [Starting a
+  run](https://jonpayneea.github.io/PDMS7/articles/starting-states.md)
+  explains why the starting state matters, as the dry-and-wet example
+  above shows.
+- Moore, R. J. (2007). The PDM rainfall-runoff model. *Hydrology and
+  Earth System Sciences*, 11, 483-499.
+  [doi:10.5194/hess-11-483-2007](https://doi.org/10.5194/hess-11-483-2007).

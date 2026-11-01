@@ -33,10 +33,13 @@ the project and sign-off entry matched. Without one it is empty."></head><body>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Getting started</h6></li>
+    <li><a class="dropdown-item" href="../articles/example-workflow.html">Your first model run</a></li>
+    <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>How the model works</h6></li>
-    <li><a class="dropdown-item" href="../articles/pdm-explained.html">PDM explained: from rainfall to river flow</a></li>
-    <li><a class="dropdown-item" href="../articles/snowpack-explained.html">PACK explained: storing snow and releasing meltwater</a></li>
-    <li><a class="dropdown-item" href="../articles/example-workflow.html">Worked example: snow, flow, calibration and restart</a></li>
+    <li><a class="dropdown-item" href="../articles/pdm-explained.html">How the PDM works</a></li>
+    <li><a class="dropdown-item" href="../articles/snowpack-explained.html">How the snow model works</a></li>
+    <li><a class="dropdown-item" href="../articles/model-equations.html">Model equations</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Model options</h6></li>
     <li><a class="dropdown-item" href="../articles/model-options.html">Choosing model components</a></li>
@@ -207,13 +210,13 @@ once without stopping the run. A lock serialises writers, so a team can share on
 <span class="r-in"><span><span class="fu">read_run_log</span><span class="op">(</span><span class="va">log</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>              timestamp   user  login     tag                      fingerprint</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                 &lt;POSc&gt; &lt;lgcl&gt; &lt;char&gt;  &lt;char&gt;                           &lt;char&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1: 2026-11-01 19:06:47     NA   root example 63ffbc4eaec1be4bd83a1d7d6c2d3155</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1: 2026-11-01 19:37:10     NA   root example 63ffbc4eaec1be4bd83a1d7d6c2d3155</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                            data_md5  rows  start    end dt_hours area_km2</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                              &lt;char&gt; &lt;int&gt; &lt;lgcl&gt; &lt;lgcl&gt;    &lt;int&gt;    &lt;int&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1: ff782f33dc69b2be7e40ab367ad701a6     3     NA     NA        1        1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    engine  pdmS7      r seconds status message approval project sign_off</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    &lt;char&gt; &lt;char&gt; &lt;char&gt;   &lt;num&gt; &lt;char&gt;  &lt;char&gt;   &lt;lgcl&gt;  &lt;char&gt;   &lt;char&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1:      c  0.3.1  4.3.3   0.006     ok               NA                 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1:      c  0.3.1  4.3.3   0.011     ok               NA                 </span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

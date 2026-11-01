@@ -34,10 +34,13 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Getting started</h6></li>
+    <li><a class="dropdown-item" href="../articles/example-workflow.html">Your first model run</a></li>
+    <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>How the model works</h6></li>
-    <li><a class="dropdown-item" href="../articles/pdm-explained.html">PDM explained: from rainfall to river flow</a></li>
-    <li><a class="dropdown-item" href="../articles/snowpack-explained.html">PACK explained: storing snow and releasing meltwater</a></li>
-    <li><a class="dropdown-item" href="../articles/example-workflow.html">Worked example: snow, flow, calibration and restart</a></li>
+    <li><a class="dropdown-item" href="../articles/pdm-explained.html">How the PDM works</a></li>
+    <li><a class="dropdown-item" href="../articles/snowpack-explained.html">How the snow model works</a></li>
+    <li><a class="dropdown-item" href="../articles/model-equations.html">Model equations</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Model options</h6></li>
     <li><a class="dropdown-item" href="../articles/model-options.html">Choosing model components</a></li>
@@ -260,7 +263,7 @@ with three starting points uses roughly 1,000 to 2,000 model runs.</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>seconds_per_run <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">signif</a></span><span class="op">(</span><span class="va">one_run</span>, <span class="fl">2</span><span class="op">)</span>,</span>
 <span>  estimated_minutes_for_8 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fl">8</span> <span class="op">*</span> <span class="fl">1500</span> <span class="op">*</span> <span class="va">one_run</span> <span class="op">/</span> <span class="fl">60</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;         seconds_per_run estimated_minutes_for_8 </span></span>
-<span><span class="co">#&gt;                  0.0048                  1.0000</span></span></code></pre></div>
+<span><span class="co">#&gt;                   0.005                   1.000</span></span></code></pre></div>
 <p>For a real batch, measure on a few catchments first; see the pilot
 script in <a href="calibration.html">Calibration</a>.</p>
 </div>
@@ -281,9 +284,9 @@ may take, which parameters to leave alone.</p>
 <span><span class="va">part</span></span>
 <span><span class="co">#&gt;     basin  state     step seconds message</span></span>
 <span><span class="co">#&gt;    &lt;char&gt; &lt;char&gt;   &lt;char&gt;   &lt;num&gt;  &lt;char&gt;</span></span>
-<span><span class="co">#&gt; 1:    B01   done complete     4.2        </span></span>
-<span><span class="co">#&gt; 2:    B02   done complete     4.1        </span></span>
-<span><span class="co">#&gt; 3:    B03   done complete     5.1</span></span></code></pre></div>
+<span><span class="co">#&gt; 1:    B01   done complete     4.8        </span></span>
+<span><span class="co">#&gt; 2:    B02   done complete     4.3        </span></span>
+<span><span class="co">#&gt; 3:    B03   done complete     5.3</span></span></code></pre></div>
 <p>Suppose the computer was switched off at this point, after three
 catchments. Nothing is lost: each catchment has its own project folder
 recording exactly how far it got. Run the same command again, this time
@@ -298,11 +301,11 @@ for all of them:</p>
 <span><span class="co">#&gt; 1:    B01   done complete     0.0                                            </span></span>
 <span><span class="co">#&gt; 2:    B02   done complete     0.0                                            </span></span>
 <span><span class="co">#&gt; 3:    B03   done complete     0.0                                            </span></span>
-<span><span class="co">#&gt; 4:    B04   done complete     5.3                                            </span></span>
-<span><span class="co">#&gt; 5:    B05   done complete     4.3                                            </span></span>
+<span><span class="co">#&gt; 4:    B04   done complete     5.1                                            </span></span>
+<span><span class="co">#&gt; 5:    B05   done complete     4.4                                            </span></span>
 <span><span class="co">#&gt; 6:    B06 failed register     0.0 pet must contain finite nonnegative numbers</span></span>
-<span><span class="co">#&gt; 7:    B07   done complete     4.1                                            </span></span>
-<span><span class="co">#&gt; 8:    B08   done complete     5.0</span></span></code></pre></div>
+<span><span class="co">#&gt; 7:    B07   done complete     4.4                                            </span></span>
+<span><span class="co">#&gt; 8:    B08   done complete     5.8</span></span></code></pre></div>
 <p>The three finished catchments took a moment each: the batch read
 their records, saw every step already done, and moved on. The others ran
 in full. Each catchment’s random starting points come from its own name,
@@ -342,11 +345,11 @@ run the batch again for just that catchment:</p>
 <span><span class="co">#&gt; 1:    B01   done complete     0.0        </span></span>
 <span><span class="co">#&gt; 2:    B02   done complete     0.0        </span></span>
 <span><span class="co">#&gt; 3:    B03   done complete     0.0        </span></span>
-<span><span class="co">#&gt; 4:    B04   done complete     5.3        </span></span>
-<span><span class="co">#&gt; 5:    B05   done complete     4.3        </span></span>
-<span><span class="co">#&gt; 6:    B06   done complete     4.9        </span></span>
-<span><span class="co">#&gt; 7:    B07   done complete     4.1        </span></span>
-<span><span class="co">#&gt; 8:    B08   done complete     5.0</span></span></code></pre></div>
+<span><span class="co">#&gt; 4:    B04   done complete     5.1        </span></span>
+<span><span class="co">#&gt; 5:    B05   done complete     4.4        </span></span>
+<span><span class="co">#&gt; 6:    B06   done complete     4.7        </span></span>
+<span><span class="co">#&gt; 7:    B07   done complete     4.4        </span></span>
+<span><span class="co">#&gt; 8:    B08   done complete     5.8</span></span></code></pre></div>
 <p>The failed attempt is still on record in B06’s project, followed by
 the successful one.</p>
 </div>

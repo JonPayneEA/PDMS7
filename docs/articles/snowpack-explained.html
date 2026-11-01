@@ -5,12 +5,12 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>PACK explained: storing snow and releasing meltwater • pdmS7</title>
+<title>How the snow model works • pdmS7</title>
 <script src="../deps/jquery-3.6.1/jquery-3.6.1.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.4.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.4.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="PACK explained: storing snow and releasing meltwater">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="How the snow model works">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -34,10 +34,13 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Getting started</h6></li>
+    <li><a class="dropdown-item" href="../articles/example-workflow.html">Your first model run</a></li>
+    <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>How the model works</h6></li>
-    <li><a class="dropdown-item" href="../articles/pdm-explained.html">PDM explained: from rainfall to river flow</a></li>
-    <li><a class="dropdown-item" href="../articles/snowpack-explained.html">PACK explained: storing snow and releasing meltwater</a></li>
-    <li><a class="dropdown-item" href="../articles/example-workflow.html">Worked example: snow, flow, calibration and restart</a></li>
+    <li><a class="dropdown-item" href="../articles/pdm-explained.html">How the PDM works</a></li>
+    <li><a class="dropdown-item" href="../articles/snowpack-explained.html">How the snow model works</a></li>
+    <li><a class="dropdown-item" href="../articles/model-equations.html">Model equations</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Model options</h6></li>
     <li><a class="dropdown-item" href="../articles/model-options.html">Choosing model components</a></li>
@@ -96,7 +99,7 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
 
-      <h1>PACK explained: storing snow and releasing meltwater</h1>
+      <h1>How the snow model works</h1>
                         <h4 data-toc-skip class="author">pdmS7
 documentation</h4>
             
@@ -107,418 +110,254 @@ documentation</h4>
 
     
     
+<p>Snow upsets a rainfall-runoff model. Snow that falls today may not
+reach the river for weeks, and then arrive all at once in a thaw,
+sometimes on top of heavy rain. pdmS7 handles this with PACK, a snow
+model developed at the Institute of Hydrology for real-time forecasting.
+PACK sits in front of the PDM: it takes precipitation and temperature,
+holds back what falls as snow, and passes on water to the PDM only as it
+melts and drains.</p>
+<p>This article explains how it works in plain terms, with a winter of
+the model running. The equations are in an appendix, and in full on the
+<a href="model-equations.html">Model equations</a> page. For the PDM
+itself, see <a href="pdm-explained.html">How the PDM works</a>.</p>
 <div class="section level2">
-<h2 id="why-snow-needs-its-own-stores">Why snow needs its own stores<a class="anchor" aria-label="anchor" href="#why-snow-needs-its-own-stores"></a>
+<h2 id="the-idea-in-one-picture">The idea in one picture<a class="anchor" aria-label="anchor" href="#the-idea-in-one-picture"></a>
 </h2>
-<p>Snowfall does not immediately behave like rainfall. It can accumulate
-for days, melt later and briefly retain liquid water before draining.
-PACK represents this with a <strong>dry store</strong>
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>W</mi><annotation encoding="application/x-tex">W</annotation></semantics></math>
-(ice/snow expressed as water equivalent) and a <strong>wet
-store</strong>
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>S</mi><annotation encoding="application/x-tex">S</annotation></semantics></math>
-(liquid water inside the pack). A temperature rule partitions rain and
-snow; a second temperature rule controls melt. The model passes drainage
-and rain on bare ground to PDM as effective rainfall.</p>
 <div class="figure">
-<img src="snowpack-explained_files/figure-html/snow-diagram-1.png" class="r-plt" alt="Snow delays precipitation before it reaches PDM. Rain on the snow-free fraction bypasses the pack." width="840"><p class="caption">
-Snow delays precipitation before it reaches PDM. Rain on the snow-free
-fraction bypasses the pack.
+<img src="snowpack-explained_files/figure-html/diagram-1.png" class="r-plt" alt="Snow is held back before it reaches the PDM. Rain on bare ground goes straight through." width="880"><p class="caption">
+Snow is held back before it reaches the PDM. Rain on bare ground goes
+straight through.
 </p>
 </div>
-<p>Water equivalent is the depth of water obtained by melting the snow.
-<strong>10 mm of water equivalent is not 10 mm of snow depth.</strong>
-Stores and fluxes are averaged over the catchment area, rather than
-being local depths over snow-covered patches.</p>
+<p>The pack has two parts:</p>
+<ul>
+<li>a <strong>dry store</strong>: the snow and ice, measured as the
+depth of water it would make if melted (its <em>water equivalent</em>;
+10 mm of water equivalent is roughly 10 cm of fresh snow);</li>
+<li>a <strong>wet store</strong>: liquid water held inside the pack,
+like water in a sponge.</li>
+</ul>
+<p>Each hour, PACK asks three questions:</p>
+<ol style="list-style-type: decimal">
+<li>
+<strong>Is it snowing or raining?</strong> Below a threshold
+temperature, precipitation is snow and joins the dry store. Above it, it
+is rain.</li>
+<li>
+<strong>How much melts?</strong> Above a melt threshold, snow melts
+in proportion to how warm it is. Meltwater moves to the wet store.</li>
+<li>
+<strong>How much drains out?</strong> The wet store drains, slowly
+at first and faster once it is holding more than a small fraction of the
+pack. What drains, plus any rain on snow-free ground, goes on to the PDM
+as <em>effective rainfall</em>.</li>
+</ol>
 </div>
 <div class="section level2">
-<h2 id="the-nine-image-parameters-plus-implementation-controls">The nine image parameters, plus implementation controls<a class="anchor" aria-label="anchor" href="#the-nine-image-parameters-plus-implementation-controls"></a>
+<h2 id="a-winter">A winter<a class="anchor" aria-label="anchor" href="#a-winter"></a>
 </h2>
-<p><code><a href="../reference/pack_presets.html">pack_presets()</a></code> defaults to the supplied parameter-file
-image, not the adjacent typical-values table. The image omits time
-units. <strong>Hourly rate units are assumed, not verified</strong>, and
-must be confirmed before operational use. In particular, the wet-store
-coefficients are used directly as inverse-hour rates; there is no
-undocumented exponential conversion.</p>
+<p>Here is a winter of 75 days: mild at first, a long cold spell, then a
+gradual thaw, with one warm, wet day in the thaw.</p>
+<div class="figure">
+<img src="snowpack-explained_files/figure-html/winter-1.png" class="r-plt" alt="A winter in PACK. From the top: temperature against the snow (dashed) and melt (dotted) thresholds; precipitation, as snow and rain; the dry and wet stores; and the water passed on to the PDM, against the precipitation that fell." width="880"><p class="caption">
+A winter in PACK. From the top: temperature against the snow (dashed)
+and melt (dotted) thresholds; precipitation, as snow and rain; the dry
+and wet stores; and the water passed on to the PDM, against the
+precipitation that fell.
+</p>
+</div>
+<p>Three things to see:</p>
+<ul>
+<li>
+<strong>Snow is held back.</strong> Through the cold spell the dry
+store grows to about 110 mm, and the water passed to the PDM falls
+behind the precipitation (bottom panel): the gap between the lines is
+the water stored in the pack.</li>
+<li>
+<strong>The thaw pays it back.</strong> As temperatures rise, the
+pack melts and the gap closes. By the end the pack has gone and the two
+totals meet again: every millimetre comes out eventually.</li>
+<li>
+<strong>The wet store stays small.</strong> It holds only a few per
+cent of the pack before it starts to drain freely, so meltwater passes
+through within hours.</li>
+</ul>
+</div>
+<div class="section level2">
+<h2 id="rain-on-snow">Rain on snow<a class="anchor" aria-label="anchor" href="#rain-on-snow"></a>
+</h2>
+<p>The most dangerous moment is warm rain on a ripe pack. The rain
+itself reaches the river, and the warmth melts snow at the same
+time.</p>
+<div class="figure">
+<img src="snowpack-explained_files/figure-html/rain-on-snow-1.png" class="r-plt" alt="The warm, wet day in the thaw. Hourly precipitation (bars) and the water passed to the PDM (line). The pack adds meltwater to the rain." width="880"><p class="caption">
+The warm, wet day in the thaw. Hourly precipitation (bars) and the water
+passed to the PDM (line). The pack adds meltwater to the rain.
+</p>
+</div>
+<pre><code><span><span class="co">#&gt;   precipitation_mm released_to_pdm_mm </span></span>
+<span><span class="co">#&gt;               36.9               73.5</span></span></code></pre>
+<p>Over these three days 37 mm of precipitation fell, but 74 mm reached
+the PDM: the extra came out of the pack. A forecast that ignored the
+snow would have missed it.</p>
+</div>
+<div class="section level2">
+<h2 id="how-much-of-the-catchment-is-covered">How much of the catchment is covered?<a class="anchor" aria-label="anchor" href="#how-much-of-the-catchment-is-covered"></a>
+</h2>
+<p>A deep pack covers the whole catchment. As it thins, bare patches
+appear first where the snow was shallowest, and rain on those patches
+goes straight through. PACK tracks the covered share with a
+<em>depletion curve</em>: the less water the pack holds, the less ground
+it covers. Fresh snow resets the cover to complete for a while, because
+new snow falls everywhere.</p>
+<div class="figure">
+<img src="snowpack-explained_files/figure-html/cover-1.png" class="r-plt" alt="Snow cover through the winter. Cover is complete while the pack is deep or freshly topped up, and shrinks as the pack thins in the thaw." width="880"><p class="caption">
+Snow cover through the winter. Cover is complete while the pack is deep
+or freshly topped up, and shrinks as the pack thins in the thaw.
+</p>
+</div>
+</div>
+<div class="section level2">
+<h2 id="what-each-setting-does">What each setting does<a class="anchor" aria-label="anchor" href="#what-each-setting-does"></a>
+</h2>
+<p>Each panel changes one setting and shows the running total of water
+passed to the PDM, so the timing of the release can be compared.</p>
+<div class="figure">
+<img src="snowpack-explained_files/figure-html/settings-1.png" class="r-plt" alt="Cumulative water passed to the PDM as each setting is lowered (light), left at its default (dark) and raised (orange). Steeper is earlier." width="880"><p class="caption">
+Cumulative water passed to the PDM as each setting is lowered (light),
+left at its default (dark) and raised (orange). Steeper is earlier.
+</p>
+</div>
 <table class="table">
 <colgroup>
-<col width="23%">
-<col width="23%">
-<col width="30%">
-<col width="23%">
+<col width="50%">
+<col width="50%">
 </colgroup>
 <thead><tr class="header">
-<th>Argument</th>
-<th>Meaning</th>
-<th align="right">Image default</th>
-<th>Unit</th>
+<th>Setting</th>
+<th>What it changes</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td><code>precipitation_factor</code></td>
-<td>Multiplier for measured precipitation</td>
-<td align="right">1</td>
-<td>dimensionless</td>
-</tr>
-<tr class="even">
-<td><code>lower_rate_h</code></td>
-<td>Slow wet-store drainage coefficient
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>k</mi><mn>1</mn></msub><annotation encoding="application/x-tex">k_1</annotation></semantics></math>
-</td>
-<td align="right">0.00677</td>
-<td>h⁻¹, assumed</td>
-</tr>
-<tr class="odd">
-<td><code>upper_rate_h</code></td>
-<td>Additional drainage coefficient
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>k</mi><mn>2</mn></msub><annotation encoding="application/x-tex">k_2</annotation></semantics></math>
-</td>
-<td align="right">0.27095</td>
-<td>h⁻¹, assumed</td>
-</tr>
-<tr class="even">
-<td><code>retention_fraction</code></td>
-<td>Liquid fraction setting the upper outlet level
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>r</mi><annotation encoding="application/x-tex">r</annotation></semantics></math>
-</td>
-<td align="right">0.04</td>
-<td>fraction</td>
-</tr>
-<tr class="odd">
 <td><code>melt_factor_mmh_c</code></td>
-<td>Melt per degree above threshold,
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>f</mi><annotation encoding="application/x-tex">f</annotation></semantics></math>
-</td>
-<td align="right">0.16667</td>
-<td>mm/h/°C, assumed</td>
-</tr>
-<tr class="even">
-<td><code>adc_alpha</code></td>
-<td>Final fraction of a fresh-snow excursion over which cover
-reverts</td>
-<td align="right">0.25</td>
-<td>fraction</td>
-</tr>
-<tr class="odd">
-<td><code>adc_depth_mm</code></td>
-<td>Water content for complete cover,
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>θ</mi><mi>c</mi></msub><annotation encoding="application/x-tex">\theta_c</annotation></semantics></math>
-</td>
-<td align="right">100</td>
-<td>mm</td>
+<td>How fast snow melts for each degree of warmth. Larger means earlier,
+sharper thaws</td>
 </tr>
 <tr class="even">
 <td><code>melt_threshold_c</code></td>
-<td>Melt threshold
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>T</mi><mi>m</mi></msub><annotation encoding="application/x-tex">T_m</annotation></semantics></math>
-</td>
-<td align="right">1</td>
-<td>°C</td>
+<td>The temperature above which snow melts. Higher delays the thaw</td>
 </tr>
 <tr class="odd">
 <td><code>snow_threshold_c</code></td>
-<td>Rain/snow threshold
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>T</mi><mi>s</mi></msub><annotation encoding="application/x-tex">T_s</annotation></semantics></math>
-</td>
-<td align="right">0</td>
-<td>°C</td>
+<td>The temperature below which precipitation falls as snow. Higher
+means more snow and more held back</td>
 </tr>
 <tr class="even">
-<td><code>drain_threshold_c</code></td>
-<td>Below this, drainage stops</td>
-<td align="right">0</td>
-<td>°C; from report</td>
+<td><code>adc_depth_mm</code></td>
+<td>How much water the pack needs to cover the whole catchment. Larger
+means bare patches appear sooner as the pack thins: more rain passes
+straight through, but less snow is left in the sun to melt each hour.
+Here the slower melt wins and the release comes a little later</td>
 </tr>
 <tr class="odd">
-<td><code>areal_depletion</code></td>
-<td>Allow partial snow cover</td>
-<td align="right">TRUE</td>
-<td>logical</td>
+<td>
+<code>lower_rate_h</code>, <code>upper_rate_h</code>,
+<code>retention_fraction</code>
+</td>
+<td>How quickly the wet store drains. These shape the release over
+hours, not weeks</td>
 </tr>
 <tr class="even">
-<td><code>max_step_min</code></td>
-<td>Largest internal accounting interval</td>
-<td align="right">60</td>
-<td>minutes</td>
+<td><code>precipitation_factor</code></td>
+<td>Scales all precipitation, as the PDM’s <code>fc</code> does for
+rain; use one or the other</td>
 </tr>
 </tbody>
 </table>
-<p>The separate <code>report_daily</code> preset converts the report’s
-typical
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>k</mi><mn>1</mn></msub><mo>=</mo><mn>0.15</mn></mrow><annotation encoding="application/x-tex">k_1=0.15</annotation></semantics></math>/day,
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>k</mi><mn>2</mn></msub><mo>=</mo><mn>0.85</mn></mrow><annotation encoding="application/x-tex">k_2=0.85</annotation></semantics></math>/day
-and
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi><mo>=</mo><mn>4</mn></mrow><annotation encoding="application/x-tex">f=4</annotation></semantics></math>
-mm/day/°C to hours, and uses
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>T</mi><mi>m</mi></msub><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">T_m=0</annotation></semantics></math>,
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>T</mi><mi>s</mi></msub><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">T_s=1</annotation></semantics></math>
-°C. Those differences are real preset differences, not rounding
-errors.</p>
-<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/pack_presets.html">pack_presets</a></span><span class="op">(</span><span class="st">"image_hourly"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; $precipitation_factor</span></span>
-<span><span class="co">#&gt; [1] 1</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $lower_rate_h</span></span>
-<span><span class="co">#&gt; [1] 0.00677</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $upper_rate_h</span></span>
-<span><span class="co">#&gt; [1] 0.27095</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $retention_fraction</span></span>
-<span><span class="co">#&gt; [1] 0.04</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $melt_factor_mmh_c</span></span>
-<span><span class="co">#&gt; [1] 0.16667</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $adc_alpha</span></span>
-<span><span class="co">#&gt; [1] 0.25</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $adc_depth_mm</span></span>
-<span><span class="co">#&gt; [1] 100</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $melt_threshold_c</span></span>
-<span><span class="co">#&gt; [1] 1</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $snow_threshold_c</span></span>
-<span><span class="co">#&gt; [1] 0</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $drain_threshold_c</span></span>
-<span><span class="co">#&gt; [1] 0</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $areal_depletion</span></span>
-<span><span class="co">#&gt; [1] TRUE</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $max_step_min</span></span>
-<span><span class="co">#&gt; [1] 60</span></span>
-<span><span class="fu"><a href="../reference/pack_presets.html">pack_presets</a></span><span class="op">(</span><span class="st">"report_daily"</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
-<span>  <span class="st">"lower_rate_h"</span>, <span class="st">"upper_rate_h"</span>,</span>
-<span>  <span class="st">"melt_threshold_c"</span>, <span class="st">"snow_threshold_c"</span></span>
-<span><span class="op">)</span><span class="op">]</span></span>
-<span><span class="co">#&gt; $lower_rate_h</span></span>
-<span><span class="co">#&gt; [1] 0.00625</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $upper_rate_h</span></span>
-<span><span class="co">#&gt; [1] 0.03541667</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $melt_threshold_c</span></span>
-<span><span class="co">#&gt; [1] 0</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; $snow_threshold_c</span></span>
-<span><span class="co">#&gt; [1] 1</span></span></code></pre></div>
+<p>The defaults come from the parameter file of an operational system;
+their time units are not stated in the source and are assumed to be
+hourly. Treat them as a starting point to calibrate, not as values for a
+particular catchment.</p>
 </div>
 <div class="section level2">
-<h2 id="one-step-in-equations-and-words">One step, in equations and words<a class="anchor" aria-label="anchor" href="#one-step-in-equations-and-words"></a>
+<h2 id="snow-and-the-pdm-together">Snow and the PDM together<a class="anchor" aria-label="anchor" href="#snow-and-the-pdm-together"></a>
 </h2>
-<p>Let
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math>
-be corrected precipitation depth during one <strong>internal</strong>
-step of length
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>h</mi><annotation encoding="application/x-tex">h</annotation></semantics></math>
-hours. Let
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>T</mi><annotation encoding="application/x-tex">T</annotation></semantics></math>
-be its constant temperature, and
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>F</mi><annotation encoding="application/x-tex">F</annotation></semantics></math>
-the fraction covered by snow. The precipitation multiplier is applied
-before partitioning.</p>
-<div class="section level3">
-<h3 id="rain-or-snow">1. Rain or snow?<a class="anchor" aria-label="anchor" href="#rain-or-snow"></a>
-</h3>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>p</mi><mrow><mi mathvariant="normal">s</mi><mi mathvariant="normal">n</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">w</mi></mrow></msub><mo>=</mo><mrow><mo stretchy="true" form="prefix">{</mo><mtable><mtr><mtd columnalign="left" style="text-align: left"><mi>p</mi><mo>,</mo></mtd><mtd columnalign="left" style="text-align: left"><mi>T</mi><mo>&lt;</mo><msub><mi>T</mi><mi>s</mi></msub></mtd></mtr><mtr><mtd columnalign="left" style="text-align: left"><mn>0</mn><mo>,</mo></mtd><mtd columnalign="left" style="text-align: left"><mi>T</mi><mo>≥</mo><msub><mi>T</mi><mi>s</mi></msub></mtd></mtr></mtable></mrow><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>p</mi><mrow><mi mathvariant="normal">r</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">n</mi></mrow></msub><mo>=</mo><mi>p</mi><mo>−</mo><msub><mi>p</mi><mrow><mi mathvariant="normal">s</mi><mi mathvariant="normal">n</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">w</mi></mrow></msub><mi>.</mi></mrow><annotation encoding="application/x-tex">p_{\mathrm{snow}}=\begin{cases}p,&amp;T&lt;T_s\\0,&amp;T\geq T_s\end{cases},
-\qquad p_{\mathrm{rain}}=p-p_{\mathrm{snow}}.</annotation></semantics></math></p>
-<p>At the snow threshold itself, precipitation is rain. New snow enters
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>W</mi><annotation encoding="application/x-tex">W</annotation></semantics></math>
-and restores full cover for that step.</p>
-</div>
-<div class="section level3">
-<h3 id="how-much-melts">2. How much melts?<a class="anchor" aria-label="anchor" href="#how-much-melts"></a>
-</h3>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>m</mi><mo>=</mo><mo>min</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>W</mi><mo>+</mo><msub><mi>p</mi><mrow><mi mathvariant="normal">s</mi><mi mathvariant="normal">n</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">w</mi></mrow></msub><mo>,</mo><mspace width="0.278em"></mspace><mi>F</mi><mi>f</mi><mo>max</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><mi>T</mi><mo>−</mo><msub><mi>T</mi><mi>m</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mi>h</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo></mrow><annotation encoding="application/x-tex">m=\min\left(W+p_{\mathrm{snow}},\;F f\max(0,T-T_m)h\right),</annotation></semantics></math><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>W</mi><mrow><mi mathvariant="normal">n</mi><mi mathvariant="normal">e</mi><mi mathvariant="normal">w</mi></mrow></msub><mo>=</mo><mi>W</mi><mo>+</mo><msub><mi>p</mi><mrow><mi mathvariant="normal">s</mi><mi mathvariant="normal">n</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">w</mi></mrow></msub><mo>−</mo><mi>m</mi><mi>.</mi></mrow><annotation encoding="application/x-tex">W_{\mathrm{new}}=W+p_{\mathrm{snow}}-m.</annotation></semantics></math></p>
-<p>Temperature above the melt threshold supplies the melt demand. The
-area factor scales local melt potential to a catchment average, and the
-minimum prevents melting snow that is not there. At
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>=</mo><msub><mi>T</mi><mi>m</mi></msub></mrow><annotation encoding="application/x-tex">T=T_m</annotation></semantics></math>,
-melt is zero.</p>
-</div>
-<div class="section level3">
-<h3 id="fill-the-wet-store-and-release-drainage">3. Fill the wet store and release drainage<a class="anchor" aria-label="anchor" href="#fill-the-wet-store-and-release-drainage"></a>
-</h3>
-<p>Rain on covered area and newly melted water enter the wet store:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mi>′</mi><mo>=</mo><mi>S</mi><mo>+</mo><mi>F</mi><msub><mi>p</mi><mrow><mi mathvariant="normal">r</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">n</mi></mrow></msub><mo>+</mo><mi>m</mi><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>S</mi><mi>c</mi></msub><mo>=</mo><mi>r</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>S</mi><mi>′</mi><mo>+</mo><msub><mi>W</mi><mrow><mi mathvariant="normal">n</mi><mi mathvariant="normal">e</mi><mi mathvariant="normal">w</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">S'=S+F p_{\mathrm{rain}}+m,\qquad S_c=r(S'+W_{\mathrm{new}}).</annotation></semantics></math></p>
-<p>The lower outlet always drains slowly when drainage is permitted. The
-upper outlet adds drainage only above its moving threshold:</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>D</mi><mo>=</mo><mrow><mo stretchy="true" form="prefix">{</mo><mtable><mtr><mtd columnalign="left" style="text-align: left"><mn>0</mn><mo>,</mo></mtd><mtd columnalign="left" style="text-align: left"><mi>T</mi><mo>&lt;</mo><msub><mi>T</mi><mi>c</mi></msub><mo>,</mo></mtd></mtr><mtr><mtd columnalign="left" style="text-align: left"><mo>min</mo><mo stretchy="false" form="prefix">{</mo><mi>S</mi><mi>′</mi><mo>,</mo><mspace width="0.278em"></mspace><mi>h</mi><mrow><mo stretchy="true" form="prefix">[</mo><msub><mi>k</mi><mn>1</mn></msub><mi>S</mi><mi>′</mi><mo>+</mo><msub><mi>k</mi><mn>2</mn></msub><mo>max</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>S</mi><mi>′</mi><mo>−</mo><msub><mi>S</mi><mi>c</mi></msub><mo>,</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">]</mo></mrow><mo stretchy="false" form="postfix">}</mo><mo>,</mo></mtd><mtd columnalign="left" style="text-align: left"><mi>T</mi><mo>≥</mo><msub><mi>T</mi><mi>c</mi></msub><mi>.</mi></mtd></mtr></mtable></mrow></mrow><annotation encoding="application/x-tex">D=\begin{cases}
-0,&amp;T&lt;T_c,\\
-\min\{S',\;h[k_1S'+k_2\max(S'-S_c,0)]\},&amp;T\geq T_c.
-\end{cases}</annotation></semantics></math></p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>S</mi><mrow><mi mathvariant="normal">n</mi><mi mathvariant="normal">e</mi><mi mathvariant="normal">w</mi></mrow></msub><mo>=</mo><mi>S</mi><mi>′</mi><mo>−</mo><mi>D</mi><mo>,</mo><mspace width="2.0em"></mspace><msub><mi>p</mi><mrow><mi mathvariant="normal">e</mi><mi mathvariant="normal">f</mi><mi mathvariant="normal">f</mi><mi mathvariant="normal">e</mi><mi mathvariant="normal">c</mi><mi mathvariant="normal">t</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">v</mi><mi mathvariant="normal">e</mi></mrow></msub><mo>=</mo><mi>D</mi><mo>+</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>F</mi><mo stretchy="true" form="postfix">)</mo></mrow><msub><mi>p</mi><mrow><mi mathvariant="normal">r</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">n</mi></mrow></msub><mi>.</mi></mrow><annotation encoding="application/x-tex">S_{\mathrm{new}}=S'-D,\qquad
-p_{\mathrm{effective}}=D+(1-F)p_{\mathrm{rain}}.</annotation></semantics></math></p>
-<p>The second term is rain on bare ground; it bypasses the pack. Cold
-weather inhibits drainage, but does <strong>not</strong> turn stored
-liquid water back into ice in this implementation. Retention is a moving
-outlet threshold, not a rule that stops all drainage below it: the lower
-outlet can still drain.</p>
-</div>
-<div class="section level3">
-<h3 id="a-hand-checkable-example">A hand-checkable example<a class="anchor" aria-label="anchor" href="#a-hand-checkable-example"></a>
-</h3>
-<p>Take 10 mm of dry snow, full cover, 2 mm of rain,
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>=</mo><mn>3</mn></mrow><annotation encoding="application/x-tex">T=3</annotation></semantics></math>,
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>T</mi><mi>m</mi></msub><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">T_m=1</annotation></semantics></math>,
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>f</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">f=1</annotation></semantics></math>,
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>k</mi><mn>1</mn></msub><mo>=</mo><mn>0.1</mn></mrow><annotation encoding="application/x-tex">k_1=0.1</annotation></semantics></math>,
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>k</mi><mn>2</mn></msub><mo>=</mo><mn>0.2</mn></mrow><annotation encoding="application/x-tex">k_2=0.2</annotation></semantics></math>,
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mo>=</mo><mn>0.04</mn></mrow><annotation encoding="application/x-tex">r=0.04</annotation></semantics></math>
-and
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>h</mi><mo>=</mo><mn>1</mn></mrow><annotation encoding="application/x-tex">h=1</annotation></semantics></math>.
-Melt is 2 mm; dry storage becomes 8 mm; provisional wet storage is 4 mm.
-The threshold is
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0.04</mn><mrow><mo stretchy="true" form="prefix">(</mo><mn>4</mn><mo>+</mo><mn>8</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>0.48</mn></mrow><annotation encoding="application/x-tex">0.04(4+8)=0.48</annotation></semantics></math>
-mm, and drainage is
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>0.1</mn><mrow><mo stretchy="true" form="prefix">(</mo><mn>4</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mn>0.2</mn><mrow><mo stretchy="true" form="prefix">(</mo><mn>4</mn><mo>−</mo><mn>0.48</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mn>1.104</mn></mrow><annotation encoding="application/x-tex">0.1(4)+0.2(4-0.48)=1.104</annotation></semantics></math>
-mm. Final wet storage is 2.896 mm.</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">model</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/FlodePackModel.html">FlodePackModel</a></span><span class="op">(</span></span>
-<span>  melt_factor_mmh_c <span class="op">=</span> <span class="fl">1</span>, lower_rate_h <span class="op">=</span> <span class="fl">0.1</span>,</span>
-<span>  upper_rate_h <span class="op">=</span> <span class="fl">0.2</span>, retention_fraction <span class="op">=</span> <span class="fl">0.04</span>, areal_depletion <span class="op">=</span> <span class="cn">FALSE</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">step</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pack_step.html">pack_step</a></span><span class="op">(</span><span class="va">model</span>, <span class="fu"><a href="../reference/FlodePackState.html">FlodePackState</a></span><span class="op">(</span>dry_mm <span class="op">=</span> <span class="fl">10</span><span class="op">)</span>,</span>
-<span>  precipitation_mm <span class="op">=</span> <span class="fl">2</span>, temperature_c <span class="op">=</span> <span class="fl">3</span>, dt <span class="op">=</span> <span class="fl">1</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">step</span><span class="op">$</span><span class="va">flux</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"melt_mm"</span>, <span class="st">"drainage_mm"</span>, <span class="st">"dry_snow_mm"</span>, <span class="st">"wet_snow_mm"</span><span class="op">)</span><span class="op">]</span></span>
-<span><span class="co">#&gt;     melt_mm drainage_mm dry_snow_mm wet_snow_mm </span></span>
-<span><span class="co">#&gt;       2.000       1.104       8.000       2.896</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">step</span><span class="op">$</span><span class="va">flux</span><span class="op">[[</span><span class="st">"drainage_mm"</span><span class="op">]</span><span class="op">]</span> <span class="op">-</span> <span class="fl">1.104</span><span class="op">)</span> <span class="op">&lt;</span> <span class="fl">1e-12</span><span class="op">)</span></span></code></pre></div>
-</div>
-</div>
-<div class="section level2">
-<h2 id="partial-cover-and-fresh-snow-memory">Partial cover and fresh-snow memory<a class="anchor" aria-label="anchor" href="#partial-cover-and-fresh-snow-memory"></a>
-</h2>
-<p>A shallow pack need not cover the whole catchment. With total water
-content
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>θ</mi><mo>=</mo><mi>W</mi><mo>+</mo><mi>S</mi></mrow><annotation encoding="application/x-tex">\theta=W+S</annotation></semantics></math>,
-the ordinary areal depletion curve is</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>F</mi><mn>0</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mo>min</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>,</mo><mfrac><mrow><mo>log</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>+</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mrow><mo>log</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>+</mo><msub><mi>θ</mi><mi>c</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">F_0(\theta)=\min\left(1,\frac{\log(1+\theta)}{\log(1+\theta_c)}\right).</annotation></semantics></math></p>
-<p>Depths inside this empirical expression are numeric values in
-<strong>millimetres</strong>. Fresh snow temporarily restores cover to
-one. The state records the previous water content
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>θ</mi><mi>a</mi></msub><annotation encoding="application/x-tex">\theta_a</annotation></semantics></math>,
-previous cover
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>F</mi><mi>a</mi></msub><annotation encoding="application/x-tex">F_a</annotation></semantics></math>
-and fresh-snow excursion
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>N</mi><annotation encoding="application/x-tex">N</annotation></semantics></math>.
-For
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>N</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">N&gt;0</annotation></semantics></math>
-and
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>θ</mi><mo>&gt;</mo><msub><mi>θ</mi><mi>a</mi></msub></mrow><annotation encoding="application/x-tex">\theta&gt;\theta_a</annotation></semantics></math>
-the implemented return path is</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>F</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mo>max</mo><mrow><mo stretchy="true" form="prefix">[</mo><msub><mi>F</mi><mn>0</mn></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="0.278em"></mspace><msub><mi>F</mi><mi>a</mi></msub><mo>+</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mi>F</mi><mi>a</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>min</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>,</mo><mfrac><mrow><mi>θ</mi><mo>−</mo><msub><mi>θ</mi><mi>a</mi></msub></mrow><mrow><mi>α</mi><mi>N</mi></mrow></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">]</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">F(\theta)=\max\left[F_0(\theta),\;
-F_a+(1-F_a)\min\left(1,\frac{\theta-\theta_a}{\alpha N}\right)\right].</annotation></semantics></math></p>
-<p>Below the anchor, return to
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>F</mi><mn>0</mn></msub><annotation encoding="application/x-tex">F_0</annotation></semantics></math>.
-The empty pack has zero cover. With areal depletion disabled, any
-nonempty pack has full cover.</p>
+<p><code><a href="../reference/sim_snow_pdm.html">sim_snow_pdm()</a></code> runs PACK and the PDM together: PACK’s
+water passed on becomes the PDM’s rainfall. Here is the river flow from
+the same winter, with and without the snow model.</p>
 <div class="figure">
-<img src="snowpack-explained_files/figure-html/depletion-curve-1.png" class="r-plt" alt="Illustrative fresh-snow excursion: cover remains complete until the final alpha fraction, then rejoins the ordinary curve. The x-axis is total water equivalent, not time." width="840"><p class="caption">
-Illustrative fresh-snow excursion: cover remains complete until the
-final alpha fraction, then rejoins the ordinary curve. The x-axis is
-total water equivalent, not time.
+<img src="snowpack-explained_files/figure-html/coupled-1.png" class="r-plt" alt="River flow from the same winter, treating all precipitation as rain (light) and with the snow held back by PACK (dark). The snow model removes the winter floods that could not happen and moves the water into the thaw." width="880"><p class="caption">
+River flow from the same winter, treating all precipitation as rain
+(light) and with the snow held back by PACK (dark). The snow model
+removes the winter floods that could not happen and moves the water into
+the thaw.
 </p>
 </div>
-<p><strong>Important implementation interpretation:</strong> the report
-gives prose and a diagram, not complete event logic. Here depletion
-means a fall in <strong>total pack water content</strong>, following
-Figure 2.2’s axis. Melt transferring water from
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>W</mi><annotation encoding="application/x-tex">W</annotation></semantics></math>
-to
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>S</mi><annotation encoding="application/x-tex">S</annotation></semantics></math>
-alone does not reduce that total. Consecutive undepleted snowfall grows
-one excursion; snowfall during depletion starts a new anchor. These
-choices, and catchment-area scaling of melt, require independent
-scientific review.</p>
+<p>Without the snow model, storms through December and January raise
+floods that could not have happened, because that precipitation fell as
+snow. With it, the cold spell is quiet, and the warm, wet day in the
+thaw brings by far the largest flood: about 16 m3/s, against 6 m3/s
+without the snow, because meltwater adds to the rain.</p>
+<p>When the two models are used together, keep the PDM’s rainfall factor
+<code>fc</code> at 1 and adjust precipitation only with PACK’s
+<code>precipitation_factor</code>, so it is not corrected twice.</p>
 </div>
 <div class="section level2">
-<h2 id="substeps-conservation-and-coupling">Substeps, conservation and coupling<a class="anchor" aria-label="anchor" href="#substeps-conservation-and-coupling"></a>
+<h2 id="the-equations-briefly">The equations, briefly<a class="anchor" aria-label="anchor" href="#the-equations-briefly"></a>
 </h2>
-<p><code><a href="../reference/pack_step.html">pack_step()</a></code> divides an interval into</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>N</mi><mrow><mi mathvariant="normal">s</mi><mi mathvariant="normal">u</mi><mi mathvariant="normal">b</mi></mrow></msub><mo>=</mo><mrow><mo stretchy="true" form="prefix">⌈</mo><mo>max</mo><mrow><mo stretchy="true" form="prefix">(</mo><mfrac><mrow><mn>60</mn><mi>Δ</mi><mi>t</mi></mrow><mtext mathvariant="normal">max_step_min</mtext></mfrac><mo>,</mo><mspace width="0.278em"></mspace><mi>Δ</mi><mi>t</mi><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>k</mi><mn>1</mn></msub><mo>+</mo><msub><mi>k</mi><mn>2</mn></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="0.278em"></mspace><mn>1</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">⌉</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">N_{\mathrm{sub}}=\left\lceil\max\left(
-\frac{60\Delta t}{\text{max\_step\_min}},\;
-\Delta t(k_1+k_2),\;1\right)\right\rceil.</annotation></semantics></math></p>
-<p>This keeps the explicit drainage step stable; forcing is uniform
-within the interval. It is not an exact continuous-time solution.
-Shorter internal steps can change results, so test sensitivity. The
-snow-only residual is</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>ϵ</mi><mrow><mi mathvariant="normal">s</mi><mi mathvariant="normal">n</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">w</mi></mrow></msub><mo>=</mo><msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>W</mi><mo>+</mo><mi>S</mi><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mi mathvariant="normal">o</mi><mi mathvariant="normal">l</mi><mi mathvariant="normal">d</mi></mrow></msub><mo>+</mo><msub><mi>p</mi><mrow><mi mathvariant="normal">c</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">r</mi><mi mathvariant="normal">r</mi><mi mathvariant="normal">e</mi><mi mathvariant="normal">c</mi><mi mathvariant="normal">t</mi><mi mathvariant="normal">e</mi><mi mathvariant="normal">d</mi></mrow></msub><mo>−</mo><msub><mi>p</mi><mrow><mi mathvariant="normal">e</mi><mi mathvariant="normal">f</mi><mi mathvariant="normal">f</mi><mi mathvariant="normal">e</mi><mi mathvariant="normal">c</mi><mi mathvariant="normal">t</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">v</mi><mi mathvariant="normal">e</mi></mrow></msub><mo>−</mo><msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>W</mi><mo>+</mo><mi>S</mi><mo stretchy="true" form="postfix">)</mo></mrow><mrow><mi mathvariant="normal">n</mi><mi mathvariant="normal">e</mi><mi mathvariant="normal">w</mi></mrow></msub><mi>.</mi></mrow><annotation encoding="application/x-tex">\epsilon_{\mathrm{snow}}=(W+S)_{\mathrm{old}}+p_{\mathrm{corrected}}
--p_{\mathrm{effective}}-(W+S)_{\mathrm{new}}.</annotation></semantics></math></p>
-<p>When coupled, PDM’s <code>fc</code> still multiplies the effective
-rain. Usually set it to one to avoid two precipitation corrections. If
-not, <code>pdm_correction_mm</code> records the additional input
-adjustment. The combined residual includes both stores and that
-adjustment; it excludes the external PDM outlet term
-<code>qc</code>.</p>
-<table class="table">
-<colgroup>
-<col width="50%">
-<col width="50%">
-</colgroup>
-<thead><tr class="header">
-<th>Task</th>
-<th>Function / object</th>
-</tr></thead>
-<tbody>
-<tr class="odd">
-<td>Choose and edit parameters</td>
-<td>
-<code><a href="../reference/pack_presets.html">pack_presets()</a></code>, <code><a href="../reference/pack_from_config.html">pack_from_config()</a></code>,
-<code><a href="../reference/FlodePackModel.html">FlodePackModel()</a></code>
-</td>
-</tr>
-<tr class="even">
-<td>Set initial dry, wet and cover-history state</td>
-<td><code><a href="../reference/FlodePackState.html">FlodePackState()</a></code></td>
-</tr>
-<tr class="odd">
-<td>Inspect one accounting step</td>
-<td><code><a href="../reference/pack_step.html">pack_step()</a></code></td>
-</tr>
-<tr class="even">
-<td>Run snow without PDM</td>
-<td><code><a href="../reference/sim_pack.html">sim_pack()</a></code></td>
-</tr>
-<tr class="odd">
-<td>Run snow and PDM together</td>
-<td><code><a href="../reference/sim_snow_pdm.html">sim_snow_pdm()</a></code></td>
-</tr>
-</tbody>
-</table>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">snow</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/sim_pack.html">sim_pack</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10</span>, <span class="fl">5</span>, <span class="fl">0</span>, <span class="fl">0</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">2</span>, <span class="op">-</span><span class="fl">1</span>, <span class="fl">3</span>, <span class="fl">6</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">snow</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"dry_snow_mm"</span>, <span class="st">"wet_snow_mm"</span>, <span class="st">"effective_rain_mm"</span><span class="op">)</span>, with <span class="op">=</span> <span class="cn">FALSE</span><span class="op">]</span></span>
-<span><span class="co">#&gt;    dry_snow_mm wet_snow_mm effective_rain_mm</span></span>
-<span><span class="co">#&gt;          &lt;num&gt;       &lt;num&gt;             &lt;num&gt;</span></span>
-<span><span class="co">#&gt; 1:    10.00000   0.0000000       0.000000000</span></span>
-<span><span class="co">#&gt; 2:    15.00000   0.0000000       0.000000000</span></span>
-<span><span class="co">#&gt; 3:    14.66666   0.3310833       0.002256712</span></span>
-<span><span class="co">#&gt; 4:    13.83331   1.0035924       0.160840871</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">snow</span>, <span class="st">"water_balance"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] -7.719519e-16</span></span></code></pre></div>
-<p>For restart, keep the <strong>whole</strong>
-<code>final_state</code>: dry and wet depths alone do not preserve the
-fresh-snow cover history. Coupled output contains a list with both
-<code>snow</code> and <code>pdm</code> states. PET passes unchanged to
-PDM; no snow-specific evaporation or sublimation process is implied.
-Refreezing, cold content, elevation bands, wind effects and PACK survey
-assimilation are not implemented.</p>
-<div class="section level3">
-<h3 id="source-and-status">Source and status<a class="anchor" aria-label="anchor" href="#source-and-status"></a>
-</h3>
-<p>Institute of Hydrology, <em>PACK: A Pragmatic Snowmelt Model for
-Real-time Use</em>, <a href="https://nora.nerc.ac.uk/id/eprint/15304/1/N015304CR.pdf" class="external-link">NORA
-report 15304</a>, equations 2.1–2.8, Figure 2.2 and Table 2.1. The
-implementation is independent; agreement with an IMFS/RFFS executable
-has not been established. Engineering tests do not replace
-parameter-unit confirmation or catchment validation.</p>
+<p>In this appendix, depths are millimetres of water over the catchment,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>T</mi><annotation encoding="application/x-tex">T</annotation></semantics></math>
+is temperature and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>h</mi><annotation encoding="application/x-tex">h</annotation></semantics></math>
+the internal time step in hours. The full set, with the details of the
+implementation, is on the <a href="model-equations.html">Model
+equations</a> page.</p>
+<p><strong>Rain or snow.</strong> Precipitation
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>p</mi><annotation encoding="application/x-tex">p</annotation></semantics></math>
+is snow when
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mo>&lt;</mo><msub><mi>T</mi><mi>s</mi></msub></mrow><annotation encoding="application/x-tex">T&lt;T_s</annotation></semantics></math>
+and rain otherwise.</p>
+<p><strong>Melt.</strong> With snow-covered fraction
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>F</mi><annotation encoding="application/x-tex">F</annotation></semantics></math>,
+melt factor
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>f</mi><annotation encoding="application/x-tex">f</annotation></semantics></math>
+and melt threshold
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>T</mi><mi>m</mi></msub><annotation encoding="application/x-tex">T_m</annotation></semantics></math>,
+the melt is limited by the snow available:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>m</mi><mo>=</mo><mo>min</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>W</mi><mo>+</mo><msub><mi>p</mi><mrow><mi mathvariant="normal">s</mi><mi mathvariant="normal">n</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">w</mi></mrow></msub><mo>,</mo><mspace width="0.278em"></mspace><mi>F</mi><mi>f</mi><mo>max</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><mi>T</mi><mo>−</mo><msub><mi>T</mi><mi>m</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mi>h</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">m=\min\left(W+p_{\mathrm{snow}},\;F f\max(0,T-T_m)\,h\right).</annotation></semantics></math></p>
+<p><strong>Drainage.</strong> Rain on the covered part and meltwater
+join the wet store
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>S</mi><annotation encoding="application/x-tex">S</annotation></semantics></math>.
+It drains through a slow outlet always, and a faster one above a
+retention level
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>S</mi><mi>c</mi></msub><mo>=</mo><mi>r</mi><mspace width="0.167em"></mspace><mrow><mo stretchy="true" form="prefix">(</mo><mi>S</mi><mo>+</mo><mi>W</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">S_c=r\,(S+W)</annotation></semantics></math>:</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>D</mi><mo>=</mo><mi>h</mi><mrow><mo stretchy="true" form="prefix">[</mo><msub><mi>k</mi><mn>1</mn></msub><mi>S</mi><mo>+</mo><msub><mi>k</mi><mn>2</mn></msub><mo>max</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>S</mi><mo>−</mo><msub><mi>S</mi><mi>c</mi></msub><mo>,</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">]</mo></mrow><mo>,</mo></mrow><annotation encoding="application/x-tex">D=h\left[k_1S+k_2\max(S-S_c,0)\right],</annotation></semantics></math></p>
+<p>limited to what is there, and zero below the drainage threshold
+temperature.</p>
+<p><strong>Water passed on.</strong>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>p</mi><mrow><mi mathvariant="normal">e</mi><mi mathvariant="normal">f</mi><mi mathvariant="normal">f</mi><mi mathvariant="normal">e</mi><mi mathvariant="normal">c</mi><mi mathvariant="normal">t</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">v</mi><mi mathvariant="normal">e</mi></mrow></msub><mo>=</mo><mi>D</mi><mo>+</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mi>F</mi><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><msub><mi>p</mi><mrow><mi mathvariant="normal">r</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">n</mi></mrow></msub></mrow><annotation encoding="application/x-tex">p_{\mathrm{effective}}=D+(1-F)\,p_{\mathrm{rain}}</annotation></semantics></math>:
+drainage, plus rain on bare ground.</p>
+<p><strong>Cover.</strong> With total water content
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>θ</mi><mo>=</mo><mi>W</mi><mo>+</mo><mi>S</mi></mrow><annotation encoding="application/x-tex">\theta=W+S</annotation></semantics></math>
+and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>θ</mi><mi>c</mi></msub><annotation encoding="application/x-tex">\theta_c</annotation></semantics></math>
+the content for full cover,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>F</mi><mo>=</mo><mo>min</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>,</mo><mo>log</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>+</mo><mi>θ</mi><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><mo>log</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>+</mo><msub><mi>θ</mi><mi>c</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">F=\min\left(1,\log(1+\theta)/\log(1+\theta_c)\right)</annotation></semantics></math>,
+reset to full cover by fresh snow.</p>
 </div>
+<div class="section level2">
+<h2 id="further-reading">Further reading<a class="anchor" aria-label="anchor" href="#further-reading"></a>
+</h2>
+<ul>
+<li>
+<a href="example-workflow.html">Your first model run</a> runs the
+PDM on your own data; add <code><a href="../reference/sim_snow_pdm.html">sim_snow_pdm()</a></code> where snow
+matters.</li>
+<li>Institute of Hydrology. <em>PACK: A Pragmatic Snowmelt Model for
+Real-time Use.</em> <a href="https://nora.nerc.ac.uk/id/eprint/15304/1/N015304CR.pdf" class="external-link">NORA
+15304</a>.</li>
+</ul>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

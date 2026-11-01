@@ -36,10 +36,13 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Getting started</h6></li>
+    <li><a class="dropdown-item" href="articles/example-workflow.html">Your first model run</a></li>
+    <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>How the model works</h6></li>
-    <li><a class="dropdown-item" href="articles/pdm-explained.html">PDM explained: from rainfall to river flow</a></li>
-    <li><a class="dropdown-item" href="articles/snowpack-explained.html">PACK explained: storing snow and releasing meltwater</a></li>
-    <li><a class="dropdown-item" href="articles/example-workflow.html">Worked example: snow, flow, calibration and restart</a></li>
+    <li><a class="dropdown-item" href="articles/pdm-explained.html">How the PDM works</a></li>
+    <li><a class="dropdown-item" href="articles/snowpack-explained.html">How the snow model works</a></li>
+    <li><a class="dropdown-item" href="articles/model-equations.html">Model equations</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Model options</h6></li>
     <li><a class="dropdown-item" href="articles/model-options.html">Choosing model components</a></li>
@@ -111,11 +114,19 @@
 <h2 id="articles">Articles<a class="anchor" aria-label="anchor" href="#articles"></a>
 </h2>
 <p>The <a href="https://jonpayneea.github.io/PDMS7/">package website</a> carries illustrated articles, each built from a vignette in <code>vignettes/</code> with live examples and plots.</p>
+<p>Getting started:</p>
+<ul>
+<li>
+<a href="https://jonpayneea.github.io/PDMS7/articles/example-workflow.html">Your first model run</a>: from your own data files to a scored, calibrated and saved model</li>
+</ul>
 <p>How the model works:</p>
 <ul>
-<li><a href="https://jonpayneea.github.io/PDMS7/articles/pdm-explained.html">PDM explained: from rainfall to river flow</a></li>
-<li><a href="https://jonpayneea.github.io/PDMS7/articles/snowpack-explained.html">PACK explained: storing snow and releasing meltwater</a></li>
-<li><a href="https://jonpayneea.github.io/PDMS7/articles/example-workflow.html">Worked example: snow, flow, calibration and restart</a></li>
+<li>
+<a href="https://jonpayneea.github.io/PDMS7/articles/pdm-explained.html">How the PDM works</a>: the model in plain English, with pictures of it running and what each setting does</li>
+<li>
+<a href="https://jonpayneea.github.io/PDMS7/articles/snowpack-explained.html">How the snow model works</a>: a winter of the PACK snow model, rain on snow, and what each setting does</li>
+<li>
+<a href="https://jonpayneea.github.io/PDMS7/articles/model-equations.html">Model equations</a>: every equation, with Moore (2007) numbering and implementation notes</li>
 </ul>
 <p>Model options:</p>
 <ul>
