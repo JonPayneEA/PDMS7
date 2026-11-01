@@ -157,6 +157,7 @@ reference:
   - calibration_log
   - read_project
   - verify_project
+  - build_report
 - title: Forecast updating
   desc: State correction and ARMA error prediction (Moore 2007, Eq. 28-42).
   contents:
