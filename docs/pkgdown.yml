@@ -2,16 +2,21 @@ pandoc: 3.1.3
 pkgdown: 2.2.1
 pkgdown_sha: ~
 articles:
+  auto-calibration: auto-calibration.html
   calibration-log: calibration-log.html
   calibration: calibration.html
+  choosing-structure: choosing-structure.html
   compiled-core: compiled-core.html
   example-workflow: example-workflow.html
   forecast-updating: forecast-updating.html
+  log-structure: log-structure.html
+  many-catchments: many-catchments.html
   model-options: model-options.html
   pdm-explained: pdm-explained.html
+  scoring: scoring.html
   snowpack-explained: snowpack-explained.html
   starting-states: starting-states.html
-last_built: 2026-11-01T14:12Z
+last_built: 2026-11-01T19:06Z
 urls:
   reference: https://jonpayneea.github.io/PDMS7/reference
   article: https://jonpayneea.github.io/PDMS7/articles

@@ -172,8 +172,32 @@ The PACK snow model, alone or feeding the PDM.
   : Evaluate hydrological calibration losses
 - [`pdm_scorecard()`](https://jonpayneea.github.io/PDMS7/reference/pdm_scorecard.md)
   : Score a simulation against observed flow
+- [`pdm_threshold_scores()`](https://jonpayneea.github.io/PDMS7/reference/pdm_threshold_scores.md)
+  : Score threshold crossings
 - [`pareto_front()`](https://jonpayneea.github.io/PDMS7/reference/pareto_front.md)
   : Identify nondominated loss vectors
+
+## Batch calibration
+
+The same logged protocol for many basins, resumable after any
+interruption.
+
+- [`calibrate_batch()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md)
+  [`batch_status()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md)
+  [`batch_results()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md)
+  : Calibrate many basins in one batch
+
+## Comparing structures
+
+Calibrate several model structures alike and rank them on held-out data.
+
+- [`compare_structures()`](https://jonpayneea.github.io/PDMS7/reference/compare_structures.md)
+  [`structure_comparison()`](https://jonpayneea.github.io/PDMS7/reference/compare_structures.md)
+  : Compare model structures
+- [`structure_set()`](https://jonpayneea.github.io/PDMS7/reference/structure_set.md)
+  : Model structures to compare
+- [`calibration_bounds()`](https://jonpayneea.github.io/PDMS7/reference/calibration_bounds.md)
+  : Calibration bounds for a model structure
 
 ## Calibration log
 
@@ -189,11 +213,13 @@ calibration.
   [`log_note()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
   [`propose_candidate()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
   [`validate_candidate()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
+  [`test_candidate()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
   [`sign_off_project()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
   [`reopen_project()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
   : Calibration log
 - [`read_project()`](https://jonpayneea.github.io/PDMS7/reference/read_project.md)
   [`project_trials()`](https://jonpayneea.github.io/PDMS7/reference/read_project.md)
+  [`read_entry()`](https://jonpayneea.github.io/PDMS7/reference/read_project.md)
   [`read_projects()`](https://jonpayneea.github.io/PDMS7/reference/read_project.md)
   : Read a calibration project
 - [`verify_project()`](https://jonpayneea.github.io/PDMS7/reference/verify_project.md)

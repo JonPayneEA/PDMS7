@@ -55,14 +55,42 @@ Model options:
 - [Starting a run: cold, warm and
   hot](https://jonpayneea.github.io/PDMS7/articles/starting-states.html)
 
-Calibration and forecasting:
+Calibration:
 
 - [Calibration: multi-start, budgets and staged
   calibration](https://jonpayneea.github.io/PDMS7/articles/calibration.html)
+- [Automatic calibration,
+  explained](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.html):
+  in plain terms: bounds, search scales, the two search methods, and
+  rewarding flood warnings
+- [Scoring a
+  simulation](https://jonpayneea.github.io/PDMS7/articles/scoring.html):
+  NSE, KGE, flow-duration signatures, and POD, FAR and CSI at warning
+  thresholds
+- [Choosing a model
+  structure](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.html):
+  calibrate the alternatives alike, rank on validation, and keep a final
+  test window
+- [Calibrating many
+  catchments](https://jonpayneea.github.io/PDMS7/articles/many-catchments.html):
+  a step-by-step guide to
+  [`calibrate_batch()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md):
+  preparing folders, running, resuming after an interruption, fixing
+  failures, and reading the results
+
+Records and review:
+
 - [Logging a manual
   calibration](https://jonpayneea.github.io/PDMS7/articles/calibration-log.html):
   the audit trail from project start to sign-off, the report, and
   tracing operational runs
+- [Inside the
+  logs](https://jonpayneea.github.io/PDMS7/articles/log-structure.html):
+  project folders, entries, the checksum chain, the run log and the
+  register
+
+Forecasting:
+
 - [Forecast
   updating](https://jonpayneea.github.io/PDMS7/articles/forecast-updating.html):
   state correction and ARMA error prediction
@@ -515,8 +543,32 @@ The PACK snow model, alone or feeding the PDM.
   : Evaluate hydrological calibration losses
 - [`pdm_scorecard()`](https://jonpayneea.github.io/PDMS7/reference/pdm_scorecard.md)
   : Score a simulation against observed flow
+- [`pdm_threshold_scores()`](https://jonpayneea.github.io/PDMS7/reference/pdm_threshold_scores.md)
+  : Score threshold crossings
 - [`pareto_front()`](https://jonpayneea.github.io/PDMS7/reference/pareto_front.md)
   : Identify nondominated loss vectors
+
+## Batch calibration
+
+The same logged protocol for many basins, resumable after any
+interruption.
+
+- [`calibrate_batch()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md)
+  [`batch_status()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md)
+  [`batch_results()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md)
+  : Calibrate many basins in one batch
+
+## Comparing structures
+
+Calibrate several model structures alike and rank them on held-out data.
+
+- [`compare_structures()`](https://jonpayneea.github.io/PDMS7/reference/compare_structures.md)
+  [`structure_comparison()`](https://jonpayneea.github.io/PDMS7/reference/compare_structures.md)
+  : Compare model structures
+- [`structure_set()`](https://jonpayneea.github.io/PDMS7/reference/structure_set.md)
+  : Model structures to compare
+- [`calibration_bounds()`](https://jonpayneea.github.io/PDMS7/reference/calibration_bounds.md)
+  : Calibration bounds for a model structure
 
 ## Calibration log
 
@@ -532,11 +584,13 @@ calibration.
   [`log_note()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
   [`propose_candidate()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
   [`validate_candidate()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
+  [`test_candidate()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
   [`sign_off_project()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
   [`reopen_project()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
   : Calibration log
 - [`read_project()`](https://jonpayneea.github.io/PDMS7/reference/read_project.md)
   [`project_trials()`](https://jonpayneea.github.io/PDMS7/reference/read_project.md)
+  [`read_entry()`](https://jonpayneea.github.io/PDMS7/reference/read_project.md)
   [`read_projects()`](https://jonpayneea.github.io/PDMS7/reference/read_project.md)
   : Read a calibration project
 - [`verify_project()`](https://jonpayneea.github.io/PDMS7/reference/verify_project.md)
@@ -599,12 +653,28 @@ State correction and ARMA error prediction (Moore 2007, Eq. 28-42).
 - [Starting a run: cold, warm and
   hot](https://jonpayneea.github.io/PDMS7/articles/starting-states.md):
 
-### Calibration and forecasting
+### Calibration
 
 - [Calibration: multi-start, budgets and staged
   calibration](https://jonpayneea.github.io/PDMS7/articles/calibration.md):
+- [Automatic calibration,
+  explained](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.md):
+- [Scoring a simulation: from NSE to POD, FAR and
+  CSI](https://jonpayneea.github.io/PDMS7/articles/scoring.md):
+- [Choosing a model
+  structure](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.md):
+- [Calibrating many
+  catchments](https://jonpayneea.github.io/PDMS7/articles/many-catchments.md):
+
+### Records and review
+
 - [Logging a manual
   calibration](https://jonpayneea.github.io/PDMS7/articles/calibration-log.md):
+- [Inside the logs: projects, entries, checksums and the run
+  log](https://jonpayneea.github.io/PDMS7/articles/log-structure.md):
+
+### Forecasting
+
 - [Forecast
   updating](https://jonpayneea.github.io/PDMS7/articles/forecast-updating.md):
 

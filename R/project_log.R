@@ -14,7 +14,7 @@
 .log_format <- 1L
 .entry_types <- c(
   "project_start", "data_registered", "structure_selected", "trial", "auto_calibration",
-  "note", "candidate", "validation", "sign_off", "reopen"
+  "note", "candidate", "validation", "test", "sign_off", "reopen"
 )
 .model_entry_types <- c("structure_selected", "trial", "auto_calibration")
 .roles <- c("custodian", "steward", "delegated_steward")

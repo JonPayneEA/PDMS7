@@ -28,9 +28,18 @@
     <li><a class="dropdown-item" href="../articles/model-options.html">Choosing model components</a></li>
     <li><a class="dropdown-item" href="../articles/starting-states.html">Starting a run: cold, warm and hot</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Calibration and forecasting</h6></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Calibration</h6></li>
     <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: multi-start, budgets and staged calibration</a></li>
+    <li><a class="dropdown-item" href="../articles/auto-calibration.html">Automatic calibration, explained</a></li>
+    <li><a class="dropdown-item" href="../articles/scoring.html">Scoring a simulation: from NSE to POD, FAR and CSI</a></li>
+    <li><a class="dropdown-item" href="../articles/choosing-structure.html">Choosing a model structure</a></li>
+    <li><a class="dropdown-item" href="../articles/many-catchments.html">Calibrating many catchments</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Records and review</h6></li>
     <li><a class="dropdown-item" href="../articles/calibration-log.html">Logging a manual calibration</a></li>
+    <li><a class="dropdown-item" href="../articles/log-structure.html">Inside the logs: projects, entries, checksums and the run log</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Forecasting</h6></li>
     <li><a class="dropdown-item" href="../articles/forecast-updating.html">Forecast updating</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Under the bonnet</h6></li>
@@ -79,13 +88,19 @@
 <span>  <span class="va">lower</span>,</span>
 <span>  <span class="va">upper</span>,</span>
 <span>  warmup <span class="op">=</span> <span class="fl">0</span>,</span>
-<span>  objective <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rmse"</span>, <span class="st">"nse"</span>, <span class="st">"log_rmse"</span><span class="op">)</span>,</span>
+<span>  objective <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rmse"</span>, <span class="st">"nse"</span>, <span class="st">"log_rmse"</span>, <span class="st">"threshold"</span><span class="op">)</span>,</span>
 <span>  flow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"q_m3s"</span>, <span class="st">"q_end_m3s"</span><span class="op">)</span>,</span>
 <span>  log_offset <span class="op">=</span> <span class="fl">0.01</span>,</span>
 <span>  control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>maxit <span class="op">=</span> <span class="fl">200</span><span class="op">)</span>,</span>
 <span>  soil_fraction <span class="op">=</span> <span class="fl">0.5</span>,</span>
 <span>  starts <span class="op">=</span> <span class="fl">1L</span>,</span>
-<span>  seed <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  seed <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"lbfgsb"</span>, <span class="st">"nelder_mead"</span><span class="op">)</span>,</span>
+<span>  thresholds <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  threshold_weight <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>  threshold_score <span class="op">=</span> <span class="st">"csi"</span>,</span>
+<span>  event_settings <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>tolerance_h <span class="op">=</span> <span class="fl">6</span>, gap_h <span class="op">=</span> <span class="fl">24</span>, min_duration_h <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>,</span>
+<span>  log_scale <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -122,7 +137,8 @@ simulated.</p></dd>
 
 
 <dt id="arg-objective">objective<a class="anchor" aria-label="anchor" href="#arg-objective"></a></dt>
-<dd><p>Calibration objective: rmse, nse (minimizes 1-NSE), or log_rmse.</p></dd>
+<dd><p>Calibration objective: rmse, nse (minimizes 1-NSE), log_rmse, or
+threshold (the threshold term alone; needs thresholds).</p></dd>
 
 
 <dt id="arg-flow">flow<a class="anchor" aria-label="anchor" href="#arg-flow"></a></dt>
@@ -152,6 +168,42 @@ lower and upper. Every start is optimised and the best objective is returned.</p
 <dt id="arg-seed">seed<a class="anchor" aria-label="anchor" href="#arg-seed"></a></dt>
 <dd><p>Optional finite number that seeds the random starting points. The caller's
 random number state is restored on exit. It has no effect when starts is 1.</p></dd>
+
+
+<dt id="arg-method">method<a class="anchor" aria-label="anchor" href="#arg-method"></a></dt>
+<dd><p>Optimiser: <code>lbfgsb</code> (default), gradient-based and fast for smooth objectives,
+or <code>nelder_mead</code>, derivative-free, needed for threshold objectives because event counts
+change in steps. Nelder-Mead works on a logistic transform of the unit box, so every
+trial stays within lower and upper; it usually needs several times more model runs.</p></dd>
+
+
+<dt id="arg-thresholds">thresholds<a class="anchor" aria-label="anchor" href="#arg-thresholds"></a></dt>
+<dd><p>Optional named vector of threshold flows, m3/s. The objective then
+becomes the continuous objective plus <code>threshold_weight</code> times the mean over thresholds
+of the threshold loss (1 - score, or the score itself for false alarm ratios), from
+<code><a href="pdm_threshold_scores.html">pdm_threshold_scores()</a></code> over the scored rows. An undefined score counts as the worst.
+Requires <code>method = "nelder_mead"</code>, and at least one observed event at each threshold.</p></dd>
+
+
+<dt id="arg-threshold-weight">threshold_weight<a class="anchor" aria-label="anchor" href="#arg-threshold-weight"></a></dt>
+<dd><p>Nonnegative weight of the threshold term.</p></dd>
+
+
+<dt id="arg-threshold-score">threshold_score<a class="anchor" aria-label="anchor" href="#arg-threshold-score"></a></dt>
+<dd><p>Threshold score: <code>csi</code> (default), <code>pod</code>, <code>far</code>, <code>csi_step</code>,
+<code>pod_step</code>, <code>far_step</code>, <code>ets_step</code> or <code>pss_step</code>.</p></dd>
+
+
+<dt id="arg-event-settings">event_settings<a class="anchor" aria-label="anchor" href="#arg-event-settings"></a></dt>
+<dd><p>List of <code>tolerance_h</code>, <code>gap_h</code> and <code>min_duration_h</code> for event
+matching; see <code><a href="pdm_threshold_scores.html">pdm_threshold_scores()</a></code>.</p></dd>
+
+
+<dt id="arg-log-scale">log_scale<a class="anchor" aria-label="anchor" href="#arg-log-scale"></a></dt>
+<dd><p>Names of parameters to search on a logarithmic scale, so that each
+tenfold step gets equal room. Use it for parameters spanning orders of magnitude, such as
+recharge.kg or groundwater.kb. Their lower bounds must be positive. Results stay in the
+parameters' own units.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -285,6 +337,9 @@ fitted value, which always lies within lower and upper.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $objective_name</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "rmse"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $method</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "lbfgsb"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $convergence</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 52</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
@@ -293,8 +348,7 @@ fitted value, which always lies within lower and upper.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $optim</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $optim$par</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  fc </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 0.5 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.5</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $optim$value</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0</span>

@@ -16,12 +16,28 @@
 - [Starting a run: cold, warm and
   hot](https://jonpayneea.github.io/PDMS7/articles/starting-states.md):
 
-### Calibration and forecasting
+### Calibration
 
 - [Calibration: multi-start, budgets and staged
   calibration](https://jonpayneea.github.io/PDMS7/articles/calibration.md):
+- [Automatic calibration,
+  explained](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.md):
+- [Scoring a simulation: from NSE to POD, FAR and
+  CSI](https://jonpayneea.github.io/PDMS7/articles/scoring.md):
+- [Choosing a model
+  structure](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.md):
+- [Calibrating many
+  catchments](https://jonpayneea.github.io/PDMS7/articles/many-catchments.md):
+
+### Records and review
+
 - [Logging a manual
   calibration](https://jonpayneea.github.io/PDMS7/articles/calibration-log.md):
+- [Inside the logs: projects, entries, checksums and the run
+  log](https://jonpayneea.github.io/PDMS7/articles/log-structure.md):
+
+### Forecasting
+
 - [Forecast
   updating](https://jonpayneea.github.io/PDMS7/articles/forecast-updating.md):
 

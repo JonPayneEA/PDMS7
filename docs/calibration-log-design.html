@@ -28,9 +28,18 @@
     <li><a class="dropdown-item" href="articles/model-options.html">Choosing model components</a></li>
     <li><a class="dropdown-item" href="articles/starting-states.html">Starting a run: cold, warm and hot</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Calibration and forecasting</h6></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Calibration</h6></li>
     <li><a class="dropdown-item" href="articles/calibration.html">Calibration: multi-start, budgets and staged calibration</a></li>
+    <li><a class="dropdown-item" href="articles/auto-calibration.html">Automatic calibration, explained</a></li>
+    <li><a class="dropdown-item" href="articles/scoring.html">Scoring a simulation: from NSE to POD, FAR and CSI</a></li>
+    <li><a class="dropdown-item" href="articles/choosing-structure.html">Choosing a model structure</a></li>
+    <li><a class="dropdown-item" href="articles/many-catchments.html">Calibrating many catchments</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Records and review</h6></li>
     <li><a class="dropdown-item" href="articles/calibration-log.html">Logging a manual calibration</a></li>
+    <li><a class="dropdown-item" href="articles/log-structure.html">Inside the logs: projects, entries, checksums and the run log</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Forecasting</h6></li>
     <li><a class="dropdown-item" href="articles/forecast-updating.html">Forecast updating</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Under the bonnet</h6></li>
@@ -195,9 +204,11 @@
 <td>The trial or calibration entry proposed; reasoning; calibration scores; series file and its MD5</td>
 </tr><tr class="even"><td><code>validation</code></td>
 <td>The candidate; validation scores, alongside calibration scores; series file and MD5; reasoning</td>
-</tr><tr class="odd"><td><code>sign_off</code></td>
+</tr><tr class="odd"><td><code>test</code></td>
+<td>The validated candidate; test scores beside the calibration and validation scores; series file and MD5; reasoning</td>
+</tr><tr class="even"><td><code>sign_off</code></td>
 <td>The candidate and validation; final configuration; capacity (steward or delegated steward); review checklist; statement</td>
-</tr><tr class="even"><td><code>reopen</code></td>
+</tr><tr class="odd"><td><code>reopen</code></td>
 <td>Reason</td>
 </tr></tbody></table><p>After <code>sign_off</code> the project is closed. Only <code>reopen</code> may follow; a reopened project accepts entries again, and a later sign-off supersedes the earlier one.</p>
 </div>
@@ -217,6 +228,46 @@
 <p>Scores are fixed when data are registered and computed for every run: NSE, log NSE, KGE and its three components (correlation, variability ratio, mean ratio), RMSE, log RMSE, absolute and signed volume error, peak error, and the three flow-duration-curve signatures of Yilmaz et al. (2008): high-flow volume bias (exceedance below 2 per cent), mid-segment slope bias (20 to 70 per cent) and low-flow volume bias (above 70 per cent). One metric is named the headline, NSE by default, for sorting and charts. The verdict on a trial is the person’s own.</p>
 <p>Trials and automatic calibrations are scored on the calibration window only. The validation window is scored once, by the <code>validation</code> entry, so that it stays an honest test.</p>
 <p>Every run simulates continuously from the first registered row from <code>initial_state(model, soil_fraction)</code>; rows before the calibration window are the warm-up.</p>
+</div>
+<div class="section level2">
+<h2 id="threshold-scores">Threshold scores<a class="anchor" aria-label="anchor" href="#threshold-scores"></a></h2>
+<p>Agreed 2026-11-01, after phases 1 to 5.</p>
+<table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr class="header"><th>#</th>
+<th>Question</th>
+<th>Decision</th>
+</tr></thead><tbody><tr class="odd"><td>13</td>
+<td>What is an event</td>
+<td>An episode above the threshold; exceedances closer than a minimum gap merge; a simulated crossing within a timing tolerance of an observed one is a hit, matched one to one, closest first</td>
+</tr><tr class="even"><td>14</td>
+<td>Threshold units</td>
+<td>Flow (m3/s) or level (m), per threshold; levels convert through a registered rating table, interpolated in log flow, never extrapolated</td>
+</tr><tr class="odd"><td>15</td>
+<td>Matching settings</td>
+<td>One set per registration: tolerance 6 h, gap 24 h, minimum duration 0 by default. Event scores need no correct negatives; the chance-corrected scores (POFD, ETS, PSS) are step-based only</td>
+</tr><tr class="even"><td>16</td>
+<td>Weight in calibration</td>
+<td>A threshold score may be the headline. Automatic calibration may add a weighted threshold term to a continuous objective, using derivative-free Nelder-Mead, since event counts change in steps</td>
+</tr></tbody></table><p>Threshold scores join each run’s scores as <code>metric:threshold</code>, for example <code>csi:Flood Warning</code>, so they are logged, verified, reported and ranked like any other.</p>
+</div>
+<div class="section level2">
+<h2 id="structure-comparison-and-the-test-window">Structure comparison and the test window<a class="anchor" aria-label="anchor" href="#structure-comparison-and-the-test-window"></a></h2>
+<p>Agreed 2026-11-01.</p>
+<table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr class="header"><th>#</th>
+<th>Question</th>
+<th>Decision</th>
+</tr></thead><tbody><tr class="odd"><td>17</td>
+<td>Which structures</td>
+<td>A list to choose from; by default the standard PDM and seven one-change variants</td>
+</tr><tr class="even"><td>18</td>
+<td>Parameters and bounds</td>
+<td>A shipped bounds table per component, with overrides and exclusions; log-scale search for parameters spanning orders of magnitude</td>
+</tr><tr class="odd"><td>19</td>
+<td>Ranking</td>
+<td>On the validation window, with the calibration score and the change shown; optional two-way cross-validation</td>
+</tr><tr class="even"><td>20</td>
+<td>Final check</td>
+<td>An optional test window, scored once by a <code>test</code> entry (the eleventh type) after every choice; required before sign-off when registered; a poor result does not block sign-off</td>
+</tr></tbody></table><p>Each compared structure is logged as ordinary <code>structure_selected</code> and <code>auto_calibration</code> entries sharing a comparison id, so no further entry type is needed and the ranking can be rebuilt from the log. Structures are fitted in parallel workers that write nothing; the entries are written afterwards, in order, by the session that started the comparison.</p>
 </div>
 <div class="section level2">
 <h2 id="run-log-and-register">Run log and register<a class="anchor" aria-label="anchor" href="#run-log-and-register"></a></h2>

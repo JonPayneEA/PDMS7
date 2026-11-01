@@ -18,14 +18,17 @@
 #'
 #' `read_project()` gives the project details, status and a one-row-per-entry table.
 #' `project_trials()` lists every run (structure, trial and automatic calibration) with its
-#' parent, changes, scores, verdict and reasoning. `read_projects()` summarises several
-#' projects in one table, for example every project in a team folder.
+#' parent, changes, scores, verdict and reasoning. `read_entry()` returns one entry in full,
+#' for example an automatic calibration's table of starts. `read_projects()` summarises
+#' several projects in one table, for example every basin of a large-sample calibration,
+#' with the candidate's headline score on the calibration and validation windows.
 #'
 #' @param project Path of a calibration project folder.
 #' @param projects Paths of calibration project folders.
 #' @return `read_project()`: a list with `path`, `id`, `status` (`open`, `signed_off` or
 #'   `reopened`), `project` (the `project_start` fields), `scorecard` (the latest) and
-#'   `entries` (a data.table). `project_trials()` and `read_projects()`: data.tables.
+#'   `entries` (a data.table). `read_entry()`: the entry as a list. `project_trials()` and
+#'   `read_projects()`: data.tables.
 #' @seealso [calibration_log], [verify_project()]
 #' @export
 read_project <- function(project) {
@@ -56,6 +59,7 @@ read_project <- function(project) {
     note = e$text,
     candidate = paste("Entry", e$entry),
     validation = paste("Candidate", e$candidate),
+    test = paste("Candidate", e$candidate, "tested"),
     sign_off = paste("Candidate", e$candidate, "signed off as", e$capacity),
     reopen = e$reason
   )
@@ -89,6 +93,23 @@ project_trials <- function(project) {
   data.table::rbindlist(rows, fill = TRUE)
 }
 
+.validation_score <- function(entries, candidate, headline) {
+  validation <- .latest(entries, "validation")
+  if (is.null(candidate) || is.null(validation) || is.na(headline) ||
+        !identical(validation$candidate, candidate$id)) {
+    return(NA_real_)
+  }
+  .num_or_na(validation$validation_scores[[headline]])
+}
+
+#' @rdname read_project
+#' @param id An entry id, such as 4 or "0004".
+#' @export
+read_entry <- function(project, id) {
+  entry <- .find_entry(.read_entries(.project_path(project)), id)
+  entry[setdiff(names(entry), c(".file", ".md5"))]
+}
+
 #' @rdname read_project
 #' @export
 read_projects <- function(projects) {
@@ -106,6 +127,9 @@ read_projects <- function(projects) {
       candidate = .text_or_na(candidate$id), headline = headline,
       candidate_score = if (is.null(candidate) || is.na(headline)) NA_real_ else
         .num_or_na(candidate$scores[[headline]]),
+      validation_score = .validation_score(entries, candidate, headline),
+      test_score = if (is.na(headline)) NA_real_ else
+        .num_or_na(.candidate_test(entries, candidate)$test_scores[[headline]]),
       signed_off_by = .text_or_na(sign_off$author$name),
       signed_off_at = .text_or_na(sign_off$timestamp), path = info$path
     )
@@ -181,7 +205,7 @@ verify_project <- function(project, rerun = FALSE) {
 .verify_data <- function(path, entries) {
   out <- NULL
   for (e in Filter(function(x) x$type == "data_registered", entries)) {
-    for (name in c("forcing", "observed")) {
+    for (name in names(e$data)) {
       item <- e$data[[name]]
       file <- .stored_file(path, item)
       ok <- file.exists(file) && identical(.md5_file(file), item$md5)
@@ -220,13 +244,14 @@ verify_project <- function(project, rerun = FALSE) {
 .verify_reruns <- function(path, entries) {
   info <- .project_info(entries)
   out <- NULL
-  targets <- Filter(function(e) e$type %in% c(.model_entry_types, "validation"), entries)
+  targets <- Filter(function(e) e$type %in% c(.model_entry_types, "validation", "test"),
+                    entries)
   for (e in targets) {
     registration <- .find_entry(entries, e$registration)
     result <- tryCatch({
-      if (e$type == "validation") {
+      if (e$type %in% c("validation", "test")) {
         config <- .find_entry(entries, e$candidate)$configuration
-        window <- "validation"
+        window <- e$type
       } else {
         config <- e$configuration
         window <- "calibration"

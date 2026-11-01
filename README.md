@@ -43,11 +43,28 @@ Model options:
   the five capacity distributions, three recharge rules, routing forms and the solver
 - [Starting a run: cold, warm and hot](https://jonpayneea.github.io/PDMS7/articles/starting-states.html)
 
-Calibration and forecasting:
+Calibration:
 
 - [Calibration: multi-start, budgets and staged calibration](https://jonpayneea.github.io/PDMS7/articles/calibration.html)
+- [Automatic calibration, explained](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.html):
+  in plain terms: bounds, search scales, the two search methods, and rewarding flood warnings
+- [Scoring a simulation](https://jonpayneea.github.io/PDMS7/articles/scoring.html): NSE, KGE,
+  flow-duration signatures, and POD, FAR and CSI at warning thresholds
+- [Choosing a model structure](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.html):
+  calibrate the alternatives alike, rank on validation, and keep a final test window
+- [Calibrating many catchments](https://jonpayneea.github.io/PDMS7/articles/many-catchments.html):
+  a step-by-step guide to `calibrate_batch()`: preparing folders, running, resuming after an
+  interruption, fixing failures, and reading the results
+
+Records and review:
+
 - [Logging a manual calibration](https://jonpayneea.github.io/PDMS7/articles/calibration-log.html):
   the audit trail from project start to sign-off, the report, and tracing operational runs
+- [Inside the logs](https://jonpayneea.github.io/PDMS7/articles/log-structure.html): project
+  folders, entries, the checksum chain, the run log and the register
+
+Forecasting:
+
 - [Forecast updating](https://jonpayneea.github.io/PDMS7/articles/forecast-updating.html):
   state correction and ARMA error prediction
 

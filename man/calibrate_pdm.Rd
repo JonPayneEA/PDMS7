@@ -11,13 +11,19 @@ calibrate_pdm(
   lower,
   upper,
   warmup = 0,
-  objective = c("rmse", "nse", "log_rmse"),
+  objective = c("rmse", "nse", "log_rmse", "threshold"),
   flow = c("q_m3s", "q_end_m3s"),
   log_offset = 0.01,
   control = list(maxit = 200),
   soil_fraction = 0.5,
   starts = 1L,
-  seed = NULL
+  seed = NULL,
+  method = c("lbfgsb", "nelder_mead"),
+  thresholds = NULL,
+  threshold_weight = 1,
+  threshold_score = "csi",
+  event_settings = list(tolerance_h = 6, gap_h = 24, min_duration_h = 0),
+  log_scale = character(0)
 )
 }
 \arguments{
@@ -37,7 +43,8 @@ surface.k1.}
 \item{warmup}{Number of initial forcing steps excluded from calibration scoring, but still
 simulated.}
 
-\item{objective}{Calibration objective: rmse, nse (minimizes 1-NSE), or log_rmse.}
+\item{objective}{Calibration objective: rmse, nse (minimizes 1-NSE), log_rmse, or
+threshold (the threshold term alone; needs thresholds).}
 
 \item{flow}{Series to score: q_m3s (interval mean) or q_end_m3s (endpoint flow).}
 
@@ -55,6 +62,30 @@ lower and upper. Every start is optimised and the best objective is returned.}
 
 \item{seed}{Optional finite number that seeds the random starting points. The caller's
 random number state is restored on exit. It has no effect when starts is 1.}
+
+\item{method}{Optimiser: \code{lbfgsb} (default), gradient-based and fast for smooth objectives,
+or \code{nelder_mead}, derivative-free, needed for threshold objectives because event counts
+change in steps. Nelder-Mead works on a logistic transform of the unit box, so every
+trial stays within lower and upper; it usually needs several times more model runs.}
+
+\item{thresholds}{Optional named vector of threshold flows, m3/s. The objective then
+becomes the continuous objective plus \code{threshold_weight} times the mean over thresholds
+of the threshold loss (1 - score, or the score itself for false alarm ratios), from
+\code{\link[=pdm_threshold_scores]{pdm_threshold_scores()}} over the scored rows. An undefined score counts as the worst.
+Requires \code{method = "nelder_mead"}, and at least one observed event at each threshold.}
+
+\item{threshold_weight}{Nonnegative weight of the threshold term.}
+
+\item{threshold_score}{Threshold score: \code{csi} (default), \code{pod}, \code{far}, \code{csi_step},
+\code{pod_step}, \code{far_step}, \code{ets_step} or \code{pss_step}.}
+
+\item{event_settings}{List of \code{tolerance_h}, \code{gap_h} and \code{min_duration_h} for event
+matching; see \code{\link[=pdm_threshold_scores]{pdm_threshold_scores()}}.}
+
+\item{log_scale}{Names of parameters to search on a logarithmic scale, so that each
+tenfold step gets equal room. Use it for parameters spanning orders of magnitude, such as
+recharge.kg or groundwater.kb. Their lower bounds must be positive. Results stay in the
+parameters' own units.}
 }
 \value{
 A list of config, model, parameters, objective, convergence, message, optim

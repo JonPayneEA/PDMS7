@@ -66,16 +66,25 @@ observed[1500:1572] <- NA
 
 Registration copies the data into the project, takes their checksums,
 records their quality, and fixes the scorecard: the calibration and
-validation windows, the headline score and the starting soil moisture.
-Every later run is scored the same way, so trials can be compared
-fairly. Rows before the calibration window are warm-up.
+validation windows, the headline score, the starting soil moisture and
+any warning thresholds. Every later run is scored the same way, so
+trials can be compared fairly. Rows before the calibration window are
+warm-up.
+
+Thresholds may be flows or river levels. Levels are converted to flows
+through a rating table registered with the data, and a level outside the
+rating is refused rather than extrapolated.
 
 ``` r
+rating <- data.frame(stage_m = c(0.2, 0.5, 1, 1.5, 2), q_m3s = c(0.3, 0.8, 2.2, 5, 9))
+thresholds <- data.frame(name = c("Flood Alert", "Flood Warning"), value = c(1.8, 1),
+                         unit = c("flow", "level"))
 reg <- register_data(
   project, forcing, observed,
   calibration = c("2023-10-15", "2023-12-31"),
   validation = c("2024-01-01", "2024-01-28"),
-  headline = "nse", reasoning = "Gauge record checked against the station log."
+  headline = "nse", thresholds = thresholds, rating = rating,
+  reasoning = "Gauge record checked against the station log."
 )
 str(reg$summary[c("rows", "start", "end", "observed_missing", "observed_longest_gap")])
 #> List of 5
@@ -223,6 +232,68 @@ round(data.frame(calibration = unlist(val$calibration_scores),
 #> fdc_high          -0.016     -0.023
 ```
 
+## Warning thresholds
+
+Every run was also scored at both thresholds. An event is an episode
+above the threshold; a simulated crossing within six hours of an
+observed one is a hit, and exceedances less than a day apart count as
+one event.
+
+``` r
+pick <- function(scores, window) {
+  metrics <- c("observed_events", "hits", "misses", "false_alarms", "pod", "far", "csi",
+               "crossing_error_h", "csi_step")
+  do.call(rbind, lapply(thresholds$name, function(t) {
+    data.frame(threshold = t, window = window,
+               lapply(stats::setNames(metrics, metrics), function(m) {
+                 round(scores[[paste0(m, ":", t)]], 2)
+               }), check.names = FALSE)
+  }))
+}
+rbind(pick(val$calibration_scores, "calibration"), pick(val$validation_scores, "validation"))
+#>       threshold      window observed_events hits misses false_alarms  pod far
+#> 1   Flood Alert calibration               4    3      1            0 0.75 0.0
+#> 2 Flood Warning calibration               5    4      1            1 0.80 0.2
+#> 3   Flood Alert  validation               3    1      2            1 0.33 0.5
+#> 4 Flood Warning  validation               1    0      1            0 0.00  NA
+#>    csi crossing_error_h csi_step
+#> 1 0.75             0.67     0.97
+#> 2 0.67             1.50     0.92
+#> 3 0.25             0.00     0.76
+#> 4 0.00               NA     0.00
+```
+
+Two lessons. First, a high NSE does not guarantee warning skill: the
+candidate scores an NSE near 0.97 in validation, yet catches only one of
+the three alert events, because January’s peaks barely cross the
+threshold and small errors decide whether they do. Second, event and
+step scores answer different questions. Step scores weight each event by
+its length, so a long flood simulated well dominates them and a short
+flood missed barely registers; here `csi_step` is the kinder score.
+Event scores count each flood once, which is how a warning service is
+judged, and they count a crossing an hour late as a hit, where steps
+count a miss and a false alarm. Note how few events there are: with one
+to five per window, one event moves POD by a fifth or more, so read
+these scores alongside the counts. The report draws all thresholds and
+both windows on one performance diagram.
+
+A project for a warning service can rank runs by a threshold score, with
+`headline = "csi:Flood Warning"` at registration. Automatic calibration
+can reward threshold skill too. Event counts change in steps, which a
+gradient optimiser cannot follow, so this uses the derivative-free
+Nelder-Mead method, with a continuous score to break ties:
+
+``` r
+log_auto_calibration(
+  project, parent = 7, lower = c(surface.k1 = 1), upper = c(surface.k1 = 6),
+  objective = "nse", method = "nelder_mead", threshold_objective = "Flood Warning",
+  threshold_weight = 1, reasoning = "Tune routing for warning timing."
+)
+```
+
+The entry records the method, the weighted objective and the number of
+model runs, so a reviewer can see what the optimiser was rewarded for.
+
 ## Sign-off
 
 Only a Steward or Delegated Steward can sign off, and not one who wrote
@@ -265,8 +336,9 @@ checks[, .N, by = .(check, ok)]
 #> 2:         chain   TRUE    12
 #> 3:  data forcing   TRUE     1
 #> 4: data observed   TRUE     1
-#> 5:        series   TRUE     2
-#> 6:         rerun   TRUE     7
+#> 5:   data rating   TRUE     1
+#> 6:        series   TRUE     2
+#> 7:         rerun   TRUE     7
 ```
 
 Now suppose someone tidies the reasoning of trial 0005 after the event:
@@ -335,14 +407,14 @@ project is reopened, runs with the old parameters are marked
 
 ## Summary
 
-| Step                | Function                                                                                                                                                                                                                                                                                                                                             |
-|---------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Declare who you are | `options(pdmS7.user = , pdmS7.role = )`                                                                                                                                                                                                                                                                                                              |
-| Start               | [`start_calibration_project()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)                                                                                                                                                                                                                                                     |
-| Data and scorecard  | [`register_data()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)                                                                                                                                                                                                                                                                 |
-| Structure           | [`select_structure()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)                                                                                                                                                                                                                                                              |
-| Try, then log       | [`preview_trial()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md), [`log_trial()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md), [`log_auto_calibration()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md), [`log_note()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md) |
-| Decide              | [`propose_candidate()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md), [`validate_candidate()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)                                                                                                                                                                  |
-| Approve             | [`sign_off_project()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md), [`reopen_project()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)                                                                                                                                                                       |
-| Check and report    | [`verify_project()`](https://jonpayneea.github.io/PDMS7/reference/verify_project.md), [`build_report()`](https://jonpayneea.github.io/PDMS7/reference/build_report.md), [`project_trials()`](https://jonpayneea.github.io/PDMS7/reference/read_project.md)                                                                                           |
-| Trace use           | `options(pdmS7.run_log = , pdmS7.register = )`, [`read_run_log()`](https://jonpayneea.github.io/PDMS7/reference/read_run_log.md)                                                                                                                                                                                                                     |
+| Step                           | Function                                                                                                                                                                                                                                                                                                                                             |
+|--------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Declare who you are            | `options(pdmS7.user = , pdmS7.role = )`                                                                                                                                                                                                                                                                                                              |
+| Start                          | [`start_calibration_project()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)                                                                                                                                                                                                                                                     |
+| Data, scorecard and thresholds | [`register_data()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)                                                                                                                                                                                                                                                                 |
+| Structure                      | [`select_structure()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)                                                                                                                                                                                                                                                              |
+| Try, then log                  | [`preview_trial()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md), [`log_trial()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md), [`log_auto_calibration()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md), [`log_note()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md) |
+| Decide                         | [`propose_candidate()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md), [`validate_candidate()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)                                                                                                                                                                  |
+| Approve                        | [`sign_off_project()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md), [`reopen_project()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)                                                                                                                                                                       |
+| Check and report               | [`verify_project()`](https://jonpayneea.github.io/PDMS7/reference/verify_project.md), [`build_report()`](https://jonpayneea.github.io/PDMS7/reference/build_report.md), [`project_trials()`](https://jonpayneea.github.io/PDMS7/reference/read_project.md)                                                                                           |
+| Trace use                      | `options(pdmS7.run_log = , pdmS7.register = )`, [`read_run_log()`](https://jonpayneea.github.io/PDMS7/reference/read_run_log.md)                                                                                                                                                                                                                     |

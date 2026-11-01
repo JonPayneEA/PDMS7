@@ -49,11 +49,22 @@ articles:
   contents:
   - model-options
   - starting-states
-- title: Calibration and forecasting
-  navbar: Calibration and forecasting
+- title: Calibration
+  navbar: Calibration
   contents:
   - calibration
+  - auto-calibration
+  - scoring
+  - choosing-structure
+  - many-catchments
+- title: Records and review
+  navbar: Records and review
+  contents:
   - calibration-log
+  - log-structure
+- title: Forecasting
+  navbar: Forecasting
+  contents:
   - forecast-updating
 - title: Under the bonnet
   navbar: Under the bonnet
@@ -151,7 +162,18 @@ reference:
   - calibrate_pdm_multi
   - pdm_objectives
   - pdm_scorecard
+  - pdm_threshold_scores
   - pareto_front
+- title: Batch calibration
+  desc: The same logged protocol for many basins, resumable after any interruption.
+  contents:
+  - calibrate_batch
+- title: Comparing structures
+  desc: Calibrate several model structures alike and rank them on held-out data.
+  contents:
+  - compare_structures
+  - structure_set
+  - calibration_bounds
 - title: Calibration log
   desc: An append-only, tamper-evident record of manual and automatic calibration.
   contents:

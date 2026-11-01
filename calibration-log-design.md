@@ -106,6 +106,7 @@ Then, by type:
 | `note` | Text; optional entry it refers to |
 | `candidate` | The trial or calibration entry proposed; reasoning; calibration scores; series file and its MD5 |
 | `validation` | The candidate; validation scores, alongside calibration scores; series file and MD5; reasoning |
+| `test` | The validated candidate; test scores beside the calibration and validation scores; series file and MD5; reasoning |
 | `sign_off` | The candidate and validation; final configuration; capacity (steward or delegated steward); review checklist; statement |
 | `reopen` | Reason |
 
@@ -142,6 +143,36 @@ window is scored once, by the `validation` entry, so that it stays an honest tes
 
 Every run simulates continuously from the first registered row from `initial_state(model,
 soil_fraction)`; rows before the calibration window are the warm-up.
+
+## Threshold scores
+
+Agreed 2026-11-01, after phases 1 to 5.
+
+| # | Question | Decision |
+|---|---|---|
+| 13 | What is an event | An episode above the threshold; exceedances closer than a minimum gap merge; a simulated crossing within a timing tolerance of an observed one is a hit, matched one to one, closest first |
+| 14 | Threshold units | Flow (m3/s) or level (m), per threshold; levels convert through a registered rating table, interpolated in log flow, never extrapolated |
+| 15 | Matching settings | One set per registration: tolerance 6 h, gap 24 h, minimum duration 0 by default. Event scores need no correct negatives; the chance-corrected scores (POFD, ETS, PSS) are step-based only |
+| 16 | Weight in calibration | A threshold score may be the headline. Automatic calibration may add a weighted threshold term to a continuous objective, using derivative-free Nelder-Mead, since event counts change in steps |
+
+Threshold scores join each run's scores as `metric:threshold`, for example
+`csi:Flood Warning`, so they are logged, verified, reported and ranked like any other.
+
+## Structure comparison and the test window
+
+Agreed 2026-11-01.
+
+| # | Question | Decision |
+|---|---|---|
+| 17 | Which structures | A list to choose from; by default the standard PDM and seven one-change variants |
+| 18 | Parameters and bounds | A shipped bounds table per component, with overrides and exclusions; log-scale search for parameters spanning orders of magnitude |
+| 19 | Ranking | On the validation window, with the calibration score and the change shown; optional two-way cross-validation |
+| 20 | Final check | An optional test window, scored once by a `test` entry (the eleventh type) after every choice; required before sign-off when registered; a poor result does not block sign-off |
+
+Each compared structure is logged as ordinary `structure_selected` and `auto_calibration`
+entries sharing a comparison id, so no further entry type is needed and the ranking can be
+rebuilt from the log. Structures are fitted in parallel workers that write nothing; the
+entries are written afterwards, in order, by the session that started the comparison.
 
 ## Run log and register
 

@@ -177,7 +177,8 @@
   list(
     simulated = sim, observed = data$observed, rows = rows,
     time = if ("time" %in% names(data$forcing)) data$forcing$time else NULL,
-    scores = as.list(pdm_scorecard(sim[rows], data$observed[rows], card$log_offset)),
+    scores = c(as.list(pdm_scorecard(sim[rows], data$observed[rows], card$log_offset)),
+               .flat_threshold_scores(sim[rows], data$observed[rows], card, model@dt)),
     output_md5 = .series_md5(sim)
   )
 }

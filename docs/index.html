@@ -45,9 +45,18 @@
     <li><a class="dropdown-item" href="articles/model-options.html">Choosing model components</a></li>
     <li><a class="dropdown-item" href="articles/starting-states.html">Starting a run: cold, warm and hot</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Calibration and forecasting</h6></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Calibration</h6></li>
     <li><a class="dropdown-item" href="articles/calibration.html">Calibration: multi-start, budgets and staged calibration</a></li>
+    <li><a class="dropdown-item" href="articles/auto-calibration.html">Automatic calibration, explained</a></li>
+    <li><a class="dropdown-item" href="articles/scoring.html">Scoring a simulation: from NSE to POD, FAR and CSI</a></li>
+    <li><a class="dropdown-item" href="articles/choosing-structure.html">Choosing a model structure</a></li>
+    <li><a class="dropdown-item" href="articles/many-catchments.html">Calibrating many catchments</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Records and review</h6></li>
     <li><a class="dropdown-item" href="articles/calibration-log.html">Logging a manual calibration</a></li>
+    <li><a class="dropdown-item" href="articles/log-structure.html">Inside the logs: projects, entries, checksums and the run log</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Forecasting</h6></li>
     <li><a class="dropdown-item" href="articles/forecast-updating.html">Forecast updating</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Under the bonnet</h6></li>
@@ -114,11 +123,27 @@
 <a href="https://jonpayneea.github.io/PDMS7/articles/model-options.html">Choosing model components</a>: the five capacity distributions, three recharge rules, routing forms and the solver</li>
 <li><a href="https://jonpayneea.github.io/PDMS7/articles/starting-states.html">Starting a run: cold, warm and hot</a></li>
 </ul>
-<p>Calibration and forecasting:</p>
+<p>Calibration:</p>
 <ul>
 <li><a href="https://jonpayneea.github.io/PDMS7/articles/calibration.html">Calibration: multi-start, budgets and staged calibration</a></li>
 <li>
+<a href="https://jonpayneea.github.io/PDMS7/articles/auto-calibration.html">Automatic calibration, explained</a>: in plain terms: bounds, search scales, the two search methods, and rewarding flood warnings</li>
+<li>
+<a href="https://jonpayneea.github.io/PDMS7/articles/scoring.html">Scoring a simulation</a>: NSE, KGE, flow-duration signatures, and POD, FAR and CSI at warning thresholds</li>
+<li>
+<a href="https://jonpayneea.github.io/PDMS7/articles/choosing-structure.html">Choosing a model structure</a>: calibrate the alternatives alike, rank on validation, and keep a final test window</li>
+<li>
+<a href="https://jonpayneea.github.io/PDMS7/articles/many-catchments.html">Calibrating many catchments</a>: a step-by-step guide to <code><a href="reference/calibrate_batch.html">calibrate_batch()</a></code>: preparing folders, running, resuming after an interruption, fixing failures, and reading the results</li>
+</ul>
+<p>Records and review:</p>
+<ul>
+<li>
 <a href="https://jonpayneea.github.io/PDMS7/articles/calibration-log.html">Logging a manual calibration</a>: the audit trail from project start to sign-off, the report, and tracing operational runs</li>
+<li>
+<a href="https://jonpayneea.github.io/PDMS7/articles/log-structure.html">Inside the logs</a>: project folders, entries, the checksum chain, the run log and the register</li>
+</ul>
+<p>Forecasting:</p>
+<ul>
 <li>
 <a href="https://jonpayneea.github.io/PDMS7/articles/forecast-updating.html">Forecast updating</a>: state correction and ARMA error prediction</li>
 </ul>

@@ -11,6 +11,7 @@
 \alias{log_note}
 \alias{propose_candidate}
 \alias{validate_candidate}
+\alias{test_candidate}
 \alias{sign_off_project}
 \alias{reopen_project}
 \title{Calibration log}
@@ -37,7 +38,13 @@ register_data(
   log_offset = 0.01,
   soil_fraction = 0.5,
   copy = TRUE,
-  reasoning = ""
+  reasoning = "",
+  thresholds = NULL,
+  rating = NULL,
+  event_tolerance_h = 6,
+  event_gap_h = 24,
+  event_min_duration_h = 0,
+  test = NULL
 )
 
 select_structure(project, configuration, reasoning)
@@ -51,11 +58,16 @@ log_auto_calibration(
   parent,
   lower,
   upper,
-  objective = c("nse", "rmse", "log_rmse"),
+  objective = c("nse", "rmse", "log_rmse", "threshold"),
   starts = 1L,
   seed = NULL,
   control = list(maxit = 200),
-  reasoning
+  reasoning,
+  method = c("lbfgsb", "nelder_mead"),
+  threshold_objective = NULL,
+  threshold_weight = 1,
+  threshold_score = "csi",
+  log_scale = character(0)
 )
 
 log_note(project, text, refers_to = NULL)
@@ -63,6 +75,8 @@ log_note(project, text, refers_to = NULL)
 propose_candidate(project, entry, reasoning)
 
 validate_candidate(project, reasoning)
+
+test_candidate(project, reasoning)
 
 sign_off_project(
   project,
@@ -95,12 +109,16 @@ interval and an optional \code{time} column.}
 \item{observed}{Path of a CSV file with a \code{q_m3s} column, a data frame, or a numeric
 vector of observed flow, m3/s, aligned with \code{forcing}. Missing values are allowed.}
 
-\item{calibration, validation}{Scoring windows as \code{c(start, end)}: row numbers, or times
-when the forcing has a time column. Rows before the calibration window are warm-up.
-\code{validation} may be \code{NULL} until it is needed.}
+\item{calibration, validation, test}{Scoring windows as \code{c(start, end)}: row numbers, or
+times when the forcing has a time column. Rows before the calibration window are
+warm-up. \code{validation} may be \code{NULL} until it is needed. \code{test} is an optional final
+window, scored once by \code{test_candidate()} after every choice is made, and by nothing
+else; the three windows must not overlap.}
 
 \item{headline}{Score used to rank runs: one of \code{nse}, \code{log_nse}, \code{kge}, \code{rmse},
-\code{log_rmse}, \code{abs_volume_error}.}
+\code{log_rmse}, \code{abs_volume_error}, or a threshold score written as \code{metric:name}, such as
+\verb{csi:Flood Warning}, where metric is \code{pod}, \code{far}, \code{csi}, \code{pod_step}, \code{far_step},
+\code{csi_step}, \code{ets_step} or \code{pss_step}.}
 
 \item{log_offset}{Offset added before logarithms, m3/s.}
 
@@ -111,6 +129,16 @@ by path and MD5. Data frames and vectors are always written into the project.}
 
 \item{reasoning, statement, reason, text}{Free text explaining the entry.}
 
+\item{thresholds}{Optional data frame of thresholds with columns \code{name}, \code{value} and
+\code{unit}: \code{flow} (m3/s) or \code{level} (m, converted to flow through \code{rating}). Every run is
+then also scored with \code{\link[=pdm_threshold_scores]{pdm_threshold_scores()}}, under names such as \verb{csi:Flood Warning}.}
+
+\item{rating}{Rating table for level thresholds: a CSV path or data frame with \code{stage_m}
+and \code{q_m3s}. Levels outside it are refused, not extrapolated. Stored like the data.}
+
+\item{event_tolerance_h, event_gap_h, event_min_duration_h}{Event matching settings in
+hours; see \code{\link[=pdm_threshold_scores]{pdm_threshold_scores()}}.}
+
 \item{configuration}{A configuration list or the path of a YAML configuration file.}
 
 \item{parent}{Id of the structure, trial or automatic calibration entry to start from.}
@@ -120,7 +148,15 @@ by path and MD5. Data frames and vectors are always written into the project.}
 
 \item{verdict}{Your judgement of the trial: \code{better}, \code{worse} or \code{inconclusive}.}
 
-\item{lower, upper, objective, starts, seed, control}{Passed to \code{\link[=calibrate_pdm]{calibrate_pdm()}}.}
+\item{lower, upper, objective, starts, seed, control, method, log_scale}{Passed to
+\code{\link[=calibrate_pdm]{calibrate_pdm()}}.}
+
+\item{threshold_objective}{Optional names of registered thresholds to include in the
+objective of an automatic calibration, with \code{method = "nelder_mead"}. Their flows and
+the registered event settings are used, so the calibration and the scorecard agree.}
+
+\item{threshold_weight, threshold_score}{Weight and score of the threshold term; see
+\code{\link[=calibrate_pdm]{calibrate_pdm()}}.}
 
 \item{refers_to}{Optional id of the entry a note concerns.}
 
@@ -149,6 +185,7 @@ below writes one entry; none edits or deletes an earlier one.
    \code{log_note()} \tab \code{note} \tab Any \cr
    \code{propose_candidate()} \tab \code{candidate} \tab Custodian \cr
    \code{validate_candidate()} \tab \code{validation} \tab Custodian \cr
+   \code{test_candidate()} \tab \code{test} \tab Custodian \cr
    \code{sign_off_project()} \tab \code{sign_off} \tab Steward or Delegated Steward \cr
    \code{reopen_project()} \tab \code{reopen} \tab Steward or Delegated Steward \cr
 }
@@ -161,7 +198,8 @@ operating-system login. A Steward cannot sign off a project in which they wrote 
 automatic calibration, candidate or validation.
 
 Every run simulates the whole registered record from \code{initial_state(model, soil_fraction)}. Trials and automatic calibrations are scored on the calibration window
-only; the validation window is scored once, by \code{validate_candidate()}. See
+only; the validation window is scored once, by \code{validate_candidate()}, and an optional
+test window once more, by \code{test_candidate()}, after every choice is made. See
 \code{\link[=pdm_scorecard]{pdm_scorecard()}} for the scores and \code{\link[=verify_project]{verify_project()}} for the integrity checks.
 }
 \examples{

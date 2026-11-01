@@ -1,0 +1,282 @@
+---
+title: "Automatic calibration, explained"
+author: "pdmS7 documentation"
+vignette: >
+  %\VignetteIndexEntry{Automatic calibration, explained}
+  %\VignetteEngine{knitr::knitr}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+library(pdmS7)
+knitr::opts_chunk$set(
+  error = FALSE, collapse = TRUE, comment = "#>", fig.width = 8,
+  fig.height = 3.6, dpi = 110
+)
+pal <- c("#236b83", "#a26421", "#5b8c3a", "#8a3b6b", "#444444", "#b23b3b", "#9aa7b0")
+plain <- function(x) format(x, scientific = FALSE, drop0trailing = TRUE, trim = TRUE)
+show_bounds <- function(b, note = FALSE) {
+  out <- data.frame(path = b$path, lower = plain(b$lower), upper = plain(b$upper),
+                    scale = b$scale)
+  if (note) out$note <- b$note
+  out
+}
+```
+
+Automatic calibration means letting the computer try parameter values until the simulated
+flow matches the measured flow as well as it can. `calibrate_pdm()` does this. It helps to
+picture it as a walker trying to reach the lowest point of a landscape in thick fog:
+
+- **where the walker may go** is set by the *bounds*: the lowest and highest value each
+  parameter may take;
+- **how the ground is laid out** is the *search scale*: whether each step of distance means
+  the same change everywhere;
+- **how the walker moves** is the *method*: feeling for the slope, or comparing a few points;
+- **what "low" means** is the *objective*: the score being minimised, such as 1 - NSE.
+
+This article takes each in turn, in plain terms, with an example. How many starting points
+to use and how long a calibration takes are covered in [Calibration](calibration.html); the
+scores themselves in [Scoring a simulation](scoring.html).
+
+The examples use a made-up catchment whose true parameters we know, with a Flood Warning
+threshold at 3.7 m3/s.
+
+```{r data}
+set.seed(8)
+n <- 24 * 40
+time <- seq(as.POSIXct("2024-01-01", tz = "UTC"), by = 3600, length.out = n)
+forcing <- data.frame(time = time, pet = 0.04,
+                      rain = ifelse(stats::runif(n) < 0.08, stats::rgamma(n, 0.7, scale = 4), 0))
+truth <- pdm_presets("standard")
+truth$area_km2 <- 50
+truth$recharge$kg <- 300
+truth$distribution$cmax <- 120
+run <- function(config) {
+  model <- pdm_from_config(config)
+  run_pdm(model, forcing, initial_state(model, 0.5))$output$q_m3s
+}
+observed <- run(truth) * exp(stats::rnorm(n, 0, 0.03))
+warning_flow <- c(`Flood Warning` = 3.7)
+scored <- 241:n # the first ten days are warm-up
+```
+
+# How the search works
+
+Parameters come in different units: millimetres, hours, fractions. To search them together,
+each is stretched or squeezed onto the same scale, from 0 at its lowest allowed value to 1 at
+its highest. The search moves around on that common scale. Every point it tries is turned
+back into real parameter values, the model is run, and the result is scored on the
+calibration period.
+
+With several *starts*, the search is begun from several different places and the best place
+anyone reaches wins. That guards against stopping in a dip that is not the deepest.
+
+# Bounds
+
+Bounds are the fences around the search: the lowest and highest value each parameter may
+take. They should take in every value that makes physical sense and nothing more. Too
+narrow, and the right answer may be fenced out; too wide, and the search wastes time on
+values no real catchment has. `calibration_bounds()` gives sensible fences for every part of
+the model, from a table that comes with the package:
+
+```{r bounds}
+show_bounds(calibration_bounds(pdm_presets("standard")), note = TRUE)
+```
+
+If you know a catchment, move any fence, add a parameter to calibrate, or hold one fixed at
+its current value:
+
+```{r overrides}
+b <- calibration_bounds(pdm_presets("standard"),
+                        overrides = list(fc = c(0.9, 1.2), td = c(0, 3)),
+                        exclude = "groundwater.kb")
+show_bounds(b)
+```
+
+# Search scale
+
+Some parameters can sensibly be anywhere across a huge range. The recharge time constant
+`kg`, for instance, might be 2 hours in one catchment and 2,000 in another. If the search
+spreads its effort evenly between 1 and 5,000, the whole stretch from 1 to 50 hours, where
+many quick-responding catchments sit, gets only 1 per cent of the attention.
+
+A *log scale* fixes this by giving each tenfold step the same room: 1 to 10 gets as much
+attention as 10 to 100, and as 1,000 to 5,000. The picture shows where twenty random
+starting values land each way.
+
+```{r scale, fig.cap="Twenty random starting values for kg between 1 and 5,000 hours, drawn evenly (top) and on a log scale (bottom), plotted on a log axis.", fig.height=2.2}
+set.seed(1)
+even <- stats::runif(20, 1, 5000)
+logged <- exp(stats::runif(20, log(1), log(5000)))
+par(mar = c(4, 6, 0.6, 0.6))
+plot(c(even, logged), rep(2:1, each = 20), log = "x", pch = 16, col = pal[1], yaxt = "n",
+     ylim = c(0.5, 2.5), xlab = "kg (hours, log axis)", ylab = "", xlim = c(1, 5000))
+axis(2, at = 2:1, labels = c("even", "log scale"), las = 1)
+```
+
+Here is the difference in practice, for a catchment whose true `kg` is 40 hours, with the
+search starting from 1,000:
+
+```{r scale-run}
+flat <- pdm_presets("standard")
+flat$recharge$kg <- 40
+flat_obs <- run(flat)
+start <- flat
+start$recharge$kg <- 1000
+args <- list(start, forcing, flat_obs, lower = c(recharge.kg = 1), upper = c(recharge.kg = 5000),
+             warmup = 240, objective = "nse", control = list(maxit = 50))
+even_fit <- do.call(calibrate_pdm, args)
+log_fit <- do.call(calibrate_pdm, c(args, list(log_scale = "recharge.kg")))
+data.frame(scale = c("even", "log"),
+           kg = round(c(even_fit$parameters, log_fit$parameters), 2),
+           model_runs = c(sum(even_fit$start_results$evaluations),
+                          sum(log_fit$start_results$evaluations)))
+```
+
+Both find the right answer; the log-scale search gets there in about a third of the model
+runs. The bounds table marks which parameters should be searched this way, and
+`compare_structures()` and `calibrate_batch()` follow it automatically. With
+`calibrate_pdm()` and `log_auto_calibration()`, list them in `log_scale`.
+
+# How the search moves
+
+`calibrate_pdm()` has two ways of moving through the fog.
+
+| Method | How it moves | Good for | Cost |
+|---|---|---|---|
+| `lbfgsb` (the default) | Feels which way the ground slopes and steps downhill | Smooth scores: NSE, RMSE, log RMSE | Fewest model runs |
+| `nelder_mead` | Keeps a small group of points, compares their scores, and moves the group towards the best | Scores with sudden jumps or flat stretches | Several times more model runs |
+
+Which one to use depends on the shape of the ground. Most scores are like a smooth hillside:
+change a parameter a little and the score changes a little, so there is always a slope to
+feel. But a score that counts floods, such as CSI, is like a staircase. It only changes when
+a simulated peak moves from one side of the warning threshold to the other, and between
+those moments it stays exactly the same. The two pictures show the two scores as one
+parameter, the first surface time constant, is changed and everything else is held at the
+truth.
+
+```{r profiles, fig.cap="The two objectives along one parameter, the first surface time constant, with everything else at the truth. NSE changes smoothly; CSI at Flood Warning is a staircase."}
+grid <- seq(1.5, 6, length.out = 60)
+profile <- t(vapply(grid, function(k) {
+  cfg <- truth
+  cfg$surface$k1 <- k
+  sim <- run(cfg)[scored]
+  c(nse = pdm_scorecard(sim, observed[scored])[["nse"]],
+    csi = pdm_threshold_scores(sim, observed[scored], warning_flow)$csi)
+}, numeric(2)))
+par(mfrow = c(1, 2), mar = c(4, 4.2, 1.5, 0.8))
+plot(grid, profile[, "nse"], type = "l", lwd = 2, col = pal[1], xlab = "surface.k1 (hours)",
+     ylab = "NSE", main = "Smooth", cex.main = 0.95)
+plot(grid, profile[, "csi"], type = "s", lwd = 2, col = pal[2], xlab = "surface.k1 (hours)",
+     ylab = "CSI at Flood Warning", main = "Steps", cex.main = 0.95)
+```
+
+On the left there is always a slope to follow down to the best value. On the right, the
+score sits at 0.75 for every value from about 2.3 to 3.8 hours. Standing anywhere on that
+step, the slope-feeling method feels no slope at all, decides it has arrived, and stops. At
+the edge of a step, the slope it feels is a sudden cliff that tells it nothing useful.
+
+The comparing method does not need slopes. It looks at the scores of a few points spread
+around, and moves towards the best of them, so it can walk across a flat step to the next
+one down. pdmS7 keeps every point it tries inside the fences.
+
+# Objectives
+
+The objective is the score the search tries to make as small as possible: it decides what
+"good" means.
+
+| `objective` | Makes smallest | Pays most attention to |
+|---|---|---|
+| `nse` | 1 - NSE | Floods; the usual choice |
+| `rmse` | The typical error, in m3/s | Floods, measured in flow |
+| `log_rmse` | The typical error of log flows | Low flows |
+| `threshold` | The threshold part alone (below) | Crossing warning thresholds, and nothing else |
+
+## Rewarding threshold skill
+
+A model for a warning service should cross the warning threshold when the river does. So
+`calibrate_pdm()` can reward that as well as the overall fit:
+
+> score to minimise = (1 - NSE) + weight × (1 - CSI)
+
+The NSE part keeps a gentle slope everywhere, so the search always has something to go on,
+and it decides between parameter sets that catch the same floods. The CSI part rewards
+catching the floods. Because the CSI part comes in steps, this needs the comparing method,
+`nelder_mead`. With several thresholds, their CSI values are averaged.
+
+Here are the two side by side: first the overall fit alone, then the overall fit plus the
+Flood Warning:
+
+```{r threshold-fit}
+start <- truth
+start$fc <- 0.9
+start$surface$k1 <- 4
+start$surface$k2 <- 7
+lower <- c(fc = 0.7, surface.k1 = 0.5, surface.k2 = 0.5)
+upper <- c(fc = 1.4, surface.k1 = 20, surface.k2 = 20)
+common <- list(start, forcing, observed, lower, upper, warmup = 240, objective = "nse",
+               log_scale = c("surface.k1", "surface.k2"), starts = 2, seed = 1)
+nse_only <- do.call(calibrate_pdm, common)
+with_threshold <- do.call(calibrate_pdm, c(common, list(
+  method = "nelder_mead", thresholds = warning_flow, threshold_weight = 1,
+  control = list(maxit = 300)
+)))
+summarise <- function(fit) {
+  sim <- run(fit$config)[scored]
+  events <- pdm_threshold_scores(sim, observed[scored], warning_flow)
+  c(round(fit$parameters, 2), nse = round(pdm_scorecard(sim, observed[scored])[["nse"]], 4),
+    csi = round(events$csi, 2), crossing_error_h = round(events$crossing_error_h, 2),
+    model_runs = sum(fit$start_results$evaluations))
+}
+rbind(nse_only = summarise(nse_only), with_threshold = summarise(with_threshold))
+with_threshold$objective_name
+```
+
+Asking for the Flood Warning as well made the search find parameters that catch the one
+Flood Warning event the first calibration missed: CSI went from 0.89 to a perfect 1. The
+overall fit hardly changed (NSE fell in the fourth decimal place, too little to see on a
+hydrograph). The price was computer time: about twice as many model runs. That is the usual
+bargain: a small, deliberate nudge to the parameters for the sake of the warnings, not a
+different model.
+
+Some guidance:
+
+- **Weight.** NSE and CSI both run from about 0 to 1 for a useful model, so a weight of 1
+  treats them evenly. A larger weight cares more about the warnings than the hydrograph as a
+  whole.
+- **Enough floods.** A threshold the river crosses only once or twice in the calibration
+  period gives the search almost nothing to learn from, and the result can be luck.
+  `calibrate_pdm()` refuses a threshold that is never crossed.
+- **Other scores.** `threshold_score` can also be `pod` (catching floods), `far` (avoiding
+  false alarms), or a step-by-step score such as `ets_step`.
+- **The slope-feeling method refuses.** Asking for a threshold part with
+  `method = "lbfgsb"` stops with an explanation, because it would quietly fail.
+
+# In a calibration project
+
+Inside a calibration project, `log_auto_calibration()` runs the same search on the
+project's own data and periods, using the warning thresholds registered with the data, by
+name. It writes down everything a reviewer would need to repeat it exactly: the fences, the
+search scales, the method, the score and its weights, the starting points and seed, where
+every start ended, how many model runs it took, and why it was run.
+
+```{r logged, eval=FALSE}
+log_auto_calibration(
+  project, parent = 7,
+  lower = c(fc = 0.7, surface.k1 = 0.5, surface.k2 = 0.5),
+  upper = c(fc = 1.4, surface.k1 = 20, surface.k2 = 20),
+  log_scale = c("surface.k1", "surface.k2"), starts = 4, seed = 1,
+  method = "nelder_mead", threshold_objective = "Flood Warning", threshold_weight = 1,
+  reasoning = "Tune the surface stores for warning timing."
+)
+```
+
+# Which settings to use
+
+| Situation | Settings |
+|---|---|
+| First calibration of a catchment | `objective = "nse"`, the default method, several starts, fences from `calibration_bounds()`, log scale where the table says |
+| Low flows matter most | `objective = "log_rmse"` |
+| A flood warning service | Add `thresholds` and use `method = "nelder_mead"`; keep NSE as the main score |
+| Comparing model structures | `compare_structures()` applies all of this the same way to each; see [Choosing a model structure](choosing-structure.html) |
+| Many catchments | `calibrate_batch()`; see [Calibrating many catchments](many-catchments.html) |

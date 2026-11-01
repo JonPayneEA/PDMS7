@@ -32,9 +32,18 @@ below writes one entry; none edits or deletes an earlier one."></head><body>
     <li><a class="dropdown-item" href="../articles/model-options.html">Choosing model components</a></li>
     <li><a class="dropdown-item" href="../articles/starting-states.html">Starting a run: cold, warm and hot</a></li>
     <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Calibration and forecasting</h6></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Calibration</h6></li>
     <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: multi-start, budgets and staged calibration</a></li>
+    <li><a class="dropdown-item" href="../articles/auto-calibration.html">Automatic calibration, explained</a></li>
+    <li><a class="dropdown-item" href="../articles/scoring.html">Scoring a simulation: from NSE to POD, FAR and CSI</a></li>
+    <li><a class="dropdown-item" href="../articles/choosing-structure.html">Choosing a model structure</a></li>
+    <li><a class="dropdown-item" href="../articles/many-catchments.html">Calibrating many catchments</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Records and review</h6></li>
     <li><a class="dropdown-item" href="../articles/calibration-log.html">Logging a manual calibration</a></li>
+    <li><a class="dropdown-item" href="../articles/log-structure.html">Inside the logs: projects, entries, checksums and the run log</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Forecasting</h6></li>
     <li><a class="dropdown-item" href="../articles/forecast-updating.html">Forecast updating</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Under the bonnet</h6></li>
@@ -100,7 +109,13 @@ below writes one entry; none edits or deletes an earlier one.</p>
 <span>  log_offset <span class="op">=</span> <span class="fl">0.01</span>,</span>
 <span>  soil_fraction <span class="op">=</span> <span class="fl">0.5</span>,</span>
 <span>  copy <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  reasoning <span class="op">=</span> <span class="st">""</span></span>
+<span>  reasoning <span class="op">=</span> <span class="st">""</span>,</span>
+<span>  thresholds <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  rating <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  event_tolerance_h <span class="op">=</span> <span class="fl">6</span>,</span>
+<span>  event_gap_h <span class="op">=</span> <span class="fl">24</span>,</span>
+<span>  event_min_duration_h <span class="op">=</span> <span class="fl">0</span>,</span>
+<span>  test <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">select_structure</span><span class="op">(</span><span class="va">project</span>, <span class="va">configuration</span>, <span class="va">reasoning</span><span class="op">)</span></span>
@@ -114,11 +129,16 @@ below writes one entry; none edits or deletes an earlier one.</p>
 <span>  <span class="va">parent</span>,</span>
 <span>  <span class="va">lower</span>,</span>
 <span>  <span class="va">upper</span>,</span>
-<span>  objective <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nse"</span>, <span class="st">"rmse"</span>, <span class="st">"log_rmse"</span><span class="op">)</span>,</span>
+<span>  objective <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nse"</span>, <span class="st">"rmse"</span>, <span class="st">"log_rmse"</span>, <span class="st">"threshold"</span><span class="op">)</span>,</span>
 <span>  starts <span class="op">=</span> <span class="fl">1L</span>,</span>
 <span>  seed <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>maxit <span class="op">=</span> <span class="fl">200</span><span class="op">)</span>,</span>
-<span>  <span class="va">reasoning</span></span>
+<span>  <span class="va">reasoning</span>,</span>
+<span>  method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"lbfgsb"</span>, <span class="st">"nelder_mead"</span><span class="op">)</span>,</span>
+<span>  threshold_objective <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  threshold_weight <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>  threshold_score <span class="op">=</span> <span class="st">"csi"</span>,</span>
+<span>  log_scale <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">log_note</span><span class="op">(</span><span class="va">project</span>, <span class="va">text</span>, refers_to <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
@@ -126,6 +146,8 @@ below writes one entry; none edits or deletes an earlier one.</p>
 <span><span class="fu">propose_candidate</span><span class="op">(</span><span class="va">project</span>, <span class="va">entry</span>, <span class="va">reasoning</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">validate_candidate</span><span class="op">(</span><span class="va">project</span>, <span class="va">reasoning</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">test_candidate</span><span class="op">(</span><span class="va">project</span>, <span class="va">reasoning</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">sign_off_project</span><span class="op">(</span></span>
 <span>  <span class="va">project</span>,</span>
@@ -180,15 +202,19 @@ interval and an optional <code>time</code> column.</p></dd>
 vector of observed flow, m3/s, aligned with <code>forcing</code>. Missing values are allowed.</p></dd>
 
 
-<dt id="arg-calibration-validation">calibration, validation<a class="anchor" aria-label="anchor" href="#arg-calibration-validation"></a></dt>
-<dd><p>Scoring windows as <code>c(start, end)</code>: row numbers, or times
-when the forcing has a time column. Rows before the calibration window are warm-up.
-<code>validation</code> may be <code>NULL</code> until it is needed.</p></dd>
+<dt id="arg-calibration-validation-test">calibration, validation, test<a class="anchor" aria-label="anchor" href="#arg-calibration-validation-test"></a></dt>
+<dd><p>Scoring windows as <code>c(start, end)</code>: row numbers, or
+times when the forcing has a time column. Rows before the calibration window are
+warm-up. <code>validation</code> may be <code>NULL</code> until it is needed. <code>test</code> is an optional final
+window, scored once by <code>test_candidate()</code> after every choice is made, and by nothing
+else; the three windows must not overlap.</p></dd>
 
 
 <dt id="arg-headline">headline<a class="anchor" aria-label="anchor" href="#arg-headline"></a></dt>
 <dd><p>Score used to rank runs: one of <code>nse</code>, <code>log_nse</code>, <code>kge</code>, <code>rmse</code>,
-<code>log_rmse</code>, <code>abs_volume_error</code>.</p></dd>
+<code>log_rmse</code>, <code>abs_volume_error</code>, or a threshold score written as <code>metric:name</code>, such as
+<code>csi:Flood Warning</code>, where metric is <code>pod</code>, <code>far</code>, <code>csi</code>, <code>pod_step</code>, <code>far_step</code>,
+<code>csi_step</code>, <code>ets_step</code> or <code>pss_step</code>.</p></dd>
 
 
 <dt id="arg-log-offset">log_offset<a class="anchor" aria-label="anchor" href="#arg-log-offset"></a></dt>
@@ -208,6 +234,22 @@ by path and MD5. Data frames and vectors are always written into the project.</p
 <dd><p>Free text explaining the entry.</p></dd>
 
 
+<dt id="arg-thresholds">thresholds<a class="anchor" aria-label="anchor" href="#arg-thresholds"></a></dt>
+<dd><p>Optional data frame of thresholds with columns <code>name</code>, <code>value</code> and
+<code>unit</code>: <code>flow</code> (m3/s) or <code>level</code> (m, converted to flow through <code>rating</code>). Every run is
+then also scored with <code><a href="pdm_threshold_scores.html">pdm_threshold_scores()</a></code>, under names such as <code>csi:Flood Warning</code>.</p></dd>
+
+
+<dt id="arg-rating">rating<a class="anchor" aria-label="anchor" href="#arg-rating"></a></dt>
+<dd><p>Rating table for level thresholds: a CSV path or data frame with <code>stage_m</code>
+and <code>q_m3s</code>. Levels outside it are refused, not extrapolated. Stored like the data.</p></dd>
+
+
+<dt id="arg-event-tolerance-h-event-gap-h-event-min-duration-h">event_tolerance_h, event_gap_h, event_min_duration_h<a class="anchor" aria-label="anchor" href="#arg-event-tolerance-h-event-gap-h-event-min-duration-h"></a></dt>
+<dd><p>Event matching settings in
+hours; see <code><a href="pdm_threshold_scores.html">pdm_threshold_scores()</a></code>.</p></dd>
+
+
 <dt id="arg-configuration">configuration<a class="anchor" aria-label="anchor" href="#arg-configuration"></a></dt>
 <dd><p>A configuration list or the path of a YAML configuration file.</p></dd>
 
@@ -225,8 +267,20 @@ by path and MD5. Data frames and vectors are always written into the project.</p
 <dd><p>Your judgement of the trial: <code>better</code>, <code>worse</code> or <code>inconclusive</code>.</p></dd>
 
 
-<dt id="arg-lower-upper-objective-starts-seed-control">lower, upper, objective, starts, seed, control<a class="anchor" aria-label="anchor" href="#arg-lower-upper-objective-starts-seed-control"></a></dt>
-<dd><p>Passed to <code><a href="calibrate_pdm.html">calibrate_pdm()</a></code>.</p></dd>
+<dt id="arg-lower-upper-objective-starts-seed-control-method-log-scale">lower, upper, objective, starts, seed, control, method, log_scale<a class="anchor" aria-label="anchor" href="#arg-lower-upper-objective-starts-seed-control-method-log-scale"></a></dt>
+<dd><p>Passed to
+<code><a href="calibrate_pdm.html">calibrate_pdm()</a></code>.</p></dd>
+
+
+<dt id="arg-threshold-objective">threshold_objective<a class="anchor" aria-label="anchor" href="#arg-threshold-objective"></a></dt>
+<dd><p>Optional names of registered thresholds to include in the
+objective of an automatic calibration, with <code>method = "nelder_mead"</code>. Their flows and
+the registered event settings are used, so the calibration and the scorecard agree.</p></dd>
+
+
+<dt id="arg-threshold-weight-threshold-score">threshold_weight, threshold_score<a class="anchor" aria-label="anchor" href="#arg-threshold-weight-threshold-score"></a></dt>
+<dd><p>Weight and score of the threshold term; see
+<code><a href="calibrate_pdm.html">calibrate_pdm()</a></code>.</p></dd>
 
 
 <dt id="arg-refers-to">refers_to<a class="anchor" aria-label="anchor" href="#arg-refers-to"></a></dt>
@@ -250,13 +304,14 @@ the configuration, scores and series of the proposed trial.</p>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
 
-<table class="table table"><tr><td>Function</td><td>Entry</td><td>Role</td></tr><tr><td><code>start_calibration_project()</code></td><td><code>project_start</code></td><td>Custodian</td></tr><tr><td><code>register_data()</code></td><td><code>data_registered</code></td><td>Custodian</td></tr><tr><td><code>select_structure()</code></td><td><code>structure_selected</code></td><td>Custodian</td></tr><tr><td><code>log_trial()</code></td><td><code>trial</code></td><td>Custodian</td></tr><tr><td><code>log_auto_calibration()</code></td><td><code>auto_calibration</code></td><td>Custodian</td></tr><tr><td><code>log_note()</code></td><td><code>note</code></td><td>Any</td></tr><tr><td><code>propose_candidate()</code></td><td><code>candidate</code></td><td>Custodian</td></tr><tr><td><code>validate_candidate()</code></td><td><code>validation</code></td><td>Custodian</td></tr><tr><td><code>sign_off_project()</code></td><td><code>sign_off</code></td><td>Steward or Delegated Steward</td></tr><tr><td><code>reopen_project()</code></td><td><code>reopen</code></td><td>Steward or Delegated Steward</td></tr></table><p>Declare who you are once per session, with
+<table class="table table"><tr><td>Function</td><td>Entry</td><td>Role</td></tr><tr><td><code>start_calibration_project()</code></td><td><code>project_start</code></td><td>Custodian</td></tr><tr><td><code>register_data()</code></td><td><code>data_registered</code></td><td>Custodian</td></tr><tr><td><code>select_structure()</code></td><td><code>structure_selected</code></td><td>Custodian</td></tr><tr><td><code>log_trial()</code></td><td><code>trial</code></td><td>Custodian</td></tr><tr><td><code>log_auto_calibration()</code></td><td><code>auto_calibration</code></td><td>Custodian</td></tr><tr><td><code>log_note()</code></td><td><code>note</code></td><td>Any</td></tr><tr><td><code>propose_candidate()</code></td><td><code>candidate</code></td><td>Custodian</td></tr><tr><td><code>validate_candidate()</code></td><td><code>validation</code></td><td>Custodian</td></tr><tr><td><code>test_candidate()</code></td><td><code>test</code></td><td>Custodian</td></tr><tr><td><code>sign_off_project()</code></td><td><code>sign_off</code></td><td>Steward or Delegated Steward</td></tr><tr><td><code>reopen_project()</code></td><td><code>reopen</code></td><td>Steward or Delegated Steward</td></tr></table><p>Declare who you are once per session, with
 <code>options(pdmS7.user = "Your Name", pdmS7.role = "custodian")</code>, or with the environment
 variables <code>PDMS7_USER</code> and <code>PDMS7_ROLE</code>. Every entry records the name, the role and the
 operating-system login. A Steward cannot sign off a project in which they wrote a trial,
 automatic calibration, candidate or validation.</p>
 <p>Every run simulates the whole registered record from <code>initial_state(model, soil_fraction)</code>. Trials and automatic calibrations are scored on the calibration window
-only; the validation window is scored once, by <code>validate_candidate()</code>. See
+only; the validation window is scored once, by <code>validate_candidate()</code>, and an optional
+test window once more, by <code>test_candidate()</code>, after every choice is made. See
 <code><a href="pdm_scorecard.html">pdm_scorecard()</a></code> for the scores and <code><a href="verify_project.html">verify_project()</a></code> for the integrity checks.</p>
     </div>
 
@@ -267,7 +322,7 @@ only; the validation window is scored once, by <code>validate_candidate()</code>
 <span class="r-in"><span><span class="fu">start_calibration_project</span><span class="op">(</span><span class="va">folder</span>, catchment <span class="op">=</span> <span class="st">"Example"</span>, gauge <span class="op">=</span> <span class="st">"00000"</span>,</span></span>
 <span class="r-in"><span>  purpose <span class="op">=</span> <span class="st">"Illustration"</span>, area_km2 <span class="op">=</span> <span class="fl">50</span>, owner <span class="op">=</span> <span class="st">"Deputy Director"</span>,</span></span>
 <span class="r-in"><span>  steward <span class="op">=</span> <span class="st">"A Steward"</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> INFO [2026-11-01 14:12:36] Started calibration project example-project in /tmp/Rtmp9X4oUc/example-project</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> INFO [2026-11-01 19:06:41] Started calibration project example-project in /tmp/Rtmp00zeOE/example-project</span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">forcing</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>rain <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Uniform.html" class="external-link">runif</a></span><span class="op">(</span><span class="fl">500</span><span class="op">)</span> <span class="op">&lt;</span> <span class="fl">0.1</span>, <span class="fu"><a href="https://rdrr.io/r/stats/Exponential.html" class="external-link">rexp</a></span><span class="op">(</span><span class="fl">500</span>, <span class="fl">0.3</span><span class="op">)</span>, <span class="fl">0</span><span class="op">)</span>, pet <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">truth</span> <span class="op">&lt;-</span> <span class="fu"><a href="pdm_presets.html">pdm_presets</a></span><span class="op">(</span><span class="st">"standard"</span><span class="op">)</span></span></span>
@@ -275,19 +330,19 @@ only; the validation window is scored once, by <code>validate_candidate()</code>
 <span class="r-in"><span><span class="va">observed</span> <span class="op">&lt;-</span> <span class="fu"><a href="run_pdm.html">run_pdm</a></span><span class="op">(</span><span class="fu"><a href="pdm_from_config.html">pdm_from_config</a></span><span class="op">(</span><span class="va">truth</span><span class="op">)</span>, <span class="va">forcing</span><span class="op">)</span><span class="op">$</span><span class="va">output</span><span class="op">$</span><span class="va">q_m3s</span></span></span>
 <span class="r-in"><span><span class="fu">register_data</span><span class="op">(</span><span class="va">folder</span>, <span class="va">forcing</span>, <span class="va">observed</span>, calibration <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">101</span>, <span class="fl">350</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>  validation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">351</span>, <span class="fl">500</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> INFO [2026-11-01 14:12:36] Registered data 0002: 500 rows</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> INFO [2026-11-01 19:06:41] Registered data 0002: 500 rows</span>
 <span class="r-in"><span><span class="fu">select_structure</span><span class="op">(</span><span class="va">folder</span>, <span class="va">truth</span>, reasoning <span class="op">=</span> <span class="st">"Standard structure as a starting point"</span><span class="op">)</span></span></span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Column name 'time' (colClasses[[1]][1]) not found</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> INFO [2026-11-01 14:12:36] Structure 0003: nse 1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> INFO [2026-11-01 19:06:41] Structure 0003: nse 1</span>
 <span class="r-in"><span><span class="fu">log_trial</span><span class="op">(</span><span class="va">folder</span>, parent <span class="op">=</span> <span class="fl">3</span>, changes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>surface.k1 <span class="op">=</span> <span class="fl">3</span><span class="op">)</span>, verdict <span class="op">=</span> <span class="st">"worse"</span>,</span></span>
 <span class="r-in"><span>  reasoning <span class="op">=</span> <span class="st">"Testing a slower first store"</span><span class="op">)</span></span></span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Column name 'time' (colClasses[[1]][1]) not found</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> INFO [2026-11-01 14:12:36] Trial 0004 from 0003: nse 0.9995</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> INFO [2026-11-01 19:06:41] Trial 0004 from 0003: nse 0.9995</span>
 <span class="r-in"><span><span class="fu"><a href="read_project.html">project_trials</a></span><span class="op">(</span><span class="va">folder</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>        id               type parent            timestamp        author</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    &lt;char&gt;             &lt;char&gt; &lt;char&gt;               &lt;char&gt;        &lt;char&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1:   0003 structure_selected   &lt;NA&gt; 2026-11-01T14:12:36Z A Hydrologist</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2:   0004              trial   0003 2026-11-01T14:12:36Z A Hydrologist</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1:   0003 structure_selected   &lt;NA&gt; 2026-11-01T19:06:41Z A Hydrologist</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2:   0004              trial   0003 2026-11-01T19:06:41Z A Hydrologist</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>              changes verdict                              reasoning       nse</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>               &lt;char&gt;  &lt;char&gt;                                 &lt;char&gt;     &lt;num&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1:                      &lt;NA&gt; Standard structure as a starting point 1.0000000</span>

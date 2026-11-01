@@ -79,6 +79,61 @@ test_that("candidate, validation, sign-off and reopen follow the rules", {
   expect_error(reopen_project(p$folder, "x"), "steward")
 })
 
+test_that("single entries and validation scores can be read back", {
+  p <- new_project()
+  log_trial(p$folder, 3, c(fc = 1), "better", "Volume too low")
+  trial <- read_entry(p$folder, 4)
+  expect_equal(trial$type, "trial")
+  expect_false(any(c(".file", ".md5") %in% names(trial)))
+  expect_error(read_entry(p$folder, 99), "No entry")
+  expect_true(is.na(read_projects(p$folder)$validation_score))
+  propose_candidate(p$folder, 4, "Best")
+  val <- validate_candidate(p$folder, "Fine")
+  expect_equal(read_projects(p$folder)$validation_score, val$validation_scores$nse)
+  propose_candidate(p$folder, 3, "Changed mind")
+  expect_true(is.na(read_projects(p$folder)$validation_score))
+})
+
+test_that("the test window is scored once, last, and required for sign-off", {
+  folder <- tempfile("project-")
+  on.exit(unlink(folder, recursive = TRUE), add = TRUE)
+  d <- log_data()
+  as_person("Ann Custodian", "custodian", "ann")
+  start_calibration_project(folder, "T", "1", "Testing", 20, "O", "S")
+  expect_error(register_data(folder, d$forcing, d$observed, c(121, 500), c(501, 700),
+                             test = c(650, 900)), "test must not overlap validation")
+  reg <- register_data(folder, d$forcing, d$observed, c(121, 500), c(501, 700),
+                       test = c(721, 960))
+  expect_equal(reg$scorecard$test$first_row, 721L)
+  select_structure(folder, d$truth, "Truth")
+  expect_equal(preview_trial(folder, 3, c(fc = 0.9))$rows, 121:500)
+  propose_candidate(folder, 3, "Truth")
+  expect_error(test_candidate(folder, "x"), "Validate")
+  validate_candidate(folder, "Fine")
+  as_person("Sam Steward", "steward", "sam")
+  expect_error(sign_off_project(folder, "x", all_reviewed), "test_candidate")
+  as_person("Ann Custodian", "custodian", "ann")
+  tested <- test_candidate(folder, "Holds on the final window")
+  expect_equal(tested$candidate, "0004")
+  expect_error(test_candidate(folder, "again"), "scored once")
+  expect_equal(read_projects(folder)$test_score, tested$test_scores$nse)
+  expect_true(all(verify_project(folder, rerun = TRUE)$ok))
+  html <- paste(readLines(build_report(folder, sensitivity = FALSE, rerun = FALSE)),
+                collapse = "")
+  expect_match(html, "Tested once on the final window")
+  as_person("Sam Steward", "steward", "sam")
+  expect_equal(sign_off_project(folder, "Accepted", all_reviewed)$test, tested$id)
+})
+
+test_that("projects without a test window sign off without one", {
+  p <- new_project()
+  propose_candidate(p$folder, 3, "Structure")
+  validate_candidate(p$folder, "Fine")
+  expect_error(test_candidate(p$folder, "x"), "no test window")
+  as_person("Sam Steward", "steward", "sam")
+  expect_null(sign_off_project(p$folder, "Accepted", all_reviewed)$test)
+})
+
 test_that("a delegated steward signs off in that capacity", {
   p <- new_project()
   propose_candidate(p$folder, 3, "Starting structure is adequate")

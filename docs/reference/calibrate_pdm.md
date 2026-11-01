@@ -12,13 +12,19 @@ calibrate_pdm(
   lower,
   upper,
   warmup = 0,
-  objective = c("rmse", "nse", "log_rmse"),
+  objective = c("rmse", "nse", "log_rmse", "threshold"),
   flow = c("q_m3s", "q_end_m3s"),
   log_offset = 0.01,
   control = list(maxit = 200),
   soil_fraction = 0.5,
   starts = 1L,
-  seed = NULL
+  seed = NULL,
+  method = c("lbfgsb", "nelder_mead"),
+  thresholds = NULL,
+  threshold_weight = 1,
+  threshold_score = "csi",
+  event_settings = list(tolerance_h = 6, gap_h = 24, min_duration_h = 0),
+  log_scale = character(0)
 )
 ```
 
@@ -55,7 +61,8 @@ calibrate_pdm(
 
 - objective:
 
-  Calibration objective: rmse, nse (minimizes 1-NSE), or log_rmse.
+  Calibration objective: rmse, nse (minimizes 1-NSE), log_rmse, or
+  threshold (the threshold term alone; needs thresholds).
 
 - flow:
 
@@ -87,6 +94,47 @@ calibrate_pdm(
   Optional finite number that seeds the random starting points. The
   caller's random number state is restored on exit. It has no effect
   when starts is 1.
+
+- method:
+
+  Optimiser: `lbfgsb` (default), gradient-based and fast for smooth
+  objectives, or `nelder_mead`, derivative-free, needed for threshold
+  objectives because event counts change in steps. Nelder-Mead works on
+  a logistic transform of the unit box, so every trial stays within
+  lower and upper; it usually needs several times more model runs.
+
+- thresholds:
+
+  Optional named vector of threshold flows, m3/s. The objective then
+  becomes the continuous objective plus `threshold_weight` times the
+  mean over thresholds of the threshold loss (1 - score, or the score
+  itself for false alarm ratios), from
+  [`pdm_threshold_scores()`](https://jonpayneea.github.io/PDMS7/reference/pdm_threshold_scores.md)
+  over the scored rows. An undefined score counts as the worst. Requires
+  `method = "nelder_mead"`, and at least one observed event at each
+  threshold.
+
+- threshold_weight:
+
+  Nonnegative weight of the threshold term.
+
+- threshold_score:
+
+  Threshold score: `csi` (default), `pod`, `far`, `csi_step`,
+  `pod_step`, `far_step`, `ets_step` or `pss_step`.
+
+- event_settings:
+
+  List of `tolerance_h`, `gap_h` and `min_duration_h` for event
+  matching; see
+  [`pdm_threshold_scores()`](https://jonpayneea.github.io/PDMS7/reference/pdm_threshold_scores.md).
+
+- log_scale:
+
+  Names of parameters to search on a logarithmic scale, so that each
+  tenfold step gets equal room. Use it for parameters spanning orders of
+  magnitude, such as recharge.kg or groundwater.kb. Their lower bounds
+  must be positive. Results stay in the parameters' own units.
 
 ## Value
 
@@ -221,6 +269,9 @@ calibrate_pdm(config, f, q, lower = c(fc = 0.8), upper = c(fc = 1.2),
 #> $objective_name
 #> [1] "rmse"
 #> 
+#> $method
+#> [1] "lbfgsb"
+#> 
 #> $convergence
 #> [1] 52
 #> 
@@ -229,8 +280,7 @@ calibrate_pdm(config, f, q, lower = c(fc = 0.8), upper = c(fc = 1.2),
 #> 
 #> $optim
 #> $optim$par
-#>  fc 
-#> 0.5 
+#> [1] 0.5
 #> 
 #> $optim$value
 #> [1] 0

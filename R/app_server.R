@@ -41,6 +41,7 @@
     .app_trial(input, output, session, rv, act, state)
     .app_history(input, output, session, rv, act, state)
     .app_report(input, output, rv, act, state)
+    .app_structures(input, output, rv, act, state)
     .app_signoff(input, output, rv, act, state)
   }
 }
@@ -96,9 +97,15 @@
     register_data(rv$project, input$forcing_path, input$observed_path,
                   calibration = .window_input(input$cal_start, input$cal_end),
                   validation = .window_input(input$val_start, input$val_end),
+                  test = .window_input(input$test_start %||% "", input$test_end %||% ""),
                   headline = input$headline, log_offset = input$log_offset,
                   soil_fraction = input$soil_fraction, copy = input$copy,
-                  reasoning = input$register_reasoning)
+                  reasoning = input$register_reasoning,
+                  thresholds = .parse_thresholds(input$thresholds),
+                  rating = if (nzchar(trimws(input$rating_path %||% ""))) input$rating_path,
+                  event_tolerance_h = input$event_tolerance %||% 6,
+                  event_gap_h = input$event_gap %||% 24,
+                  event_min_duration_h = input$event_min %||% 0)
   }, "Data registered"))
   shiny::observeEvent(input$structure, act(function() {
     shiny::req(rv$project)
@@ -127,6 +134,13 @@
   shiny::observe({
     paths <- .editable_paths(parent()$configuration)
     shiny::updateSelectizeInput(session, "calib_params", choices = paths, selected = character(0))
+  })
+  shiny::observe({
+    reg <- state$registration()
+    names <- if (is.null(reg)) character(0) else
+      vapply(reg$scorecard$thresholds, function(t) t$name, character(1))
+    shiny::updateSelectizeInput(session, "calib_thresholds", choices = names,
+                                selected = character(0))
   })
   output$params <- shiny::renderUI({
     config <- parent()$configuration
@@ -185,10 +199,15 @@
     config <- parent()$configuration
     value <- vapply(input$calib_params, function(p) .path_get(config, p), numeric(1))
     .check(all(value != 0), "Bounds are relative to the value; a zero parameter cannot be used")
+    chosen <- input$calib_thresholds
     log_auto_calibration(rv$project, input$parent, lower = value * (1 - input$calib_range),
                          upper = value * (1 + input$calib_range), starts = input$calib_starts,
                          seed = input$calib_seed, control = list(maxit = input$calib_maxit),
-                         reasoning = input$calib_reasoning)
+                         reasoning = input$calib_reasoning,
+                         method = input$calib_method %||% "lbfgsb",
+                         threshold_objective = if (length(chosen)) chosen,
+                         threshold_weight = input$calib_weight %||% 1,
+                         threshold_score = input$calib_score %||% "csi")
   }, "Calibration logged"))
 }
 
@@ -241,6 +260,9 @@
     entry <- validate_candidate(rv$project, input$validation_reasoning)
     rv$validation <- .score_table(entry$calibration_scores, entry$validation_scores)
   }, "Validation logged"))
+  shiny::observeEvent(input$final_test, act(function() {
+    test_candidate(rv$project, input$test_reasoning)
+  }, "Final test logged"))
   output$validation_scores <- shiny::renderTable({
     shiny::req(rv$validation)
     out <- rv$validation
@@ -283,7 +305,8 @@
                 .num_or_na(validation$validation_scores[[state$headline()]]))
       } else {
         "The latest candidate has not been validated."
-      }
+      },
+      .test_line(entries, candidate, state$headline())
     )
     shiny::tags$ul(lapply(lines, shiny::tags$li))
   })
@@ -295,4 +318,33 @@
   shiny::observeEvent(input$reopen, act(function() {
     reopen_project(rv$project, input$reopen_reason)
   }, "Project reopened"))
+}
+
+.test_line <- function(entries, candidate, headline) {
+  registration <- .latest(entries, "data_registered")
+  if (is.null(registration$scorecard$test)) return(NULL)
+  test <- .candidate_test(entries, candidate)
+  if (is.null(test)) return("Final test: not yet run; required before sign-off.")
+  sprintf("Final test %s: %s %.4g.", test$id, headline,
+          .num_or_na(test$test_scores[[headline]]))
+}
+
+.app_structures <- function(input, output, rv, act, state) {
+  shiny::observeEvent(input$compare, act(function() {
+    .check(length(input$structures) > 0, "Choose at least one structure")
+    base <- .latest(state$entries(), "structure_selected")
+    compare_structures(
+      rv$project,
+      structures = structure_set(input$structures, if (is.null(base)) pdm_presets("standard")
+                                 else base$configuration),
+      starts = input$cmp_starts, control = list(maxit = input$cmp_maxit),
+      cores = input$cmp_cores, cross_validate = isTRUE(input$cmp_cv),
+      reasoning = input$cmp_reasoning
+    )
+  }, "Structures compared and logged"))
+  output$comparison <- shiny::renderTable({
+    entries <- state$entries()
+    shiny::req(any(vapply(entries, function(e) !is.null(e$comparison), logical(1))))
+    as.data.frame(structure_comparison(state$path()))
+  }, digits = 4)
 }

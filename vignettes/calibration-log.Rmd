@@ -76,15 +76,23 @@ observed[1500:1572] <- NA
 
 Registration copies the data into the project, takes their checksums, records their
 quality, and fixes the scorecard: the calibration and validation windows, the headline
-score and the starting soil moisture. Every later run is scored the same way, so trials can
-be compared fairly. Rows before the calibration window are warm-up.
+score, the starting soil moisture and any warning thresholds. Every later run is scored the
+same way, so trials can be compared fairly. Rows before the calibration window are warm-up.
+
+Thresholds may be flows or river levels. Levels are converted to flows through a rating
+table registered with the data, and a level outside the rating is refused rather than
+extrapolated.
 
 ```{r register}
+rating <- data.frame(stage_m = c(0.2, 0.5, 1, 1.5, 2), q_m3s = c(0.3, 0.8, 2.2, 5, 9))
+thresholds <- data.frame(name = c("Flood Alert", "Flood Warning"), value = c(1.8, 1),
+                         unit = c("flow", "level"))
 reg <- register_data(
   project, forcing, observed,
   calibration = c("2023-10-15", "2023-12-31"),
   validation = c("2024-01-01", "2024-01-28"),
-  headline = "nse", reasoning = "Gauge record checked against the station log."
+  headline = "nse", thresholds = thresholds, rating = rating,
+  reasoning = "Gauge record checked against the station log."
 )
 str(reg$summary[c("rows", "start", "end", "observed_missing", "observed_longest_gap")])
 ```
@@ -182,6 +190,53 @@ round(data.frame(calibration = unlist(val$calibration_scores),
                  validation = unlist(val$validation_scores))[c("nse", "kge", "volume_error",
                                                                "fdc_high"), ], 3)
 ```
+
+# Warning thresholds
+
+Every run was also scored at both thresholds. An event is an episode above the threshold;
+a simulated crossing within six hours of an observed one is a hit, and exceedances less
+than a day apart count as one event.
+
+```{r thresholds}
+pick <- function(scores, window) {
+  metrics <- c("observed_events", "hits", "misses", "false_alarms", "pod", "far", "csi",
+               "crossing_error_h", "csi_step")
+  do.call(rbind, lapply(thresholds$name, function(t) {
+    data.frame(threshold = t, window = window,
+               lapply(stats::setNames(metrics, metrics), function(m) {
+                 round(scores[[paste0(m, ":", t)]], 2)
+               }), check.names = FALSE)
+  }))
+}
+rbind(pick(val$calibration_scores, "calibration"), pick(val$validation_scores, "validation"))
+```
+
+Two lessons. First, a high NSE does not guarantee warning skill: the candidate scores an
+NSE near 0.97 in validation, yet catches only one of the three alert events, because January's
+peaks barely cross the threshold and small errors decide whether they do. Second, event and
+step scores answer different questions. Step scores weight each event by its length, so a
+long flood simulated well dominates them and a short flood missed barely registers; here
+`csi_step` is the kinder score. Event scores count each flood once, which is how a warning
+service is judged, and they count a crossing an hour late as a hit, where steps count a miss
+and a false alarm. Note how few events there are: with one to five per window, one event
+moves POD by a fifth or more, so read these scores alongside the counts. The report draws
+all thresholds and both windows on one performance diagram.
+
+A project for a warning service can rank runs by a threshold score, with
+`headline = "csi:Flood Warning"` at registration. Automatic calibration can reward
+threshold skill too. Event counts change in steps, which a gradient optimiser cannot follow,
+so this uses the derivative-free Nelder-Mead method, with a continuous score to break ties:
+
+```{r threshold-calibration, eval=FALSE}
+log_auto_calibration(
+  project, parent = 7, lower = c(surface.k1 = 1), upper = c(surface.k1 = 6),
+  objective = "nse", method = "nelder_mead", threshold_objective = "Flood Warning",
+  threshold_weight = 1, reasoning = "Tune routing for warning timing."
+)
+```
+
+The entry records the method, the weighted objective and the number of model runs, so a
+reviewer can see what the optimiser was rewarded for.
 
 # Sign-off
 
@@ -285,7 +340,7 @@ unlink(c(project, register, file.path(tempdir(), "runs.csv")), recursive = TRUE)
 |---|---|
 | Declare who you are | `options(pdmS7.user = , pdmS7.role = )` |
 | Start | `start_calibration_project()` |
-| Data and scorecard | `register_data()` |
+| Data, scorecard and thresholds | `register_data()` |
 | Structure | `select_structure()` |
 | Try, then log | `preview_trial()`, `log_trial()`, `log_auto_calibration()`, `log_note()` |
 | Decide | `propose_candidate()`, `validate_candidate()` |
