@@ -54,6 +54,7 @@ articles:
   contents:
   - calibration
   - many-catchments
+  - choosing-structure
   - calibration-log
   - forecast-updating
 - title: Under the bonnet
@@ -154,6 +155,12 @@ reference:
   - pdm_scorecard
   - pdm_threshold_scores
   - pareto_front
+- title: Comparing structures
+  desc: Calibrate several model structures alike and rank them on held-out data.
+  contents:
+  - compare_structures
+  - structure_set
+  - calibration_bounds
 - title: Calibration log
   desc: An append-only, tamper-evident record of manual and automatic calibration.
   contents:

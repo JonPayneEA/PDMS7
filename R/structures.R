@@ -52,24 +52,28 @@ calibration_bounds <- function(config, overrides = NULL, exclude = NULL) {
   out <- do.call(rbind, rows)
   out <- data.frame(path = out$parameter, lower = out$lower, upper = out$upper,
                     scale = out$scale, note = out$note)
-  if (!is.null(overrides)) {
-    .check(is.list(overrides) && !is.null(names(overrides)) &&
-             all(vapply(overrides, function(x) is.numeric(x) && length(x) == 2L && x[1] < x[2],
-                        logical(1))), "overrides must be named c(lower, upper) pairs")
-    for (p in names(overrides)) {
-      .path_get(config, p)
-      if (p %in% out$path) {
-        out[out$path == p, c("lower", "upper")] <- as.list(overrides[[p]])
-      } else {
-        out <- rbind(out, data.frame(path = p, lower = overrides[[p]][1],
-                                     upper = overrides[[p]][2], scale = "linear",
-                                     note = "Added by override"))
-      }
-    }
-  }
+  if (!is.null(overrides)) out <- .apply_bound_overrides(out, overrides, config)
   if (!is.null(exclude)) out <- out[!out$path %in% exclude, ]
   .check(nrow(out) > 0, "No parameters left to calibrate")
   rownames(out) <- NULL
+  out
+}
+
+.apply_bound_overrides <- function(out, overrides, config) {
+  pair <- function(x) is.numeric(x) && length(x) == 2L && x[1] < x[2]
+  .check(is.list(overrides) && !is.null(names(overrides)) &&
+           all(vapply(overrides, pair, logical(1))),
+         "overrides must be named c(lower, upper) pairs")
+  for (p in names(overrides)) {
+    .path_get(config, p)
+    if (p %in% out$path) {
+      out[out$path == p, c("lower", "upper")] <- as.list(overrides[[p]])
+    } else {
+      out <- rbind(out, data.frame(path = p, lower = overrides[[p]][1],
+                                   upper = overrides[[p]][2], scale = "linear",
+                                   note = "Added by override"))
+    }
+  }
   out
 }
 
@@ -91,7 +95,9 @@ calibration_bounds <- function(config, overrides = NULL, exclude = NULL) {
 #' allowed if you have a reason to test it.
 #'
 #' @param names Structures to include; by default all eight.
-#' @param base Base configuration; its area, time step and other settings carry over.
+#' @param base Configuration whose area, time step, delay, rainfall factor and other
+#'   settings carry over. Its components are not used: every structure starts from the
+#'   standard PDM's components, so each name means the same structure whatever the base.
 #' @return A named list of configuration lists.
 #' @examples
 #' names(structure_set())
@@ -112,6 +118,10 @@ structure_set <- function(names = NULL, base = pdm_presets("standard")) {
   if (is.null(names)) names <- names(variants)
   .check(is.character(names) && length(names) > 0 && all(names %in% names(variants)),
          paste("Structures must be among", paste(names(variants), collapse = ", ")))
+  standard <- pdm_presets("standard")
+  for (slot in c("distribution", "recharge", "surface", "groundwater")) {
+    base[[slot]] <- standard[[slot]]
+  }
   out <- lapply(variants[names], function(change) {
     config <- base
     for (slot in names(change)) config[[slot]] <- change[[slot]]

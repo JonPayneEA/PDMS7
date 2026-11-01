@@ -135,8 +135,10 @@ calibrate_pdm <- function(
   .check(is.character(log_scale) && all(log_scale %in% names(lower)) &&
            all(lower[log_scale] > 0), "log_scale must name parameters with positive lower bounds")
   logged <- names(lower) %in% log_scale
-  lo <- ifelse(logged, log(lower), lower)
-  hi <- ifelse(logged, log(upper), upper)
+  lo <- unname(lower)
+  hi <- unname(upper)
+  lo[logged] <- log(lower[logged])
+  hi[logged] <- log(upper[logged])
   to_value <- function(z) {
     v <- lo + z * (hi - lo)
     v[logged] <- exp(v[logged])

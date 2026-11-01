@@ -1,5 +1,18 @@
 # pdmS7 (development version)
 
+- New `compare_structures()` calibrates several model structures alike, in parallel with
+  `cores`, logs each as a structure and an automatic calibration linked by a comparison id,
+  and ranks them on the validation window, with optional two-way cross-validation.
+  `structure_comparison()` rebuilds a ranking from the log. `structure_set()` gives the
+  standard PDM and seven one-change variants; `calibration_bounds()` gives default bounds
+  from `inst/calibration-bounds.csv`. The report and the app (a new Structures tab) show
+  comparisons.
+- `calibrate_pdm()` and `log_auto_calibration()` gain `log_scale`, searching named
+  parameters uniformly in log(value).
+- `register_data()` gains an optional `test` window, scored once by the new
+  `test_candidate()` entry after every choice is made, and required before sign-off when
+  registered.
+- New article, "Choosing a model structure".
 - New article, "Calibrating many catchments": one logged protocol applied to a batch of
   basins, budgeting, catching failures, judging scores as a distribution, checking whether
   multi-start runs agreed, and how well calibration recovers known parameters.

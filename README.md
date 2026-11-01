@@ -48,6 +48,8 @@ Calibration and forecasting:
 - [Calibration: multi-start, budgets and staged calibration](https://jonpayneea.github.io/PDMS7/articles/calibration.html)
 - [Calibrating many catchments](https://jonpayneea.github.io/PDMS7/articles/many-catchments.html):
   one protocol for a large sample, budgets, failures, start agreement and parameter recovery
+- [Choosing a model structure](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.html):
+  calibrate the alternatives alike, rank on validation, and keep a final test window
 - [Logging a manual calibration](https://jonpayneea.github.io/PDMS7/articles/calibration-log.html):
   the audit trail from project start to sign-off, the report, and tracing operational runs
 - [Forecast updating](https://jonpayneea.github.io/PDMS7/articles/forecast-updating.html):

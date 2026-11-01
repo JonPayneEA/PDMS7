@@ -149,6 +149,7 @@ calibration_app <- function(project = NULL) {
     shiny::tabPanel("Setup", .ui_setup()),
     shiny::tabPanel("Trial", .ui_trial()),
     shiny::tabPanel("History", .ui_history()),
+    shiny::tabPanel("Structures", .ui_structures()),
     shiny::tabPanel("Report", .ui_report()),
     shiny::tabPanel("Sign-off", .ui_signoff())
   )
@@ -301,6 +302,25 @@ calibration_app <- function(project = NULL) {
     shiny::column(12, shiny::tableOutput("trials")),
     compare, compared, propose, validate
   )
+}
+
+.ui_structures <- function() {
+  choose <- shiny::column(
+    4,
+    shiny::h3("Compare structures"),
+    shiny::checkboxGroupInput("structures", "Structures", names(structure_set()),
+                              names(structure_set())),
+    shiny::splitLayout(
+      shiny::numericInput("cmp_starts", "Starts", 3, 1),
+      shiny::numericInput("cmp_maxit", "Iterations", 200, 1),
+      shiny::numericInput("cmp_cores", "Cores", 1, 1)
+    ),
+    shiny::checkboxInput("cmp_cv", "Cross-validate (doubles the cost)", FALSE),
+    .text_area("cmp_reasoning", "Why compare?"),
+    shiny::actionButton("compare", "Calibrate and rank", class = "btn-primary"),
+    shiny::helpText("Each structure is calibrated alike and ranked on the validation window.")
+  )
+  shiny::fluidRow(choose, shiny::column(8, shiny::tableOutput("comparison")))
 }
 
 .ui_report <- function() {

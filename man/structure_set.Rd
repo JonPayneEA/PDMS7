@@ -9,7 +9,9 @@ structure_set(names = NULL, base = pdm_presets("standard"))
 \arguments{
 \item{names}{Structures to include; by default all eight.}
 
-\item{base}{Base configuration; its area, time step and other settings carry over.}
+\item{base}{Configuration whose area, time step, delay, rainfall factor and other
+settings carry over. Its components are not used: every structure starts from the
+standard PDM's components, so each name means the same structure whatever the base.}
 }
 \value{
 A named list of configuration lists.

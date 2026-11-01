@@ -41,6 +41,7 @@
     .app_trial(input, output, session, rv, act, state)
     .app_history(input, output, session, rv, act, state)
     .app_report(input, output, rv, act, state)
+    .app_structures(input, output, rv, act, state)
     .app_signoff(input, output, rv, act, state)
   }
 }
@@ -326,4 +327,24 @@
   if (is.null(test)) return("Final test: not yet run; required before sign-off.")
   sprintf("Final test %s: %s %.4g.", test$id, headline,
           .num_or_na(test$test_scores[[headline]]))
+}
+
+.app_structures <- function(input, output, rv, act, state) {
+  shiny::observeEvent(input$compare, act(function() {
+    .check(length(input$structures) > 0, "Choose at least one structure")
+    base <- .latest(state$entries(), "structure_selected")
+    compare_structures(
+      rv$project,
+      structures = structure_set(input$structures, if (is.null(base)) pdm_presets("standard")
+                                 else base$configuration),
+      starts = input$cmp_starts, control = list(maxit = input$cmp_maxit),
+      cores = input$cmp_cores, cross_validate = isTRUE(input$cmp_cv),
+      reasoning = input$cmp_reasoning
+    )
+  }, "Structures compared and logged"))
+  output$comparison <- shiny::renderTable({
+    entries <- state$entries()
+    shiny::req(any(vapply(entries, function(e) !is.null(e$comparison), logical(1))))
+    as.data.frame(structure_comparison(state$path()))
+  }, digits = 4)
 }

@@ -81,7 +81,8 @@
 #' @param changes Named numeric vector of new values, named by configuration path such as
 #'   `surface.k1` or `fc`.
 #' @param verdict Your judgement of the trial: `better`, `worse` or `inconclusive`.
-#' @param lower,upper,objective,starts,seed,control,method Passed to [calibrate_pdm()].
+#' @param lower,upper,objective,starts,seed,control,method,log_scale Passed to
+#'   [calibrate_pdm()].
 #' @param threshold_objective Optional names of registered thresholds to include in the
 #'   objective of an automatic calibration, with `method = "nelder_mead"`. Their flows and
 #'   the registered event settings are used, so the calibration and the scorecard agree.
@@ -319,7 +320,7 @@ log_auto_calibration <- function(project, parent, lower, upper,
                                  starts = 1L, seed = NULL, control = list(maxit = 200),
                                  reasoning, method = c("lbfgsb", "nelder_mead"),
                                  threshold_objective = NULL, threshold_weight = 1,
-                                 threshold_score = "csi") {
+                                 threshold_score = "csi", log_scale = character(0)) {
   author <- .identity("custodian")
   objective <- match.arg(objective)
   method <- match.arg(method)
@@ -338,7 +339,7 @@ log_auto_calibration <- function(project, parent, lower, upper,
     objective = objective, log_offset = card$log_offset, control = control,
     soil_fraction = card$soil_fraction, starts = starts, seed = seed, method = method,
     thresholds = flows, threshold_weight = threshold_weight, threshold_score = threshold_score,
-    event_settings = card$events
+    event_settings = card$events, log_scale = log_scale
   )
   run <- .run_registered(path, .project_info(entries), registration, fit$config, data = data)
   entry <- .append_entry(path, "auto_calibration", author, function(id, entries) {
@@ -349,6 +350,7 @@ log_auto_calibration <- function(project, parent, lower, upper,
          threshold_weight = if (is.null(flows)) NULL else threshold_weight,
          threshold_score = if (is.null(flows)) NULL else threshold_score,
          evaluations = sum(fit$start_results$evaluations),
+         log_scale = if (length(log_scale)) as.list(log_scale),
          starts = as.integer(starts), seed = seed,
          control = control, start_results = as.list(fit$start_results),
          configuration = fit$config, scores = run$scores, output_md5 = run$output_md5,

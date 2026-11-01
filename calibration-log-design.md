@@ -106,6 +106,7 @@ Then, by type:
 | `note` | Text; optional entry it refers to |
 | `candidate` | The trial or calibration entry proposed; reasoning; calibration scores; series file and its MD5 |
 | `validation` | The candidate; validation scores, alongside calibration scores; series file and MD5; reasoning |
+| `test` | The validated candidate; test scores beside the calibration and validation scores; series file and MD5; reasoning |
 | `sign_off` | The candidate and validation; final configuration; capacity (steward or delegated steward); review checklist; statement |
 | `reopen` | Reason |
 
@@ -156,6 +157,22 @@ Agreed 2026-11-01, after phases 1 to 5.
 
 Threshold scores join each run's scores as `metric:threshold`, for example
 `csi:Flood Warning`, so they are logged, verified, reported and ranked like any other.
+
+## Structure comparison and the test window
+
+Agreed 2026-11-01.
+
+| # | Question | Decision |
+|---|---|---|
+| 17 | Which structures | A list to choose from; by default the standard PDM and seven one-change variants |
+| 18 | Parameters and bounds | A shipped bounds table per component, with overrides and exclusions; log-scale search for parameters spanning orders of magnitude |
+| 19 | Ranking | On the validation window, with the calibration score and the change shown; optional two-way cross-validation |
+| 20 | Final check | An optional test window, scored once by a `test` entry (the eleventh type) after every choice; required before sign-off when registered; a poor result does not block sign-off |
+
+Each compared structure is logged as ordinary `structure_selected` and `auto_calibration`
+entries sharing a comparison id, so no further entry type is needed and the ranking can be
+rebuilt from the log. Structures are fitted in parallel workers that write nothing; the
+entries are written afterwards, in order, by the session that started the comparison.
 
 ## Run log and register
 

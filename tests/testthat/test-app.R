@@ -168,3 +168,19 @@ test_that("the app registers thresholds and runs a threshold calibration", {
   expect_null(.parse_thresholds("  "))
   expect_error(.parse_thresholds("A, 1"), "name, value")
 })
+
+test_that("the app compares structures and shows the ranking", {
+  skip_if_not_installed("shiny")
+  p <- new_project() # nolint: object_usage_linter.
+  shiny::testServer(.app_server(p$folder), {
+    session$setInputs(user = "Ann Custodian", role = "custodian",
+                      structures = c("standard", "rectangular"), cmp_starts = 1,
+                      cmp_maxit = 8, cmp_cores = 1, cmp_cv = FALSE, cmp_reasoning = "Soil store?")
+    session$setInputs(compare = 1)
+    expect_match(output$comparison, "rectangular")
+    expect_match(output$comparison, "validation")
+    session$setInputs(structures = character(0))
+    session$setInputs(compare = 2)
+  })
+  expect_equal(nrow(structure_comparison(p$folder)), 2L)
+})

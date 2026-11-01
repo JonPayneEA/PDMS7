@@ -15,7 +15,7 @@ BugReports: https://github.com/JonPayneEA/PDMS7/issues
 License: MIT + file LICENSE
 Encoding: UTF-8
 Depends: R (>= 4.3.0)
-Imports: S7 (>= 0.2.0), data.table (>= 1.15.0), yaml (>= 2.3.0), logger (>= 0.3.0),
+Imports: S7 (>= 0.2.0), data.table (>= 1.15.0), yaml (>= 2.3.0), logger (>= 0.3.0), parallel,
         stats
 LinkingTo: cpp11
 Suggests: testthat (>= 3.0.0), covr, lintr, renv, roxygen2, rcmdcheck, here,
@@ -31,6 +31,6 @@ Collate: 'utils.R' 'distributions.R' 'distributions_part3.R' 'distributions_part
         'calibration_metrics.R' 'calibrate_multi.R' 'cpp11.R' 'engine.R' 'initial_flow.R'
         'scorecard.R' 'thresholds.R' 'structures.R' 'project_log.R' 'project_data.R' 'project_entries.R'
         'project_read.R' 'report_render.R' 'project_report.R' 'run_log.R'
-        'app.R' 'app_server.R' 'zzz.R'
+        'app.R' 'app_server.R' 'compare_structures.R' 'zzz.R'
 Config/roxygen2/version: 8.1.0
 RoxygenNote: 7.3.3

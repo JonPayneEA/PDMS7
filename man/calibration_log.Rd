@@ -66,7 +66,8 @@ log_auto_calibration(
   method = c("lbfgsb", "nelder_mead"),
   threshold_objective = NULL,
   threshold_weight = 1,
-  threshold_score = "csi"
+  threshold_score = "csi",
+  log_scale = character(0)
 )
 
 log_note(project, text, refers_to = NULL)
@@ -147,7 +148,8 @@ hours; see \code{\link[=pdm_threshold_scores]{pdm_threshold_scores()}}.}
 
 \item{verdict}{Your judgement of the trial: \code{better}, \code{worse} or \code{inconclusive}.}
 
-\item{lower, upper, objective, starts, seed, control, method}{Passed to \code{\link[=calibrate_pdm]{calibrate_pdm()}}.}
+\item{lower, upper, objective, starts, seed, control, method, log_scale}{Passed to
+\code{\link[=calibrate_pdm]{calibrate_pdm()}}.}
 
 \item{threshold_objective}{Optional names of registered thresholds to include in the
 objective of an automatic calibration, with \code{method = "nelder_mead"}. Their flows and

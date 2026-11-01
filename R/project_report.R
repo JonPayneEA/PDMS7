@@ -65,6 +65,7 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
     .rpt_integrity(checks, rerun),
     .rpt_data(path, entries),
     .rpt_structure(entries),
+    .rpt_comparison(path, entries),
     .rpt_path(entries, candidate),
     .rpt_candidate(path, entries, candidate, validation, validated),
     if (isTRUE(sensitivity) && !is.null(candidate)) {
@@ -176,6 +177,38 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
     }
   }
   out
+}
+
+.rpt_comparison <- function(path, entries) {
+  has <- any(vapply(entries, function(e) !is.null(e$comparison), logical(1)))
+  if (!has) return(NULL)
+  table <- structure_comparison(path)
+  headline <- attr(table, "headline")
+  list(
+    .blk_h("Structure comparison"),
+    .blk_p(paste0(
+      "Comparison ", attr(table, "comparison"), ": each structure was calibrated alike and is ",
+      "ranked by its ", headline, " on the validation window, which no calibration saw. ",
+      "The change from calibration to validation shows whether extra parameters earned ",
+      "their place."
+    )),
+    .blk_table(as.data.frame(table), "Structures, best first"),
+    .blk_fig("structures", function() .plot_structures(table, headline),
+             paste("Calibration (open) and validation (filled)", headline, "for each structure"),
+             height = 0.45 * nrow(table) + 1.2)
+  )
+}
+
+.plot_structures <- function(table, headline) {
+  n <- nrow(table)
+  graphics::par(mar = c(4, 11, 0.6, 0.6))
+  values <- c(table$calibration, table$validation)
+  graphics::plot(NA, xlim = range(values, na.rm = TRUE), ylim = c(0.5, n + 0.5), yaxt = "n",
+                 xlab = headline, ylab = "")
+  graphics::axis(2, at = n:1, labels = table$structure, las = 1, cex.axis = 0.85)
+  graphics::segments(table$calibration, n:1, table$validation, n:1, col = .pal[["light"]])
+  graphics::points(table$calibration, n:1, pch = 1, col = .pal[["blue"]], cex = 1.3)
+  graphics::points(table$validation, n:1, pch = 16, col = .pal[["blue"]], cex = 1.3)
 }
 
 .window_text <- function(w, times) {
