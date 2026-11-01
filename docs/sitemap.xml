@@ -3,10 +3,12 @@
 <url><loc>https://jonpayneea.github.io/PDMS7/LICENSE-text.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/calibration-log.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/calibration.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/articles/choosing-structure.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/compiled-core.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/example-workflow.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/forecast-updating.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/index.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/articles/many-catchments.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/model-options.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/pdm-explained.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/snowpack-explained.html</loc></url>
@@ -61,11 +63,13 @@
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm_multi.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/calibration_app.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/calibration_bounds.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/calibration_log.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/capacity_cdf.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/capacity_from_storage.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/capacity_mean.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/capacity_pdf.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/compare_structures.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/correct_state.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/cubic_routing.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/error_updater.html</loc></url>
@@ -87,6 +91,7 @@
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/pdm_presets.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/pdm_scorecard.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/pdm_step.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/pdm_threshold_scores.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/power_routing.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/quadratic_routing.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/read_pdm_config.html</loc></url>
@@ -104,6 +109,7 @@
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/state_updater.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/storage_for_flow.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/storage_from_capacity.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/structure_set.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/transfer_coefficients.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/update_forecast.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/verify_project.html</loc></url>

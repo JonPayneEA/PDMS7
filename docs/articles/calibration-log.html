@@ -45,6 +45,8 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Calibration and forecasting</h6></li>
     <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: multi-start, budgets and staged calibration</a></li>
+    <li><a class="dropdown-item" href="../articles/many-catchments.html">Calibrating many catchments</a></li>
+    <li><a class="dropdown-item" href="../articles/choosing-structure.html">Choosing a model structure</a></li>
     <li><a class="dropdown-item" href="../articles/calibration-log.html">Logging a manual calibration</a></li>
     <li><a class="dropdown-item" href="../articles/forecast-updating.html">Forecast updating</a></li>
     <li><hr class="dropdown-divider"></li>
@@ -157,15 +159,23 @@ flow of a “true” catchment with gauging noise and a three-day gap.</p>
 </h2>
 <p>Registration copies the data into the project, takes their checksums,
 records their quality, and fixes the scorecard: the calibration and
-validation windows, the headline score and the starting soil moisture.
-Every later run is scored the same way, so trials can be compared
-fairly. Rows before the calibration window are warm-up.</p>
+validation windows, the headline score, the starting soil moisture and
+any warning thresholds. Every later run is scored the same way, so
+trials can be compared fairly. Rows before the calibration window are
+warm-up.</p>
+<p>Thresholds may be flows or river levels. Levels are converted to
+flows through a rating table registered with the data, and a level
+outside the rating is refused rather than extrapolated.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">reg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calibration_log.html">register_data</a></span><span class="op">(</span></span>
+<code class="sourceCode R"><span><span class="va">rating</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>stage_m <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.2</span>, <span class="fl">0.5</span>, <span class="fl">1</span>, <span class="fl">1.5</span>, <span class="fl">2</span><span class="op">)</span>, q_m3s <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.3</span>, <span class="fl">0.8</span>, <span class="fl">2.2</span>, <span class="fl">5</span>, <span class="fl">9</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">thresholds</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>name <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Flood Alert"</span>, <span class="st">"Flood Warning"</span><span class="op">)</span>, value <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1.8</span>, <span class="fl">1</span><span class="op">)</span>,</span>
+<span>                         unit <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"flow"</span>, <span class="st">"level"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">reg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calibration_log.html">register_data</a></span><span class="op">(</span></span>
 <span>  <span class="va">project</span>, <span class="va">forcing</span>, <span class="va">observed</span>,</span>
 <span>  calibration <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"2023-10-15"</span>, <span class="st">"2023-12-31"</span><span class="op">)</span>,</span>
 <span>  validation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"2024-01-01"</span>, <span class="st">"2024-01-28"</span><span class="op">)</span>,</span>
-<span>  headline <span class="op">=</span> <span class="st">"nse"</span>, reasoning <span class="op">=</span> <span class="st">"Gauge record checked against the station log."</span></span>
+<span>  headline <span class="op">=</span> <span class="st">"nse"</span>, thresholds <span class="op">=</span> <span class="va">thresholds</span>, rating <span class="op">=</span> <span class="va">rating</span>,</span>
+<span>  reasoning <span class="op">=</span> <span class="st">"Gauge record checked against the station log."</span></span>
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/utils/str.html" class="external-link">str</a></span><span class="op">(</span><span class="va">reg</span><span class="op">$</span><span class="va">summary</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rows"</span>, <span class="st">"start"</span>, <span class="st">"end"</span>, <span class="st">"observed_missing"</span>, <span class="st">"observed_longest_gap"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span>
 <span><span class="co">#&gt; List of 5</span></span>
@@ -301,13 +311,71 @@ once.</p>
 <span><span class="co">#&gt; fdc_high          -0.016     -0.023</span></span></code></pre></div>
 </div>
 <div class="section level2">
+<h2 id="warning-thresholds">Warning thresholds<a class="anchor" aria-label="anchor" href="#warning-thresholds"></a>
+</h2>
+<p>Every run was also scored at both thresholds. An event is an episode
+above the threshold; a simulated crossing within six hours of an
+observed one is a hit, and exceedances less than a day apart count as
+one event.</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">pick</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">scores</span>, <span class="va">window</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">metrics</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"observed_events"</span>, <span class="st">"hits"</span>, <span class="st">"misses"</span>, <span class="st">"false_alarms"</span>, <span class="st">"pod"</span>, <span class="st">"far"</span>, <span class="st">"csi"</span>,</span>
+<span>               <span class="st">"crossing_error_h"</span>, <span class="st">"csi_step"</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">rbind</span>, <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">thresholds</span><span class="op">$</span><span class="va">name</span>, <span class="kw">function</span><span class="op">(</span><span class="va">t</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>threshold <span class="op">=</span> <span class="va">t</span>, window <span class="op">=</span> <span class="va">window</span>,</span>
+<span>               <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="va">metrics</span>, <span class="va">metrics</span><span class="op">)</span>, <span class="kw">function</span><span class="op">(</span><span class="va">m</span><span class="op">)</span> <span class="op">{</span></span>
+<span>                 <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">scores</span><span class="op">[[</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="va">m</span>, <span class="st">":"</span>, <span class="va">t</span><span class="op">)</span><span class="op">]</span><span class="op">]</span>, <span class="fl">2</span><span class="op">)</span></span>
+<span>               <span class="op">}</span><span class="op">)</span>, check.names <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span>  <span class="op">}</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span><span class="fu">pick</span><span class="op">(</span><span class="va">val</span><span class="op">$</span><span class="va">calibration_scores</span>, <span class="st">"calibration"</span><span class="op">)</span>, <span class="fu">pick</span><span class="op">(</span><span class="va">val</span><span class="op">$</span><span class="va">validation_scores</span>, <span class="st">"validation"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt;       threshold      window observed_events hits misses false_alarms  pod far</span></span>
+<span><span class="co">#&gt; 1   Flood Alert calibration               4    3      1            0 0.75 0.0</span></span>
+<span><span class="co">#&gt; 2 Flood Warning calibration               5    4      1            1 0.80 0.2</span></span>
+<span><span class="co">#&gt; 3   Flood Alert  validation               3    1      2            1 0.33 0.5</span></span>
+<span><span class="co">#&gt; 4 Flood Warning  validation               1    0      1            0 0.00  NA</span></span>
+<span><span class="co">#&gt;    csi crossing_error_h csi_step</span></span>
+<span><span class="co">#&gt; 1 0.75             0.67     0.97</span></span>
+<span><span class="co">#&gt; 2 0.67             1.50     0.92</span></span>
+<span><span class="co">#&gt; 3 0.25             0.00     0.76</span></span>
+<span><span class="co">#&gt; 4 0.00               NA     0.00</span></span></code></pre></div>
+<p>Two lessons. First, a high NSE does not guarantee warning skill: the
+candidate scores an NSE near 0.97 in validation, yet catches only one of
+the three alert events, because January’s peaks barely cross the
+threshold and small errors decide whether they do. Second, event and
+step scores answer different questions. Step scores weight each event by
+its length, so a long flood simulated well dominates them and a short
+flood missed barely registers; here <code>csi_step</code> is the kinder
+score. Event scores count each flood once, which is how a warning
+service is judged, and they count a crossing an hour late as a hit,
+where steps count a miss and a false alarm. Note how few events there
+are: with one to five per window, one event moves POD by a fifth or
+more, so read these scores alongside the counts. The report draws all
+thresholds and both windows on one performance diagram.</p>
+<p>A project for a warning service can rank runs by a threshold score,
+with <code>headline = "csi:Flood Warning"</code> at registration.
+Automatic calibration can reward threshold skill too. Event counts
+change in steps, which a gradient optimiser cannot follow, so this uses
+the derivative-free Nelder-Mead method, with a continuous score to break
+ties:</p>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/calibration_log.html">log_auto_calibration</a></span><span class="op">(</span></span>
+<span>  <span class="va">project</span>, parent <span class="op">=</span> <span class="fl">7</span>, lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>surface.k1 <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>, upper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>surface.k1 <span class="op">=</span> <span class="fl">6</span><span class="op">)</span>,</span>
+<span>  objective <span class="op">=</span> <span class="st">"nse"</span>, method <span class="op">=</span> <span class="st">"nelder_mead"</span>, threshold_objective <span class="op">=</span> <span class="st">"Flood Warning"</span>,</span>
+<span>  threshold_weight <span class="op">=</span> <span class="fl">1</span>, reasoning <span class="op">=</span> <span class="st">"Tune routing for warning timing."</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>The entry records the method, the weighted objective and the number
+of model runs, so a reviewer can see what the optimiser was rewarded
+for.</p>
+</div>
+<div class="section level2">
 <h2 id="sign-off">Sign-off<a class="anchor" aria-label="anchor" href="#sign-off"></a>
 </h2>
 <p>Only a Steward or Delegated Steward can sign off, and not one who
 wrote any of the calibration. The package checks both the declared name
 and the login, so a Steward cannot sign off from the Custodian’s
 session:</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>pdmS7.user <span class="op">=</span> <span class="st">"Sam Steward"</span>, pdmS7.role <span class="op">=</span> <span class="st">"steward"</span><span class="op">)</span></span>
 <span><span class="va">reviewed</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>integrity <span class="op">=</span> <span class="cn">TRUE</span>, data <span class="op">=</span> <span class="cn">TRUE</span>, calibration_path <span class="op">=</span> <span class="cn">TRUE</span>, validation <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/conditions.html" class="external-link">tryCatch</a></span><span class="op">(</span><span class="fu"><a href="../reference/calibration_log.html">sign_off_project</a></span><span class="op">(</span><span class="va">project</span>, <span class="st">"Accepted."</span>, <span class="va">reviewed</span><span class="op">)</span>,</span>
@@ -316,7 +384,7 @@ session:</p>
 <p>In practice the Steward signs off on their own machine, or in the
 app. Below we stand in for that machine by giving the Steward a
 different login.</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/calibration_log.html">sign_off_project</a></span><span class="op">(</span><span class="va">project</span>, <span class="st">"Reviewed the path, data and validation. Accepted for forecasting."</span>,</span>
 <span>                 <span class="va">reviewed</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/read_project.html">read_project</a></span><span class="op">(</span><span class="va">project</span><span class="op">)</span><span class="op">$</span><span class="va">status</span></span>
@@ -329,7 +397,7 @@ it with a reason.</p>
 </h2>
 <p><code><a href="../reference/verify_project.html">verify_project()</a></code> recomputes every checksum and, with
 <code>rerun = TRUE</code>, repeats every run.</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">checks</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/verify_project.html">verify_project</a></span><span class="op">(</span><span class="va">project</span>, rerun <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="va">checks</span><span class="op">[</span>, <span class="va">.N</span>, by <span class="op">=</span> <span class="fu">.</span><span class="op">(</span><span class="va">check</span>, <span class="va">ok</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="co">#&gt;            check     ok     N</span></span>
@@ -338,11 +406,12 @@ it with a reason.</p>
 <span><span class="co">#&gt; 2:         chain   TRUE    12</span></span>
 <span><span class="co">#&gt; 3:  data forcing   TRUE     1</span></span>
 <span><span class="co">#&gt; 4: data observed   TRUE     1</span></span>
-<span><span class="co">#&gt; 5:        series   TRUE     2</span></span>
-<span><span class="co">#&gt; 6:         rerun   TRUE     7</span></span></code></pre></div>
+<span><span class="co">#&gt; 5:   data rating   TRUE     1</span></span>
+<span><span class="co">#&gt; 6:        series   TRUE     2</span></span>
+<span><span class="co">#&gt; 7:         rerun   TRUE     7</span></span></code></pre></div>
 <p>Now suppose someone tidies the reasoning of trial 0005 after the
 event:</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">file</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">project</span>, <span class="st">"entries"</span>, <span class="st">"0005-trial.yml"</span><span class="op">)</span></span>
 <span><span class="va">original</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="va">file</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/writeLines.html" class="external-link">writeLines</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/grep.html" class="external-link">sub</a></span><span class="op">(</span><span class="st">"recessions far too high"</span>, <span class="st">"recessions slightly high"</span>, <span class="va">original</span><span class="op">)</span>, <span class="va">file</span><span class="op">)</span></span>
@@ -358,7 +427,7 @@ the same way.</p>
 <div class="section level2">
 <h2 id="the-report">The report<a class="anchor" aria-label="anchor" href="#the-report"></a>
 </h2>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/build_report.html">build_report</a></span><span class="op">(</span><span class="va">project</span><span class="op">)</span></span></code></pre></div>
 <p><code><a href="../reference/build_report.html">build_report()</a></code> writes <code>report/report.html</code>, a
 single file with embedded figures that can be attached to a review, and
@@ -373,7 +442,7 @@ sign-off and the final configuration with every entry’s checksum.</p>
 <p>Once a calibration is in use, the question changes from “how was it
 calibrated” to “which calibration produced this forecast”. The run log
 answers it. It is off by default.</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">register</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/basename.html" class="external-link">dirname</a></span><span class="op">(</span><span class="va">project</span><span class="op">)</span>, <span class="st">"approved.yml"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/writeLines.html" class="external-link">writeLines</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"projects:"</span>, <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"  - "</span>, <span class="fu"><a href="https://rdrr.io/r/base/basename.html" class="external-link">basename</a></span><span class="op">(</span><span class="va">project</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>, <span class="va">register</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>pdmS7.run_log <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir</a></span><span class="op">(</span><span class="op">)</span>, <span class="st">"runs.csv"</span><span class="op">)</span>, pdmS7.register <span class="op">=</span> <span class="va">register</span>,</span>
@@ -420,7 +489,7 @@ parameters are marked <code>superseded</code>.</p>
 <td><code><a href="../reference/calibration_log.html">start_calibration_project()</a></code></td>
 </tr>
 <tr class="odd">
-<td>Data and scorecard</td>
+<td>Data, scorecard and thresholds</td>
 <td><code><a href="../reference/calibration_log.html">register_data()</a></code></td>
 </tr>
 <tr class="even">

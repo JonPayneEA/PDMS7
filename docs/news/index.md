@@ -2,6 +2,63 @@
 
 ## pdmS7 (development version)
 
+- New
+  [`compare_structures()`](https://jonpayneea.github.io/PDMS7/reference/compare_structures.md)
+  calibrates several model structures alike, in parallel with `cores`,
+  logs each as a structure and an automatic calibration linked by a
+  comparison id, and ranks them on the validation window, with optional
+  two-way cross-validation.
+  [`structure_comparison()`](https://jonpayneea.github.io/PDMS7/reference/compare_structures.md)
+  rebuilds a ranking from the log.
+  [`structure_set()`](https://jonpayneea.github.io/PDMS7/reference/structure_set.md)
+  gives the standard PDM and seven one-change variants;
+  [`calibration_bounds()`](https://jonpayneea.github.io/PDMS7/reference/calibration_bounds.md)
+  gives default bounds from `inst/calibration-bounds.csv`. The report
+  and the app (a new Structures tab) show comparisons.
+- [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md)
+  and
+  [`log_auto_calibration()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
+  gain `log_scale`, searching named parameters uniformly in log(value).
+- [`register_data()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
+  gains an optional `test` window, scored once by the new
+  [`test_candidate()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
+  entry after every choice is made, and required before sign-off when
+  registered.
+- New article, “Choosing a model structure”.
+- New article, “Calibrating many catchments”: one logged protocol
+  applied to a batch of basins, budgeting, catching failures, judging
+  scores as a distribution, checking whether multi-start runs agreed,
+  and how well calibration recovers known parameters.
+- New
+  [`read_entry()`](https://jonpayneea.github.io/PDMS7/reference/read_project.md)
+  returns one calibration-log entry in full, and
+  [`read_projects()`](https://jonpayneea.github.io/PDMS7/reference/read_project.md)
+  gains `validation_score`, the candidate’s headline score on the
+  validation window.
+- New threshold verification.
+  [`pdm_threshold_scores()`](https://jonpayneea.github.io/PDMS7/reference/pdm_threshold_scores.md)
+  scores one or more thresholds at once: events (episodes above a
+  threshold, merged across short gaps and matched within a timing
+  tolerance) give probability of detection, false alarm ratio, critical
+  success index and frequency bias, plus crossing time, peak timing,
+  peak, duration and volume errors for each hit; a step-by-step count
+  adds probability of false detection, equitable threat score and Peirce
+  skill score.
+- [`register_data()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
+  gains `thresholds` (flows, or levels converted through a registered
+  `rating` table and never extrapolated) and event settings. Every
+  logged run is scored at every threshold, and a threshold score such as
+  `csi:Flood Warning` may be the headline. The report adds a threshold
+  table and a performance diagram.
+- [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md)
+  gains `method = "nelder_mead"`, a derivative-free optimiser kept
+  within the bounds, and an optional threshold term in the objective
+  (`thresholds`, `threshold_weight`, `threshold_score`), or
+  `objective = "threshold"` alone.
+  [`log_auto_calibration()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
+  passes registered thresholds by name and records the method, objective
+  and number of model runs. The default method and objective are
+  unchanged.
 - New article, “Logging a manual calibration”: a complete project from
   start to sign-off, integrity checks and tampering, the report, and
   tracing operational runs with the run log.

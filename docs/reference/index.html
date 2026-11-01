@@ -30,6 +30,8 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Calibration and forecasting</h6></li>
     <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: multi-start, budgets and staged calibration</a></li>
+    <li><a class="dropdown-item" href="../articles/many-catchments.html">Calibrating many catchments</a></li>
+    <li><a class="dropdown-item" href="../articles/choosing-structure.html">Choosing a model structure</a></li>
     <li><a class="dropdown-item" href="../articles/calibration-log.html">Logging a manual calibration</a></li>
     <li><a class="dropdown-item" href="../articles/forecast-updating.html">Forecast updating</a></li>
     <li><hr class="dropdown-divider"></li>
@@ -620,10 +622,47 @@
 
         <dt>
 
+          <code><a href="pdm_threshold_scores.html">pdm_threshold_scores()</a></code>
+
+        </dt>
+        <dd>Score threshold crossings</dd>
+
+        <dt>
+
           <code><a href="pareto_front.html">pareto_front()</a></code>
 
         </dt>
         <dd>Identify nondominated loss vectors</dd>
+      </dl></div><div class="section level2">
+      <h2 id="comparing-structures">Comparing structures<a class="anchor" aria-label="anchor" href="#comparing-structures"></a></h2>
+
+      <div class="section-desc"><p>Calibrate several model structures alike and rank them on held-out data.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="compare_structures.html">compare_structures()</a></code> <code><a href="compare_structures.html">structure_comparison()</a></code>
+
+        </dt>
+        <dd>Compare model structures</dd>
+
+        <dt>
+
+          <code><a href="structure_set.html">structure_set()</a></code>
+
+        </dt>
+        <dd>Model structures to compare</dd>
+
+        <dt>
+
+          <code><a href="calibration_bounds.html">calibration_bounds()</a></code>
+
+        </dt>
+        <dd>Calibration bounds for a model structure</dd>
       </dl></div><div class="section level2">
       <h2 id="calibration-log">Calibration log<a class="anchor" aria-label="anchor" href="#calibration-log"></a></h2>
 
@@ -636,14 +675,14 @@
 
       <dl><dt>
 
-          <code><a href="calibration_log.html">start_calibration_project()</a></code> <code><a href="calibration_log.html">register_data()</a></code> <code><a href="calibration_log.html">select_structure()</a></code> <code><a href="calibration_log.html">preview_trial()</a></code> <code><a href="calibration_log.html">log_trial()</a></code> <code><a href="calibration_log.html">log_auto_calibration()</a></code> <code><a href="calibration_log.html">log_note()</a></code> <code><a href="calibration_log.html">propose_candidate()</a></code> <code><a href="calibration_log.html">validate_candidate()</a></code> <code><a href="calibration_log.html">sign_off_project()</a></code> <code><a href="calibration_log.html">reopen_project()</a></code>
+          <code><a href="calibration_log.html">start_calibration_project()</a></code> <code><a href="calibration_log.html">register_data()</a></code> <code><a href="calibration_log.html">select_structure()</a></code> <code><a href="calibration_log.html">preview_trial()</a></code> <code><a href="calibration_log.html">log_trial()</a></code> <code><a href="calibration_log.html">log_auto_calibration()</a></code> <code><a href="calibration_log.html">log_note()</a></code> <code><a href="calibration_log.html">propose_candidate()</a></code> <code><a href="calibration_log.html">validate_candidate()</a></code> <code><a href="calibration_log.html">test_candidate()</a></code> <code><a href="calibration_log.html">sign_off_project()</a></code> <code><a href="calibration_log.html">reopen_project()</a></code>
 
         </dt>
         <dd>Calibration log</dd>
 
         <dt>
 
-          <code><a href="read_project.html">read_project()</a></code> <code><a href="read_project.html">project_trials()</a></code> <code><a href="read_project.html">read_projects()</a></code>
+          <code><a href="read_project.html">read_project()</a></code> <code><a href="read_project.html">project_trials()</a></code> <code><a href="read_project.html">read_entry()</a></code> <code><a href="read_project.html">read_projects()</a></code>
 
         </dt>
         <dd>Read a calibration project</dd>

@@ -20,6 +20,10 @@
 
 - [Calibration: multi-start, budgets and staged
   calibration](https://jonpayneea.github.io/PDMS7/articles/calibration.md):
+- [Calibrating many
+  catchments](https://jonpayneea.github.io/PDMS7/articles/many-catchments.md):
+- [Choosing a model
+  structure](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.md):
 - [Logging a manual
   calibration](https://jonpayneea.github.io/PDMS7/articles/calibration-log.md):
 - [Forecast
