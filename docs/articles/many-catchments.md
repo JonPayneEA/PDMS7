@@ -104,11 +104,11 @@ Budget before running. One model run of these two-month records takes:
 model <- pdm_from_config(basins[[1]]$truth)
 per_run <- system.time(for (i in 1:20) run_pdm(model, basins[[1]]$forcing))[["elapsed"]] / 20
 signif(per_run, 2)
-#> [1] 0.0048
+#> [1] 0.0037
 ```
 
 A calibration of five parameters with three starts uses roughly 1,000 to
-2,000 model runs, so the batch should take about 50 seconds. Measure
+2,000 model runs, so the batch should take about 39 seconds. Measure
 runs per start on a pilot before committing a large computer:
 `inst/examples/pilot_calibration.R` does this, and the [calibration
 article](https://jonpayneea.github.io/PDMS7/articles/calibration.md)
@@ -121,7 +121,7 @@ options(pdmS7.user = "Ann Hydrologist", pdmS7.role = "custodian")
 root <- file.path(tempdir(), "benchmark")
 elapsed <- system.time(results <- lapply(basins, calibrate_basin, root = root))[["elapsed"]]
 round(elapsed)
-#> [1] 33
+#> [1] 30
 for (r in results) if (!is.na(r$error)) cat(r$id, "failed:", r$error, "\n")
 #> B06 failed: pet must contain finite nonnegative numbers
 ```

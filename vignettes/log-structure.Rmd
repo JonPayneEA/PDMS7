@@ -1,0 +1,239 @@
+---
+title: "Inside the logs: projects, entries, checksums and the run log"
+author: "pdmS7 documentation"
+vignette: >
+  %\VignetteIndexEntry{Inside the logs: projects, entries, checksums and the run log}
+  %\VignetteEngine{knitr::knitr}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+library(pdmS7)
+knitr::opts_chunk$set(
+  error = FALSE, collapse = TRUE, comment = "#>", fig.width = 8,
+  fig.height = 3, dpi = 110
+)
+logger::log_threshold(logger::WARN, namespace = "pdmS7")
+pal <- c("#236b83", "#a26421", "#5b8c3a", "#8a3b6b", "#444444", "#b23b3b", "#9aa7b0")
+```
+
+pdmS7 keeps two kinds of log. A **calibration log** records how one model was calibrated:
+every decision, by whom, with which data and parameters, and why. A **run log** records every
+time a model is run, so any result can be traced to the parameters behind it. This article
+opens both up: what files they are, what is in them, and how they guard against being
+quietly changed. [Logging a manual calibration](calibration-log.html) shows how to use them;
+the [design record](../calibration-log-design.html) explains why they are built this way.
+
+# A small project to look inside
+
+```{r build}
+set.seed(1)
+n <- 24 * 40
+time <- seq(as.POSIXct("2024-01-01", tz = "UTC"), by = 3600, length.out = n)
+forcing <- data.frame(time = time, pet = 0.05,
+                      rain = ifelse(stats::runif(n) < 0.07, stats::rgamma(n, 0.7, scale = 3), 0))
+truth <- pdm_presets("standard")
+truth$area_km2 <- 30
+observed <- run_pdm(pdm_from_config(truth), forcing)$output$q_m3s
+options(pdmS7.user = "Ann Hydrologist", pdmS7.role = "custodian")
+project <- file.path(tempdir(), "inside")
+start_calibration_project(project, catchment = "Example Brook", gauge = "99003",
+                          purpose = "Illustration", area_km2 = 30,
+                          owner = "Deputy Director", steward = "Sam Steward")
+register_data(project, forcing, observed, calibration = c(121, 600),
+              validation = c(601, 800), test = c(801, n))
+start <- truth
+start$fc <- 0.9
+select_structure(project, start, "Standard PDM.")
+log_trial(project, parent = 3, changes = c(fc = 1), verdict = "better",
+          reasoning = "Volume was 10 per cent low.")
+log_note(project, "Gauge checked against the station log.", refers_to = 2)
+propose_candidate(project, entry = 4, reasoning = "Best so far.")
+validate_candidate(project, "Holds on validation.")
+test_candidate(project, "Holds on the final window.")
+```
+
+# The project folder
+
+```{r tree}
+files <- list.files(project, recursive = TRUE, all.files = TRUE)
+files[!grepl("^report/", files)]
+```
+
+| Path | Holds |
+|---|---|
+| `pdms7-project.yml` | Marks the folder as a project: format version and identifier |
+| `entries/` | One YAML file per entry, numbered in the order written, never edited |
+| `data/0002/` | Copies of the data registered by entry 0002, as CSV |
+| `series/` | Full simulated and observed flow for candidate, validation and test entries |
+| `report/` | The generated report, rebuilt on demand and never edited |
+
+Everything is plain text. A project can be read with any editor, kept on a shared drive or in
+git, and archived as it is.
+
+# An entry
+
+Here is the trial, entry 0004, exactly as written:
+
+```{r entry}
+cat(readLines(file.path(project, "entries", "0004-trial.yml")), sep = "\n")
+```
+
+Every entry starts with the same header:
+
+| Field | Content |
+|---|---|
+| `format` | Entry format version |
+| `id` | Four-digit sequence number, as in the file name |
+| `type` | One of the eleven entry types |
+| `timestamp` | When it was written, UTC |
+| `author` | Declared name and role, and the operating-system login |
+| `software` | pdmS7 version, R version, platform and engine |
+| `previous` | Checksum (MD5) of the entry before it |
+
+The rest depends on the type. Numbers are written with the fewest digits that reproduce the
+exact value, so a configuration read back from the log is the configuration that ran.
+
+# The eleven entry types
+
+| Type | Written by | Role | Key fields |
+|---|---|---|---|
+| `project_start` | `start_calibration_project()` | Custodian | Catchment, gauge, purpose, area, Owner, Steward |
+| `data_registered` | `register_data()` | Custodian | Files and checksums, data quality, scoring windows, thresholds, headline |
+| `structure_selected` | `select_structure()` | Custodian | Configuration, scores, output checksum, reasoning |
+| `trial` | `log_trial()` | Custodian | Parent, changes, configuration, scores, output checksum, verdict, reasoning |
+| `auto_calibration` | `log_auto_calibration()`, `compare_structures()` | Custodian | Bounds, scales, method, objective, starts, every start's result, configuration, scores |
+| `note` | `log_note()` | Any | Text and the entry it concerns |
+| `candidate` | `propose_candidate()` | Custodian | The run proposed, its scores, the saved series |
+| `validation` | `validate_candidate()` | Custodian | Validation scores beside calibration scores, saved series |
+| `test` | `test_candidate()` | Custodian | Test scores, scored once, saved series |
+| `sign_off` | `sign_off_project()` | Steward or Delegated Steward | Candidate, final configuration, checklist, statement |
+| `reopen` | `reopen_project()` | Steward or Delegated Steward | Reason |
+
+Trials, automatic calibrations and structures form a tree: every run names its parent, so the
+log records the path taken, dead ends included.
+
+```{r types}
+read_project(project)$entries[, .(id, type, author, summary)]
+```
+
+# The checksum chain
+
+Each entry stores the checksum of the entry before it. Change one character of an earlier
+entry and its checksum changes, so the next entry's `previous` no longer matches. Delete an
+entry, or slip one in, and the numbering or the chain breaks.
+
+```{r chain, fig.cap="Each entry's 'previous' field holds the checksum of the entry before it (first six characters shown).", fig.height=2.4}
+ids <- read_project(project)$entries$id
+previous <- vapply(ids, function(i) read_entry(project, i)$previous, character(1))
+k <- length(ids)
+par(mar = c(0.5, 0.5, 0.5, 0.5))
+plot(NA, xlim = c(0.5, k + 0.5), ylim = c(0, 1), axes = FALSE, xlab = "", ylab = "")
+rect(seq_len(k) - 0.38, 0.35, seq_len(k) + 0.38, 0.75, col = "#eef4f6", border = pal[1])
+text(seq_len(k), 0.62, ids, font = 2, cex = 0.85)
+text(seq_len(k), 0.45, substr(previous, 1, 6), cex = 0.6, family = "mono", col = pal[5])
+arrows(seq_len(k - 1) + 0.38, 0.55, seq_len(k - 1) + 0.62, 0.55, length = 0.06, col = pal[2])
+```
+
+`verify_project()` walks the chain, checks every data and series file against its checksum
+and, with `rerun = TRUE`, repeats every run and compares the output checksum.
+
+```{r verify}
+verify_project(project, rerun = TRUE)[, .N, by = .(check, ok)]
+```
+
+Suppose someone tidies the reasoning of the trial after the event:
+
+```{r tamper}
+file <- file.path(project, "entries", "0004-trial.yml")
+original <- readLines(file)
+writeLines(sub("10 per cent", "8 per cent", original), file)
+verify_project(project)[ok == FALSE]
+writeLines(original, file)
+```
+
+The edit to 0004 shows up at 0005, whose stored checksum no longer matches. Three details
+make the checks dependable in practice:
+
+- **Line endings.** Checksums ignore carriage returns, so a Windows checkout that converts
+  line endings does not break the chain.
+- **Output checksums** are taken on flow rounded to 10 significant figures, so a project
+  logged on one version of R verifies by rerun on another.
+- **The newest entry** has no successor to vouch for it. Sign-off, version control, or a
+  managed drive covers it.
+
+Writers take a lock on the project folder while appending, so two people working in one
+project on a shared drive cannot interleave entries.
+
+# The run log
+
+The calibration log records how parameters were chosen; the run log records where they were
+used. It is off unless a path is set.
+
+```{r runlog}
+log_file <- file.path(tempdir(), "runs.csv")
+register <- file.path(tempdir(), "approved.yml")
+writeLines(c("projects:", paste0("  - ", basename(project))), register)
+```
+
+A **register** is a YAML file listing the projects whose signed-off configurations count as
+approved, with paths relative to the file:
+
+```{r register-file}
+cat(readLines(register), sep = "\n")
+```
+
+```{r runs}
+options(pdmS7.run_log = log_file, pdmS7.register = register, pdmS7.run_tag = "example")
+candidate <- read_entry(project, 6)$configuration
+invisible(run_pdm(pdm_from_config(candidate), forcing[1:48, ]))
+invisible(run_pdm(pdm_from_config(start), forcing[1:48, ]))
+runs <- read_run_log(log_file)
+names(runs)
+runs[, .(tag, fingerprint = substr(fingerprint, 1, 8), rows, status, approval)]
+```
+
+| Column | Content |
+|---|---|
+| `timestamp`, `user`, `login`, `tag` | When, who, and an optional label from `options(pdmS7.run_tag = )` |
+| `fingerprint` | Checksum of the model's components and parameters; see `pdm_fingerprint()` |
+| `data_md5`, `rows`, `start`, `end` | The forcing used |
+| `dt_hours`, `area_km2`, `engine`, `pdmS7`, `r` | Model and software |
+| `seconds`, `status`, `message` | Run time, and the error if it failed |
+| `approval`, `project`, `sign_off` | `approved`, `superseded` or `unapproved`, and the sign-off matched |
+
+Both runs show as `unapproved`: this project is validated and tested but not signed off.
+Once a Steward signs it off, runs with the candidate's parameters are marked `approved`, with
+the project and sign-off entry; if the project is later reopened, they become `superseded`.
+Runs are never blocked.
+
+The **fingerprint** recognises a model however it was built, from code, a preset or YAML,
+because it is taken on the model's components and parameters, not on how they were written:
+
+```{r fingerprint}
+identical(pdm_fingerprint(candidate), pdm_fingerprint(pdm_from_config(candidate)))
+```
+
+Calibration evaluations, spin-up cycles and the calibration log's own reruns are not logged,
+so the run log holds the runs people make. Logging is off by default, and a failure to write
+the log warns once and never stops a run.
+
+```{r cleanup, include=FALSE}
+options(pdmS7.run_log = NULL, pdmS7.register = NULL, pdmS7.run_tag = NULL,
+        pdmS7.user = NULL, pdmS7.role = NULL)
+unlink(c(project, log_file, register), recursive = TRUE)
+```
+
+# Reading the logs
+
+| Function | Returns |
+|---|---|
+| `read_project()` | Project details, status and one row per entry |
+| `read_entry()` | One entry in full |
+| `project_trials()` | Every run with parent, changes, scores, verdict and reasoning |
+| `read_projects()` | One row per project, for a team folder or a large-sample batch |
+| `structure_comparison()` | A structure comparison's ranking, rebuilt from the log |
+| `verify_project()` | The integrity checks |
+| `build_report()` | The report, as HTML and Markdown |
+| `read_run_log()` | The run log |
+| `approved_configurations()` | Every sign-off in a register, current or superseded |

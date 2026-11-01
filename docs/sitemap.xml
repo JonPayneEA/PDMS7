@@ -1,6 +1,7 @@
 <urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
 <url><loc>https://jonpayneea.github.io/PDMS7/404.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/LICENSE-text.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/articles/auto-calibration.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/calibration-log.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/calibration.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/choosing-structure.html</loc></url>
@@ -8,9 +9,11 @@
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/example-workflow.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/forecast-updating.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/index.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/articles/log-structure.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/many-catchments.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/model-options.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/pdm-explained.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/articles/scoring.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/snowpack-explained.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/starting-states.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/authors.html</loc></url>

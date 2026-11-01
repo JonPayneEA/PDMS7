@@ -1,5 +1,11 @@
 # pdmS7 (development version)
 
+- Three new articles: "Scoring a simulation" (every score, with the contingency table,
+  event matching, events against steps and the performance diagram), "Automatic
+  calibration" (bounds, log-scale search, the two optimisers and threshold objectives) and
+  "Inside the logs" (project folders, entry files, the checksum chain, the run log and the
+  register). The site's articles are regrouped into Calibration, Records and review, and
+  Forecasting.
 - New `compare_structures()` calibrates several model structures alike, in parallel with
   `cores`, logs each as a structure and an automatic calibration linked by a comparison id,
   and ranks them on the validation window, with optional two-way cross-validation.

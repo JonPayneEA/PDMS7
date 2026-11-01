@@ -273,7 +273,7 @@ old <- options(pdmS7.user = "A Hydrologist", pdmS7.role = "custodian")
 start_calibration_project(folder, catchment = "Example", gauge = "00000",
   purpose = "Illustration", area_km2 = 50, owner = "Deputy Director",
   steward = "A Steward")
-#> INFO [2026-11-01 17:18:48] Started calibration project example-project in /tmp/RtmptyuahX/example-project
+#> INFO [2026-11-01 18:37:49] Started calibration project example-project in /tmp/RtmpIvGrFk/example-project
 set.seed(1)
 forcing <- data.frame(rain = ifelse(runif(500) < 0.1, rexp(500, 0.3), 0), pet = 0.1)
 truth <- pdm_presets("standard")
@@ -281,19 +281,19 @@ truth$area_km2 <- 50
 observed <- run_pdm(pdm_from_config(truth), forcing)$output$q_m3s
 register_data(folder, forcing, observed, calibration = c(101, 350),
   validation = c(351, 500))
-#> INFO [2026-11-01 17:18:48] Registered data 0002: 500 rows
+#> INFO [2026-11-01 18:37:49] Registered data 0002: 500 rows
 select_structure(folder, truth, reasoning = "Standard structure as a starting point")
 #> Warning: Column name 'time' (colClasses[[1]][1]) not found
-#> INFO [2026-11-01 17:18:48] Structure 0003: nse 1
+#> INFO [2026-11-01 18:37:49] Structure 0003: nse 1
 log_trial(folder, parent = 3, changes = c(surface.k1 = 3), verdict = "worse",
   reasoning = "Testing a slower first store")
 #> Warning: Column name 'time' (colClasses[[1]][1]) not found
-#> INFO [2026-11-01 17:18:48] Trial 0004 from 0003: nse 0.9995
+#> INFO [2026-11-01 18:37:49] Trial 0004 from 0003: nse 0.9995
 project_trials(folder)
 #>        id               type parent            timestamp        author
 #>    <char>             <char> <char>               <char>        <char>
-#> 1:   0003 structure_selected   <NA> 2026-11-01T17:18:48Z A Hydrologist
-#> 2:   0004              trial   0003 2026-11-01T17:18:48Z A Hydrologist
+#> 1:   0003 structure_selected   <NA> 2026-11-01T18:37:49Z A Hydrologist
+#> 2:   0004              trial   0003 2026-11-01T18:37:49Z A Hydrologist
 #>              changes verdict                              reasoning       nse
 #>               <char>  <char>                                 <char>     <num>
 #> 1:                      <NA> Standard structure as a starting point 1.0000000

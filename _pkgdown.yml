@@ -49,13 +49,22 @@ articles:
   contents:
   - model-options
   - starting-states
-- title: Calibration and forecasting
-  navbar: Calibration and forecasting
+- title: Calibration
+  navbar: Calibration
   contents:
   - calibration
-  - many-catchments
+  - auto-calibration
+  - scoring
   - choosing-structure
+  - many-catchments
+- title: Records and review
+  navbar: Records and review
+  contents:
   - calibration-log
+  - log-structure
+- title: Forecasting
+  navbar: Forecasting
+  contents:
   - forecast-updating
 - title: Under the bonnet
   navbar: Under the bonnet
