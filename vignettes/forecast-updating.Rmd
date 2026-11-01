@@ -11,7 +11,7 @@ vignette: >
 library(pdmS7)
 knitr::opts_chunk$set(
   error = FALSE, collapse = TRUE, comment = "#>", fig.width = 8,
-  fig.height = 4, dpi = 120
+  fig.height = 4, dpi = if (nzchar(Sys.getenv("IN_PKGDOWN"))) 120 else 60
 )
 pal <- c("#236b83", "#a26421", "#5b8c3a", "#8a3b6b", "#444444", "#b23b3b")
 ```
@@ -130,6 +130,10 @@ round(c(no_updating = rmse(plain), state_correction = rmse(corrected),
 - The two can be combined: correct the state, then fit the ARMA model to the errors of the
   corrected runs. Judge any combination on held-out forecasts, not on the history it was fitted
   to.
+
+[AR and ARMA error correction, explained](ar-error-correction.html) covers the error model in
+more depth, and [Testing forecasts with hindcasts](hindcasts.html) shows how to measure either
+method over many past forecasts.
 
 These are the methods for operational forecasting. A benchmark of simulation skill, such as a
 comparison with machine learning models in simulation mode, should not use them: there,

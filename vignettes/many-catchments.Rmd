@@ -11,7 +11,7 @@ vignette: >
 library(pdmS7)
 knitr::opts_chunk$set(
   error = FALSE, collapse = TRUE, comment = "#>", fig.width = 8,
-  fig.height = 3.8, dpi = 110
+  fig.height = 3.8, dpi = if (nzchar(Sys.getenv("IN_PKGDOWN"))) 110 else 60
 )
 logger::log_threshold(logger::WARN, namespace = "pdmS7")
 pal <- c("#236b83", "#a26421", "#5b8c3a", "#8a3b6b", "#444444", "#b23b3b", "#9aa7b0")
@@ -96,6 +96,21 @@ cat(readLines(file.path(basins, "B01", "basin.yml")), sep = "\n")
 | `test` (optional) | A final period kept back until everything is decided, scored once |
 | `config` (optional) | A model configuration file in the folder, if this catchment needs a different model |
 | `thresholds`, `rating` (optional) | Warning thresholds to score; see [Scoring a simulation](scoring.html) |
+| `snow` (optional) | `true` for a catchment with snow; see below |
+
+## Catchments with snow
+
+For a catchment with snow, add `snow: true` to its `basin.yml` and a `temperature` column, in
+deg C, to its `forcing.csv`. The `rain` column then holds all precipitation, rain and snow
+alike. Before calibrating, the batch runs the PACK snow model over the forcing to work out how
+much water reaches the ground in each time step, as rain or melt, and calibrates the PDM on
+that.
+
+PACK's own parameters are **not calibrated**. They stay at the default preset, or at a preset
+or PACK settings file named by `snow` instead of `true`, for example `snow: pack.yml` with the
+file in the catchment's folder. A note in the catchment's log records the PACK settings used
+and the checksum of the original forcing file, so a reviewer can see exactly what the PDM was
+given.
 
 # Before you start: how long will it take?
 
@@ -177,6 +192,23 @@ status
 ```
 
 The failed attempt is still on record in B06's project, followed by the successful one.
+
+## Calibrating in stages
+
+Add `staged = TRUE` to calibrate each catchment the way a hydrologist would by hand: the water
+balance and slow stores first, then the fast stores, then a short joint polish. Each stage is
+written to the catchment's log as its own step, so a reviewer can see what each one changed.
+If the batch is interrupted part way through a catchment, the next run carries on from the
+last finished stage. [Automatic calibration, explained](auto-calibration.html) describes the
+stages.
+
+```{r staged-batch, eval=FALSE}
+do.call(calibrate_batch, c(list(basins, results, staged = TRUE), protocol))
+```
+
+A catchment that already has a calibration keeps it, staged or not; the batch never
+recalibrates a finished catchment because the protocol has changed. Start a fresh results
+folder to recalibrate everything under a new protocol.
 
 ## On a server
 

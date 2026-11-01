@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -59,6 +59,7 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Forecasting</h6></li>
     <li><a class="dropdown-item" href="../articles/forecast-updating.html">Forecast updating</a></li>
+    <li><a class="dropdown-item" href="../articles/hindcasts.html">Testing forecasts with hindcasts</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Under the bonnet</h6></li>
     <li><a class="dropdown-item" href="../articles/compiled-core.html">The C core: speed, equivalence and other languages</a></li>
@@ -371,12 +372,21 @@ possible: it decides what “good” means.</p>
 <td>Low flows</td>
 </tr>
 <tr class="even">
+<td><code>log_nse</code></td>
+<td>1 - NSE of log flows</td>
+<td>Low flows, scored like NSE</td>
+</tr>
+<tr class="odd">
 <td><code>threshold</code></td>
 <td>The threshold part alone (below)</td>
 <td>Crossing warning thresholds, and nothing else</td>
 </tr>
 </tbody>
 </table>
+<p>Any of these can carry a volume penalty:
+<code>volume_weight = 1</code> adds the absolute volume error, so that 5
+per cent too much water in total costs 0.05. Staged calibration, below,
+uses it to hold the water balance while fitting low flows.</p>
 <div class="section level3">
 <h3 id="rewarding-threshold-skill">Rewarding threshold skill<a class="anchor" aria-label="anchor" href="#rewarding-threshold-skill"></a>
 </h3>
@@ -451,6 +461,99 @@ explanation, because it would quietly fail.</li>
 </div>
 </div>
 <div class="section level2">
+<h2 id="calibrating-in-stages">Calibrating in stages<a class="anchor" aria-label="anchor" href="#calibrating-in-stages"></a>
+</h2>
+<p>A hydrologist calibrating by hand rarely moves everything at once.
+They settle the water balance and the slow response first, then the fast
+response, then make a final adjustment. <code><a href="../reference/calibrate_staged.html">calibrate_staged()</a></code>
+does the same:</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th>Stage</th>
+<th>Fits</th>
+<th>Objective</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>1. Volume and baseflow</td>
+<td>
+<code>fc</code>, the soil store, recharge and groundwater</td>
+<td>1 - log NSE, plus the volume error</td>
+</tr>
+<tr class="even">
+<td>2. Fast response</td>
+<td>The surface stores, and the store shape <code>b</code> again</td>
+<td>1 - NSE</td>
+</tr>
+<tr class="odd">
+<td>3. Polish</td>
+<td>Everything, within a quarter of each range either side of stage 2’s
+values</td>
+<td>1 - NSE</td>
+</tr>
+</tbody>
+</table>
+<p>Log flows in stage 1 stop the floods dominating, so the slow stores
+are fitted to the low flows and recessions they control. Stage 2 then
+fits peaks and timing with the slow stores held. Stage 3 fixes any
+interaction between the two without drifting far.
+<code><a href="../reference/pdm_stages.html">pdm_stages()</a></code> builds this list for any structure from the
+bounds table: a split recharge adds its share to stage 1, an exponential
+store its two parameters. Each stage is a plain list, so you can move
+parameters between stages or drop the polish.</p>
+<p>Here both approaches start from the standard settings, a long way
+from the truth (NSE below zero). One calibrates all seven parameters at
+once, the other in stages:</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">begin</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pdm_presets.html">pdm_presets</a></span><span class="op">(</span><span class="st">"standard"</span><span class="op">)</span></span>
+<span><span class="va">begin</span><span class="op">$</span><span class="va">area_km2</span> <span class="op">&lt;-</span> <span class="fl">50</span></span>
+<span><span class="va">b</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calibration_bounds.html">calibration_bounds</a></span><span class="op">(</span><span class="va">begin</span><span class="op">)</span></span>
+<span><span class="va">all_at_once</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calibrate_pdm.html">calibrate_pdm</a></span><span class="op">(</span><span class="va">begin</span>, <span class="va">forcing</span>, <span class="va">observed</span>, <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="va">b</span><span class="op">$</span><span class="va">lower</span>, <span class="va">b</span><span class="op">$</span><span class="va">path</span><span class="op">)</span>,</span>
+<span>                             <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="va">b</span><span class="op">$</span><span class="va">upper</span>, <span class="va">b</span><span class="op">$</span><span class="va">path</span><span class="op">)</span>, warmup <span class="op">=</span> <span class="fl">240</span>, objective <span class="op">=</span> <span class="st">"nse"</span>,</span>
+<span>                             log_scale <span class="op">=</span> <span class="va">b</span><span class="op">$</span><span class="va">path</span><span class="op">[</span><span class="va">b</span><span class="op">$</span><span class="va">scale</span> <span class="op">==</span> <span class="st">"log"</span><span class="op">]</span>, starts <span class="op">=</span> <span class="fl">2</span>, seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
+<span><span class="va">staged</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calibrate_staged.html">calibrate_staged</a></span><span class="op">(</span><span class="va">begin</span>, <span class="va">forcing</span>, <span class="va">observed</span>, warmup <span class="op">=</span> <span class="fl">240</span>, starts <span class="op">=</span> <span class="fl">2</span>, seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
+<span><span class="va">fit_scores</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">config</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/pdm_scorecard.html">pdm_scorecard</a></span><span class="op">(</span><span class="fu">run</span><span class="op">(</span><span class="va">config</span><span class="op">)</span><span class="op">[</span><span class="va">scored</span><span class="op">]</span>, <span class="va">observed</span><span class="op">[</span><span class="va">scored</span><span class="op">]</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nse"</span>, <span class="st">"log_nse"</span>, <span class="st">"volume_error"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="op">}</span></span>
+<span><span class="va">runs</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">fit</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="va">start_results</span><span class="op">$</span><span class="va">evaluations</span><span class="op">)</span></span>
+<span><span class="va">comparison</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span></span>
+<span>  start <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu">fit_scores</span><span class="op">(</span><span class="va">begin</span><span class="op">)</span>, model_runs <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>,</span>
+<span>  all_at_once <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu">fit_scores</span><span class="op">(</span><span class="va">all_at_once</span><span class="op">$</span><span class="va">config</span><span class="op">)</span>, model_runs <span class="op">=</span> <span class="fu">runs</span><span class="op">(</span><span class="va">all_at_once</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  stage_1 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu">fit_scores</span><span class="op">(</span><span class="va">staged</span><span class="op">$</span><span class="va">stages</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">config</span><span class="op">)</span>, model_runs <span class="op">=</span> <span class="fu">runs</span><span class="op">(</span><span class="va">staged</span><span class="op">$</span><span class="va">stages</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  stage_2 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu">fit_scores</span><span class="op">(</span><span class="va">staged</span><span class="op">$</span><span class="va">stages</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">config</span><span class="op">)</span>, model_runs <span class="op">=</span> <span class="fu">runs</span><span class="op">(</span><span class="va">staged</span><span class="op">$</span><span class="va">stages</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  staged <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu">fit_scores</span><span class="op">(</span><span class="va">staged</span><span class="op">$</span><span class="va">config</span><span class="op">)</span>, model_runs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">staged</span><span class="op">$</span><span class="va">stages</span>, <span class="va">runs</span>, <span class="fl">0</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">comparison</span>, <span class="fl">3</span><span class="op">)</span></span>
+<span><span class="co">#&gt;                nse log_nse volume_error model_runs</span></span>
+<span><span class="co">#&gt; start       -1.400  -1.657        0.182          0</span></span>
+<span><span class="co">#&gt; all_at_once  0.990   0.986        0.000       2100</span></span>
+<span><span class="co">#&gt; stage_1      0.989   0.983        0.000       1419</span></span>
+<span><span class="co">#&gt; stage_2      0.989   0.984        0.000        217</span></span>
+<span><span class="co">#&gt; staged       0.990   0.986        0.000       3796</span></span></code></pre></div>
+<p>In this example both reach the same answer: NSE 0.990 at once and
+0.990 in stages. Stage 1 alone reaches 0.989, which shows how much of
+the fit comes from the water balance and the slow stores. Staging took
+more model runs here, 3,796 against 2,100.</p>
+<p>So why stage? A made-up catchment with a known truth and clean data
+is the easy case. On real data, with rating errors at the top end and a
+long record of low flows, fitting everything to NSE at once can let the
+fast stores make up for a wrong water balance, and the result can look
+good for the wrong reasons. Staging makes each group of parameters
+answer to the part of the hydrograph it controls. Each stage is also a
+separate, reviewable step: a Steward can see what the water balance did
+before the peaks were touched.</p>
+<p>In a project, <code><a href="../reference/calibrate_staged.html">log_staged_calibration()</a></code> writes one
+<code>auto_calibration</code> entry per stage, each the parent of the
+next, with its stage recorded, and
+<code>calibrate_batch(staged = TRUE)</code> does the same for every
+basin, resuming from the last finished stage after an interruption.</p>
+</div>
+<div class="section level2">
 <h2 id="in-a-calibration-project">In a calibration project<a class="anchor" aria-label="anchor" href="#in-a-calibration-project"></a>
 </h2>
 <p>Inside a calibration project, <code><a href="../reference/calibration_log.html">log_auto_calibration()</a></code>
@@ -460,7 +563,7 @@ everything a reviewer would need to repeat it exactly: the fences, the
 search scales, the method, the score and its weights, the starting
 points and seed, where every start ended, how many model runs it took,
 and why it was run.</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/calibration_log.html">log_auto_calibration</a></span><span class="op">(</span></span>
 <span>  <span class="va">project</span>, parent <span class="op">=</span> <span class="fl">7</span>,</span>
 <span>  lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>fc <span class="op">=</span> <span class="fl">0.7</span>, surface.k1 <span class="op">=</span> <span class="fl">0.5</span>, surface.k2 <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span>,</span>
@@ -492,14 +595,22 @@ says</td>
 </tr>
 <tr class="even">
 <td>Low flows matter most</td>
-<td><code>objective = "log_rmse"</code></td>
+<td>
+<code>objective = "log_nse"</code> or <code>"log_rmse"</code>
+</td>
 </tr>
 <tr class="odd">
+<td>Calibrating as a hydrologist would, step by step</td>
+<td>
+<code><a href="../reference/calibrate_staged.html">calibrate_staged()</a></code>, or
+<code><a href="../reference/calibrate_staged.html">log_staged_calibration()</a></code> in a project</td>
+</tr>
+<tr class="even">
 <td>A flood warning service</td>
 <td>Add <code>thresholds</code> and use
 <code>method = "nelder_mead"</code>; keep NSE as the main score</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Comparing model structures</td>
 <td>
 <code><a href="../reference/compare_structures.html">compare_structures()</a></code> applies all of this the same way
@@ -507,7 +618,7 @@ to each; see <a href="choosing-structure.html">Choosing a model
 structure</a>
 </td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Many catchments</td>
 <td>
 <code><a href="../reference/calibrate_batch.html">calibrate_batch()</a></code>; see <a href="many-catchments.html">Calibrating many catchments</a>

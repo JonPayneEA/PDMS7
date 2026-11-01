@@ -168,6 +168,11 @@ The PACK snow model, alone or feeding the PDM.
 
 - [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md)
   : Calibrate pdm
+- [`calibrate_staged()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_staged.md)
+  [`log_staged_calibration()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_staged.md)
+  : Staged calibration
+- [`pdm_stages()`](https://jonpayneea.github.io/PDMS7/reference/pdm_stages.md)
+  : Calibration stages
 - [`calibrate_pdm_multi()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm_multi.md)
   : Calibrate PDM or coupled snow-PDM against multiple objectives
 - [`pdm_objectives()`](https://jonpayneea.github.io/PDMS7/reference/pdm_objectives.md)
@@ -242,6 +247,23 @@ calibrations.
   : List the configurations approved in a register
 - [`pdm_fingerprint()`](https://jonpayneea.github.io/PDMS7/reference/pdm_fingerprint.md)
   : Fingerprint a model configuration
+
+## Hindcasts and lead-time scores
+
+Rerun past forecasts from many origins and score each lead time against
+persistence.
+
+- [`pdm_hindcast()`](https://jonpayneea.github.io/PDMS7/reference/pdm_hindcast.md)
+  : Hindcast forecasts from many origins
+- [`hindcast_scores()`](https://jonpayneea.github.io/PDMS7/reference/hindcast_scores.md)
+  : Score a hindcast by lead time
+- [`plot_hindcast()`](https://jonpayneea.github.io/PDMS7/reference/plot_hindcast.md)
+  : Plot hindcast scores against lead time
+- [`pdm_response_time()`](https://jonpayneea.github.io/PDMS7/reference/pdm_response_time.md)
+  : Response time of a calibrated model
+- [`ar_from_response_time()`](https://jonpayneea.github.io/PDMS7/reference/ar_from_response_time.md)
+  [`ar_ea_default()`](https://jonpayneea.github.io/PDMS7/reference/ar_from_response_time.md)
+  : AR coefficients for forecast updating
 
 ## Forecast updating
 

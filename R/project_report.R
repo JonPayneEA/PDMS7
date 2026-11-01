@@ -261,8 +261,10 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
   )
   for (a in Filter(function(e) e$type == "auto_calibration", nodes)) {
     starts <- as.data.frame(lapply(a$start_results, unlist))
-    out <- c(out, list(.blk_table(starts, paste("Automatic calibration", a$id, ":",
-                                                a$objective, "with", a$starts, "start(s)"))))
+    stage <- if (is.null(a$stage)) "" else paste0(" (stage ", a$stage, ")")
+    out <- c(out, list(.blk_table(starts, paste0("Automatic calibration ", a$id, stage, ": ",
+                                                 a$objective_name %||% a$objective, " with ",
+                                                 a$starts, " start(s)"))))
   }
   if (length(notes)) {
     out <- c(out, list(.blk_h("Notes", 3L), .blk_list(vapply(notes, function(n) {

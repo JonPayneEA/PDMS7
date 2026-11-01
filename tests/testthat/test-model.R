@@ -41,22 +41,7 @@ test_that(
     )
     for (d in dists) {
       for (re in recharges) {
-        for (ro in routes) {
-          if (S7::S7_inherits(re, DemandRecharge) &&
-                S7::S7_inherits(ro, CascadeRouting)) {
-            next
-          }
-          model <- pdm_model(distribution = d, recharge = re, groundwater = ro, td = 1.5)
-          result <- run_pdm(model, forcing)
-          check(
-            max(abs(result$output$balance_error_mm)) <
-              1e-07
-          )
-          check(
-            all(result$output$soil_mm >= 0) &&
-              all(result$output$q_natural_m3s >= -1e-09)
-          )
-        }
+        for (ro in routes) check_conserves(d, re, ro, forcing)
       }
     }
     for (name in pdm_presets()) {

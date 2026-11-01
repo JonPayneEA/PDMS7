@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -59,6 +59,7 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Forecasting</h6></li>
     <li><a class="dropdown-item" href="../articles/forecast-updating.html">Forecast updating</a></li>
+    <li><a class="dropdown-item" href="../articles/hindcasts.html">Testing forecasts with hindcasts</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Under the bonnet</h6></li>
     <li><a class="dropdown-item" href="../articles/compiled-core.html">The C core: speed, equivalence and other languages</a></li>
@@ -248,8 +249,32 @@ different model</td>
 simulation</a>
 </td>
 </tr>
+<tr class="odd">
+<td>
+<code>snow</code> (optional)</td>
+<td>
+<code>true</code> for a catchment with snow; see below</td>
+</tr>
 </tbody>
 </table>
+<div class="section level3">
+<h3 id="catchments-with-snow">Catchments with snow<a class="anchor" aria-label="anchor" href="#catchments-with-snow"></a>
+</h3>
+<p>For a catchment with snow, add <code>snow: true</code> to its
+<code>basin.yml</code> and a <code>temperature</code> column, in deg C,
+to its <code>forcing.csv</code>. The <code>rain</code> column then holds
+all precipitation, rain and snow alike. Before calibrating, the batch
+runs the PACK snow model over the forcing to work out how much water
+reaches the ground in each time step, as rain or melt, and calibrates
+the PDM on that.</p>
+<p>PACK’s own parameters are <strong>not calibrated</strong>. They stay
+at the default preset, or at a preset or PACK settings file named by
+<code>snow</code> instead of <code>true</code>, for example
+<code>snow: pack.yml</code> with the file in the catchment’s folder. A
+note in the catchment’s log records the PACK settings used and the
+checksum of the original forcing file, so a reviewer can see exactly
+what the PDM was given.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="before-you-start-how-long-will-it-take">Before you start: how long will it take?<a class="anchor" aria-label="anchor" href="#before-you-start-how-long-will-it-take"></a>
@@ -263,7 +288,7 @@ with three starting points uses roughly 1,000 to 2,000 model runs.</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>seconds_per_run <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">signif</a></span><span class="op">(</span><span class="va">one_run</span>, <span class="fl">2</span><span class="op">)</span>,</span>
 <span>  estimated_minutes_for_8 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fl">8</span> <span class="op">*</span> <span class="fl">1500</span> <span class="op">*</span> <span class="va">one_run</span> <span class="op">/</span> <span class="fl">60</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;         seconds_per_run estimated_minutes_for_8 </span></span>
-<span><span class="co">#&gt;                   0.005                   1.000</span></span></code></pre></div>
+<span><span class="co">#&gt;                  0.0058                  1.2000</span></span></code></pre></div>
 <p>For a real batch, measure on a few catchments first; see the pilot
 script in <a href="calibration.html">Calibration</a>.</p>
 </div>
@@ -284,9 +309,9 @@ may take, which parameters to leave alone.</p>
 <span><span class="va">part</span></span>
 <span><span class="co">#&gt;     basin  state     step seconds message</span></span>
 <span><span class="co">#&gt;    &lt;char&gt; &lt;char&gt;   &lt;char&gt;   &lt;num&gt;  &lt;char&gt;</span></span>
-<span><span class="co">#&gt; 1:    B01   done complete     4.8        </span></span>
-<span><span class="co">#&gt; 2:    B02   done complete     4.3        </span></span>
-<span><span class="co">#&gt; 3:    B03   done complete     5.3</span></span></code></pre></div>
+<span><span class="co">#&gt; 1:    B01   done complete     5.3        </span></span>
+<span><span class="co">#&gt; 2:    B02   done complete     4.5        </span></span>
+<span><span class="co">#&gt; 3:    B03   done complete     6.3</span></span></code></pre></div>
 <p>Suppose the computer was switched off at this point, after three
 catchments. Nothing is lost: each catchment has its own project folder
 recording exactly how far it got. Run the same command again, this time
@@ -301,11 +326,11 @@ for all of them:</p>
 <span><span class="co">#&gt; 1:    B01   done complete     0.0                                            </span></span>
 <span><span class="co">#&gt; 2:    B02   done complete     0.0                                            </span></span>
 <span><span class="co">#&gt; 3:    B03   done complete     0.0                                            </span></span>
-<span><span class="co">#&gt; 4:    B04   done complete     5.1                                            </span></span>
-<span><span class="co">#&gt; 5:    B05   done complete     4.4                                            </span></span>
+<span><span class="co">#&gt; 4:    B04   done complete     6.0                                            </span></span>
+<span><span class="co">#&gt; 5:    B05   done complete     5.1                                            </span></span>
 <span><span class="co">#&gt; 6:    B06 failed register     0.0 pet must contain finite nonnegative numbers</span></span>
-<span><span class="co">#&gt; 7:    B07   done complete     4.4                                            </span></span>
-<span><span class="co">#&gt; 8:    B08   done complete     5.8</span></span></code></pre></div>
+<span><span class="co">#&gt; 7:    B07   done complete     4.8                                            </span></span>
+<span><span class="co">#&gt; 8:    B08   done complete     6.8</span></span></code></pre></div>
 <p>The three finished catchments took a moment each: the batch read
 their records, saw every step already done, and moved on. The others ran
 in full. Each catchment’s random starting points come from its own name,
@@ -345,13 +370,30 @@ run the batch again for just that catchment:</p>
 <span><span class="co">#&gt; 1:    B01   done complete     0.0        </span></span>
 <span><span class="co">#&gt; 2:    B02   done complete     0.0        </span></span>
 <span><span class="co">#&gt; 3:    B03   done complete     0.0        </span></span>
-<span><span class="co">#&gt; 4:    B04   done complete     5.1        </span></span>
-<span><span class="co">#&gt; 5:    B05   done complete     4.4        </span></span>
-<span><span class="co">#&gt; 6:    B06   done complete     4.7        </span></span>
-<span><span class="co">#&gt; 7:    B07   done complete     4.4        </span></span>
-<span><span class="co">#&gt; 8:    B08   done complete     5.8</span></span></code></pre></div>
+<span><span class="co">#&gt; 4:    B04   done complete     6.0        </span></span>
+<span><span class="co">#&gt; 5:    B05   done complete     5.1        </span></span>
+<span><span class="co">#&gt; 6:    B06   done complete     5.6        </span></span>
+<span><span class="co">#&gt; 7:    B07   done complete     4.8        </span></span>
+<span><span class="co">#&gt; 8:    B08   done complete     6.8</span></span></code></pre></div>
 <p>The failed attempt is still on record in B06’s project, followed by
 the successful one.</p>
+</div>
+<div class="section level3">
+<h3 id="calibrating-in-stages">Calibrating in stages<a class="anchor" aria-label="anchor" href="#calibrating-in-stages"></a>
+</h3>
+<p>Add <code>staged = TRUE</code> to calibrate each catchment the way a
+hydrologist would by hand: the water balance and slow stores first, then
+the fast stores, then a short joint polish. Each stage is written to the
+catchment’s log as its own step, so a reviewer can see what each one
+changed. If the batch is interrupted part way through a catchment, the
+next run carries on from the last finished stage. <a href="auto-calibration.html">Automatic calibration, explained</a>
+describes the stages.</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">calibrate_batch</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">basins</span>, <span class="va">results</span>, staged <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>, <span class="va">protocol</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>A catchment that already has a calibration keeps it, staged or not;
+the batch never recalibrates a finished catchment because the protocol
+has changed. Start a fresh results folder to recalibrate everything
+under a new protocol.</p>
 </div>
 <div class="section level3">
 <h3 id="on-a-server">On a server<a class="anchor" aria-label="anchor" href="#on-a-server"></a>
@@ -359,13 +401,13 @@ the successful one.</p>
 <p>On a shared server, put the call in a script and start it so that it
 keeps running after you log off. Use one core per catchment, up to what
 the server can spare:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># batch.R</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://jonpayneea.github.io/PDMS7/">pdmS7</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>pdmS7.user <span class="op">=</span> <span class="st">"Ann Hydrologist"</span>, pdmS7.role <span class="op">=</span> <span class="st">"custodian"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/calibrate_batch.html">calibrate_batch</a></span><span class="op">(</span><span class="st">"basins"</span>, <span class="st">"results"</span>, starts <span class="op">=</span> <span class="fl">20</span>, cores <span class="op">=</span> <span class="fl">32</span>,</span>
 <span>                owner <span class="op">=</span> <span class="st">"Deputy Director"</span>, steward <span class="op">=</span> <span class="st">"Sam Steward"</span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb10"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="fu">nohup</span> Rscript batch.R <span class="op">&gt;</span> batch.log <span class="dv">2</span><span class="op">&gt;&amp;</span><span class="dv">1</span> <span class="kw">&amp;</span></span></code></pre></div>
+<div class="sourceCode" id="cb11"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="fu">nohup</span> Rscript batch.R <span class="op">&gt;</span> batch.log <span class="dv">2</span><span class="op">&gt;&amp;</span><span class="dv">1</span> <span class="kw">&amp;</span></span></code></pre></div>
 <p>If the server is restarted, run the same command again.</p>
 </div>
 </div>
@@ -375,7 +417,7 @@ the server can spare:</p>
 <p><code><a href="../reference/calibrate_batch.html">batch_results()</a></code> gathers every catchment into one table,
 with the headline score (here NSE) on the calibration and validation
 periods:</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">table</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calibrate_batch.html">batch_results</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></span>
 <span><span class="va">table</span><span class="op">[</span>, <span class="fu">.</span><span class="op">(</span><span class="va">project</span>, <span class="va">state</span>, calibration <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">candidate_score</span>, <span class="fl">3</span><span class="op">)</span>,</span>
 <span>          validation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">validation_score</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span><span class="op">]</span></span>
@@ -389,7 +431,7 @@ periods:</p>
 <span><span class="co">#&gt; 6:     B06   done       0.977      0.979</span></span>
 <span><span class="co">#&gt; 7:     B07   done       0.992      0.994</span></span>
 <span><span class="co">#&gt; 8:     B08   done       0.989      0.993</span></span></code></pre></div>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span>mfrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span>, mar <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">4</span>, <span class="fl">4.2</span>, <span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">lim</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/range.html" class="external-link">range</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">table</span><span class="op">$</span><span class="va">candidate_score</span>, <span class="va">table</span><span class="op">$</span><span class="va">validation_score</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">table</span><span class="op">$</span><span class="va">candidate_score</span>, <span class="va">table</span><span class="op">$</span><span class="va">validation_score</span>, pch <span class="op">=</span> <span class="fl">16</span>, col <span class="op">=</span> <span class="va">pal</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>, xlim <span class="op">=</span> <span class="va">lim</span>,</span>
@@ -417,7 +459,7 @@ are the catchments to look at first.</p>
 ended at the same score, the answer is probably the best there is. If
 they ended at different scores, the search may have stopped in the wrong
 place.</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">agreement</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">rbind</span>, <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">table</span><span class="op">$</span><span class="va">project</span>, <span class="kw">function</span><span class="op">(</span><span class="va">id</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_project.html">read_entry</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">results</span>, <span class="va">id</span><span class="op">)</span>, <span class="fl">4</span><span class="op">)</span></span>
 <span>  <span class="va">scores</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/unlist.html" class="external-link">unlist</a></span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="va">start_results</span><span class="op">$</span><span class="va">objective</span><span class="op">)</span></span>
@@ -449,7 +491,7 @@ quick, and a real batch should allow 200 or more.</p>
 fitted value with the true one. The two surface time constants can swap
 places without changing the flow, so they are compared as the faster and
 the slower of the pair.</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">pairs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">rbind</span>, <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">table</span><span class="op">$</span><span class="va">project</span>, <span class="kw">function</span><span class="op">(</span><span class="va">id</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">fitted</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_project.html">read_entry</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">results</span>, <span class="va">id</span><span class="op">)</span>, <span class="fl">4</span><span class="op">)</span><span class="op">$</span><span class="va">configuration</span></span>
 <span>  <span class="va">value</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">cfg</span><span class="op">)</span> <span class="op">{</span></span>
@@ -474,7 +516,7 @@ Fitted against true values, one point per catchment. Points on the line
 are exact.
 </p>
 </div>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">pairs</span><span class="op">$</span><span class="va">error</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="va">pairs</span><span class="op">$</span><span class="va">fitted</span> <span class="op">/</span> <span class="va">pairs</span><span class="op">$</span><span class="va">truth</span> <span class="op">-</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="va">typical</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/aggregate.html" class="external-link">aggregate</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span>typical_error <span class="op">=</span> <span class="va">error</span><span class="op">)</span> <span class="op">~</span> <span class="va">parameter</span>, data <span class="op">=</span> <span class="va">pairs</span>,</span>
 <span>                     FUN <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span></span>
@@ -506,13 +548,13 @@ parameter sensitivity plots in each catchment’s report, and <a href="calibrati
 <p>Every catchment’s record can be checked for tampering, and reviewed
 and signed off like any other calibration (see <a href="calibration-log.html">Logging a manual calibration</a>). Start the
 review with the worst performers:</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">folders</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">results</span>, <span class="va">table</span><span class="op">$</span><span class="va">project</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span>intact <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">folders</span>, <span class="kw">function</span><span class="op">(</span><span class="va">f</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="fu"><a href="../reference/verify_project.html">verify_project</a></span><span class="op">(</span><span class="va">f</span><span class="op">)</span><span class="op">$</span><span class="va">ok</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/logical.html" class="external-link">logical</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; intact</span></span>
 <span><span class="co">#&gt; TRUE </span></span>
 <span><span class="co">#&gt;    8</span></span></code></pre></div>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">worst</span> <span class="op">&lt;-</span> <span class="va">table</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="va">validation_score</span><span class="op">)</span><span class="op">]</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">]</span></span>
 <span><span class="kw">for</span> <span class="op">(</span><span class="va">f</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">results</span>, <span class="va">worst</span><span class="op">$</span><span class="va">project</span><span class="op">)</span><span class="op">)</span> <span class="fu"><a href="../reference/build_report.html">build_report</a></span><span class="op">(</span><span class="va">f</span><span class="op">)</span></span></code></pre></div>
 </div>

@@ -89,6 +89,23 @@ cat(readLines(file.path(basins, "B01", "basin.yml")), sep = "\n")
 | `test` (optional)                 | A final period kept back until everything is decided, scored once                                                                                      |
 | `config` (optional)               | A model configuration file in the folder, if this catchment needs a different model                                                                    |
 | `thresholds`, `rating` (optional) | Warning thresholds to score; see [Scoring a simulation](https://jonpayneea.github.io/PDMS7/articles/scoring.md)                                        |
+| `snow` (optional)                 | `true` for a catchment with snow; see below                                                                                                            |
+
+### Catchments with snow
+
+For a catchment with snow, add `snow: true` to its `basin.yml` and a
+`temperature` column, in deg C, to its `forcing.csv`. The `rain` column
+then holds all precipitation, rain and snow alike. Before calibrating,
+the batch runs the PACK snow model over the forcing to work out how much
+water reaches the ground in each time step, as rain or melt, and
+calibrates the PDM on that.
+
+PACK’s own parameters are **not calibrated**. They stay at the default
+preset, or at a preset or PACK settings file named by `snow` instead of
+`true`, for example `snow: pack.yml` with the file in the catchment’s
+folder. A note in the catchment’s log records the PACK settings used and
+the checksum of the original forcing file, so a reviewer can see exactly
+what the PDM was given.
 
 ## Before you start: how long will it take?
 
@@ -102,7 +119,7 @@ one_run <- system.time(
 c(seconds_per_run = signif(one_run, 2),
   estimated_minutes_for_8 = round(8 * 1500 * one_run / 60, 1))
 #>         seconds_per_run estimated_minutes_for_8 
-#>                   0.005                   1.000
+#>                  0.0058                  1.2000
 ```
 
 For a real batch, measure on a few catchments first; see the pilot
@@ -126,9 +143,9 @@ part <- do.call(calibrate_batch, c(list(basins, results, only = c("B01", "B02", 
 part
 #>     basin  state     step seconds message
 #>    <char> <char>   <char>   <num>  <char>
-#> 1:    B01   done complete     4.8        
-#> 2:    B02   done complete     4.3        
-#> 3:    B03   done complete     5.3
+#> 1:    B01   done complete     5.3        
+#> 2:    B02   done complete     4.5        
+#> 3:    B03   done complete     6.3
 ```
 
 Suppose the computer was switched off at this point, after three
@@ -146,11 +163,11 @@ status
 #> 1:    B01   done complete     0.0                                            
 #> 2:    B02   done complete     0.0                                            
 #> 3:    B03   done complete     0.0                                            
-#> 4:    B04   done complete     5.1                                            
-#> 5:    B05   done complete     4.4                                            
+#> 4:    B04   done complete     6.0                                            
+#> 5:    B05   done complete     5.1                                            
 #> 6:    B06 failed register     0.0 pet must contain finite nonnegative numbers
-#> 7:    B07   done complete     4.4                                            
-#> 8:    B08   done complete     5.8
+#> 7:    B07   done complete     4.8                                            
+#> 8:    B08   done complete     6.8
 ```
 
 The three finished catchments took a moment each: the batch read their
@@ -196,15 +213,36 @@ status
 #> 1:    B01   done complete     0.0        
 #> 2:    B02   done complete     0.0        
 #> 3:    B03   done complete     0.0        
-#> 4:    B04   done complete     5.1        
-#> 5:    B05   done complete     4.4        
-#> 6:    B06   done complete     4.7        
-#> 7:    B07   done complete     4.4        
-#> 8:    B08   done complete     5.8
+#> 4:    B04   done complete     6.0        
+#> 5:    B05   done complete     5.1        
+#> 6:    B06   done complete     5.6        
+#> 7:    B07   done complete     4.8        
+#> 8:    B08   done complete     6.8
 ```
 
 The failed attempt is still on record in B06’s project, followed by the
 successful one.
+
+### Calibrating in stages
+
+Add `staged = TRUE` to calibrate each catchment the way a hydrologist
+would by hand: the water balance and slow stores first, then the fast
+stores, then a short joint polish. Each stage is written to the
+catchment’s log as its own step, so a reviewer can see what each one
+changed. If the batch is interrupted part way through a catchment, the
+next run carries on from the last finished stage. [Automatic
+calibration,
+explained](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.md)
+describes the stages.
+
+``` r
+do.call(calibrate_batch, c(list(basins, results, staged = TRUE), protocol))
+```
+
+A catchment that already has a calibration keeps it, staged or not; the
+batch never recalibrates a finished catchment because the protocol has
+changed. Start a fresh results folder to recalibrate everything under a
+new protocol.
 
 ### On a server
 

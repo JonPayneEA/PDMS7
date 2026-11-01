@@ -8,6 +8,7 @@
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/compiled-core.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/example-workflow.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/forecast-updating.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/articles/hindcasts.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/index.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/log-structure.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/many-catchments.html</loc></url>
@@ -63,10 +64,12 @@
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/StateUpdater.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/TriangularCapacity.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/approved_configurations.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/ar_from_response_time.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/build_report.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm_multi.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/calibrate_staged.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/calibration_app.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/calibration_bounds.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/calibration_log.html</loc></url>
@@ -79,6 +82,7 @@
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/cubic_routing.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/error_updater.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/fit_error_updater.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/hindcast_scores.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/index.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/initial_state.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/initial_state_from_flow.html</loc></url>
@@ -91,12 +95,16 @@
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/pareto_front.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/pdm_fingerprint.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/pdm_from_config.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/pdm_hindcast.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/pdm_model.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/pdm_objectives.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/pdm_presets.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/pdm_response_time.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/pdm_scorecard.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/pdm_stages.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/pdm_step.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/pdm_threshold_scores.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/plot_hindcast.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/power_routing.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/quadratic_routing.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/read_pdm_config.html</loc></url>

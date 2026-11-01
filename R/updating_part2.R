@@ -41,31 +41,9 @@ update_forecast <- function(updater, observed_history, simulated_history, foreca
     return(.engine_update_forecast(updater, observed_history, simulated_history, forecast))
   }
   n <- length(eta)
-  errors <- c(eta, rep(0, length(forecast)))
-  innovations <- numeric(length(errors))
-  predicted <- numeric(length(errors))
-  # R convention eta[t] = sum(ar*eta[t-i]) + sum(ma*a[t-j]) + a[t].  Moore's phi
-  # coefficients have the opposite sign: ar = -phi.
-  for (t in seq_along(errors)) {
-    for (i in seq_along(updater@ar)) {
-      if (t >
-            i) {
-        predicted[t] <- predicted[t] + updater@ar[i] * errors[t - i]
-      }
-    }
-    for (j in seq_along(updater@ma)) {
-      if (t >
-            j) {
-        predicted[t] <- predicted[t] + updater@ma[j] * innovations[t - j]
-      }
-    }
-    if (t <= n) {
-      innovations[t] <- errors[t] - predicted[t]
-    } else {
-      errors[t] <- predicted[t]
-    }
-  }
-  correction <- errors[n + seq_along(forecast)]
+  arma <- .arma_recursion(updater@ar, updater@ma, eta, length(forecast))
+  innovations <- arma$innovations
+  correction <- arma$errors[n + seq_along(forecast)]
   updated <- if (updater@scale == "additive") {
     forecast + correction
   } else {
@@ -78,6 +56,26 @@ update_forecast <- function(updater, observed_history, simulated_history, foreca
   }
   list(forecast = updated, error_forecast = correction, innovations = innovations[seq_len(n)])
 }
+# R convention eta[t] = sum(ar*eta[t-i]) + sum(ma*a[t-j]) + a[t].  Moore's phi
+# coefficients have the opposite sign: ar = -phi. Known errors give innovations; beyond them
+# the errors are predicted.
+.arma_recursion <- function(ar, ma, eta, horizon) {
+  n <- length(eta)
+  errors <- c(eta, rep(0, horizon))
+  innovations <- numeric(length(errors))
+  for (t in seq_along(errors)) {
+    i <- seq_along(ar)[seq_along(ar) < t]
+    j <- seq_along(ma)[seq_along(ma) < t]
+    predicted <- sum(ar[i] * errors[t - i]) + sum(ma[j] * innovations[t - j])
+    if (t <= n) {
+      innovations[t] <- errors[t] - predicted
+    } else {
+      errors[t] <- predicted
+    }
+  }
+  list(errors = errors, innovations = innovations)
+}
+
 #' Fit error updater
 #'
 #' Component of the configurable Moore (2007) rainfall-runoff framework.

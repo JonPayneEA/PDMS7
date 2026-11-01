@@ -1,4 +1,32 @@
-# pdmS7 (development version)
+# pdmS7 0.4.0
+
+- New `pdm_hindcast()` reruns past forecasts from many origins, using the rain that fell, with
+  no updating, persistence, AR post-processing as in IMFS (the Environment Agency 2024 default,
+  a default-family set from the model's response time, and optionally a set fitted to the
+  calibration period) and state correction. `hindcast_scores()` scores each lead time: NSE,
+  RMSE, bias, skill against persistence, threshold POD, FAR and CSI, and lead time over time to
+  peak, so catchments and models line up on one axis. It also scores another model's forecasts
+  given as a table. `plot_hindcast()` plots any score against lead time.
+- New `pdm_response_time()` measures a model's time to peak, recession and centroid lag from a
+  pulse of rain, with an optional check against an FEH time to peak.
+- New `ar_ea_default()` and `ar_from_response_time()` give AR coefficients in the Deltares
+  convention used by IMFS and reach.postproc; the second follows
+  `reach.postproc::default_family_ar_parameters()` exactly.
+- New `calibrate_staged()` and `pdm_stages()` calibrate in stages: water balance and slow
+  stores on log NSE with a volume penalty, then the fast stores on NSE, then a joint polish
+  within narrowed bounds. `log_staged_calibration()` writes one `auto_calibration` entry per
+  stage, each recording its stage; `calibrate_batch(staged = TRUE)` does the same per basin
+  and resumes from the last finished stage.
+- `calibrate_pdm()` gains `objective = "log_nse"` and `volume_weight`, a penalty on the
+  absolute volume error.
+- `calibrate_batch()` handles snow basins: with `snow: true` in `basin.yml` and a
+  `temperature` column, PACK at fixed parameters turns precipitation into rain and melt, the
+  PDM is calibrated on that, and a log note records the PACK settings and the raw forcing's
+  checksum.
+- New articles, "Testing forecasts with hindcasts" and "AR and ARMA error correction,
+  explained". "Automatic calibration" and "Calibrating
+  many catchments" cover staged calibration and snow basins.
+- Internal: the calibration functions are split into smaller helpers; no results change.
 
 - The introductory articles are rewritten in plain English with figures of the model
   running: "How the PDM works" (buckets, dry and wet ground, the saturated area, the two

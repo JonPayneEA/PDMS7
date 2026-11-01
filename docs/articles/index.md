@@ -45,6 +45,8 @@
 
 - [Forecast
   updating](https://jonpayneea.github.io/PDMS7/articles/forecast-updating.md):
+- [Testing forecasts with
+  hindcasts](https://jonpayneea.github.io/PDMS7/articles/hindcasts.md):
 
 ### Under the bonnet
 

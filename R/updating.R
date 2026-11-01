@@ -238,13 +238,8 @@ error_updater <- function(
 }
 .errors <- function(observed, simulated, scale, offset) {
   .check(
-    is.numeric(observed) &&
-      is.numeric(simulated) &&
-      length(observed) ==
-        length(simulated) &&
-      length(observed) >
-        0 && all(is.finite(observed)) &&
-      all(is.finite(simulated)),
+    .finite_vector(observed) && .finite_vector(simulated) &&
+      length(observed) == length(simulated),
     "Error history needs equal-length, complete finite numeric vectors"
   )
   if (scale == "additive") {

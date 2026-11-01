@@ -30,8 +30,15 @@
 #' - `flow.csv`: column `q_m3s` (and optionally `time`), aligned with the forcing;
 #' - `basin.yml`: `area_km2` and `calibration` (start and end) are required; `catchment`,
 #'   `gauge`, `validation`, `test`, `config` (a YAML configuration file in the folder),
-#'   `headline`, `thresholds` (a list of `name`, `value`, `unit`) and `rating` (a CSV in the
-#'   folder) are optional.
+#'   `headline`, `thresholds` (a list of `name`, `value`, `unit`), `rating` (a CSV in the
+#'   folder) and `snow` are optional.
+#'
+#' **Snow.** For a basin with `snow: true` in `basin.yml`, `forcing.csv` also needs a
+#' `temperature` column (deg C), and `rain` holds all precipitation. The PACK snow model turns
+#' them into the rain and melt reaching the ground, with fixed parameters: the default preset,
+#' or a preset named by `snow`, or a PACK YAML file in the basin folder named by `snow`. PACK
+#' is not calibrated; only the PDM is. The series PACK produces is registered as the rain, and a
+#' note in the log records the PACK parameters and the checksum of the original forcing.
 #'
 #' **Steps for each basin**, each written to its project as it completes: start the project,
 #' register the data, select the structure, run the automatic calibration, propose the best
@@ -51,6 +58,9 @@
 #' @param overrides,exclude Passed to [calibration_bounds()].
 #' @param objective,starts,seed,control,method Passed to [calibrate_pdm()]. Search scales
 #'   come from the bounds table.
+#' @param staged If `TRUE`, calibrate in stages, as [calibrate_staged()] does, with stages from
+#'   [pdm_stages()]: one `auto_calibration` entry per stage. An interrupted basin resumes
+#'   from its last finished stage. `objective` then applies to no stage; each stage has its own.
 #' @param test If `TRUE`, score each validated candidate once on its test window, if it has
 #'   one. Use it when the protocol is final; the test window is scored only once.
 #' @param cores Number of basins to run at once, in parallel worker processes.
@@ -65,7 +75,7 @@
 calibrate_batch <- function(basins, output, structure = NULL, overrides = NULL, exclude = NULL,
                             objective = c("nse", "rmse", "log_rmse"), starts = 10L, seed = 1,
                             control = list(maxit = 200), method = c("lbfgsb", "nelder_mead"),
-                            test = FALSE, cores = 1L, only = NULL,
+                            staged = FALSE, test = FALSE, cores = 1L, only = NULL,
                             owner = "Not recorded", steward = "Not recorded",
                             purpose = "Batch calibration") {
   author <- .identity("custodian")
@@ -86,7 +96,8 @@ calibrate_batch <- function(basins, output, structure = NULL, overrides = NULL, 
     basins = normalizePath(basins, winslash = "/"), output = normalizePath(output, winslash = "/"),
     status = status_file, default = default, overrides = overrides, exclude = exclude,
     objective = objective, starts = as.integer(starts), seed = seed, control = control,
-    method = method, test = isTRUE(test), owner = owner, steward = steward, purpose = purpose,
+    method = method, staged = isTRUE(staged), test = isTRUE(test), owner = owner,
+    steward = steward, purpose = purpose,
     author = author
   )
   # Every basin walks the steps; completed steps are read from its log and skipped, so a
@@ -184,11 +195,54 @@ calibrate_batch <- function(basins, output, structure = NULL, overrides = NULL, 
 .batch_register <- function(ctx) {
   if (.batch_has(ctx$project, "data_registered")) return(invisible())
   m <- ctx$meta
-  register_data(ctx$project, file.path(m$folder, "forcing.csv"),
+  forcing <- file.path(m$folder, "forcing.csv")
+  if (!is.null(m$snow) && !isFALSE(m$snow)) {
+    forcing <- .batch_snow(ctx, forcing)
+    on.exit(unlink(forcing), add = TRUE)
+  }
+  register_data(ctx$project, forcing,
                 file.path(m$folder, "flow.csv"), calibration = unlist(m$calibration),
                 validation = unlist(m$validation), test = unlist(m$test),
                 headline = m$headline %||% "nse", thresholds = .basin_thresholds(m),
                 rating = if (!is.null(m$rating)) file.path(m$folder, m$rating))
+}
+
+# Snow basins: PACK, at fixed parameters, turns precipitation and temperature into the rain
+# and melt reaching the ground. That series is registered as the rain, so only the PDM is
+# calibrated; a note records the PACK settings and the raw forcing's checksum.
+.batch_snow <- function(ctx, path) {
+  m <- ctx$meta
+  raw <- data.table::fread(path)
+  .check(all(c("time", "rain", "pet", "temperature") %in% names(raw)),
+         "A snow basin's forcing.csv needs time, rain (all precipitation), pet and temperature")
+  config <- .basin_pack(m)
+  formats <- c("%Y-%m-%dT%H:%M:%OSZ", "%Y-%m-%d %H:%M:%OS")
+  times <- as.POSIXct(raw$time[1:2], tz = "UTC", tryFormats = formats)
+  step <- as.numeric(difftime(times[2], times[1], units = "mins"))
+  snow <- sim_pack(raw$rain, raw$temperature, config, timestep_min = as.integer(round(step)))
+  out <- tempfile("forcing-", fileext = ".csv")
+  data.table::fwrite(data.frame(time = raw$time, rain = snow$effective_rain_mm, pet = raw$pet),
+                     out)
+  entries <- .read_entries(.project_path(ctx$project))
+  noted <- any(vapply(entries, function(e) e$type == "note" && startsWith(e$text, "Snow:"),
+                      logical(1)))
+  if (!noted) {
+    log_note(ctx$project, paste0(
+      "Snow: the registered rain is PACK rain plus melt, from forcing.csv (MD5 ", .md5_file(path),
+      ") at fixed PACK parameters, not calibrated: ",
+      paste(names(config), vapply(config, function(v) paste(format(v), collapse = " "), ""),
+            sep = " = ", collapse = "; "), "."
+    ))
+  }
+  out
+}
+
+.basin_pack <- function(m) {
+  if (isTRUE(m$snow)) return(pack_presets())
+  .check(is.character(m$snow) && length(m$snow) == 1L,
+         "snow in basin.yml must be true, a PACK preset name or a PACK YAML file")
+  file <- file.path(m$folder, m$snow)
+  if (file.exists(file)) .read_yaml_file(file) else pack_presets(m$snow)
 }
 
 .batch_structure <- function(ctx) {
@@ -197,8 +251,37 @@ calibrate_batch <- function(basins, output, structure = NULL, overrides = NULL, 
 }
 
 .batch_fit <- function(ctx) {
-  if (.batch_has(ctx$project, "auto_calibration")) return(invisible())
+  entries <- .read_entries(.project_path(ctx$project))
+  fits <- Filter(function(e) e$type == "auto_calibration", entries)
+  staged_fits <- Filter(function(e) !is.null(e$stage), fits)
+  # A basin keeps the kind of calibration it already has; only unfinished stages are run.
+  if (length(fits) && (!ctx$spec$staged || length(staged_fits) < length(fits))) {
+    return(invisible())
+  }
+  if (ctx$spec$staged) {
+    return(.batch_staged(ctx, entries, staged_fits))
+  }
   .batch_calibrate(ctx$project, ctx$id, ctx$spec, ctx$reasoning)
+}
+
+.batch_staged <- function(ctx, entries, done) {
+  structure <- .latest(entries, "structure_selected")
+  config <- structure$configuration
+  stages <- pdm_stages(config, ctx$spec$overrides, ctx$spec$exclude)
+  bounds <- calibration_bounds(config, ctx$spec$overrides, ctx$spec$exclude)
+  labels <- vapply(done, function(e) e$stage, character(1))
+  parent <- structure$id
+  for (i in seq_along(stages)) {
+    hit <- which(labels == .stage_label(i, stages))
+    if (length(hit)) {
+      parent <- done[[hit[length(hit)]]]$id
+      next
+    }
+    parent <- .log_stage(ctx$project, parent, stages, i, bounds, ctx$reasoning,
+                         ctx$spec$starts, .basin_seed(ctx$id, ctx$spec$seed), ctx$spec$control,
+                         ctx$spec$method)$id
+  }
+  invisible()
 }
 
 .batch_candidate <- function(ctx) {

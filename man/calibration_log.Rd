@@ -58,7 +58,7 @@ log_auto_calibration(
   parent,
   lower,
   upper,
-  objective = c("nse", "rmse", "log_rmse", "threshold"),
+  objective = c("nse", "rmse", "log_rmse", "log_nse", "threshold"),
   starts = 1L,
   seed = NULL,
   control = list(maxit = 200),
@@ -67,7 +67,9 @@ log_auto_calibration(
   threshold_objective = NULL,
   threshold_weight = 1,
   threshold_score = "csi",
-  log_scale = character(0)
+  log_scale = character(0),
+  volume_weight = 0,
+  stage = NULL
 )
 
 log_note(project, text, refers_to = NULL)
@@ -148,7 +150,7 @@ hours; see \code{\link[=pdm_threshold_scores]{pdm_threshold_scores()}}.}
 
 \item{verdict}{Your judgement of the trial: \code{better}, \code{worse} or \code{inconclusive}.}
 
-\item{lower, upper, objective, starts, seed, control, method, log_scale}{Passed to
+\item{lower, upper, objective, starts, seed, control, method, log_scale, volume_weight}{Passed to
 \code{\link[=calibrate_pdm]{calibrate_pdm()}}.}
 
 \item{threshold_objective}{Optional names of registered thresholds to include in the
@@ -157,6 +159,9 @@ the registered event settings are used, so the calibration and the scorecard agr
 
 \item{threshold_weight, threshold_score}{Weight and score of the threshold term; see
 \code{\link[=calibrate_pdm]{calibrate_pdm()}}.}
+
+\item{stage}{Optional label recorded with an automatic calibration, such as
+\verb{1 of 3: volume and baseflow}; \code{\link[=log_staged_calibration]{log_staged_calibration()}} sets it.}
 
 \item{refers_to}{Optional id of the entry a note concerns.}
 

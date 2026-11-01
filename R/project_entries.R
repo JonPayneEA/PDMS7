@@ -81,8 +81,10 @@
 #' @param changes Named numeric vector of new values, named by configuration path such as
 #'   `surface.k1` or `fc`.
 #' @param verdict Your judgement of the trial: `better`, `worse` or `inconclusive`.
-#' @param lower,upper,objective,starts,seed,control,method,log_scale Passed to
+#' @param lower,upper,objective,starts,seed,control,method,log_scale,volume_weight Passed to
 #'   [calibrate_pdm()].
+#' @param stage Optional label recorded with an automatic calibration, such as
+#'   `1 of 3: volume and baseflow`; [log_staged_calibration()] sets it.
 #' @param threshold_objective Optional names of registered thresholds to include in the
 #'   objective of an automatic calibration, with `method = "nelder_mead"`. Their flows and
 #'   the registered event settings are used, so the calibration and the scorecard agree.
@@ -316,11 +318,13 @@ log_trial <- function(project, parent, changes, verdict, reasoning) {
 #' @rdname calibration_log
 #' @export
 log_auto_calibration <- function(project, parent, lower, upper,
-                                 objective = c("nse", "rmse", "log_rmse", "threshold"),
+                                 objective = c("nse", "rmse", "log_rmse", "log_nse",
+                                               "threshold"),
                                  starts = 1L, seed = NULL, control = list(maxit = 200),
                                  reasoning, method = c("lbfgsb", "nelder_mead"),
                                  threshold_objective = NULL, threshold_weight = 1,
-                                 threshold_score = "csi", log_scale = character(0)) {
+                                 threshold_score = "csi", log_scale = character(0),
+                                 volume_weight = 0, stage = NULL) {
   author <- .identity("custodian")
   objective <- match.arg(objective)
   method <- match.arg(method)
@@ -339,7 +343,7 @@ log_auto_calibration <- function(project, parent, lower, upper,
     objective = objective, log_offset = card$log_offset, control = control,
     soil_fraction = card$soil_fraction, starts = starts, seed = seed, method = method,
     thresholds = flows, threshold_weight = threshold_weight, threshold_score = threshold_score,
-    event_settings = card$events, log_scale = log_scale
+    event_settings = card$events, log_scale = log_scale, volume_weight = volume_weight
   )
   run <- .run_registered(path, .project_info(entries), registration, fit$config, data = data)
   entry <- .append_entry(path, "auto_calibration", author, function(id, entries) {
@@ -351,6 +355,7 @@ log_auto_calibration <- function(project, parent, lower, upper,
          threshold_score = if (is.null(flows)) NULL else threshold_score,
          evaluations = sum(fit$start_results$evaluations),
          log_scale = if (length(log_scale)) as.list(log_scale),
+         volume_weight = if (volume_weight > 0) volume_weight, stage = stage,
          starts = as.integer(starts), seed = seed,
          control = control, start_results = as.list(fit$start_results),
          configuration = fit$config, scores = run$scores, output_md5 = run$output_md5,

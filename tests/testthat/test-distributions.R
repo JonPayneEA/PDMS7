@@ -25,66 +25,7 @@ test_that(
           0.5, sdlog = 1
       )
     )
-    for (d in dists) {
-      hi <- if (S7::S7_inherits(d, ExponentialCapacity) ||
-                  S7::S7_inherits(d, LognormalCapacity)) {
-        Inf
-      } else {
-        d@cmax
-      }
-      lo <- if (is.finite(hi)) {
-        d@cmin
-      } else {
-        0
-      }
-      expect_close(
-        integrate(
-          function(c) capacity_pdf(d, c),
-          lo, hi,
-          rel.tol = 1e-08
-        )$value,
-        1, 1e-06
-      )
-      expect_close(
-        integrate(
-          function(c) {
-            1 -
-              capacity_cdf(d, c)
-          },
-          0, hi,
-          rel.tol = 1e-08
-        )$value,
-        capacity_mean(d),
-        1e-05
-      )
-      for (c in c(0, 5, 20, 80, 120, 220)) {
-        val <- integrate(
-          function(z) {
-            1 -
-              capacity_cdf(d, z)
-          },
-          0, c,
-          rel.tol = 1e-08
-        )$value
-        expect_close(
-          storage_from_capacity(d, c),
-          val, 1e-05
-        )
-      }
-      ss <- capacity_mean(d) *
-        c(0, 0.001, 0.2, 0.8, 0.999, 1)
-      expect_close(
-        storage_from_capacity(d, capacity_from_storage(d, ss)),
-        ss, 1e-06
-      )
-      for (s in ss) {
-        for (p in c(0.01, 10, 300)) {
-          r <- soil_step(d, s, p)
-          expect_close(s + p - r$storage - r$runoff, 0)
-          check(r$runoff >= 0 && r$storage <= capacity_mean(d))
-        }
-      }
-    }
+    for (d in dists) check_capacity_law(d)
     p <- ParetoCapacity(cmin = 0, cmax = 140, b = 0.4)
     expect_close(
       capacity_mean(p),
