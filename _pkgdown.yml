@@ -164,6 +164,10 @@ reference:
   - pdm_scorecard
   - pdm_threshold_scores
   - pareto_front
+- title: Batch calibration
+  desc: The same logged protocol for many basins, resumable after any interruption.
+  contents:
+  - calibrate_batch
 - title: Comparing structures
   desc: Calibrate several model structures alike and rank them on held-out data.
   contents:

@@ -203,11 +203,13 @@ approved_configurations <- function(register = .setting("pdmS7.register", "PDMS7
   )
 }
 
-.write_run <- function(record) {
-  path <- .run_log_path()
+.write_run <- function(record) .append_csv(.run_log_path(), record, "Run log")
+
+# Appends rows to a CSV shared by several sessions, under a lock beside it.
+.append_csv <- function(path, record, label = "File") {
   folder <- dirname(path)
   .check(dir.exists(folder) || suppressWarnings(dir.create(folder, recursive = TRUE)),
-         paste("Cannot create the run log folder", folder))
+         paste("Cannot create the folder", folder))
   lock <- paste0(path, ".lock")
   waited <- 0
   while (!dir.create(lock, showWarnings = FALSE)) {
@@ -216,7 +218,7 @@ approved_configurations <- function(register = .setting("pdmS7.register", "PDMS7
       unlink(lock, recursive = TRUE)
       next
     }
-    .check(waited < 10, paste("Run log is locked:", lock))
+    .check(waited < 10, paste(label, "is locked:", lock))
     Sys.sleep(0.05)
     waited <- waited + 0.05
   }

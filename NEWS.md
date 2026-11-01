@@ -1,5 +1,11 @@
 # pdmS7 (development version)
 
+- New `calibrate_batch()` runs one calibration protocol on every basin in a folder (each
+  with `forcing.csv`, `flow.csv` and `basin.yml`), giving each basin its own calibration-log
+  project, in parallel with `cores`. It can be stopped and restarted at any point: each
+  basin carries on from its last completed step and finished steps are never repeated.
+  Failures are recorded with their reason without stopping the batch. `batch_status()`
+  shows progress from `batch-status.csv`; `batch_results()` collects the projects.
 - Three new articles: "Scoring a simulation" (every score, with the contingency table,
   event matching, events against steps and the performance diagram), "Automatic
   calibration" (bounds, log-scale search, the two optimisers and threshold objectives) and
