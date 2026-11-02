@@ -101,7 +101,8 @@ test_that(
       expect_error(initial_state_from_flow(pdm_model(qc = 1), 0.5, 0.5), "below the constant")
       expect_error(initial_state_from_flow(model, 1, 1.2), "baseflow_fraction")
       expect_error(initial_state_from_flow(model, NA_real_, 0.5), "finite")
-      expect_error(initial_state_from_flow(flow_models()$exponential, 1, 1), "zero flow")
+      expect_error(suppressWarnings(initial_state_from_flow(flow_models()$exponential, 1, 1)),
+                   "zero flow")
       options(old)
     }
   }

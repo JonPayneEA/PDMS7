@@ -274,9 +274,10 @@ test_that(
       model <- golden_model(pdm_cases[pdm_cases$case == fc$pdm_case, ])
       for (engine in c("auto", "r")) {
         old <- options(pdmS7.engine = engine)
+        # Some golden cases cap the soil on purpose; the warning is tested elsewhere.
         state <- tryCatch(
-          initial_state_from_flow(model, fc$observed_m3s, fc$baseflow_fraction,
-                                  fc$soil_fraction),
+          suppressWarnings(initial_state_from_flow(model, fc$observed_m3s, fc$baseflow_fraction,
+                                                   fc$soil_fraction)),
           error = function(e) e
         )
         options(old)

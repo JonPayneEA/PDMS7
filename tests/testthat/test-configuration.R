@@ -40,6 +40,8 @@ test_that(
 # Guards: calibration starts in steady state at the first observed flow unless told otherwise
 test_that("calibration starts from the first observed flow by default", {
   config <- pdm_presets("standard")
+  # 20 km2, so 0.3 m3/s is a flow the soil can sustain in steady state.
+  config$area_km2 <- 20
   forcing <- data.frame(rain = c(0, 4, 1, 0, 0, 2, 0, 0, 0, 0), pet = 0.05)
   model <- pdm_from_config(config)
   observed <- run_pdm(model, forcing, initial_state_from_flow(model, 0.3, 0.7))$output$q_m3s

@@ -78,7 +78,7 @@ hindcast_case <- function(n = 24 * 30, seed = 4) {
   forcing <- data.frame(rain = ifelse(stats::runif(n) < 0.06, stats::rgamma(n, 0.7, scale = 4),
                                       0), pet = 0.05)
   truth <- pdm_model(area_km2 = 40, fc = 1.1)
-  observed <- run_pdm(truth, forcing, initial_state_from_flow(truth, 2, 0.7))$output$q_m3s
+  observed <- run_pdm(truth, forcing, initial_state_from_flow(truth, 0.5, 0.7))$output$q_m3s
   list(forcing = forcing, observed = observed, model = pdm_model(area_km2 = 40))
 }
 
