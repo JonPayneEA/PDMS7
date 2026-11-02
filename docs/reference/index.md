@@ -224,6 +224,8 @@ calibration.
   [`sign_off_project()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
   [`reopen_project()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
   : Calibration log
+- [`wettest_years()`](https://jonpayneea.github.io/PDMS7/reference/wettest_years.md)
+  : Wettest water years
 - [`read_project()`](https://jonpayneea.github.io/PDMS7/reference/read_project.md)
   [`project_trials()`](https://jonpayneea.github.io/PDMS7/reference/read_project.md)
   [`read_entry()`](https://jonpayneea.github.io/PDMS7/reference/read_project.md)

@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -53,6 +53,7 @@
     <li><a class="dropdown-item" href="../articles/auto-calibration.html">Automatic calibration, explained</a></li>
     <li><a class="dropdown-item" href="../articles/scoring.html">Scoring a simulation: from NSE to POD, FAR and CSI</a></li>
     <li><a class="dropdown-item" href="../articles/choosing-structure.html">Choosing a model structure</a></li>
+    <li><a class="dropdown-item" href="../articles/extrapolation.html">Larger floods: extrapolation and the rating</a></li>
     <li><a class="dropdown-item" href="../articles/many-catchments.html">Calibrating many catchments</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Records and review</h6></li>
@@ -188,11 +189,21 @@ then a joint polish. <code><a href="../reference/calibrate_staged.html">calibrat
 separate periods. The model is fitted on the first, checked on the
 second, and scored once on the third after every choice is made. A
 <strong>split-sample test</strong> in Klemeš’s (1986) terms.</p>
+<p><strong>Wettest years held back.</strong> The two water years
+(October to September) with the highest flows, left out of calibration
+and validation and scored once with the test: a <strong>differential
+split-sample test</strong>, which checks the model on floods larger than
+those it was fitted to. <a href="extrapolation.html">Larger
+floods</a>.</p>
+<p><strong>Highest gauged flow.</strong> The largest flow ever measured
+directly at a station. Above it the rating curve is extrapolated, so
+recorded flows there are uncertain in size.</p>
 <p><strong>Structure.</strong> The choice of components: capacity
 distribution, recharge rule and routing. <a href="choosing-structure.html">Choosing a model structure</a>.</p>
 <p><strong>Equifinality.</strong> Different parameter sets giving almost
-equally good fits. It means the data do not pin those parameters
-down.</p>
+equally good fits. It means the data do not pin those parameters down. A
+calibration project keeps up to 50 such <strong>equally good
+sets</strong> and runs them through the held-back years.</p>
 <p><strong>Batch calibration.</strong> Applying one calibration protocol
 to many catchments. <a href="many-catchments.html">Calibrating many
 catchments</a>.</p>

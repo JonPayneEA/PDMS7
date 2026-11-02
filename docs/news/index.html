@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -38,6 +38,7 @@
     <li><a class="dropdown-item" href="../articles/auto-calibration.html">Automatic calibration, explained</a></li>
     <li><a class="dropdown-item" href="../articles/scoring.html">Scoring a simulation: from NSE to POD, FAR and CSI</a></li>
     <li><a class="dropdown-item" href="../articles/choosing-structure.html">Choosing a model structure</a></li>
+    <li><a class="dropdown-item" href="../articles/extrapolation.html">Larger floods: extrapolation and the rating</a></li>
     <li><a class="dropdown-item" href="../articles/many-catchments.html">Calibrating many catchments</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Records and review</h6></li>
@@ -88,6 +89,25 @@
       <small>Source: <a href="https://github.com/JonPayneEA/PDMS7/blob/HEAD/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.5.0" id="pdms7-050">pdmS7 0.5.0<a class="anchor" aria-label="anchor" href="#pdms7-050"></a></h2>
+<ul><li>
+<strong>Extrapolation checks in calibration projects.</strong> Calibrations are fitted to the floods in the record and used for larger ones; this release makes that visible before sign-off.
+<ul><li>
+<code><a href="../reference/calibration_log.html">register_data()</a></code> holds back the two wettest water years (October to September) in the calibration and validation windows by default. No calibration, trial or validation scores them; <code><a href="../reference/calibration_log.html">test_candidate()</a></code> reveals them once, with the test window, under the same rules. Set <code>wettest_years</code> to change the number, or 0 to hold none back. Holding years back needs a <code>time</code> column and enough record to leave three years, so short records now need <code>wettest_years = 0</code>.</li>
+<li>Each automatic calibration keeps the parameter sets it tried that score within <code>tie_tolerance</code> (default 0.02) of its best headline, up to 50 spread-out sets. The test reports, for each held year, the observed peak, the candidate’s peak and the range across those sets.</li>
+<li>
+<code>register_data(highest_gauged_m3s =)</code> records the highest check gauging. Flows above it, where the rating is extrapolated, are counted window by window at registration and flagged in the test. The fit is unchanged.</li>
+<li>The report, the app and <code><a href="../reference/calibrate_batch.html">calibrate_batch()</a></code> (through <code>basin.yml</code>) carry all three. Sign-off needs the test when years are held back, even without a test window.</li>
+<li>Projects registered before 0.5.0 hold nothing back and reproduce as before.</li>
+</ul></li>
+<li>
+<code><a href="../reference/wettest_years.html">wettest_years()</a></code> ranks the water years of any record by peak flow.</li>
+<li>
+<code>calibrate_pdm(archive =)</code> keeps every trial’s parameters and a score of your choosing.</li>
+<li>New article: “Larger floods: extrapolation and the rating”.</li>
+<li>The benchmark protocol is at version 0.3: a PDM-only extrapolation check on the wettest years, outside the head-to-head comparison, which holds no years back.</li>
+</ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.4.1" id="pdms7-041">pdmS7 0.4.1<a class="anchor" aria-label="anchor" href="#pdms7-041"></a></h2>
 <ul><li><p><strong>Calibration starts from the first observed flow.</strong> Every trial of <code><a href="../reference/calibrate_pdm.html">calibrate_pdm()</a></code>, and every run in a calibration project, starts in steady state at the first observed flow, so a slow groundwater store is full when scoring begins and cannot bias its own parameters. <code><a href="../reference/calibrate_pdm.html">calibrate_pdm()</a></code> gains <code>start</code> (<code>"flow"</code>, the default, or <code>"soil"</code> for the earlier start), <code>baseflow_fraction</code> and <code>start_flow</code>. <code><a href="../reference/calibration_log.html">register_data()</a></code> records the rule; projects registered earlier keep the soil start, so their recorded runs still reproduce. Calibrations will differ from those of 0.4.0 where the warm-up was short.</p></li>

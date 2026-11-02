@@ -57,7 +57,7 @@ start_calibration_project(project, catchment = "Example Brook", gauge = "99002",
 reg <- register_data(project, forcing, observed,
                      calibration = c("2023-10-08", "2023-11-20"),
                      validation = c("2023-11-21", "2023-12-05"),
-                     test = c("2023-12-06", "2023-12-14"))
+                     test = c("2023-12-06", "2023-12-14"), wettest_years = 0)
 ```
 
 ## The candidates
@@ -118,7 +118,7 @@ elapsed <- system.time(
                                 reasoning = "Which structure suits this catchment?")
 )[["elapsed"]]
 round(elapsed)
-#> [1] 53
+#> [1] 51
 ranking[, .(rank, structure, parameters, calibration = round(calibration, 4),
             validation = round(validation, 4), change = round(change, 4), starts_agree)]
 #>     rank               structure parameters calibration validation  change

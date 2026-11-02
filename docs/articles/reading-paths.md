@@ -35,6 +35,9 @@ explains any term along the way.
 8.  [Choosing a model
     structure](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.md),
     when the standard PDM may not suit.
+9.  [Larger floods: extrapolation and the
+    rating](https://jonpayneea.github.io/PDMS7/articles/extrapolation.md):
+    what the held-back wettest years and the rating flag show.
 
 For many catchments at once, add [Calibrating many
 catchments](https://jonpayneea.github.io/PDMS7/articles/many-catchments.md).
@@ -55,6 +58,9 @@ covers the common errors.
 4.  [Inside the
     logs](https://jonpayneea.github.io/PDMS7/articles/log-structure.md):
     what the checksums prove.
+5.  [Larger floods: extrapolation and the
+    rating](https://jonpayneea.github.io/PDMS7/articles/extrapolation.md):
+    how to read the held-back years in the test.
 
 ## I am accountable for a model’s use (Owner)
 

@@ -35,6 +35,8 @@
   CSI](https://jonpayneea.github.io/PDMS7/articles/scoring.md):
 - [Choosing a model
   structure](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.md):
+- [Larger floods: extrapolation and the
+  rating](https://jonpayneea.github.io/PDMS7/articles/extrapolation.md):
 - [Calibrating many
   catchments](https://jonpayneea.github.io/PDMS7/articles/many-catchments.md):
 

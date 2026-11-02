@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -53,6 +53,7 @@
     <li><a class="dropdown-item" href="../articles/auto-calibration.html">Automatic calibration, explained</a></li>
     <li><a class="dropdown-item" href="../articles/scoring.html">Scoring a simulation: from NSE to POD, FAR and CSI</a></li>
     <li><a class="dropdown-item" href="../articles/choosing-structure.html">Choosing a model structure</a></li>
+    <li><a class="dropdown-item" href="../articles/extrapolation.html">Larger floods: extrapolation and the rating</a></li>
     <li><a class="dropdown-item" href="../articles/many-catchments.html">Calibrating many catchments</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Records and review</h6></li>
@@ -203,7 +204,8 @@ corrupted file.</p>
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"gauge:"</span>, <span class="va">id</span><span class="op">)</span>,</span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"area_km2:"</span>, <span class="va">truth</span><span class="op">$</span><span class="va">area_km2</span><span class="op">)</span>,</span>
 <span>    <span class="st">"calibration: [2023-10-11, 2023-11-14]"</span>,</span>
-<span>    <span class="st">"validation: [2023-11-15, 2023-11-29]"</span></span>
+<span>    <span class="st">"validation: [2023-11-15, 2023-11-29]"</span>,</span>
+<span>    <span class="st">"wettest_years: 0"</span></span>
 <span>  <span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">folder</span>, <span class="st">"basin.yml"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/list.files.html" class="external-link">list.files</a></span><span class="op">(</span><span class="va">basins</span><span class="op">)</span></span>
@@ -216,7 +218,8 @@ period are required:</p>
 <span><span class="co">#&gt; gauge: B01</span></span>
 <span><span class="co">#&gt; area_km2: 80</span></span>
 <span><span class="co">#&gt; calibration: [2023-10-11, 2023-11-14]</span></span>
-<span><span class="co">#&gt; validation: [2023-11-15, 2023-11-29]</span></span></code></pre></div>
+<span><span class="co">#&gt; validation: [2023-11-15, 2023-11-29]</span></span>
+<span><span class="co">#&gt; wettest_years: 0</span></span></code></pre></div>
 <table class="table">
 <colgroup>
 <col width="50%">
@@ -248,6 +251,20 @@ honestly</td>
 <code>test</code> (optional)</td>
 <td>A final period kept back until everything is decided, scored
 once</td>
+</tr>
+<tr class="odd">
+<td>
+<code>wettest_years</code> (optional)</td>
+<td>How many of the wettest water years to hold back and score with the
+test, as a check on larger floods than the calibration saw; 2 if not
+given. These example rivers have only two months of record, so they set
+0</td>
+</tr>
+<tr class="even">
+<td>
+<code>highest_gauged_m3s</code> (optional)</td>
+<td>The highest flow ever gauged. Flows above it, where the rating is
+extrapolated, are flagged in the record</td>
 </tr>
 <tr class="odd">
 <td>
@@ -301,7 +318,7 @@ with three starting points uses roughly 1,000 to 2,000 model runs.</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>seconds_per_run <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">signif</a></span><span class="op">(</span><span class="va">one_run</span>, <span class="fl">2</span><span class="op">)</span>,</span>
 <span>  estimated_minutes_for_8 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fl">8</span> <span class="op">*</span> <span class="fl">1500</span> <span class="op">*</span> <span class="va">one_run</span> <span class="op">/</span> <span class="fl">60</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;         seconds_per_run estimated_minutes_for_8 </span></span>
-<span><span class="co">#&gt;                  0.0061                  1.2000</span></span></code></pre></div>
+<span><span class="co">#&gt;                   0.006                   1.200</span></span></code></pre></div>
 <p>For a real batch, measure on a few catchments first; see the pilot
 script in <a href="calibration.html">Calibration</a>.</p>
 </div>
@@ -323,8 +340,8 @@ may take, which parameters to leave alone.</p>
 <span><span class="co">#&gt;     basin  state     step seconds message</span></span>
 <span><span class="co">#&gt;    &lt;char&gt; &lt;char&gt;   &lt;char&gt;   &lt;num&gt;  &lt;char&gt;</span></span>
 <span><span class="co">#&gt; 1:    B01   done complete     6.2        </span></span>
-<span><span class="co">#&gt; 2:    B02   done complete     6.1        </span></span>
-<span><span class="co">#&gt; 3:    B03   done complete     6.1</span></span></code></pre></div>
+<span><span class="co">#&gt; 2:    B02   done complete     5.3        </span></span>
+<span><span class="co">#&gt; 3:    B03   done complete     6.3</span></span></code></pre></div>
 <p>Suppose the computer was switched off at this point, after three
 catchments. Nothing is lost: each catchment has its own project folder
 recording exactly how far it got. Run the same command again, this time
@@ -339,11 +356,11 @@ for all of them:</p>
 <span><span class="co">#&gt; 1:    B01   done complete     0.0                                            </span></span>
 <span><span class="co">#&gt; 2:    B02   done complete     0.0                                            </span></span>
 <span><span class="co">#&gt; 3:    B03   done complete     0.0                                            </span></span>
-<span><span class="co">#&gt; 4:    B04   done complete     6.8                                            </span></span>
-<span><span class="co">#&gt; 5:    B05   done complete     6.7                                            </span></span>
+<span><span class="co">#&gt; 4:    B04   done complete     6.5                                            </span></span>
+<span><span class="co">#&gt; 5:    B05   done complete     6.6                                            </span></span>
 <span><span class="co">#&gt; 6:    B06 failed register     0.0 pet must contain finite nonnegative numbers</span></span>
-<span><span class="co">#&gt; 7:    B07   done complete     6.0                                            </span></span>
-<span><span class="co">#&gt; 8:    B08   done complete     7.3</span></span></code></pre></div>
+<span><span class="co">#&gt; 7:    B07   done complete     6.4                                            </span></span>
+<span><span class="co">#&gt; 8:    B08   done complete     7.0</span></span></code></pre></div>
 <p>The three finished catchments took a moment each: the batch read
 their records, saw every step already done, and moved on. The others ran
 in full. Each catchment’s random starting points come from its own name,
@@ -383,11 +400,11 @@ run the batch again for just that catchment:</p>
 <span><span class="co">#&gt; 1:    B01   done complete     0.0        </span></span>
 <span><span class="co">#&gt; 2:    B02   done complete     0.0        </span></span>
 <span><span class="co">#&gt; 3:    B03   done complete     0.0        </span></span>
-<span><span class="co">#&gt; 4:    B04   done complete     6.8        </span></span>
-<span><span class="co">#&gt; 5:    B05   done complete     6.7        </span></span>
-<span><span class="co">#&gt; 6:    B06   done complete     7.7        </span></span>
-<span><span class="co">#&gt; 7:    B07   done complete     6.0        </span></span>
-<span><span class="co">#&gt; 8:    B08   done complete     7.3</span></span></code></pre></div>
+<span><span class="co">#&gt; 4:    B04   done complete     6.5        </span></span>
+<span><span class="co">#&gt; 5:    B05   done complete     6.6        </span></span>
+<span><span class="co">#&gt; 6:    B06   done complete     7.4        </span></span>
+<span><span class="co">#&gt; 7:    B07   done complete     6.4        </span></span>
+<span><span class="co">#&gt; 8:    B08   done complete     7.0</span></span></code></pre></div>
 <p>The failed attempt is still on record in B06’s project, followed by
 the successful one.</p>
 </div>
@@ -416,7 +433,7 @@ keeps running after you log off. Use one core per catchment, up to what
 the server can spare:</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># batch.R</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://jonpayneea.github.io/PDMS7/">pdmS7</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">pdmS7</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>pdmS7.user <span class="op">=</span> <span class="st">"Ann Hydrologist"</span>, pdmS7.role <span class="op">=</span> <span class="st">"custodian"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/calibrate_batch.html">calibrate_batch</a></span><span class="op">(</span><span class="st">"basins"</span>, <span class="st">"results"</span>, starts <span class="op">=</span> <span class="fl">20</span>, cores <span class="op">=</span> <span class="fl">32</span>,</span>
 <span>                owner <span class="op">=</span> <span class="st">"Deputy Director"</span>, steward <span class="op">=</span> <span class="st">"Sam Steward"</span><span class="op">)</span></span></code></pre></div>
