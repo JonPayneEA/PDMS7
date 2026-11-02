@@ -57,7 +57,10 @@ truth$fc <- 1.15
 truth$recharge$kg <- 60
 truth$surface$k1 <- 3
 truth$surface$k2 <- 8
-observed <- run_pdm(pdm_from_config(truth), forcing)$output$q_m3s *
+# The river is already flowing when the record starts: steady state, not empty stores.
+truth_model <- pdm_from_config(truth)
+observed <- run_pdm(truth_model, forcing,
+                    initial_state_from_flow(truth_model, 1, 0.7))$output$q_m3s *
   exp(stats::rnorm(n, 0, 0.04))
 observed[1500:1572] <- NA
 ```
@@ -115,7 +118,9 @@ runs a change without logging it, so you can look before you commit.
 ``` r
 preview <- preview_trial(project, parent = 3, changes = c(fc = 1.15))
 rows <- preview$rows[1:(24 * 30)]
-parent <- run_pdm(pdm_from_config(start), forcing)$output$q_m3s
+parent_model <- pdm_from_config(start)
+parent <- run_pdm(parent_model, forcing,
+                  initial_state_from_flow(parent_model, observed[1], 0.7))$output$q_m3s
 top <- max(observed[rows], parent[rows], preview$simulated[rows], na.rm = TRUE) * 1.25
 par(mar = c(3, 4.2, 0.6, 0.6))
 plot(time[rows], observed[rows], pch = 16, cex = 0.3, col = pal[5], xlab = "",
@@ -135,8 +140,8 @@ The preview against its parent over part of the calibration window.
 round(rbind(parent = unlist(project_trials(project)[1, c("nse", "volume_error", "kge_alpha")]),
             preview = unlist(preview$scores[c("nse", "volume_error", "kge_alpha")])), 3)
 #>           nse volume_error kge_alpha
-#> parent  0.794       -0.118     1.070
-#> preview 0.779        0.014     1.256
+#> parent  0.794       -0.117     1.071
+#> preview 0.778        0.014     1.257
 ```
 
 The volume error has gone from 12 per cent too dry to near zero, but the
@@ -189,9 +194,9 @@ trials[, .(id, type, parent, changes, verdict, nse = round(nse, 3),
 #> 6:   0008   auto_calibration   0007                                     
 #>    verdict   nse volume_error
 #>     <char> <num>        <num>
-#> 1:    <NA> 0.794       -0.118
-#> 2:  better 0.779        0.014
-#> 3:   worse 0.196        0.020
+#> 1:    <NA> 0.794       -0.117
+#> 2:  better 0.778        0.014
+#> 3:   worse 0.194        0.021
 #> 4:  better 0.982        0.001
 #> 5:  better 0.987        0.001
 #> 6:    <NA> 0.987        0.001
@@ -257,8 +262,8 @@ rbind(pick(val$calibration_scores, "calibration"), pick(val$validation_scores, "
 #> 3   Flood Alert  validation               3    1      2            1 0.33 0.5
 #> 4 Flood Warning  validation               1    0      1            0 0.00  NA
 #>    csi crossing_error_h csi_step
-#> 1 0.75             0.67     0.97
-#> 2 0.67             1.50     0.92
+#> 1 0.75             0.67     0.96
+#> 2 0.67             1.75     0.92
 #> 3 0.25             0.00     0.76
 #> 4 0.00               NA     0.00
 ```
@@ -391,7 +396,7 @@ read_run_log()[, .(tag, fingerprint = substr(fingerprint, 1, 8), rows, status, a
                    project, sign_off)]
 #>                          tag fingerprint  rows status   approval
 #>                       <char>      <char> <int> <char>     <char>
-#> 1: forecast 2024-02-01 06:00    b826a8a0   181     ok   approved
+#> 1: forecast 2024-02-01 06:00    ba4afeec   181     ok   approved
 #> 2: forecast 2024-02-01 06:00    ec8dc73e   181     ok unapproved
 #>              project sign_off
 #>               <char>   <char>

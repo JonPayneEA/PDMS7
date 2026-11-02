@@ -81,9 +81,19 @@ no action needed. None is high: nothing found gives a wrong answer in normal use
   window was added.
 - An earlier formatter's awkward line breaks were re-wrapped (layout only).
 
-## Recommended order
+## Decisions and fixes after the review
 
-Items 1 and 2 first: 1 can bias calibrated groundwater parameters, which matters for the benchmark,
-and 2 is a cheap safeguard against a silent layout slip. Then 3 to 7, which concern the integrity
-of the record on shared drives and the independence of sign-off. The rest can wait for the code
-they touch to change.
+Decided 2026-11-02 by the Owner.
+
+| # | Decision | Done in |
+|---|---|---|
+| 1 | Start every calibration trial and logged run in steady state at the first observed flow. `calibrate_pdm()` gains `start` (default `"flow"`); `register_data()` records the rule, and projects registered earlier keep the soil start so their records still reproduce. Articles whose synthetic data started from empty stores now start in steady state, and every claim in their text was rechecked. | 0.4.1 |
+| 2 | One `fill_params()` helper in the C++ binding. | 0.4.1 |
+| 3 | Stale locks are moved aside and re-checked before deletion, so a fresh lock is put back rather than deleted; one routine serves the log and the CSV files. | 0.4.1 |
+| 4 | Appending to a CSV with different columns is refused with a message. | 0.4.1 |
+| 5 | `validate_candidate()` re-checks the candidate under the lock. (`propose_candidate()` reads no latest entry, so it needed no change; the finding over-stated it.) | 0.4.1 |
+| 6 | Sign-off independence stays as designed: registering data or selecting the structure does not bar a Steward. | No change |
+| 7 | The app restores the identity options when the session ends. | 0.4.1 |
+
+The remaining low and information items stand as recorded, for when the code they touch next
+changes.

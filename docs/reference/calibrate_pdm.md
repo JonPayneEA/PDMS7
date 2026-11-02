@@ -25,7 +25,10 @@ calibrate_pdm(
   threshold_score = "csi",
   event_settings = list(tolerance_h = 6, gap_h = 24, min_duration_h = 0),
   log_scale = character(0),
-  volume_weight = 0
+  volume_weight = 0,
+  start = c("flow", "soil"),
+  baseflow_fraction = 0.7,
+  start_flow = NULL
 )
 ```
 
@@ -81,7 +84,9 @@ calibrate_pdm(
 
 - soil_fraction:
 
-  Initial fraction of basin capacity between zero and one.
+  Initial fraction of basin capacity between zero and one: the soil
+  store's start with `start = "soil"`, and with split recharge, whose
+  soil level the flow does not set.
 
 - starts:
 
@@ -145,6 +150,26 @@ calibrate_pdm(
   rows. Zero, the default, adds nothing.
   [`calibrate_staged()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_staged.md)
   uses it to hold the water balance while fitting low flows.
+
+- start:
+
+  How every trial starts. `"flow"` (the default) starts in steady state
+  at the first observed flow, as
+  [`initial_state_from_flow()`](https://jonpayneea.github.io/PDMS7/reference/initial_state_from_flow.md)
+  does, so that a slow groundwater store is already full when scoring
+  begins and does not bias its own parameters. `"soil"` starts with the
+  soil store `soil_fraction` full and the routing stores empty, the
+  behaviour before version 0.4.1; it then needs a warm-up long enough
+  for the slowest store to fill.
+
+- baseflow_fraction:
+
+  With `start = "flow"`, the share of the first flow that is baseflow.
+
+- start_flow:
+
+  With `start = "flow"`, the flow to start from, m3/s. By default the
+  first observed value of `observed`.
 
 ## Value
 
@@ -226,8 +251,8 @@ calibrate_pdm(config, f, q, lower = c(fc = 0.8), upper = c(fc = 1.2),
 #> [1] 1
 #> 
 #> $config$fc
-#> fc 
-#>  1 
+#>  fc 
+#> 1.2 
 #> 
 #> $config$td
 #> [1] 0
@@ -262,7 +287,7 @@ calibrate_pdm(config, f, q, lower = c(fc = 0.8), upper = c(fc = 1.2),
 #>  .. @ rtol  : num 1e-08
 #>  .. @ atol  : num 1e-10
 #>  @ be          : num 1
-#>  @ fc          : Named num 1
+#>  @ fc          : Named num 1.2
 #>  .. - attr(*, "names")= chr "fc"
 #>  @ td          : num 0
 #>  @ qc          : num 0
@@ -270,11 +295,11 @@ calibrate_pdm(config, f, q, lower = c(fc = 0.8), upper = c(fc = 1.2),
 #>  @ dt          : num 1
 #> 
 #> $parameters
-#> fc 
-#>  1 
+#>  fc 
+#> 1.2 
 #> 
 #> $objective
-#> [1] 0
+#> [1] 0.03046412
 #> 
 #> $objective_name
 #> [1] "rmse"
@@ -283,39 +308,39 @@ calibrate_pdm(config, f, q, lower = c(fc = 0.8), upper = c(fc = 1.2),
 #> [1] "lbfgsb"
 #> 
 #> $convergence
-#> [1] 52
+#> [1] 0
 #> 
 #> $message
-#> [1] "ERROR: ABNORMAL_TERMINATION_IN_LNSRCH"
+#> [1] "CONVERGENCE: NORM OF PROJECTED GRADIENT <= PGTOL"
 #> 
 #> $optim
 #> $optim$par
-#> [1] 0.5
+#> [1] 1
 #> 
 #> $optim$value
-#> [1] 0
+#> [1] 0.03046412
 #> 
 #> $optim$counts
 #> function gradient 
-#>       21       21 
+#>        7        7 
 #> 
 #> $optim$convergence
-#> [1] 52
+#> [1] 0
 #> 
 #> $optim$message
-#> [1] "ERROR: ABNORMAL_TERMINATION_IN_LNSRCH"
+#> [1] "CONVERGENCE: NORM OF PROJECTED GRADIENT <= PGTOL"
 #> 
 #> 
 #> $start_results
-#>    start objective convergence evaluations   best    fc
-#>    <int>     <num>       <int>       <int> <lgcl> <num>
-#> 1:     1         0          52          63   TRUE     1
+#>    start  objective convergence evaluations   best    fc
+#>    <int>      <num>       <int>       <int> <lgcl> <num>
+#> 1:     1 0.03046412           0          21   TRUE   1.2
 #> 
 calibrate_pdm(config, f, q, lower = c(fc = 0.8), upper = c(fc = 1.2),
   control = list(maxit = 2), starts = 3L, seed = 1)$start_results
-#>    start    objective convergence evaluations   best        fc
-#>    <int>        <num>       <int>       <int> <lgcl>     <num>
-#> 1:     1 0.000000e+00          52          63   TRUE 1.0000000
-#> 2:     2 3.400469e-06           1          36  FALSE 0.9999177
-#> 3:     3 5.011836e-06           1          36  FALSE 1.0001213
+#>    start  objective convergence evaluations   best    fc
+#>    <int>      <num>       <int>       <int> <lgcl> <num>
+#> 1:     1 0.03046412           0          21   TRUE   1.2
+#> 2:     2 0.03046412           0          21  FALSE   1.2
+#> 3:     3 0.03046412           0          21  FALSE   1.2
 ```

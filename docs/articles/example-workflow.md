@@ -208,7 +208,7 @@ fit <- calibrate_pdm(config, forcing[1:(24 * 45), ], observed$q_m3s[1:(24 * 45)]
                      control = list(maxit = 60))
 round(fit$parameters, 2)
 #>          fc recharge.kg  surface.k1  surface.k2 
-#>        1.06      294.64       11.13        2.03
+#>        1.10      254.15        2.69        8.50
 better <- run_pdm(fit$model, forcing, initial_state_from_flow(fit$model, observed$q_m3s[1], 0.7))
 check <- (24 * 45 + 1):n
 keep <- c("nse", "kge", "volume_error", "peak_error")
@@ -218,7 +218,7 @@ round(rbind(
 ), 3)
 #>               nse    kge volume_error peak_error
 #> standard   -4.396 -0.983        0.022      0.870
-#> calibrated  0.919  0.839       -0.042     -0.106
+#> calibrated  0.973  0.974        0.001     -0.024
 ```
 
 ``` r

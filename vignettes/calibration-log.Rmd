@@ -67,7 +67,10 @@ truth$fc <- 1.15
 truth$recharge$kg <- 60
 truth$surface$k1 <- 3
 truth$surface$k2 <- 8
-observed <- run_pdm(pdm_from_config(truth), forcing)$output$q_m3s *
+# The river is already flowing when the record starts: steady state, not empty stores.
+truth_model <- pdm_from_config(truth)
+observed <- run_pdm(truth_model, forcing,
+                    initial_state_from_flow(truth_model, 1, 0.7))$output$q_m3s *
   exp(stats::rnorm(n, 0, 0.04))
 observed[1500:1572] <- NA
 ```
@@ -115,7 +118,9 @@ The structure is run and scored like any trial, so it is the root of the calibra
 ```{r preview, fig.cap="The preview against its parent over part of the calibration window."}
 preview <- preview_trial(project, parent = 3, changes = c(fc = 1.15))
 rows <- preview$rows[1:(24 * 30)]
-parent <- run_pdm(pdm_from_config(start), forcing)$output$q_m3s
+parent_model <- pdm_from_config(start)
+parent <- run_pdm(parent_model, forcing,
+                  initial_state_from_flow(parent_model, observed[1], 0.7))$output$q_m3s
 top <- max(observed[rows], parent[rows], preview$simulated[rows], na.rm = TRUE) * 1.25
 par(mar = c(3, 4.2, 0.6, 0.6))
 plot(time[rows], observed[rows], pch = 16, cex = 0.3, col = pal[5], xlab = "",

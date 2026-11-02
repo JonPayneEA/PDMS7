@@ -35,11 +35,12 @@ truth <- pdm_presets("standard")
 truth$area_km2 <- 50
 truth$recharge$kg <- 300
 truth$distribution$cmax <- 120
-run <- function(config) {
+# Runs start in steady state at a given flow, as calibrate_pdm() does at the first observed flow.
+run <- function(config, start_flow = observed[1]) {
   model <- pdm_from_config(config)
-  run_pdm(model, forcing, initial_state(model, 0.5))$output$q_m3s
+  run_pdm(model, forcing, initial_state_from_flow(model, start_flow, 0.7))$output$q_m3s
 }
-observed <- run(truth) * exp(stats::rnorm(n, 0, 0.03))
+observed <- run(truth, start_flow = 0.6) * exp(stats::rnorm(n, 0, 0.03))
 warning_flow <- c(`Flood Warning` = 3.7)
 scored <- 241:n # the first ten days are warm-up
 ```
@@ -152,9 +153,9 @@ data.frame(scale = c("even", "log"),
            kg = round(c(even_fit$parameters, log_fit$parameters), 2),
            model_runs = c(sum(even_fit$start_results$evaluations),
                           sum(log_fit$start_results$evaluations)))
-#>   scale   kg model_runs
-#> 1  even 40.4         84
-#> 2   log 40.0         27
+#>   scale    kg model_runs
+#> 1  even 40.42        153
+#> 2   log 40.00         30
 ```
 
 Both find the right answer; the log-scale search gets there in about a
@@ -282,20 +283,20 @@ summarise <- function(fit) {
     model_runs = sum(fit$start_results$evaluations))
 }
 rbind(nse_only = summarise(nse_only), with_threshold = summarise(with_threshold))
-#>                fc surface.k1 surface.k2    nse  csi crossing_error_h model_runs
-#> nse_only        1       2.00       3.91 0.9904 0.89             0.12        231
-#> with_threshold  1       2.03       3.97 0.9900 1.00             0.25        468
+#>                fc surface.k1 surface.k2    nse csi crossing_error_h model_runs
+#> nse_only        1       2.02       3.89 0.9915   1                0        217
+#> with_threshold  1       3.89       2.02 0.9915   1                0        322
 with_threshold$objective_name
 #> [1] "1-NSE + 1 x mean threshold loss (csi at Flood Warning)"
 ```
 
-Asking for the Flood Warning as well made the search find parameters
-that catch the one Flood Warning event the first calibration missed: CSI
-went from 0.89 to a perfect 1. The overall fit hardly changed (NSE fell
-in the fourth decimal place, too little to see on a hydrograph). The
-price was computer time: about twice as many model runs. That is the
-usual bargain: a small, deliberate nudge to the parameters for the sake
-of the warnings, not a different model.
+Here both searches already catch the Flood Warning equally well (CSI
+1.00), so the threshold term had nothing to add. The overall fit hardly
+changed: NSE moved by less than 0.001, too little to see on a
+hydrograph. The threshold search took 1.5 times as many model runs. The
+usual bargain, when the threshold term does help, is a small, deliberate
+nudge to the parameters for the sake of the warnings, not a different
+model.
 
 Some guidance:
 
@@ -363,17 +364,17 @@ comparison <- rbind(
 )
 round(comparison, 3)
 #>                nse log_nse volume_error model_runs
-#> start       -1.400  -1.657        0.182          0
-#> all_at_once  0.990   0.986        0.000       2100
-#> stage_1      0.989   0.983        0.000       1419
-#> stage_2      0.989   0.984        0.000        217
-#> staged       0.990   0.986        0.000       3796
+#> start       -2.143  -1.290        0.318          0
+#> all_at_once  0.992   0.991        0.000       3375
+#> stage_1      0.989   0.989        0.000       2024
+#> stage_2      0.990   0.989        0.000        196
+#> staged       0.992   0.991        0.000       5970
 ```
 
-In this example both reach the same answer: NSE 0.990 at once and 0.990
+In this example both reach the same answer: NSE 0.992 at once and 0.992
 in stages. Stage 1 alone reaches 0.989, which shows how much of the fit
 comes from the water balance and the slow stores. Staging took more
-model runs here, 3,796 against 2,100.
+model runs here, 5,970 against 3,375.
 
 So why stage? A made-up catchment with a known truth and clean data is
 the easy case. On real data, with rating errors at the top end and a

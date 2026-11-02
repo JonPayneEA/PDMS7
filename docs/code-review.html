@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -231,8 +231,34 @@
 <li>An earlier formatter’s awkward line breaks were re-wrapped (layout only).</li>
 </ul></div>
 <div class="section level2">
-<h2 id="recommended-order">Recommended order<a class="anchor" aria-label="anchor" href="#recommended-order"></a></h2>
-<p>Items 1 and 2 first: 1 can bias calibrated groundwater parameters, which matters for the benchmark, and 2 is a cheap safeguard against a silent layout slip. Then 3 to 7, which concern the integrity of the record on shared drives and the independence of sign-off. The rest can wait for the code they touch to change.</p>
+<h2 id="decisions-and-fixes-after-the-review">Decisions and fixes after the review<a class="anchor" aria-label="anchor" href="#decisions-and-fixes-after-the-review"></a></h2>
+<p>Decided 2026-11-02 by the Owner.</p>
+<table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr class="header"><th>#</th>
+<th>Decision</th>
+<th>Done in</th>
+</tr></thead><tbody><tr class="odd"><td>1</td>
+<td>Start every calibration trial and logged run in steady state at the first observed flow. <code><a href="reference/calibrate_pdm.html">calibrate_pdm()</a></code> gains <code>start</code> (default <code>"flow"</code>); <code><a href="reference/calibration_log.html">register_data()</a></code> records the rule, and projects registered earlier keep the soil start so their records still reproduce. Articles whose synthetic data started from empty stores now start in steady state, and every claim in their text was rechecked.</td>
+<td>0.4.1</td>
+</tr><tr class="even"><td>2</td>
+<td>One <code>fill_params()</code> helper in the C++ binding.</td>
+<td>0.4.1</td>
+</tr><tr class="odd"><td>3</td>
+<td>Stale locks are moved aside and re-checked before deletion, so a fresh lock is put back rather than deleted; one routine serves the log and the CSV files.</td>
+<td>0.4.1</td>
+</tr><tr class="even"><td>4</td>
+<td>Appending to a CSV with different columns is refused with a message.</td>
+<td>0.4.1</td>
+</tr><tr class="odd"><td>5</td>
+<td>
+<code><a href="reference/calibration_log.html">validate_candidate()</a></code> re-checks the candidate under the lock. (<code><a href="reference/calibration_log.html">propose_candidate()</a></code> reads no latest entry, so it needed no change; the finding over-stated it.)</td>
+<td>0.4.1</td>
+</tr><tr class="even"><td>6</td>
+<td>Sign-off independence stays as designed: registering data or selecting the structure does not bar a Steward.</td>
+<td>No change</td>
+</tr><tr class="odd"><td>7</td>
+<td>The app restores the identity options when the session ends.</td>
+<td>0.4.1</td>
+</tr></tbody></table><p>The remaining low and information items stand as recorded, for when the code they touch next changes.</p>
 </div>
 </div>
 

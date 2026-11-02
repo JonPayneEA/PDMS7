@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -89,12 +89,17 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="development version" id="pdms7-development-version">pdmS7 (development version)<a class="anchor" aria-label="anchor" href="#pdms7-development-version"></a></h2>
-<ul><li>Six new pages on the website: “Where to start” (reading paths by role), “Preparing your data” (from EA sources through reach.io to model files, with a checklist), “Reviewing a calibration: a Steward’s guide”, a glossary, troubleshooting, and further reading. The home page states the package’s purpose, “Get started” opens the reading paths, and the roadmap is rewritten.</li>
-<li>The benchmark protocol is at version 0.2, with its decisions closed.</li>
-<li>Every source file is commented: the R package, the compiled core, the golden checker and the tests (each test states what it guards). A code review accompanies it, in <code>code-review.md</code> and under Guides on the website: no errors in the hydrology; two medium and seventeen low findings, ranked, with remedies for decision.</li>
-<li>
-<code><a href="../reference/pdm_hindcast.html">pdm_hindcast()</a></code> reports “No forecast origins fit in the window” for a window too narrow for any origin, instead of an internal error.</li>
+<h2 class="pkg-version" data-toc-text="0.4.1" id="pdms7-041">pdmS7 0.4.1<a class="anchor" aria-label="anchor" href="#pdms7-041"></a></h2>
+<ul><li><p><strong>Calibration starts from the first observed flow.</strong> Every trial of <code><a href="../reference/calibrate_pdm.html">calibrate_pdm()</a></code>, and every run in a calibration project, starts in steady state at the first observed flow, so a slow groundwater store is full when scoring begins and cannot bias its own parameters. <code><a href="../reference/calibrate_pdm.html">calibrate_pdm()</a></code> gains <code>start</code> (<code>"flow"</code>, the default, or <code>"soil"</code> for the earlier start), <code>baseflow_fraction</code> and <code>start_flow</code>. <code><a href="../reference/calibration_log.html">register_data()</a></code> records the rule; projects registered earlier keep the soil start, so their recorded runs still reproduce. Calibrations will differ from those of 0.4.0 where the warm-up was short.</p></li>
+<li><p>Locks on the calibration log and on shared CSV files recover from a dead session’s lock without the race that could delete a fresh one.</p></li>
+<li><p>The run log and batch status refuse to append rows under a header with different columns.</p></li>
+<li><p><code><a href="../reference/calibration_log.html">validate_candidate()</a></code> re-checks the candidate under the lock.</p></li>
+<li><p><code><a href="../reference/calibration_app.html">calibration_app()</a></code> restores the identity options when it closes.</p></li>
+<li><p>The C++ binding unpacks parameters in one place.</p></li>
+<li><p>Six new pages on the website: “Where to start” (reading paths by role), “Preparing your data” (from EA sources through reach.io to model files, with a checklist), “Reviewing a calibration: a Steward’s guide”, a glossary, troubleshooting, and further reading. The home page states the package’s purpose, “Get started” opens the reading paths, and the roadmap is rewritten.</p></li>
+<li><p>The benchmark protocol is at version 0.2, with its decisions closed.</p></li>
+<li><p>Every source file is commented: the R package, the compiled core, the golden checker and the tests (each test states what it guards). A code review accompanies it, in <code>code-review.md</code> and under Guides on the website: no errors in the hydrology; two medium and seventeen low findings, ranked, with remedies for decision.</p></li>
+<li><p><code><a href="../reference/pdm_hindcast.html">pdm_hindcast()</a></code> reports “No forecast origins fit in the window” for a window too narrow for any origin, instead of an internal error.</p></li>
 </ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.4.0" id="pdms7-040">pdmS7 0.4.0<a class="anchor" aria-label="anchor" href="#pdms7-040"></a></h2>

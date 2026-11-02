@@ -67,8 +67,9 @@ loss <- function(k1, k2) {
   cfg$surface$k1 <- k1
   cfg$surface$k2 <- k2
   model <- pdm_from_config(cfg)
-  # calibrate_pdm() starts every evaluation from initial_state(model, 0.5); so does this.
-  sim <- run_pdm(model, forcing, initial_state(model, 0.5))$output$q_m3s
+  # calibrate_pdm() starts every evaluation in steady state at the first observed flow; so does
+  # this.
+  sim <- run_pdm(model, forcing, initial_state_from_flow(model, observed[1], 0.7))$output$q_m3s
   sum((sim - observed)^2) / sum((observed - mean(observed))^2)
 }
 surface <- outer(grid, grid, Vectorize(loss))

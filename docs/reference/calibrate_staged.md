@@ -115,7 +115,7 @@ fit <- calibrate_staged(config, forcing, observed, warmup = 48,
                         control = list(maxit = 20))
 round(fit$parameters, 2)
 #>                fc distribution.cmax    distribution.b       recharge.kg 
-#>              1.20            142.50              0.43             23.99 
+#>              1.28            155.38              2.00             26.01 
 #>    groundwater.kb        surface.k1        surface.k2 
-#>          10220.87              4.12              4.11 
+#>            525.13             17.45             29.00 
 ```

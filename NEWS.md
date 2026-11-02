@@ -1,4 +1,18 @@
-# pdmS7 (development version)
+# pdmS7 0.4.1
+
+- **Calibration starts from the first observed flow.** Every trial of `calibrate_pdm()`, and
+  every run in a calibration project, starts in steady state at the first observed flow, so a
+  slow groundwater store is full when scoring begins and cannot bias its own parameters.
+  `calibrate_pdm()` gains `start` (`"flow"`, the default, or `"soil"` for the earlier start),
+  `baseflow_fraction` and `start_flow`. `register_data()` records the rule; projects registered
+  earlier keep the soil start, so their recorded runs still reproduce. Calibrations will differ
+  from those of 0.4.0 where the warm-up was short.
+- Locks on the calibration log and on shared CSV files recover from a dead session's lock
+  without the race that could delete a fresh one.
+- The run log and batch status refuse to append rows under a header with different columns.
+- `validate_candidate()` re-checks the candidate under the lock.
+- `calibration_app()` restores the identity options when it closes.
+- The C++ binding unpacks parameters in one place.
 
 - Six new pages on the website: "Where to start" (reading paths by role), "Preparing your
   data" (from EA sources through reach.io to model files, with a checklist), "Reviewing a
