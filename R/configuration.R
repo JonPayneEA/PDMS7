@@ -12,7 +12,7 @@
 # ============================================================ #
 
 # Configuration is a plain nested list, as read from YAML: each component is a list with a
-# 'type' and its parameters, for example list(type = "pareto", cmax = 140, b = 0.4).
+# 'type' and its parameters, for example list(type = "pareto", cmax = 300, b = 0.4).
 # Strict list configuration: misspelled/unused parameter names are errors.
 # .component() looks the type up in a registry of constructors and calls it with the remaining
 # entries, so an unknown parameter name fails as an unused argument.
