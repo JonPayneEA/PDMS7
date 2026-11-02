@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         distributions_part2
-# Description:  Configurable PDM framework: distributions_part2
+# Description:  Triangular and lognormal capacity distribution methods
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
@@ -11,6 +11,8 @@
 # Dependencies: S7; data.table; yaml; logger (structured logging; no fastverse equivalent)
 # ============================================================ #
 
+# Triangular methods. The density rises linearly to 2 / w at the midpoint and falls back to zero,
+# where w = cmax - cmin. Storage is cubic in C on each half (see .triangular_inverse below).
 S7::method(capacity_pdf, FlodeTriangularCapacity) <- function(x, c) {
   .capacity_x(c)
   if (length(c) == 0L) {
@@ -61,6 +63,7 @@ S7::method(capacity_from_storage, FlodeTriangularCapacity) <- function(x, s) {
   u <- u - f / (1 - 2 * u * u / (w * w))
   x@cmin + min(w / 2, max(0, u))
 }
+# Lognormal methods, from the standard lognormal results.
 S7::method(capacity_mean, FlodeLognormalCapacity) <- function(x) exp(x@meanlog + x@sdlog^2 / 2)
 S7::method(capacity_cdf, FlodeLognormalCapacity) <- function(x, c) {
   .capacity_x(c)
@@ -76,6 +79,8 @@ S7::method(capacity_pdf, FlodeLognormalCapacity) <- function(x, c) {
   }
   stats::dlnorm(c, x@meanlog, x@sdlog)
 }
+# S(C) = E[min(c, C)] = Smax Phi(z - sdlog) + C [1 - Phi(z)], with z = (log C - meanlog) / sdlog.
+# C = 0 holds nothing and C = Inf holds Smax; the final pmin guards against rounding above Smax.
 S7::method(storage_from_capacity, FlodeLognormalCapacity) <- function(x, c) {
   .capacity_x(c)
   if (length(c) == 0L) {

@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         compatibility
-# Description:  Configurable PDM framework: compatibility
+# Description:  Short aliases for the S7 classes, kept for older code
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
@@ -15,6 +15,8 @@
 #'
 #' @seealso [FlodeRecharge]
 #' @export
+# Short aliases for the S7 classes, kept so that code written against the earlier names (without
+# the Flode prefix) still runs. Each name is the same class object, not a copy.
 Recharge <- FlodeRecharge
 #' Compatibility alias for FlodeStandardRecharge
 #'

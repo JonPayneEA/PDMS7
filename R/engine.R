@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         engine
-# Description:  Dispatch between the R time loop and the compiled engine
+# Description:  Bridge between the S7 objects and the compiled C core
 # Flode Module: standalone; target reach.hydro
 # Author:       Claude Code (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-31
@@ -35,6 +35,8 @@ NULL
   )
 )
 
+# TRUE when every component of the model has a compiled implementation and the user has not
+# asked for the R loop. Matching on the first class name, not inheritance, is deliberate.
 .engine_supported <- function(model) {
   if (identical(getOption("pdmS7.engine", "auto"), "r")) {
     return(FALSE)
@@ -63,6 +65,9 @@ NULL
   p
 }
 
+# Flattens a model into the numeric parameter vector the C core reads: component type codes, then
+# every distribution and recharge field (zero where unused), then both routes, then the catchment
+# settings. Order matters and must match pdm_params in src/pdm_core.h.
 .engine_params <- function(model) {
   d <- model@distribution
   r <- model@recharge
@@ -106,6 +111,8 @@ NULL
   ))
 }
 
+# Rebuilds an S7 state from the core's flat state vector. The template supplies the shapes the
+# vector does not carry: whether each route has one store or two, and the delay queue length.
 .engine_unpack_state <- function(v, template) {
   n <- length(template@delay_surface)
   queue <- function(j) v[6L + (j - 1L) * n + seq_len(n)]
@@ -118,6 +125,8 @@ NULL
   )
 }
 
+# Column names of the full output table, in the order the core writes them; identical to the
+# columns pdm_step() returns, so either path gives the same table.
 .engine_flux_names <- c(
   "step", "rain_mm", "rain_corrected_mm", "pet_mm", "aet_mm", "aet_requested_mm",
   "recharge_mm", "recharge_requested_mm", "direct_runoff_mm", "surface_input_mm",
@@ -126,6 +135,8 @@ NULL
   "groundwater_mm", "delay_mm", "saturated_fraction", "balance_error_mm"
 )
 
+# Runs the compiled PDM. full = TRUE returns every flux column; full = FALSE returns only the two
+# flow series, which is all calibration needs and avoids building a large table thousands of times.
 .engine_run <- function(model, rain, pet, state, full) {
   .validate_state(model, state)
   res <- pdm_engine_run(
@@ -200,6 +211,7 @@ NULL
   )
 }
 
+# PACK state as the flat vector the core reads: dry, wet, anchor depth, anchor cover, fresh depth.
 .pack_pack_state <- function(state) {
   as.double(c(state@dry_mm, state@wet_mm, state@anchor_mm, state@anchor_fraction,
               state@fresh_mm))
@@ -228,6 +240,8 @@ NULL
     beta2 = updater@beta2)
 }
 
+# State correction (Moore 2007, Eq. 28-30) in the core: returns the corrected state and the
+# diagnostics correct_state() reports.
 .engine_correct <- function(model, state, observed_m3s, updater) {
   res <- correct_engine_run(
     as.double(.engine_params(model)), .engine_pack_state(state), as.double(observed_m3s),
@@ -240,6 +254,7 @@ NULL
   )
 }
 
+# ARMA error prediction (Eq. 31-42) in the core; returns the list update_forecast() documents.
 .engine_update_forecast <- function(updater, observed_history, simulated_history, forecast) {
   forecast_engine_run(
     as.double(updater@ar), as.double(updater@ma), as.integer(updater@scale == "log"),
@@ -248,6 +263,8 @@ NULL
   )
 }
 
+# Steady-state start from an observed flow, computed in the core; mirrors the R code in
+# initial_state_from_flow().
 .engine_state_from_flow <- function(model, observed_m3s, baseflow_fraction, soil_fraction) {
   v <- from_flow_engine_run(
     as.double(.engine_params(model)), as.double(observed_m3s), as.double(baseflow_fraction),

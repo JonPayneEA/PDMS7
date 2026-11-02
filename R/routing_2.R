@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         routing_2
-# Description:  Configurable PDM framework: routing_2
+# Description:  Routing steps for exponential and power-law stores; adaptive RK4 solver
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
@@ -15,11 +15,14 @@
 # not be clipped to zero as if it were a finite tank.
 S7::method(route_step, FlodeExponentialRouting) <- function(x, storage, inflow, dt) {
   .route_check(x, storage, inflow, dt)
+  # dS/dt = u - q with q = exp(gamma + a S) gives dq/dt = a q (u - q), a logistic equation in q
+  # with an exact solution. The work is done in log q to avoid overflow at large storages.
   logq <- x@gamma + x@a * storage
   .check(
     is.finite(exp(logq)) && exp(logq) > 0, "Exponential flow overflow/underflow"
   )
   if (inflow == 0) {
+    # No inflow: dq/dt = -a q^2, so 1/q grows linearly, 1/q_next = 1/q + a dt.
     lognext <- logq - log1p(
       x@a * exp(logq) * dt
     )
@@ -32,6 +35,7 @@ S7::method(route_step, FlodeExponentialRouting) <- function(x, storage, inflow, 
     mx <- max(terms)
     lognext <- -(mx + log(sum(exp(terms - mx))))
   }
+  # Back from log flow to storage; the released volume follows from continuity.
   new <- (lognext - x@gamma) / x@a
   .route_result(x, storage, new, inflow, dt)
 }
@@ -39,18 +43,25 @@ S7::method(route_step, FlodeExponentialRouting) <- function(x, storage, inflow, 
 # result stays between the start and the equilibrium. Returns the new storage and the factor
 # by which to change the step.
 .adaptive_try <- function(x, s, h, u, target) {
+  # Step doubling: one full RK4 step against two half steps. Their difference over 15 (2^4 - 1
+  # for a fourth-order method) estimates the error of the more accurate pair.
   one <- .rk4(s, h, u, x@k, x@m)
   half <- .rk4(s, h / 2, u, x@k, x@m)
   two <- .rk4(half, h / 2, u, x@k, x@m)
   err <- abs(two - one) / 15
   tol <- x@atol + x@rtol * max(abs(s), abs(two))
   inside <- is.finite(two) && two >= min(s, target) && two <= max(s, target)
+  # A rejected step is halved. The storage can only move towards the equilibrium (u / k)^(1/m),
+  # so a result that overshoots it is rejected however small its error estimate.
   if (!(is.finite(err) && inside && err <= tol)) {
     return(list(ok = FALSE, s = s, factor = 0.5))
   }
+  # Accepted: grow the next step by the usual safety-factored rule, at most doubling it.
   list(ok = TRUE, s = two, factor = if (err == 0) 2 else min(2, max(0.2, 0.9 * (tol / err)^0.2)))
 }
 
+# Integrates dS/dt = u - k S^m across one model step dt by adaptive RK4, for exponents with no
+# closed-form solution under inflow (such as the cubic store). Returns the storage at the end.
 .power_adaptive <- function(x, s, u, dt) {
   target <- (u / x@k)^(1 / x@m)
   if (s == target) {
@@ -75,10 +86,14 @@ S7::method(route_step, FlodeExponentialRouting) <- function(x, storage, inflow, 
       }
     }
     h <- h * step$factor
+    # A step that shrinks to rounding level means the tolerances cannot be met; stop loudly
+    # rather than loop for ever.
     .check(h > .Machine$double.eps * max(dt, 1), "Routing step underflow")
   }
   s
 }
+# One step of the power-law store dS/dt = u - k S^m. Each case uses the exact solution where one
+# exists; only the general case with inflow is integrated numerically.
 S7::method(route_step, FlodePowerRouting) <- function(x, storage, inflow, dt) {
   .route_check(x, storage, inflow, dt)
   s <- storage
@@ -86,6 +101,8 @@ S7::method(route_step, FlodePowerRouting) <- function(x, storage, inflow, dt) {
   k <- x@k
   m <- x@m
   if (x@solver == "smith") {
+    # Smith's scheme for the cubic store: linearise the drainage about the current storage
+    # (slope 3 k S^2) and take an exponential-Euler step. Fast, but its error grows with dt^2.
     lambda <- 3 * k * s^2
     phi <- if (lambda == 0) {
       dt
@@ -94,8 +111,11 @@ S7::method(route_step, FlodePowerRouting) <- function(x, storage, inflow, dt) {
     }
     new <- s + phi * (u - k * s^3)
   } else if (m == 1) {
+    # Linear store: exact exponential approach to the equilibrium u / k.
     new <- s * exp(-k * dt) + u * (-expm1(-k * dt)) / k
   } else if (u == 0) {
+    # Pure recession: S^(1-m) changes linearly in time. With m < 1 the store empties in finite
+    # time, so the result is clamped at zero.
     if (s == 0) {
       new <- 0
     } else if (m < 1) {
@@ -104,6 +124,7 @@ S7::method(route_step, FlodePowerRouting) <- function(x, storage, inflow, dt) {
       new <- (s^(1 - m) + (m - 1) * k * dt)^(1 / (1 - m))
     }
   } else if (m == 2) {
+    # Quadratic store with inflow: a Riccati equation with a closed-form tanh solution.
     equilibrium <- sqrt(u / k)
     t <- tanh(sqrt(u * k) * dt)
     new <- equilibrium * (s + equilibrium * t) / (equilibrium + s * t)

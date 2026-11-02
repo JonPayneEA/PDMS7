@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         updating
-# Description:  Configurable PDM framework: updating
+# Description:  Forecast updating: ARMA error prediction (Eq. 31-42) and fitting
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
@@ -28,6 +28,9 @@
 #'
 #' @references Moore (2007), doi:10.5194/hess-11-483-2007.
 #' @export
+# Corrects a forecast with the ARMA model: run the recursion over the known errors to get the
+# innovations, project the errors beyond the origin, and add them to the forecast (or multiply,
+# on the log scale). The compiled core is used unless options(pdmS7.engine = "r").
 update_forecast <- function(updater, observed_history, simulated_history, forecast) {
   .check(
     is.numeric(forecast) && length(forecast) > 0 && all(is.finite(forecast)),
@@ -91,6 +94,9 @@ update_forecast <- function(updater, observed_history, simulated_history, foreca
 #'
 #' @references Moore (2007), doi:10.5194/hess-11-483-2007.
 #' @export
+# Fits ARMA(p, q) coefficients to a model's errors by maximum likelihood (stats::arima), with no
+# mean term: a calibrated model's errors should average close to zero. Returns the updater and the
+# arima fit, whose standard errors show how well the coefficients are determined.
 fit_error_updater <- function(
   observed, simulated, order = c(3, 0),
   scale = "additive", offset = 0

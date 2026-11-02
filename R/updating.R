@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         updating
-# Description:  Configurable PDM framework: updating
+# Description:  Forecast updating: state correction (Eq. 28-30) and error updater classes
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
@@ -31,6 +31,15 @@
 #'
 #' @references Moore (2007), doi:10.5194/hess-11-483-2007.
 #' @export
+# State correction settings (Moore 2007, Eq. 28-30). At a forecast origin the model's flow is
+# compared with the observed flow; the difference is shared between the groundwater and surface
+# stores, and optionally the soil store, by changing their contents so the model's flow moves
+# towards the observation. Schemes:
+#   proportional:       each store takes the share of the error matching its share of the flow;
+#   super_proportional: as proportional, with beta1 and beta2 weighting the surface store more;
+#   non_proportional:   each store takes the whole error, scaled only by its gain.
+# gb, gs and gg are the gains for groundwater, surface and soil. gg multiplies a flow error (mm/h)
+# to change a storage (mm), so it has units of hours.
 FlodeStateUpdater <- S7::new_class(
   "FlodeStateUpdater",
   package = "pdmS7", properties = list(
@@ -89,6 +98,8 @@ state_updater <- function(
     soil_proportional = soil_proportional
   )
 }
+# Sets a store's contents so that it releases flow q. For a cascade only the downstream store is
+# changed, because it alone sets the outflow.
 .change_flow <- function(routing, storage, q) {
   if (S7::S7_inherits(routing, FlodeCascadeRouting)) {
     storage[2] <- q * routing@k2
@@ -128,6 +139,8 @@ correct_state <- function(model, state, observed_m3s, updater = state_updater())
     # Compiled state correction; results agree with the R code below (see R/engine.R).
     return(.engine_correct(model, state, observed_m3s, updater))
   }
+  # The innovation epsilon: observed flow minus modelled flow at the origin, in mm/h, with the
+  # constant flow qc removed from the observation first.
   qb <- routing_flow(model@groundwater, state@groundwater)
   qs <- routing_flow(model@surface, state@surface)
   epsilon <- (observed_m3s - model@qc) * 3.6 / model@area_km2 - qb - qs
@@ -148,6 +161,7 @@ correct_state <- function(model, state, observed_m3s, updater = state_updater())
   } else {
     1 - alpha
   }
+  # New target flows for each store, floored at zero, then the storages that give them.
   newb <- max(0, qb + wb * updater@gb * epsilon)
   news <- max(0, qs + ws * updater@gs * epsilon)
   .check(
@@ -158,6 +172,7 @@ correct_state <- function(model, state, observed_m3s, updater = state_updater())
   old <- .total_storage(state)
   state@groundwater <- .change_flow(model@groundwater, state@groundwater, newb)
   state@surface <- .change_flow(model@surface, state@surface, news)
+  # Optional soil correction, kept within the store's capacity.
   weight <- if (updater@soil_proportional) {
     alpha
   } else {
@@ -192,6 +207,9 @@ correct_state <- function(model, state, observed_m3s, updater = state_updater())
 #'
 #' @references Moore (2007), doi:10.5194/hess-11-483-2007.
 #' @export
+# Error prediction settings (Moore 2007, Eq. 31-42): ARMA coefficients in the Deltares convention
+# (the next error is ar[1] times the last, plus ar[2] times the one before, ...), on an additive or
+# a log scale. offset is added before taking logs so that zero flows are allowed.
 FlodeErrorUpdater <- S7::new_class(
   "FlodeErrorUpdater",
   package = "pdmS7", properties = list(
@@ -233,6 +251,7 @@ error_updater <- function(
 ) {
   FlodeErrorUpdater(ar = ar, ma = ma, scale = scale, offset = offset)
 }
+# The error series the ARMA model works on: observed minus simulated, or the log ratio.
 .errors <- function(observed, simulated, scale, offset) {
   .check(
     .finite_vector(observed) && .finite_vector(simulated) && length(observed) == length(simulated),

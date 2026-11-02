@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         zzz
-# Description:  Configurable PDM framework: zzz
+# Description:  Namespace hooks: registers S7 methods when the package loads
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04

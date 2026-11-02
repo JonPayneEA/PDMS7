@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         sim_pdm
-# Description:  Configurable PDM framework: sim_pdm
+# Description:  sim_pdm(): vector interface to run_pdm() with warm-up flags
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
@@ -37,6 +37,10 @@
 #'
 #' @references Moore (2007), doi:10.5194/hess-11-483-2007.
 #' @export
+# A vector-in, table-out interface to run_pdm() for callers that think in minutes and plain
+# vectors: it builds the forcing table, sets dt from timestep_min, runs, renames the main outputs
+# (qsim_cms, qsim_end_cms, soil_moisture_mm), flags warm-up rows, and attaches the final state,
+# the model and the water balance as attributes.
 sim_pdm <- function(
   rainfall_mm, pet_mm, params, timestep_min, warmup_steps = 0L, datetime = NULL, state = NULL
 ) {
@@ -60,6 +64,7 @@ sim_pdm <- function(
     "warmup_steps must be an integer less than input length"
   )
   timestep_min <- as.integer(timestep_min)
+  # A built model must already have the right step; a configuration list is given it.
   if (S7::S7_inherits(params, FlodePdmModel)) {
     model <- params
     .check(

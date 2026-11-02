@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         pack_step
-# Description:  Account for snow accumulation, melt, cover and drainage
+# Description:  pack_step(): one time step of the PACK snow model in R
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-05
@@ -26,6 +26,9 @@
 #' @param dt Positive interval length in hours.
 #' @return List with state and named numeric flux vector; depths in mm.
 #' @export
+# One step of PACK over dt hours, in sub-steps short enough for the explicit drainage scheme to be
+# stable (at most max_step_min long, and short enough that the drainage rates times the sub-step
+# stay below one). Precipitation and temperature are constant across the step.
 pack_step <- function(model, state, precipitation_mm, temperature_c, dt = 1) {
   .check(S7::S7_inherits(model, FlodePackModel), "Expected FlodePackModel")
   .check(S7::S7_inherits(state, FlodePackState), "Expected FlodePackState")
@@ -45,6 +48,7 @@ pack_step <- function(model, state, precipitation_mm, temperature_c, dt = 1) {
     drainage_mm = 0, bypass_mm = 0, effective_rain_mm = 0
   )
   for (i in seq_len(steps)) {
+    # Partition: all precipitation is snow below the snow threshold, all rain above it.
     theta <- state@dry_mm + state@wet_mm
     cover <- .pack_cover(model, state)
     snow <- if (temperature_c < model@snow_threshold_c) p else 0
@@ -60,11 +64,15 @@ pack_step <- function(model, state, precipitation_mm, temperature_c, dt = 1) {
       }
       cover <- 1
     }
+    # Melt: degree-hour melt over the covered area, never more than the dry store holds. Melt and
+    # rain on the covered area join the wet store; rain on bare ground bypasses the pack.
     dry <- state@dry_mm + snow
     melt <- min(dry, model@melt_factor_mmh_c *
                   max(0, temperature_c - model@melt_threshold_c) * h * cover)
     dry <- dry - melt
     wet <- state@wet_mm + rain * cover + melt
+    # Drainage: a slow rate on all liquid water, plus a fast rate on liquid above what the pack can
+    # retain. None when frozen.
     threshold <- model@retention_fraction * (wet + dry)
     drainage <- if (temperature_c < model@drain_threshold_c) {
       0
@@ -77,6 +85,8 @@ pack_step <- function(model, state, precipitation_mm, temperature_c, dt = 1) {
     if (dry + state@wet_mm <= state@anchor_mm) state@fresh_mm <- 0
     totals <- totals + c(snow, rain, melt, drainage, bypass, drainage + bypass)
   }
+  # Water balance: pack before, plus corrected precipitation, minus pack after, minus water released
+  # to the ground (drainage plus bypass). Zero to rounding.
   residual <- old + corrected - sum(state@dry_mm, state@wet_mm) - totals[["effective_rain_mm"]]
   list(state = state, flux = c(totals,
     precipitation_corrected_mm = corrected,

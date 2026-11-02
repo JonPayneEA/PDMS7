@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         model
-# Description:  Configurable PDM framework: model
+# Description:  Model and state classes, constructors, state checks and the outlet delay
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
@@ -35,6 +35,15 @@
 #'
 #' @references Moore (2007), doi:10.5194/hess-11-483-2007.
 #' @export
+# The complete model: a soil store (distribution), a recharge rule, a fast surface store, a slow
+# groundwater store, and catchment-wide settings:
+#   be       exponent of the evaporation function (Eq. 8);
+#   fc       rainfall factor applied before anything else;
+#   td       outlet time delay, hours, applied to both pathways;
+#   qc       constant flow added at the outlet, m3/s (an effluent or a compensation flow);
+#   area_km2 catchment area, which converts mm per hour to m3/s;
+#   dt       model time step, hours.
+# The validator rejects combinations the equations cannot support.
 FlodePdmModel <- S7::new_class(
   "FlodePdmModel",
   package = "pdmS7", properties = list(
@@ -100,6 +109,9 @@ FlodePdmModel <- S7::new_class(
 #'
 #' @references Moore (2007), doi:10.5194/hess-11-483-2007.
 #' @export
+# The model's state between steps: soil, surface and groundwater storages (mm), and four queues
+# that implement the outlet delay. delay_surface and delay_groundwater hold volumes (mm) still to
+# leave; the *_end queues hold endpoint flows (mm/h) for the q_end_m3s output. step counts steps.
 FlodePdmState <- S7::new_class(
   "FlodePdmState",
   package = "pdmS7", properties = list(
@@ -131,6 +143,7 @@ FlodePdmState <- S7::new_class(
   }
 )
 
+# A non-empty numeric vector with no missing or infinite values.
 .finite_vector <- function(x) is.numeric(x) && length(x) > 0 && all(is.finite(x))
 
 # One store, or the two stores of a cascade.
@@ -175,6 +188,7 @@ pdm_model <- function(
     distribution = distribution, recharge = recharge, surface = surface, groundwater = groundwater,
     be = be, fc = fc, td = td, qc = qc, area_km2 = area_km2, dt = dt
   )
+  # The Smith cubic solver loses accuracy at long steps; warn once per session when dt > 1 h.
   .warn_smith_step(model)
   model
 }
@@ -196,6 +210,9 @@ pdm_model <- function(
 #'
 #' @references Moore (2007), doi:10.5194/hess-11-483-2007.
 #' @export
+# A simple starting state: the soil store a given fraction full, routing stores empty unless given,
+# and empty delay queues. Each queue has floor(td / dt) + 1 slots, enough to hold water for the
+# whole delay. For a starting state matched to an observed flow, see initial_state_from_flow().
 initial_state <- function(model, soil_fraction = 0.5, surface = NULL, groundwater = NULL) {
   .check(
     .scalar(soil_fraction, 0, 1),
@@ -230,6 +247,9 @@ initial_state <- function(model, soil_fraction = 0.5, surface = NULL, groundwate
     delay_surface_end = pending, delay_groundwater_end = pending, step = 0
   )
 }
+# Checks that a state fits a model before a step: soil within capacity, routing storages of the
+# right length, and delay queues of the length the model's td and dt imply. A state saved under a
+# different time step cannot be reused, because its queues would mean different delays.
 .validate_state <- function(model, state) {
   .check(
     S7::S7_inherits(state, FlodePdmState),
@@ -255,11 +275,16 @@ initial_state <- function(model, soil_fraction = 0.5, surface = NULL, groundwate
   }
   invisible(TRUE)
 }
+# All water held in the model (mm): stores plus volumes waiting in the delay queues. The endpoint
+# queues hold rates, not volumes, so they are left out. Used for the per-step water balance.
 .total_storage <- function(state) {
   sum(
     state@soil, state@surface, state@groundwater, state@delay_surface, state@delay_groundwater
   )
 }
+# Pushes one step's output volume into a delay queue and pops the volume due now. A delay of
+# ratio = td / dt steps is split between the two neighbouring whole steps in proportion, so a
+# 1.5-step delay releases half the water after one step and half after two. Volume is conserved.
 .delay <- function(pending, value, ratio) {
   n <- floor(ratio)
   fraction <- ratio - n

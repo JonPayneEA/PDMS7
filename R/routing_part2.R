@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         routing_part2
-# Description:  Configurable PDM framework: routing_part2
+# Description:  Cascade transfer coefficients (Eq. 27) and the RK4 step
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
@@ -27,6 +27,11 @@
 #'
 #' @references Moore (2007), doi:10.5194/hess-11-483-2007.
 #' @export
+# Moore's discrete transfer function for the two-store cascade (Eq. 27):
+#   q(t) = -delta1 q(t-1) - delta2 q(t-2) + omega0 u(t) + omega1 u(t-1).
+# The deltas come from the two store decays. omega0 is the endpoint flow after one step of unit
+# inflow from empty stores; omega1 follows because the steady-state gain must be one, so
+# omega0 plus omega1 equals (1 - e1)(1 - e2), which is 1 + delta1 + delta2.
 transfer_coefficients <- function(k1, k2, dt = 1) {
   x <- FlodeCascadeRouting(k1 = k1, k2 = k2)
   .check(
@@ -43,6 +48,9 @@ transfer_coefficients <- function(k1, k2, dt = 1) {
     delta1 = -(e1 + e2), delta2 = e1 * e2, omega0 = w0, omega1 = (1 - e1) * (1 - e2) - w0
   )
 }
+# One classical fourth-order Runge-Kutta step of dS/dt = u - k S^m over h hours. Storage is
+# floored at zero inside the derivative, so an intermediate stage that dips below zero cannot
+# take a fractional power of a negative number.
 .rk4 <- function(s, h, u, k, m) {
   f <- function(z) {
     u - k * max(0, z)^m

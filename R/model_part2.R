@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         model
-# Description:  Configurable PDM framework: model
+# Description:  pdm_step(): one time step of the PDM in R, the reference implementation
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
@@ -27,6 +27,11 @@
 #'
 #' @references Moore (2007), doi:10.5194/hess-11-483-2007.
 #' @export
+# One time step of the PDM in R, the reference implementation that the compiled core mirrors.
+# Order within the step: correct the rain by fc; request evaporation (Eq. 8) and recharge from the
+# soil storage at the start of the step; limit both to the water available; update the soil store,
+# which yields direct runoff; send runoff and recharge to the surface and groundwater stores; delay
+# both outflows by td; convert to m3/s; and check the water balance.
 pdm_step <- function(model, state, rain, pet) {
   .validate_state(model, state)
   .check(
@@ -37,6 +42,7 @@ pdm_step <- function(model, state, rain, pet) {
   old <- .total_storage(state)
   smax <- capacity_mean(model@distribution)
   p <- rain * model@fc
+  # Evaporation falls as the soil dries: E = PET [1 - (1 - S / Smax)^be].
   # Eq. 8 and 10-14 are evaluated at the start of the interval.
   et_requested <- pet * (-expm1(model@be * log1p(-state@soil / smax)))
   dr_requested <- recharge_depth(model@recharge,
@@ -49,12 +55,15 @@ pdm_step <- function(model, state, rain, pet) {
   et <- min(et_requested, state@soil + p)
   dr <- min(dr_requested, max(0, state@soil + p - et))
   soil <- soil_step(model@distribution, state@soil, p - et - dr)
+  # Default pathways: direct runoff to the surface store, recharge to groundwater. Split
+  # recharge instead divides the direct runoff between the two.
   fast <- soil$runoff
   slow <- dr
   if (S7::S7_inherits(model@recharge, FlodeSplitRecharge)) {
     fast <- soil$runoff * model@recharge@alpha
     slow <- soil$runoff * (1 - model@recharge@alpha)
   }
+  # Inputs are spread evenly across the step as a rate (mm/h).
   surf <- route_step(model@surface, state@surface, fast / dt, dt)
   ground <- route_step(model@groundwater, state@groundwater, slow / dt, dt)
   d1 <- .delay(state@delay_surface, surf$outflow, model@td / dt)
@@ -76,6 +85,8 @@ pdm_step <- function(model, state, rain, pet) {
   # 1 mm/hour over 1 km2 = 1/3.6 m3/s.
   factor <- model@area_km2 / 3.6
   natural <- d1$out + d2$out
+  # Water balance for the step, mm: storage before, plus corrected rain, minus evaporation and
+  # outflow, minus storage after. Zero to rounding; reported in every output row.
   residual <- old + p - et - natural - .total_storage(next_state)
   flux_dt <- data.table::data.table(
     step = next_state@step, rain_mm = rain, rain_corrected_mm = p, pet_mm = pet, aet_mm = et,

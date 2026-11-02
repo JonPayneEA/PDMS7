@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         model_2
-# Description:  Configurable PDM framework: model_2
+# Description:  run_pdm(), forcing checks and spin-up
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
@@ -16,6 +16,9 @@
 #' @param forcing Data frame with rain and pet interval depths in mm and optional POSIXct time.
 #' @return A list containing output, final state, initial state, model and water balance.
 #' @export
+# Runs a model over a forcing table. With the run log switched on (options(pdmS7.run_log)), each
+# call also appends a row recording the model's fingerprint and whether the run succeeded; the
+# core run is wrapped in .quietly() so nested runs are not logged twice.
 run_pdm <- function(model, forcing, state = initial_state(model)) {
   if (!.run_log_active()) return(.run_pdm_core(model, forcing, state))
   started <- proc.time()[["elapsed"]]
@@ -27,6 +30,9 @@ run_pdm <- function(model, forcing, state = initial_state(model)) {
   result
 }
 
+# The run itself: the compiled engine when it supports the model's components, otherwise the
+# step-by-step R loop. Returns the output table, the final state (to continue a run from), the
+# starting state and the water-balance summary.
 .run_pdm_core <- function(model, forcing, state) {
   .check_forcing(model, forcing)
   initial <- state
@@ -44,6 +50,7 @@ run_pdm <- function(model, forcing, state = initial_state(model)) {
     }
     output <- data.table::setDF(data.table::rbindlist(rows))
   }
+  # Times are carried through unchanged, as UTC; each row's time is the end of its step.
   if ("time" %in% names(forcing)) {
     datetime <- as.POSIXct(as.numeric(forcing$time), origin = "1970-01-01", tz = "UTC")
     output <- cbind(time = datetime, output)
@@ -53,6 +60,8 @@ run_pdm <- function(model, forcing, state = initial_state(model)) {
                          max_abs_step_mm = max(abs(output$balance_error_mm))))
 }
 
+# Forcing must have rain and pet columns of finite nonnegative depths (mm per step). An optional
+# time column must be complete and spaced exactly dt hours apart.
 .check_forcing <- function(model, forcing) {
   .check(is.data.frame(forcing) && all(c("rain", "pet") %in% names(forcing)),
          "forcing must be a data.frame with rain and pet columns (mm per interval)")

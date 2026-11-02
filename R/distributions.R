@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         distributions
-# Description:  Configurable PDM framework: distributions
+# Description:  Capacity distributions of the soil store: classes, generics, Pareto methods
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
@@ -11,7 +11,14 @@
 # Dependencies: S7; data.table; yaml; logger (structured logging; no fastverse equivalent)
 # ============================================================ #
 
-# Eq. 7: storage(C) = integral_0^C [1-F(c)] dc.
+# The probability-distributed soil store (Moore 2007, section 2). The catchment is a population
+# of point stores whose capacities c (mm) follow a distribution with CDF F. Water fills every
+# store up to a common critical capacity C; stores smaller than C are full and shed further
+# rain as runoff. The two quantities the model needs follow from F:
+#   storage S(C) = integral_0^C [1 - F(c)] dc   (Eq. 7), the depth held when the level is C;
+#   saturated fraction F(C), the share of the catchment generating runoff.
+# Each distribution therefore supplies its CDF, density, mean (the most it can hold, Smax),
+# S(C) and the inverse C(S). The five forms are those of Moore's Appendix A.
 #' Create FlodeCapacityDistribution
 #'
 #' Component of the configurable Moore (2007) rainfall-runoff framework.
@@ -41,6 +48,8 @@ FlodeCapacityDistribution <- S7::new_class("FlodeCapacityDistribution",
 #'
 #' @references Moore (2007), doi:10.5194/hess-11-483-2007.
 #' @export
+# Pareto (Moore's standard choice): F(c) = 1 - (1 - (c - cmin) / (cmax - cmin))^b on
+# [cmin, cmax]. b controls the spread: b = 1 is uniform, larger b puts more stores near cmin.
 FlodeParetoCapacity <- S7::new_class(
   "FlodeParetoCapacity",
   parent = FlodeCapacityDistribution,
@@ -103,6 +112,7 @@ FlodeRectangularCapacity <- S7::new_class(
 #'
 #' @references Moore (2007), doi:10.5194/hess-11-483-2007.
 #' @export
+# Triangular density on [cmin, cmax], peaking at the midpoint.
 FlodeTriangularCapacity <- S7::new_class(
   "FlodeTriangularCapacity",
   parent = FlodeCapacityDistribution,
@@ -154,6 +164,8 @@ FlodeExponentialCapacity <- S7::new_class(
 #'
 #' @references Moore (2007), doi:10.5194/hess-11-483-2007.
 #' @export
+# Lognormal capacities: log c is normal with meanlog and sdlog. Unbounded above, so Smax is the
+# lognormal mean and a full store needs infinite C.
 FlodeLognormalCapacity <- S7::new_class(
   "FlodeLognormalCapacity",
   parent = FlodeCapacityDistribution,
@@ -252,6 +264,9 @@ storage_from_capacity <- S7::new_generic("storage_from_capacity", "x")
 #' @export
 capacity_from_storage <- S7::new_generic("capacity_from_storage", "x")
 
+# Pareto methods. z is the capacity scaled to [0, 1] across the support. expm1 and log1p keep
+# precision when (1 - z)^b is close to one, which is where small storms are decided.
+# b = 0 is the degenerate case: every store has capacity cmax, a step in the CDF.
 S7::method(capacity_cdf, FlodeParetoCapacity) <- function(x, c) {
   .capacity_x(c)
   if (length(c) == 0L) {
@@ -274,9 +289,12 @@ S7::method(capacity_pdf, FlodeParetoCapacity) <- function(x, c) {
   ans[i] <- x@b / (x@cmax - x@cmin) * ((x@cmax - c[i]) / (x@cmax - x@cmin))^(x@b - 1)
   ans
 }
+# Smax = cmin + (cmax - cmin) / (b + 1).
 S7::method(capacity_mean, FlodeParetoCapacity) <- function(x) {
   x@cmin + (x@cmax - x@cmin) / (x@b + 1)
 }
+# Below cmin every store is filling equally, so S = C. Above it, Eq. 7 integrates to
+# S = cmin + (Smax - cmin) [1 - (1 - z)^(b + 1)].
 S7::method(storage_from_capacity, FlodeParetoCapacity) <- function(x, c) {
   .capacity_x(c)
   if (length(c) == 0L) {

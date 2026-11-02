@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         recharge
-# Description:  Configurable PDM framework: recharge
+# Description:  Recharge schemes from soil to groundwater: standard, demand and split
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
@@ -22,6 +22,11 @@
 #'
 #' @references Moore (2007), doi:10.5194/hess-11-483-2007.
 #' @export
+# Recharge: how water reaches the slow groundwater store. Three schemes:
+#   standard: drainage from the soil store, (S - st)^bg / kg mm per hour (Moore 2007, Eq. 10),
+#             where st is a threshold storage below which nothing drains;
+#   demand:   drainage that depends on how much room the groundwater store has (Eq. 13);
+#   split:    no soil drainage; instead a fixed share of the direct runoff goes to groundwater.
 FlodeRecharge <- S7::new_class("FlodeRecharge", package = "pdmS7", abstract = TRUE)
 #' Create FlodeStandardRecharge
 #'
@@ -102,6 +107,7 @@ FlodeDemandRecharge <- S7::new_class(
 #'
 #' @references Moore (2007), doi:10.5194/hess-11-483-2007.
 #' @export
+# alpha is the share of direct runoff sent to the surface store; 1 - alpha goes to groundwater.
 FlodeSplitRecharge <- S7::new_class(
   "FlodeSplitRecharge",
   parent = FlodeRecharge, package = "pdmS7", properties = list(alpha = S7::class_numeric),
@@ -123,6 +129,9 @@ FlodeSplitRecharge <- S7::new_class(
 #'
 #' @references Moore (2007), doi:10.5194/hess-11-483-2007.
 #' @export
+# recharge_depth(x, soil, smax, groundwater, routing, dt): the recharge requested over one step,
+# in mm, from the soil and groundwater storages at the start of the step. The model may grant
+# less if the soil store cannot supply it (see pdm_step()).
 recharge_depth <- S7::new_generic("recharge_depth", "x")
 S7::method(recharge_depth,
            FlodeStandardRecharge) <- function(x,
@@ -146,6 +155,10 @@ S7::method(recharge_depth,
                                             smax,
                                             groundwater,
                                             routing, dt) {
+  # Eq. 13. The groundwater store's capacity Sgmax is the storage at which it would discharge
+  # qsat. g is its unfilled share; the demand rises as g grows, reaching one at g = alpha. Recharge
+  # then scales between qsat dt (a full soil store with no demand) and Smax (full demand), in
+  # proportion to how full the soil store is.
   .check(
     !S7::S7_inherits(routing, FlodeCascadeRouting),
     "Demand recharge requires a single groundwater store"

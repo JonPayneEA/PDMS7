@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         utils
-# Description:  Configurable PDM framework: utils
+# Description:  Argument checks shared by the whole package
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04

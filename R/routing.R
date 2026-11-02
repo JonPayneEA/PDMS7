@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         routing
-# Description:  Configurable PDM framework: routing
+# Description:  Routing stores: classes, constructors, flow and storage relations
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
@@ -22,6 +22,13 @@
 #'
 #' @references Moore (2007), doi:10.5194/hess-11-483-2007.
 #' @export
+# Routing stores turn the water they receive into flow at the outlet. Three forms:
+#   power:       q = k S^m, a single store (m = 1 linear, 2 quadratic, 3 cubic; Moore 2007,
+#                Eq. 21-25 for the cubic groundwater store);
+#   cascade:     two linear stores in series with time constants k1 and k2 (Eq. 26-27), the
+#                usual fast surface pathway;
+#   exponential: q = exp(gamma + a S), a store whose S may go negative (Moore and Bell 2002).
+# Storage is mm over the catchment, flow is mm per hour, time constants are hours.
 FlodeRouting <- S7::new_class("FlodeRouting", package = "pdmS7", abstract = TRUE)
 #' Create FlodePowerRouting
 #'
@@ -52,6 +59,8 @@ FlodePowerRouting <- S7::new_class(
     atol = S7::class_numeric
   ),
   validator = function(self) {
+    # The Smith solver is a linearised scheme derived for the cubic store only, so it is
+    # refused for any other exponent. rtol and atol set the adaptive solver's error target.
     .bounded_params(
       self, list(
         k = .scalar(self@k, 0, strict = TRUE),
@@ -146,6 +155,8 @@ FlodeExponentialRouting <- S7::new_class(
 #'
 #' @references Moore (2007), doi:10.5194/hess-11-483-2007.
 #' @export
+# Convenience constructors. The named forms take kb, the time-like constant of Moore's
+# groundwater store, and convert it to the rate k = 1 / kb used by the general power law.
 power_routing <- function(k = 1 / 10000, m = 3, solver = "adaptive", rtol = 1e-08, atol = 1e-10) {
   FlodePowerRouting(k = k, m = m, solver = solver, rtol = rtol, atol = atol)
 }
@@ -210,6 +221,11 @@ cubic_routing <- function(kb = 10000, solver = "adaptive") {
 #'
 #' @references Moore (2007), doi:10.5194/hess-11-483-2007.
 #' @export
+# Generics shared by every routing form:
+#   route_step(x, storage, inflow, dt): advance the store over one step of dt hours with a
+#     constant inflow (mm/h), returning the new storage and the volume released;
+#   routing_flow(x, storage): the instantaneous outflow (mm/h) for a storage;
+#   storage_for_flow(x, q): the storage that gives outflow q, used to start a run in steady state.
 route_step <- S7::new_generic("route_step", "x")
 #' Routing flow
 #'
@@ -249,6 +265,8 @@ S7::method(storage_for_flow, FlodePowerRouting) <- function(x, q) {
   .nonnegative(q, "q")
   (q / x@k)^(1 / x@m)
 }
+# A cascade's state is two storages; the outflow is the drainage of the second, downstream store.
+# In steady state each store holds its inflow times its time constant.
 S7::method(routing_flow, FlodeCascadeRouting) <- function(x, storage) storage[2] / x@k2
 S7::method(storage_for_flow, FlodeCascadeRouting) <- function(x, q) {
   .check(
@@ -260,6 +278,7 @@ S7::method(storage_for_flow, FlodeCascadeRouting) <- function(x, q) {
 S7::method(routing_flow, FlodeExponentialRouting) <- function(x, storage) {
   exp(x@gamma + x@a * storage)
 }
+# Inverse of q = exp(gamma + a S). Zero flow has no finite storage, hence q must be positive.
 S7::method(storage_for_flow, FlodeExponentialRouting) <- function(x, q) {
   .check(
     all(is.finite(q)) && all(q > 0),
@@ -267,6 +286,10 @@ S7::method(storage_for_flow, FlodeExponentialRouting) <- function(x, q) {
   )
   (log(q) - x@gamma) / x@a
 }
+# Checks the arguments of every route_step() method: a nonnegative inflow, a positive step,
+# and a finite storage of the right length (two values for a cascade, one otherwise). Storage
+# must also be nonnegative, except for the exponential store, whose storage is a signed log
+# coordinate rather than a volume in a tank.
 .route_check <- function(x, storage, inflow, dt) {
   .check(
     .scalar(inflow, 0) && .scalar(dt, 0, strict = TRUE),
