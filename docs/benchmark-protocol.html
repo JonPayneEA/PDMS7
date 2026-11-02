@@ -81,191 +81,219 @@
 
 <div id="pdm-and-lstm-benchmark-protocol" class="section level1">
 
-<p>Draft for agreement. Version 0.1, 2026-10-31.</p>
-<p>This protocol fixes how PDM and the LSTM models are compared before anyone sees a test result. Its purpose is simple: if the comparison is challenged, the answer is this document, dated and agreed in advance. Items in square brackets are open decisions. They must be closed, and the protocol versioned, before the test period is scored.</p>
+<p>Version 0.2, 2026-11-02. Decisions closed; three facts to confirm before sign-off (section 12).</p>
+<p>This protocol fixes how PDM and the LSTM models are compared before anyone sees a test result. Its purpose is simple: if the comparison is challenged, the answer is this document, dated and agreed in advance. It takes effect when an Owner is named and a Steward signs it off. No test period is scored before then.</p>
 <div class="section level2">
 <h2 id="id_1-principle">1. Principle<a class="anchor" aria-label="anchor" href="#id_1-principle"></a></h2>
 <p>Both models get the same data, the same periods and a stated, comparable search effort. Both are scored by the same code on the same masked observations. A basin enters or leaves the comparison for data reasons decided in advance, never because of its result.</p>
-<p>The comparison is in simulation mode. Neither model sees observed flow at run time: PDM’s updating and state correction are off, and the LSTM takes no lagged discharge input. Forecast skill with assimilation is a different question and needs its own protocol.</p>
+<p>The comparison is in simulation mode. Neither model sees observed flow at run time: PDM’s updating and state correction are off, and the LSTM takes no lagged discharge input. Forecast skill with assimilation is a different question and is outside this protocol.</p>
 </div>
 <div class="section level2">
-<h2 id="id_2-basins">2. Basins<a class="anchor" aria-label="anchor" href="#id_2-basins"></a></h2>
-<ul><li>The basin list is fixed in an appendix before calibration starts: [60 basins, list to follow].</li>
-<li>Selection criteria are recorded with the list: [record length, data completeness, no significant regulation or abstraction, catchment area range].</li>
-<li>A basin is excluded only for data reasons found before scoring: for example, a gauge record with more than [10] per cent missing in the test period, or forcing that cannot be infilled. The reason is recorded. No basin is removed after test results exist.</li>
-</ul></div>
+<h2 id="id_2-phases">2. Phases<a class="anchor" aria-label="anchor" href="#id_2-phases"></a></h2>
+<table class="table"><colgroup><col width="25%"><col width="25%"><col width="25%"><col width="25%"></colgroup><thead><tr class="header"><th>Phase</th>
+<th>Data</th>
+<th>Step</th>
+<th>Purpose</th>
+</tr></thead><tbody><tr class="odd"><td>1</td>
+<td>CAMELS-GB (Coxon et al., 2020)</td>
+<td>Daily</td>
+<td>Prove the protocol, the scoring code and both teams’ processes on open data, against a published benchmark</td>
+</tr><tr class="even"><td>2</td>
+<td>Environment Agency gauged catchments</td>
+<td>15 minutes</td>
+<td>The operationally relevant comparison</td>
+</tr></tbody></table><p>Phase 1 copies the design of Lees et al. (2021), so that both teams can check their setup against published results: the retrained LSTM against the published LSTM, and PDM against the four FUSE conceptual models in that study. Phase 1 results do not change any phase 2 decision; phase 2 decisions still open (section 11) are closed and versioned before phase 2 data are scored.</p>
+</div>
 <div class="section level2">
-<h2 id="id_3-data">3. Data<a class="anchor" aria-label="anchor" href="#id_3-data"></a></h2>
+<h2 id="id_3-basins">3. Basins<a class="anchor" aria-label="anchor" href="#id_3-basins"></a></h2>
+<p><strong>Phase 1.</strong> The 669 CAMELS-GB catchments used by Lees et al. (2021), listed in an appendix. The 518 catchments with FUSE results in that study form a fixed subset for the comparison with the published conceptual models. No further exclusions are made, except a basin where a model cannot run for a data reason found before scoring, recorded with the reason.</p>
+<p><strong>Phase 2.</strong> Selection criteria, fixed now; the list follows before calibration starts:</p>
+<ul><li>at least 15 years of 15-minute flow;</li>
+<li>no more than 10 per cent missing in any period;</li>
+<li>no significant regulation or abstraction, from the hydrometric register’s flags;</li>
+<li>catchment area from 10 to 1,000 km2;</li>
+<li>a deliberate spread of baseflow index, so that both groundwater-dominated and flashy catchments are represented.</li>
+</ul><p>In both phases, no basin is removed after test results exist.</p>
+</div>
+<div class="section level2">
+<h2 id="id_4-data">4. Data<a class="anchor" aria-label="anchor" href="#id_4-data"></a></h2>
 <ul><li>
-<strong>Time step:</strong> 15 minutes, UTC, for both models.</li>
+<strong>Time step:</strong> daily in phase 1, as CAMELS-GB; 15 minutes, UTC, in phase 2.</li>
 <li>
-<strong>Forcing:</strong> both models receive the same rainfall and PET series, in mm per interval, from the same source and processing chain. Gaps are infilled once, by one method, before either model sees the data.</li>
+<strong>Forcing:</strong> both models receive the same precipitation and PET series, in mm per interval, from the same source and processing chain. In phase 1 these are the CAMELS-GB series. Gaps are infilled once, by one method, before either model sees the data.</li>
 <li>
-<strong>Static inputs:</strong> the LSTM may also use catchment attributes; PDM uses only catchment area. This is a legitimate difference between a regional and a per-basin model, not a fairness breach, but it is stated in every report: [list of LSTM static attributes].</li>
+<strong>LSTM inputs:</strong> the dynamic forcings and static catchment attributes used by Lees et al. (2021), listed in an appendix. PDM uses precipitation, PET and catchment area only. This is a legitimate difference between a regional and a per-basin model, not a fairness breach, but it is stated in every report.</li>
 <li>
-<strong>Observed flow:</strong> in m3/s, mean flow over each interval, matching PDM’s <code>q_m3s</code>. Missing observations stay missing. They are never infilled for scoring.</li>
+<strong>Observed flow:</strong> in m3/s, mean flow over each interval, matching PDM’s <code>q_m3s</code>. Missing observations stay missing and are never infilled for scoring.</li>
 </ul></div>
 <div class="section level2">
-<h2 id="id_4-periods">4. Periods<a class="anchor" aria-label="anchor" href="#id_4-periods"></a></h2>
+<h2 id="id_5-periods">5. Periods<a class="anchor" aria-label="anchor" href="#id_5-periods"></a></h2>
 <p>Periods are chronological and do not overlap. The same dates apply to every basin and both models.</p>
 <table class="table"><colgroup><col width="25%"><col width="25%"><col width="25%"><col width="25%"></colgroup><thead><tr class="header"><th>Period</th>
-<th>Dates</th>
+<th>Phase 1 dates</th>
 <th>PDM use</th>
 <th>LSTM use</th>
 </tr></thead><tbody><tr class="odd"><td>Warm-up</td>
-<td>[1 year before calibration]</td>
+<td>The year before training</td>
 <td>Simulated, not scored</td>
 <td>Sequence look-back</td>
-</tr><tr class="even"><td>Calibration or training</td>
-<td>[YYYY to YYYY]</td>
-<td>Parameter estimation</td>
+</tr><tr class="even"><td>Training</td>
+<td>As Lees et al. (2021)</td>
+<td>Calibration</td>
 <td>Weight training</td>
-</tr><tr class="odd"><td>Tuning</td>
-<td>[YYYY to YYYY]</td>
-<td>Not used</td>
+</tr><tr class="odd"><td>Validation</td>
+<td>As Lees et al. (2021)</td>
+<td>Calibration</td>
 <td>Early stopping and hyperparameters</td>
 </tr><tr class="even"><td>Test</td>
-<td>[YYYY to YYYY], about the final [7] years</td>
+<td>1998 to 2008, as Lees et al. (2021)</td>
 <td>Scored once</td>
 <td>Scored once</td>
-</tr></tbody></table><p>The test period is scored once, after both models are frozen. Any rerun after test results are known is reported as such, with the reason.</p>
-<p>PDM does not need a tuning period. It may be calibrated on calibration and tuning combined, so that it sees the same span of data as the LSTM: [decide; recommended: yes].</p>
+</tr></tbody></table><p>PDM is calibrated on the training and validation years combined, so that both models see the same years before the test and neither sees more. Because PDM then has no held-out years, its structure and calibration method are fixed in advance (section 6) and not chosen from results.</p>
+<p>The test period is scored once, after both models are frozen. Any rerun after test results are known is reported as such, with the reason.</p>
 </div>
 <div class="section level2">
-<h2 id="id_5-pdm-configuration">5. PDM configuration<a class="anchor" aria-label="anchor" href="#id_5-pdm-configuration"></a></h2>
+<h2 id="id_6-pdm-configuration">6. PDM configuration<a class="anchor" aria-label="anchor" href="#id_6-pdm-configuration"></a></h2>
 <ul><li>
 <strong>Package:</strong> pdmS7 at a recorded commit, compiled engine, adaptive groundwater solver.</li>
 <li>
 <strong>Structure:</strong> Pareto capacity, standard recharge, two-store surface cascade, cubic groundwater, no snow. The same structure for every basin.</li>
 <li>
-<strong>Parameters and bounds:</strong> [list in an appendix]. Bounds are set from catchment knowledge before calibration and are not changed after test results exist.</li>
+<strong>Parameters and bounds:</strong> <code><a href="reference/calibration_bounds.html">calibration_bounds()</a></code> of that structure, from <code>inst/calibration-bounds.csv</code> at the recorded commit, with the search scales given there. Bounds are not changed after test results exist.</li>
 <li>
-<strong>Objective:</strong> 1 minus NSE on <code>q_m3s</code>, warm-up excluded.</li>
+<strong>Calibration method and effort:</strong> fixed by the pilot below, before any test score exists.</li>
 <li>
-<strong>Search effort:</strong> [k] L-BFGS-B starts per basin, with k set by the pilot (<code>inst/examples/pilot_calibration.R</code>); maximum 200 iterations per start; seed 1000 plus the basin’s index in the appendix list.</li>
+<strong>Runs:</strong> <code><a href="reference/calibrate_batch.html">calibrate_batch()</a></code>, one calibration-log project per basin, seeds derived from the basin’s identifier.</li>
 <li>
-<strong>Diagnostics recorded per basin:</strong> <code>start_results</code> in full, with every start’s objective, convergence code, evaluation count and fitted parameters; parameters within 1 per cent of a bound; wall time.</li>
-</ul></div>
-<div class="section level2">
-<h2 id="id_6-lstm-configuration">6. LSTM configuration<a class="anchor" aria-label="anchor" href="#id_6-lstm-configuration"></a></h2>
+<strong>Diagnostics recorded per basin:</strong> every start’s objective, convergence code, evaluation count and fitted parameters; parameters within 1 per cent of a bound; wall time. The calibration log holds all of these.</li>
+</ul><div class="section level3">
+<h3 id="pilot">Pilot<a class="anchor" aria-label="anchor" href="#pilot"></a></h3>
 <ul><li>
-<strong>Architecture and inputs:</strong> [specify]. Fixed before training.</li>
+<strong>Basins:</strong> 20 phase 1 basins, chosen to span the range of baseflow index, listed in an appendix before the pilot runs.</li>
 <li>
-<strong>Loss:</strong> [NSE-based loss, per-basin normalised, or as agreed]. State it if it differs from PDM’s objective.</li>
+<strong>Data:</strong> calibrate on the training years only; score on the validation years. The test years are not used.</li>
 <li>
-<strong>Hyperparameter search:</strong> on the tuning period only, with the search space and number of trials recorded.</li>
+<strong>Settings compared:</strong> calibration of all parameters at once (objective 1 minus NSE) and staged calibration (<code><a href="reference/calibrate_staged.html">calibrate_staged()</a></code> with the default stages), each at 3, 5, 10 and 20 starts.</li>
 <li>
-<strong>Search effort:</strong> [n] training seeds. The reported model is [the ensemble mean, or the median seed]; the spread across seeds is reported alongside.</li>
+<strong>Rule:</strong> the chosen setting is the cheapest, in total objective evaluations, whose median validation NSE over the 20 basins is within 0.01 of the best setting’s. The pilot results and the choice are recorded before the final calibration runs.</li>
+</ul><p>The final run then applies the chosen setting to every basin, on training and validation years.</p>
+</div>
+</div>
+<div class="section level2">
+<h2 id="id_7-lstm-configuration">7. LSTM configuration<a class="anchor" aria-label="anchor" href="#id_7-lstm-configuration"></a></h2>
+<ul><li>
+<strong>Architecture, inputs and loss:</strong> as Lees et al. (2021). If the team uses NeuralHydrology, the configuration file is archived with the results and fixes all three.</li>
+<li>
+<strong>Hyperparameter search:</strong> on the validation years only, with the search space and number of trials recorded.</li>
+<li>
+<strong>Seeds:</strong> 8, as in Lees et al. (2021).</li>
+<li>
+<strong>Reported model:</strong> the ensemble mean of the 8 seeds, with the spread across seeds alongside. The median single seed is also reported, so that averaging, which smooths errors a single PDM run keeps, can be judged.</li>
 <li>
 <strong>Output handling:</strong> negative predicted flows are set to zero before scoring, and the number of intervals affected is reported.</li>
 </ul></div>
 <div class="section level2">
-<h2 id="id_7-search-effort-and-compute">7. Search effort and compute<a class="anchor" aria-label="anchor" href="#id_7-search-effort-and-compute"></a></h2>
+<h2 id="id_8-search-effort-and-compute">8. Search effort and compute<a class="anchor" aria-label="anchor" href="#id_8-search-effort-and-compute"></a></h2>
 <p>The two models search in different ways, so effort cannot be equalised exactly. It is reported instead: PDM starts and objective evaluations against LSTM seeds, trials and epochs, with core-hours or GPU-hours for each. A reader can then judge whether either model was under-resourced.</p>
 </div>
 <div class="section level2">
-<h2 id="id_8-metrics">8. Metrics<a class="anchor" aria-label="anchor" href="#id_8-metrics"></a></h2>
-<p>All metrics are computed on the test period by <code><a href="reference/pdm_objectives.html">pdm_objectives()</a></code> from pdmS7, for both models, using the same observation mask. One scoring function removes one class of argument. The function returns losses; the report converts them where noted.</p>
-<table class="table"><colgroup><col width="25%"><col width="25%"><col width="25%"><col width="25%"></colgroup><thead><tr class="header"><th>Metric</th>
+<h2 id="id_9-metrics">9. Metrics<a class="anchor" aria-label="anchor" href="#id_9-metrics"></a></h2>
+<p>All metrics are computed on the test period by <code><a href="reference/pdm_scorecard.html">pdm_scorecard()</a></code> from pdmS7, for both models and the lower benchmark, using the same observation mask. One scoring function removes one class of argument.</p>
+<table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr class="header"><th>Metric</th>
 <th>
-<code><a href="reference/pdm_objectives.html">pdm_objectives()</a></code> name</th>
-<th>Reported as</th>
+<code><a href="reference/pdm_scorecard.html">pdm_scorecard()</a></code> name</th>
 <th>What it shows</th>
-</tr></thead><tbody><tr class="odd"><td>NSE</td>
-<td><code>nse_loss</code></td>
-<td>1 minus the loss</td>
+</tr></thead><tbody><tr class="odd"><td>NSE (headline)</td>
+<td><code>nse</code></td>
 <td>Overall fit, dominated by high flows</td>
-</tr><tr class="even"><td>KGE</td>
-<td><code>kge_loss</code></td>
-<td>1 minus the loss</td>
+</tr><tr class="even"><td>KGE (headline)</td>
+<td><code>kge</code></td>
 <td>Correlation, variability and bias together</td>
-</tr><tr class="odd"><td>RMSE of log flows</td>
+</tr><tr class="odd"><td>KGE terms</td>
 <td>
-<code>log_rmse</code> (offset [0.01] m3/s)</td>
-<td>As returned</td>
+<code>kge_r</code>, <code>kge_alpha</code>, <code>kge_beta</code>
+</td>
+<td>Where a KGE shortfall comes from</td>
+</tr><tr class="even"><td>NSE of log flows</td>
+<td><code>log_nse</code></td>
 <td>Low-flow behaviour</td>
-</tr><tr class="even"><td>Volume bias</td>
-<td><code>abs_bias</code></td>
-<td>As returned</td>
+</tr><tr class="odd"><td>RMSE, RMSE of log flows</td>
+<td>
+<code>rmse</code>, <code>log_rmse</code>
+</td>
+<td>Error in flow units, and in low flows</td>
+</tr><tr class="even"><td>Volume error</td>
+<td>
+<code>volume_error</code>, <code>abs_volume_error</code>
+</td>
 <td>Water balance</td>
-</tr><tr class="odd"><td>Peak magnitude error</td>
-<td><code>peak_relative_error</code></td>
-<td>As returned</td>
+</tr><tr class="odd"><td>Peak error</td>
+<td><code>peak_error</code></td>
 <td>Size of the largest flow in the test period</td>
-</tr></tbody></table><p>KGE’s three terms (correlation, variability ratio, bias ratio) explain where a fit fails, but <code><a href="reference/pdm_objectives.html">pdm_objectives()</a></code> does not return them separately. If wanted, they are computed from the same masked series by one shared function, written and agreed before scoring: [decide].</p>
-<p>Peak timing is not assessed: the package has no timing metric, and adding one is deferred. Event-based peak analysis, if wanted, needs an agreed event definition and belongs in a protocol revision.</p>
-</div>
+</tr><tr class="even"><td>Flow-duration signatures</td>
+<td>
+<code>fdc_high</code>, <code>fdc_mid</code>, <code>fdc_low</code>
+</td>
+<td>High-flow volume, mid-segment slope and low-flow volume biases (Yilmaz et al., 2008)</td>
+</tr></tbody></table><ul><li>
+<strong>Log offset:</strong> 1 per cent of each basin’s mean observed flow over the training years, so that log scores weigh small and large rivers alike.</li>
+<li>
+<strong>Lower benchmark:</strong> for each basin, the mean observed flow for each day of the year over the training years, scored in the same way (Seibert et al., 2018). A model is judged against this floor as well as against the other model.</li>
+<li>Peak timing is not assessed at a daily step.</li>
+</ul></div>
 <div class="section level2">
-<h2 id="id_9-comparison-and-reporting">9. Comparison and reporting<a class="anchor" aria-label="anchor" href="#id_9-comparison-and-reporting"></a></h2>
+<h2 id="id_10-comparison-and-reporting">10. Comparison and reporting<a class="anchor" aria-label="anchor" href="#id_10-comparison-and-reporting"></a></h2>
 <ul><li>
-<strong>Per basin:</strong> every metric for both models in one table, including basins where PDM wins.</li>
+<strong>Per basin:</strong> every metric for both models and the lower benchmark in one table, including basins where PDM wins.</li>
 <li>
 <strong>Across basins:</strong> median and interquartile range of each metric, and cumulative distribution plots.</li>
 <li>
 <strong>Paired comparison:</strong> per-basin differences, the count of basins each model wins on each metric, and a Wilcoxon signed-rank test as a descriptive summary, not a verdict.</li>
 <li>
+<strong>Published reference (phase 1):</strong> on the 518-basin subset, PDM beside the published FUSE results and the retrained LSTM beside the published LSTM.</li>
+<li>
 <strong>Diagnostics:</strong> PDM basins with parameters on a bound or no converged start are flagged, not dropped. Results are reported with and without them.</li>
 <li>
-<strong>Stratification:</strong> results by [catchment area, baseflow index, flashiness] if agreed in advance. Strata chosen after seeing results are labelled as exploratory.</li>
+<strong>Strata, fixed now:</strong> baseflow index, catchment area and aridity, each in thirds with cut points from all phase 1 basins set before scoring; and region as reported by Lees et al. (2021). Any other split is labelled exploratory.</li>
 </ul></div>
 <div class="section level2">
-<h2 id="id_10-reproducibility">10. Reproducibility<a class="anchor" aria-label="anchor" href="#id_10-reproducibility"></a></h2>
-<p>Recorded with the results: package commit, R version, operating system, seeds, the frozen configuration for each basin, the LSTM code version and weights, and the scored series. The outputs are archived with this protocol.</p>
+<h2 id="id_11-phase-2-decisions-to-close-before-phase-2">11. Phase 2 decisions to close before phase 2<a class="anchor" aria-label="anchor" href="#id_11-phase-2-decisions-to-close-before-phase-2"></a></h2>
+<p>Period dates; the basin list; the forcing product; the LSTM architecture for 15-minute data; and whether the phase 1 pilot’s choice carries over or a phase 2 pilot is run. Each is closed and the protocol versioned before any phase 2 test score exists.</p>
 </div>
 <div class="section level2">
-<h2 id="id_11-changes-to-this-protocol">11. Changes to this protocol<a class="anchor" aria-label="anchor" href="#id_11-changes-to-this-protocol"></a></h2>
-<p>Each change is versioned with its date and reason. A change made after any test result is known is reported in the results, with the comparison under the original protocol where possible.</p>
+<h2 id="id_12-facts-to-confirm-before-sign-off">12. Facts to confirm before sign-off<a class="anchor" aria-label="anchor" href="#id_12-facts-to-confirm-before-sign-off"></a></h2>
+<p>These are not decisions; they are copied from Lees et al. (2021) and checked against the paper:</p>
+<ol style="list-style-type: decimal"><li>the training, validation and test dates, to the day;</li>
+<li>the LSTM dynamic inputs and static attributes;</li>
+<li>the list of 669 catchments and the 518-catchment subset.</li>
+</ol></div>
+<div class="section level2">
+<h2 id="id_13-reproducibility">13. Reproducibility<a class="anchor" aria-label="anchor" href="#id_13-reproducibility"></a></h2>
+<p>Recorded with the results: package commit, R version, operating system, seeds, the frozen configuration for each basin, the LSTM code version, configuration and weights, and the scored series. The outputs are archived with this protocol.</p>
 </div>
 <div class="section level2">
-<h2 id="open-decisions">Open decisions<a class="anchor" aria-label="anchor" href="#open-decisions"></a></h2>
-<table class="table"><colgroup><col width="25%"><col width="25%"><col width="25%"><col width="25%"></colgroup><thead><tr class="header"><th>Item</th>
-<th>Section</th>
-<th>Owner</th>
-<th>Recommendation</th>
-</tr></thead><tbody><tr class="odd"><td>Basin list and selection criteria</td>
-<td>2</td>
-<td>[ ]</td>
-<td>Fix before the pilot finishes</td>
-</tr><tr class="even"><td>Missing-data exclusion threshold</td>
-<td>2</td>
-<td>[ ]</td>
-<td>10 per cent in the test period</td>
-</tr><tr class="odd"><td>LSTM static attributes</td>
-<td>3</td>
-<td>[ ]</td>
-<td>List explicitly</td>
-</tr><tr class="even"><td>Period dates</td>
-<td>4</td>
-<td>[ ]</td>
-<td>Final 7 years as test</td>
-</tr><tr class="odd"><td>PDM on calibration plus tuning</td>
-<td>4</td>
-<td>[ ]</td>
-<td>Yes, to match the data span</td>
-</tr><tr class="even"><td>PDM bounds</td>
-<td>5</td>
-<td>[ ]</td>
-<td>From catchment knowledge, before calibration</td>
-</tr><tr class="odd"><td>PDM starts, k</td>
-<td>5</td>
-<td>[ ]</td>
-<td>From the pilot</td>
-</tr><tr class="even"><td>LSTM loss, seeds, ensemble rule</td>
-<td>6</td>
-<td>[ ]</td>
-<td>Ensemble mean, spread reported</td>
-</tr><tr class="odd"><td>Log offset</td>
-<td>8</td>
-<td>[ ]</td>
-<td>0.01 m3/s, or 1 per cent of mean flow</td>
-</tr><tr class="even"><td>KGE terms reported separately</td>
-<td>8</td>
-<td>[ ]</td>
-<td>Yes, from one shared function</td>
-</tr><tr class="odd"><td>Strata</td>
-<td>9</td>
-<td>[ ]</td>
-<td>Agree before scoring</td>
+<h2 id="id_14-agreement-and-changes">14. Agreement and changes<a class="anchor" aria-label="anchor" href="#id_14-agreement-and-changes"></a></h2>
+<p>The protocol is recorded in a calibration-log project: an Owner is named when the project starts, each version is registered with its checksum, and a Steward signs it off. Calibration projects run under it cite the version they follow. Each change is versioned with its date and reason. A change made after any test result is known is reported in the results, with the comparison under the original protocol where possible.</p>
+</div>
+<div class="section level2">
+<h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
+<ul><li>Coxon, G. et al. (2020). CAMELS-GB: hydrometeorological time series and landscape attributes for 671 catchments in Great Britain. Earth System Science Data, 12, 2459–2483.</li>
+<li>Klemeš, V. (1986). Operational testing of hydrological simulation models. Hydrological Sciences Journal, 31, 13–24.</li>
+<li>Lees, T. et al. (2021). Benchmarking data-driven rainfall–runoff models in Great Britain: a comparison of long short-term memory (LSTM)-based models with four lumped conceptual models. Hydrology and Earth System Sciences, 25, 5517–5534.</li>
+<li>Seibert, J. et al. (2018). Upper and lower benchmarks in hydrological modelling. Hydrological Processes, 32, 1120–1125.</li>
+<li>Yilmaz, K. K. et al. (2008). A process-based diagnostic evaluation of a hydrologic model. Water Resources Research, 44, W09417.</li>
+</ul></div>
+<div class="section level2">
+<h2 id="version-history">Version history<a class="anchor" aria-label="anchor" href="#version-history"></a></h2>
+<table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr class="header"><th>Version</th>
+<th>Date</th>
+<th>Change</th>
+</tr></thead><tbody><tr class="odd"><td>0.1</td>
+<td>2026-10-31</td>
+<td>Draft for agreement</td>
+</tr><tr class="even"><td>0.2</td>
+<td>2026-11-02</td>
+<td>Decisions closed: two phases; phase 1 on CAMELS-GB matching Lees et al. (2021); PDM calibrated on training plus validation; pilot to fix PDM method and effort; LSTM as Lees et al. with 8 seeds; <code><a href="reference/pdm_scorecard.html">pdm_scorecard()</a></code> metrics, relative log offset and a day-of-year lower benchmark; four strata; simulation only</td>
 </tr></tbody></table></div>
 </div>
 
