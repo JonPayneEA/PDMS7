@@ -435,6 +435,10 @@ validate_candidate <- function(project, reasoning) {
   info <- .project_info(entries)
   run <- .run_registered(path, info, registration, candidate$configuration, "validation", data)
   out <- .append_entry(path, "validation", author, function(id, entries) {
+    # Checked again under the lock: a candidate proposed by another session while this one was
+    # running would otherwise be skipped, and this validation recorded against the older one.
+    .check(identical(.latest(entries, "candidate")$id, candidate$id),
+           "A newer candidate was proposed while validating; run validate_candidate() again")
     list(candidate = candidate$id, registration = registration$id,
          validation_scores = run$scores, calibration_scores = candidate$scores,
          output_md5 = run$output_md5, series = .save_series(path, id, run),

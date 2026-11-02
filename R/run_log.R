@@ -224,26 +224,26 @@ approved_configurations <- function(register = .setting("pdmS7.register", "PDMS7
 
 .write_run <- function(record) .append_csv(.run_log_path(), record, "Run log")
 
-# Appends rows to a CSV shared by several sessions, under a lock beside it.
-# The lock is a directory, created atomically; a lock older than a minute is taken to be left
-# by a dead session. The first write creates the file with its header.
+# Appends rows to a CSV shared by several sessions, under a lock beside it (see .acquire_lock();
+# a lock older than a minute is taken to be left by a dead session). The first write creates the
+# file with its header. Later writes must have the same columns in the same order: rows appended
+# under a different header would read back misaligned, so a mismatch, such as a file written by
+# another version of the package, stops with a message instead.
 .append_csv <- function(path, record, label = "File") {
   folder <- dirname(path)
   .check(dir.exists(folder) || suppressWarnings(dir.create(folder, recursive = TRUE)),
          paste("Cannot create the folder", folder))
   lock <- paste0(path, ".lock")
-  waited <- 0
-  while (!dir.create(lock, showWarnings = FALSE)) {
-    age <- as.numeric(difftime(Sys.time(), file.mtime(lock), units = "secs"))
-    if (is.finite(age) && age > 60) {
-      unlink(lock, recursive = TRUE)
-      next
-    }
-    .check(waited < 10, paste(label, "is locked:", lock))
-    Sys.sleep(0.05)
-    waited <- waited + 0.05
-  }
+  .acquire_lock(lock, 10, 60, 0.05, paste(label, "is locked:", lock))
   on.exit(unlink(lock, recursive = TRUE))
+  if (file.exists(path)) {
+    header <- names(data.table::fread(path, nrows = 0L))
+    .check(identical(header, names(record)), paste0(
+      label, " ", path, " has different columns from this version of pdmS7 (",
+      toString(setdiff(union(header, names(record)), intersect(header, names(record)))),
+      "); start a new file"
+    ))
+  }
   data.table::fwrite(record, path, append = file.exists(path))
 }
 

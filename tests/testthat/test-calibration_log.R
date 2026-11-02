@@ -310,3 +310,27 @@ test_that("the start rule is registered and older projects keep the soil start",
   flow <- pdmS7:::.run_registered(p$folder, info, registration, config)
   expect_false(isTRUE(all.equal(flow$simulated, direct)))
 })
+
+# Guards: a stale lock is cleared, but a lock that turns out to be fresh is put back, not deleted
+test_that("stale-lock recovery never deletes a fresh lock", {
+  folder <- tempfile("lock-")
+  dir.create(folder)
+  on.exit(unlink(folder, recursive = TRUE), add = TRUE)
+  lock <- file.path(folder, ".lock")
+  dir.create(lock)
+  # Judged stale at the first look, fresh once moved aside: another session replaced it.
+  ages <- c(1000, 1)
+  local_mocked_bindings(.lock_age = function(dir) {
+    out <- ages[1]
+    ages <<- ages[-1]
+    out %||% 1
+  })
+  expect_error(.acquire_lock(lock, 0.1, 600, 0.05, "still locked"), "still locked")
+  expect_true(dir.exists(lock))
+  expect_length(list.files(folder, all.files = TRUE, no.. = TRUE), 1L)
+  # Stale at both looks: removed and taken.
+  ages <- c(1000, 1000)
+  expect_true(.acquire_lock(lock, 0.1, 600, 0.05, "still locked"))
+  expect_true(dir.exists(lock))
+  expect_length(list.files(folder, all.files = TRUE, no.. = TRUE), 1L)
+})

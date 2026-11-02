@@ -17,6 +17,11 @@
 .app_server <- function(project) {
   force(project)
   function(input, output, session) {
+    # The identity bar sets the pdmS7.user and pdmS7.role options; put back whatever they were
+    # when the session ends, so later code in this R session is not written under the app's
+    # identity.
+    saved <- options("pdmS7.user", "pdmS7.role")
+    shiny::onStop(function() options(saved), session = session)
     rv <- shiny::reactiveValues(project = project, version = 0L, preview = NULL,
                                 report = NULL, zoom = NULL, validation = NULL)
     refresh <- function() rv$version <- rv$version + 1L

@@ -197,26 +197,46 @@
 # ---- Locking and writing -----------------------------------------------------------------
 
 # Runs code while holding the project's lock, so two sessions cannot write entries at once.
-# dir.create() is atomic on local and network file systems: exactly one caller succeeds. Others
-# wait up to 'wait' seconds. A lock older than 'stale' seconds is assumed to belong to a session
-# that died, and is removed. The lock is always released on exit, even after an error.
+# The lock is always released on exit, even after an error.
 .with_lock <- function(path, code, wait = 30, stale = 600) {
   lock <- file.path(path, "entries", ".lock")
-  waited <- 0
-  repeat {
-    if (dir.create(lock, showWarnings = FALSE)) break
-    age <- as.numeric(difftime(Sys.time(), file.mtime(lock), units = "secs"))
-    if (is.finite(age) && age > stale) {
-      logger::log_warn("Removing stale calibration-log lock {lock}")
-      unlink(lock, recursive = TRUE)
-      next
-    }
-    .check(waited < wait, paste("Another session is writing to this project; try again:", lock))
-    Sys.sleep(0.2)
-    waited <- waited + 0.2
-  }
+  .acquire_lock(lock, wait, stale, 0.2,
+                paste("Another session is writing to this project; try again:", lock))
   on.exit(unlink(lock, recursive = TRUE), add = TRUE)
   code()
+}
+
+# Seconds since a lock directory was created (its modification time; the directory stays empty).
+.lock_age <- function(dir) as.numeric(difftime(Sys.time(), file.mtime(dir), units = "secs"))
+
+# Takes a lock directory, shared by the calibration log and the CSV files. dir.create() is atomic
+# on local and network file systems: exactly one caller succeeds; others poll every 'poll'
+# seconds for up to 'wait' seconds. A lock older than 'stale' seconds is taken to belong to a
+# session that died. It is not deleted where it stands, because a second waiter that judged the
+# same lock stale could then delete a fresh lock taken in between. Instead it is renamed aside,
+# which only one session can do, and its age checked again: if what was moved turns out to be
+# fresh, it is put back. Only a lock confirmed stale is deleted.
+.acquire_lock <- function(lock, wait, stale, poll, message) {
+  waited <- 0
+  repeat {
+    if (dir.create(lock, showWarnings = FALSE)) return(invisible(TRUE))
+    age <- .lock_age(lock)
+    if (is.finite(age) && age > stale) {
+      aside <- paste0(lock, ".stale-", Sys.getpid(), "-", sample.int(1e9, 1L))
+      if (file.rename(lock, aside)) {
+        if (isTRUE(.lock_age(aside) > stale)) {
+          logger::log_warn("Removing stale lock {lock}")
+          unlink(aside, recursive = TRUE)
+        } else {
+          file.rename(aside, lock)
+        }
+      }
+      next
+    }
+    .check(waited < wait, message)
+    Sys.sleep(poll)
+    waited <- waited + poll
+  }
 }
 
 # Appends one entry. build(id, entries) returns the type-specific fields; it runs under the

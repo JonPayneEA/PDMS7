@@ -186,7 +186,9 @@ verify_project <- function(project, rerun = FALSE) {
 # interrupted write shows up here as unexpected.
 .verify_numbering <- function(path, entries) {
   files <- list.files(file.path(path, "entries"), all.files = TRUE, no.. = TRUE)
+  # The lock, and a stale lock being moved aside at this moment, are expected.
   stray <- setdiff(files, c(.entry_files(path), ".lock"))
+  stray <- stray[!startsWith(stray, ".lock.stale-")]
   out <- if (length(stray)) {
     .check_row("numbering", NA_character_, FALSE, paste("Unexpected files:", toString(stray)))
   }

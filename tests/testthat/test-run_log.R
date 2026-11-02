@@ -145,3 +145,15 @@ test_that("a logging failure warns once and never stops a run", {
   expect_silent(run_pdm(pdm_model(), small_forcing()))
   .run_log_state$warned <- FALSE
 })
+
+# Guards: rows are never appended under a header with different columns
+test_that("a CSV with different columns is refused, not appended to", {
+  path <- tempfile(fileext = ".csv")
+  on.exit(unlink(path), add = TRUE)
+  .append_csv(path, data.table::data.table(a = 1, b = 2), "Test file")
+  .append_csv(path, data.table::data.table(a = 3, b = 4), "Test file")
+  expect_equal(nrow(data.table::fread(path)), 2L)
+  expect_error(.append_csv(path, data.table::data.table(a = 5, c = 6), "Test file"),
+               "different columns")
+  expect_equal(nrow(data.table::fread(path)), 2L)
+})

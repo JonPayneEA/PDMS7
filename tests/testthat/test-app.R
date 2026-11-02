@@ -189,3 +189,16 @@ test_that("the app compares structures and shows the ranking", {
   })
   expect_equal(nrow(structure_comparison(p$folder)), 2L)
 })
+
+# Guards: closing the app restores the identity options the session had before
+test_that("the app restores the identity options when it closes", {
+  skip_if_not_installed("shiny")
+  old <- options(pdmS7.user = "Before", pdmS7.role = "steward")
+  on.exit(options(old), add = TRUE)
+  shiny::testServer(.app_server(NULL), {
+    session$setInputs(user = "In The App", role = "custodian")
+    expect_equal(getOption("pdmS7.user"), "In The App")
+  })
+  expect_equal(getOption("pdmS7.user"), "Before")
+  expect_equal(getOption("pdmS7.role"), "steward")
+})
