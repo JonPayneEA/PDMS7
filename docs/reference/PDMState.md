@@ -66,7 +66,7 @@ Moore (2007), doi:10.5194/hess-11-483-2007.
 ``` r
 initial_state(pdm_model())
 #> <pdmS7::FlodePdmState>
-#>  @ soil                 : num 50
+#>  @ soil                 : num 107
 #>  @ surface              : num [1:2] 0 0
 #>  @ groundwater          : num 0
 #>  @ delay_surface        : num 0

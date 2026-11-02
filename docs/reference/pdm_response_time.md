@@ -91,12 +91,12 @@ model <- pdm_model(area_km2 = 50)
 rt <- pdm_response_time(model, flow = 5)
 rt[c("time_to_peak_h", "recession_h", "centroid_lag_h")]
 #> $time_to_peak_h
-#> [1] 16.40128
+#> [1] 2.956439
 #> 
 #> $recession_h
-#> [1] 41.34123
+#> [1] 6.819982
 #> 
 #> $centroid_lag_h
-#> [1] 55.75434
+#> [1] 7.091234
 #> 
 ```

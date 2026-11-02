@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -214,28 +214,28 @@ flows low, by 15 per cent at twice that flow.</p>
 <span><span class="va">river</span></span>
 <span><span class="co">#&gt; Synthetic catchment: 3650 steps of 24 h from 2010-10-01T00:00:00Z </span></span>
 <span><span class="co">#&gt;   Rain: nsrp - 807 mm a year; 2 added storms </span></span>
-<span><span class="co">#&gt;   True flow: mean 0.889 m3/s, peak 32.4 m3/s</span></span>
+<span><span class="co">#&gt;   True flow: mean 0.954 m3/s, peak 28.4 m3/s</span></span>
 <span><span class="co">#&gt;   Gauge error: sd 0.05 in logs, memory 72 h</span></span>
-<span><span class="co">#&gt;   Rating: exact to 11 m3/s, then 15 per cent low at twice that; 7 steps above</span></span>
+<span><span class="co">#&gt;   Rating: exact to 11 m3/s, then 15 per cent low at twice that; 5 steps above</span></span>
 <span><span class="va">forcing</span> <span class="op">&lt;-</span> <span class="va">river</span><span class="op">$</span><span class="va">forcing</span></span>
 <span><span class="va">observed</span> <span class="op">&lt;-</span> <span class="va">river</span><span class="op">$</span><span class="va">observed</span></span>
 <span><span class="va">truth</span> <span class="op">&lt;-</span> <span class="va">river</span><span class="op">$</span><span class="va">truth</span></span>
 <span><span class="va">years</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/wettest_years.html">wettest_years</a></span><span class="op">(</span><span class="va">forcing</span><span class="op">$</span><span class="va">time</span>, <span class="va">observed</span>, n <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
 <span><span class="va">years</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"water_year"</span>, <span class="st">"start"</span>, <span class="st">"peak_m3s"</span>, <span class="st">"held"</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="co">#&gt;    water_year                start  peak_m3s  held</span></span>
-<span><span class="co">#&gt; 1     2013-14 2013-10-01T00:00:00Z 25.557574  TRUE</span></span>
-<span><span class="co">#&gt; 2     2018-19 2018-10-01T00:00:00Z 22.130988  TRUE</span></span>
-<span><span class="co">#&gt; 3     2012-13 2012-10-01T00:00:00Z  9.284612 FALSE</span></span>
-<span><span class="co">#&gt; 4     2019-20 2019-10-01T00:00:00Z  8.613200 FALSE</span></span>
-<span><span class="co">#&gt; 5     2010-11 2010-10-01T00:00:00Z  7.261260 FALSE</span></span>
-<span><span class="co">#&gt; 6     2011-12 2011-10-01T00:00:00Z  6.449420 FALSE</span></span>
-<span><span class="co">#&gt; 7     2014-15 2014-10-01T00:00:00Z  6.230862 FALSE</span></span>
-<span><span class="co">#&gt; 8     2017-18 2017-10-01T00:00:00Z  5.510830 FALSE</span></span>
-<span><span class="co">#&gt; 9     2016-17 2016-10-01T00:00:00Z  5.334338 FALSE</span></span>
-<span><span class="co">#&gt; 10    2015-16 2015-10-01T00:00:00Z  3.854268 FALSE</span></span></code></pre></div>
+<span><span class="co">#&gt; 1     2013-14 2013-10-01T00:00:00Z 22.703046  TRUE</span></span>
+<span><span class="co">#&gt; 2     2018-19 2018-10-01T00:00:00Z 19.372790  TRUE</span></span>
+<span><span class="co">#&gt; 3     2012-13 2012-10-01T00:00:00Z  7.664298 FALSE</span></span>
+<span><span class="co">#&gt; 4     2019-20 2019-10-01T00:00:00Z  6.956333 FALSE</span></span>
+<span><span class="co">#&gt; 5     2010-11 2010-10-01T00:00:00Z  6.373497 FALSE</span></span>
+<span><span class="co">#&gt; 6     2011-12 2011-10-01T00:00:00Z  5.600537 FALSE</span></span>
+<span><span class="co">#&gt; 7     2014-15 2014-10-01T00:00:00Z  5.264775 FALSE</span></span>
+<span><span class="co">#&gt; 8     2017-18 2017-10-01T00:00:00Z  4.796519 FALSE</span></span>
+<span><span class="co">#&gt; 9     2016-17 2016-10-01T00:00:00Z  4.508485 FALSE</span></span>
+<span><span class="co">#&gt; 10    2015-16 2015-10-01T00:00:00Z  3.349098 FALSE</span></span></code></pre></div>
 <p><code><a href="../reference/wettest_years.html">wettest_years()</a></code> is what <code><a href="../reference/calibration_log.html">register_data()</a></code>
-uses. The two held-back years have recorded peaks of 26 and 22 m3/s; no
-other year exceeds 9.</p>
+uses. The two held-back years have recorded peaks of 23 and 19 m3/s; no
+other year exceeds 8.</p>
 <p>This is a best case. The true model is a PDM, so its structure is
 exactly right; the rain is known exactly; and the gauge error is simpler
 than a real one’s. A real catchment will do worse than anything shown
@@ -250,25 +250,25 @@ here.</p>
 <span><span class="fu"><a href="../reference/calibration_log.html">start_calibration_project</a></span><span class="op">(</span><span class="va">project</span>, catchment <span class="op">=</span> <span class="st">"Wet Brook"</span>, gauge <span class="op">=</span> <span class="st">"00001"</span>,</span>
 <span>                          purpose <span class="op">=</span> <span class="st">"Flood forecasting"</span>, area_km2 <span class="op">=</span> <span class="fl">60</span>,</span>
 <span>                          owner <span class="op">=</span> <span class="st">"Area Manager"</span>, steward <span class="op">=</span> <span class="st">"Sam Steward"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; INFO [2026-11-02 20:34:03] Started calibration project wet-brook in /tmp/RtmpY0TvPt/wet-brook</span></span>
+<span><span class="co">#&gt; INFO [2026-11-02 22:05:46] Started calibration project wet-brook in /tmp/Rtmp2dzi0I/wet-brook</span></span>
 <span><span class="va">reg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calibration_log.html">register_data</a></span><span class="op">(</span><span class="va">project</span>, <span class="va">forcing</span>, <span class="va">observed</span>,</span>
 <span>                     calibration <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"2011-01-01"</span>, <span class="st">"2016-09-30"</span><span class="op">)</span>,</span>
 <span>                     validation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"2016-10-01"</span>, <span class="st">"2019-09-30"</span><span class="op">)</span>,</span>
 <span>                     test <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"2019-10-01"</span>, <span class="st">"2020-09-27"</span><span class="op">)</span>,</span>
 <span>                     highest_gauged_m3s <span class="op">=</span> <span class="va">river</span><span class="op">$</span><span class="va">highest_gauged_m3s</span>,</span>
 <span>                     reasoning <span class="op">=</span> <span class="st">"Ten years; rating checked to 11 m3/s."</span><span class="op">)</span></span>
-<span><span class="co">#&gt; INFO [2026-11-02 20:34:03] Registered data 0002: 3650 rows</span></span>
+<span><span class="co">#&gt; INFO [2026-11-02 22:05:46] Registered data 0002: 3650 rows</span></span>
 <span><span class="va">check</span> <span class="op">&lt;-</span> <span class="va">reg</span><span class="op">$</span><span class="va">rating_check</span><span class="op">$</span><span class="va">windows</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>window <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">check</span><span class="op">)</span>, steps_above <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">check</span>, <span class="va">`[[`</span>, <span class="st">"steps_above"</span><span class="op">)</span>,</span>
 <span>           highest_m3s <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">check</span>, <span class="va">`[[`</span>, <span class="st">"highest_m3s"</span><span class="op">)</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;                  window steps_above highest_m3s</span></span>
-<span><span class="co">#&gt; calibration calibration           0         9.3</span></span>
-<span><span class="co">#&gt; validation   validation           0         5.5</span></span>
-<span><span class="co">#&gt; test               test           0         8.6</span></span>
-<span><span class="co">#&gt; wettest         wettest           7        25.6</span></span></code></pre></div>
+<span><span class="co">#&gt; calibration calibration           0         7.7</span></span>
+<span><span class="co">#&gt; validation   validation           0         4.8</span></span>
+<span><span class="co">#&gt; test               test           0         7.0</span></span>
+<span><span class="co">#&gt; wettest         wettest           5        22.7</span></span></code></pre></div>
 <p>The rating check, recorded in the entry, shows the problem at once.
 Every flow above the gauged limit lies in the held-back years. Without
-the hold-out, the calibration would have been fitted to 7 days of
+the hold-out, the calibration would have been fitted to 5 days of
 extrapolated flow, and nothing in the record would have said so.</p>
 </div>
 <div class="section level2">
@@ -281,21 +281,30 @@ standard starting point.</p>
 <span><span class="va">start</span><span class="op">$</span><span class="va">dt</span> <span class="op">&lt;-</span> <span class="fl">24</span></span>
 <span><span class="va">start</span><span class="op">$</span><span class="va">area_km2</span> <span class="op">&lt;-</span> <span class="fl">60</span></span>
 <span><span class="fu"><a href="../reference/calibration_log.html">select_structure</a></span><span class="op">(</span><span class="va">project</span>, <span class="va">start</span>, <span class="st">"Standard structure."</span><span class="op">)</span></span>
-<span><span class="co">#&gt; INFO [2026-11-02 20:34:03] Structure 0003: nse -2.283</span></span>
+<span><span class="co">#&gt; INFO [2026-11-02 22:05:47] Structure 0003: nse 0.4081</span></span>
 <span><span class="va">b</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calibration_bounds.html">calibration_bounds</a></span><span class="op">(</span><span class="va">start</span><span class="op">)</span></span>
 <span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calibration_log.html">log_auto_calibration</a></span><span class="op">(</span></span>
 <span>  <span class="va">project</span>, parent <span class="op">=</span> <span class="fl">3</span>, lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="va">b</span><span class="op">$</span><span class="va">lower</span>, <span class="va">b</span><span class="op">$</span><span class="va">path</span><span class="op">)</span>, upper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="va">b</span><span class="op">$</span><span class="va">upper</span>, <span class="va">b</span><span class="op">$</span><span class="va">path</span><span class="op">)</span>,</span>
 <span>  log_scale <span class="op">=</span> <span class="va">b</span><span class="op">$</span><span class="va">path</span><span class="op">[</span><span class="va">b</span><span class="op">$</span><span class="va">scale</span> <span class="op">==</span> <span class="st">"log"</span><span class="op">]</span>, starts <span class="op">=</span> <span class="fl">3</span>, seed <span class="op">=</span> <span class="fl">2</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>maxit <span class="op">=</span> <span class="fl">40</span><span class="op">)</span>,</span>
 <span>  reasoning <span class="op">=</span> <span class="st">"All parameters, three starts."</span></span>
 <span><span class="op">)</span></span>
-<span><span class="co">#&gt; INFO [2026-11-02 20:34:36] Calibration 0004: nse 0.9939</span></span>
+<span><span class="co">#&gt; Warning: A steady start at 1.702 m3/s with baseflow_fraction 0.70 needs 266.5</span></span>
+<span><span class="co">#&gt; mm of soil storage, more than the store's capacity of 203 mm; the soil is</span></span>
+<span><span class="co">#&gt; capped and the run starts out of balance. Start at a lower flow or a smaller</span></span>
+<span><span class="co">#&gt; baseflow_fraction, or use start = "soil".</span></span>
+<span><span class="co">#&gt; INFO [2026-11-02 22:06:12] Calibration 0004: nse 0.9927</span></span>
 <span><span class="va">good</span> <span class="op">&lt;-</span> <span class="va">fit</span><span class="op">$</span><span class="va">equally_good</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>nse <span class="op">=</span> <span class="va">fit</span><span class="op">$</span><span class="va">scores</span><span class="op">$</span><span class="va">nse</span>, trials_within_tolerance <span class="op">=</span> <span class="va">good</span><span class="op">$</span><span class="va">within</span>, sets_kept <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">good</span><span class="op">$</span><span class="va">sets</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;                     nse trials_within_tolerance               sets_kept </span></span>
-<span><span class="co">#&gt;                0.993907              885.000000               50.000000</span></span></code></pre></div>
-<p>The calibration NSE is 0.994. Of the parameter sets the search tried,
-885 scored within 0.02 of the best; 50 spread-out ones are kept. How far
-apart are they?</p>
+<span><span class="co">#&gt;               0.9927173            1080.0000000              50.0000000</span></span></code></pre></div>
+<p>The warning is the calibration’s own: the record opens at 1.7 m3/s,
+1.8 times the average flow, and the calibrated model cannot hold 70 per
+cent of that as steady baseflow, so its runs begin a little out of
+balance. The three months of warm-up before the calibration window are
+there for this.</p>
+<p>The calibration NSE is 0.993. Of the parameter sets the search tried,
+1080 scored within 0.02 of the best; 50 spread-out ones are kept. How
+far apart are they?</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">sets</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">rbind</span>, <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">good</span><span class="op">$</span><span class="va">sets</span>, <span class="kw">function</span><span class="op">(</span><span class="va">s</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/unlist.html" class="external-link">unlist</a></span><span class="op">(</span><span class="va">s</span><span class="op">$</span><span class="va">parameters</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">spread</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/t.html" class="external-link">t</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/apply.html" class="external-link">apply</a></span><span class="op">(</span><span class="va">sets</span>, <span class="fl">2</span>, <span class="va">range</span><span class="op">)</span><span class="op">)</span></span>
@@ -304,18 +313,18 @@ apart are they?</p>
 <span>             <span class="fu">pdmS7</span><span class="fu">:::</span><span class="fu">.path_get</span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="va">configuration</span>, <span class="va">p</span><span class="op">)</span></span>
 <span>           <span class="op">}</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span>,</span>
 <span>           lowest <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">signif</a></span><span class="op">(</span><span class="va">spread</span><span class="op">[</span>, <span class="fl">1</span><span class="op">]</span>, <span class="fl">3</span><span class="op">)</span>, highest <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">signif</a></span><span class="op">(</span><span class="va">spread</span><span class="op">[</span>, <span class="fl">2</span><span class="op">]</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt;                     truth calibrated   lowest  highest</span></span>
-<span><span class="co">#&gt; fc                    1.0   9.77e-01    0.898 1.01e+00</span></span>
-<span><span class="co">#&gt; distribution.cmax   300.0   2.60e+02  201.000 3.05e+02</span></span>
-<span><span class="co">#&gt; distribution.b        0.4   4.55e-01    0.345 9.45e-01</span></span>
-<span><span class="co">#&gt; recharge.kg        4000.0   4.62e+03 3030.000 5.00e+03</span></span>
-<span><span class="co">#&gt; surface.k1           12.0   1.15e+01    5.590 1.15e+01</span></span>
-<span><span class="co">#&gt; surface.k2           12.0   1.26e+01   12.300 2.13e+01</span></span>
-<span><span class="co">#&gt; groundwater.kb    10000.0   4.21e+04  169.000 5.99e+04</span></span></code></pre></div>
+<span><span class="co">#&gt;                     truth calibrated   lowest highest</span></span>
+<span><span class="co">#&gt; fc                    1.0      0.992    0.893    1.01</span></span>
+<span><span class="co">#&gt; distribution.cmax   300.0    286.000  268.000  503.00</span></span>
+<span><span class="co">#&gt; distribution.b        0.4      0.407    0.375    1.32</span></span>
+<span><span class="co">#&gt; recharge.kg        4000.0   3730.000 2640.000 4250.00</span></span>
+<span><span class="co">#&gt; surface.k1           12.0     12.000    3.580   20.70</span></span>
+<span><span class="co">#&gt; surface.k2           12.0     12.000    4.890   24.10</span></span>
+<span><span class="co">#&gt; groundwater.kb    10000.0   9990.000  285.000 9920.00</span></span></code></pre></div>
 <p>Fits that reproduce the calibration record almost equally well
-disagree widely. The groundwater constant <code>kb</code> spans 169 to
-59885, a factor of 353; the soil capacity <code>cmax</code> spans 201 to
-305 mm. The record cannot tell them apart. These are the parameters the
+disagree widely. The groundwater constant <code>kb</code> spans 285 to
+9924, a factor of 35; the soil capacity <code>cmax</code> spans 268 to
+503 mm. The record cannot tell them apart. These are the parameters the
 introduction warned of: barely tested by ordinary years, and exactly the
 ones a large flood depends on.</p>
 </div>
@@ -327,26 +336,26 @@ the held-back years.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/calibration_log.html">propose_candidate</a></span><span class="op">(</span><span class="va">project</span>, <span class="va">fit</span><span class="op">$</span><span class="va">id</span>, <span class="st">"Best automatic fit."</span><span class="op">)</span></span>
 <span><span class="va">validation</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calibration_log.html">validate_candidate</a></span><span class="op">(</span><span class="va">project</span>, <span class="st">"Validation holds up."</span><span class="op">)</span></span>
-<span><span class="co">#&gt; INFO [2026-11-02 20:34:36] Validation 0006: nse 0.992</span></span>
+<span><span class="co">#&gt; INFO [2026-11-02 22:06:13] Validation 0006: nse 0.992</span></span>
 <span><span class="va">test</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calibration_log.html">test_candidate</a></span><span class="op">(</span><span class="va">project</span>, <span class="st">"Final check, including the wettest years."</span><span class="op">)</span></span>
-<span><span class="co">#&gt; INFO [2026-11-02 20:34:38] Test 0007: nse 0.9932</span></span>
-<span><span class="co">#&gt; INFO [2026-11-02 20:34:38] Wettest years 0007: nse 0.9526</span></span>
+<span><span class="co">#&gt; INFO [2026-11-02 22:06:14] Test 0007: nse 0.9926</span></span>
+<span><span class="co">#&gt; INFO [2026-11-02 22:06:14] Wettest years 0007: nse 0.9589</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>validation <span class="op">=</span> <span class="va">validation</span><span class="op">$</span><span class="va">validation_scores</span><span class="op">$</span><span class="va">nse</span>, test_window <span class="op">=</span> <span class="va">test</span><span class="op">$</span><span class="va">test_scores</span><span class="op">$</span><span class="va">nse</span>,</span>
 <span>  wettest_years <span class="op">=</span> <span class="va">test</span><span class="op">$</span><span class="va">wettest</span><span class="op">$</span><span class="va">scores</span><span class="op">$</span><span class="va">nse</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    validation   test_window wettest_years </span></span>
-<span><span class="co">#&gt;     0.9919969     0.9931954     0.9526002</span></span>
+<span><span class="co">#&gt;     0.9920390     0.9925939     0.9589164</span></span>
 <span><span class="va">peaks</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">rbind</span>, <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">test</span><span class="op">$</span><span class="va">wettest</span><span class="op">$</span><span class="va">years</span>, <span class="va">as.data.frame</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">held</span> <span class="op">&lt;-</span> <span class="va">reg</span><span class="op">$</span><span class="va">scorecard</span><span class="op">$</span><span class="va">wettest</span><span class="op">$</span><span class="va">years</span></span>
 <span><span class="va">peaks</span><span class="op">$</span><span class="va">true_peak_m3s</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">held</span>, <span class="kw">function</span><span class="op">(</span><span class="va">y</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">river</span><span class="op">$</span><span class="va">true_flow</span><span class="op">[</span><span class="va">y</span><span class="op">$</span><span class="va">first_row</span><span class="op">:</span><span class="va">y</span><span class="op">$</span><span class="va">last_row</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">peaks</span><span class="op">[</span>, <span class="op">-</span><span class="fl">1</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">peaks</span><span class="op">[</span>, <span class="op">-</span><span class="fl">1</span><span class="op">]</span>, <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">is.numeric</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">x</span>, <span class="fl">1</span><span class="op">)</span> <span class="kw">else</span> <span class="va">x</span><span class="op">)</span></span>
 <span><span class="va">peaks</span></span>
 <span><span class="co">#&gt;   water_year observed_peak_m3s simulated_peak_m3s spread_low_m3s</span></span>
-<span><span class="co">#&gt; 1    2013-14              25.6               32.1           25.9</span></span>
-<span><span class="co">#&gt; 2    2018-19              22.1               29.7           25.6</span></span>
+<span><span class="co">#&gt; 1    2013-14              22.7               28.4           19.3</span></span>
+<span><span class="co">#&gt; 2    2018-19              19.4               24.9           19.6</span></span>
 <span><span class="co">#&gt;   spread_high_m3s above_gauged true_peak_m3s</span></span>
-<span><span class="co">#&gt; 1            32.5         TRUE          32.4</span></span>
-<span><span class="co">#&gt; 2            29.8         TRUE          28.9</span></span></code></pre></div>
-<p>The scores look respectable: NSE over the wettest years is 0.95,
+<span><span class="co">#&gt; 1            28.8         TRUE          28.4</span></span>
+<span><span class="co">#&gt; 2            25.2         TRUE          24.3</span></span></code></pre></div>
+<p>The scores look respectable: NSE over the wettest years is 0.96,
 dragged down by the peaks but propped up by the many ordinary days. The
 peaks tell the real story, and here, unlike on a real river, the true
 peak is known.</p>
@@ -369,16 +378,16 @@ peak is known.</p>
 <tr class="odd">
 <td>2013-14</td>
 <td>+25%</td>
-<td>-1%</td>
-<td>21% low</td>
-<td>20% of the true peak</td>
+<td>+0%</td>
+<td>20% low</td>
+<td>33% of the true peak</td>
 </tr>
 <tr class="even">
 <td>2018-19</td>
-<td>+34%</td>
-<td>+3%</td>
-<td>24% low</td>
-<td>15% of the true peak</td>
+<td>+28%</td>
+<td>+2%</td>
+<td>20% low</td>
+<td>23% of the true peak</td>
 </tr>
 </tbody>
 </table>
@@ -386,16 +395,16 @@ peak is known.</p>
 <ul>
 <li>
 <strong>The recorded peak is not the truth.</strong> Judged against
-the recorded peaks, the candidate overestimates by 25 and 34 per cent.
-Against the true peaks it is within 3 per cent. Both peaks lie above the
-highest gauging, and the extrapolated rating recorded them 21 to 24 per
+the recorded peaks, the candidate overestimates by 25 and 28 per cent.
+Against the true peaks it is within 2 per cent. Both peaks lie above the
+highest gauging, and the extrapolated rating recorded them about 20 per
 cent low: the rating is wrong, not the model. On a real river the true
 peak is unknown, which is why the report flags such peaks rather than
 scoring them as fact. A modeller who “fixed” this apparent overestimate
 by recalibrating to the recorded peaks would make the model worse.</li>
 <li>
 <strong>The calibration cannot pin the big floods down.</strong>
-Equally good fits span 15 to 20 per cent of the true peak. The candidate
+Equally good fits span 23 to 33 per cent of the true peak. The candidate
 landing near the truth is partly luck: another fit, scoring as well on
 the record, would have missed by more.</li>
 </ul>
@@ -407,8 +416,9 @@ the record, would have missed by more.</li>
 <span>  <span class="va">cfg</span> <span class="op">&lt;-</span> <span class="va">fit</span><span class="op">$</span><span class="va">configuration</span></span>
 <span>  <span class="kw">for</span> <span class="op">(</span><span class="va">p</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">parameters</span><span class="op">)</span><span class="op">)</span> <span class="va">cfg</span> <span class="op">&lt;-</span> <span class="fu">pdmS7</span><span class="fu">:::</span><span class="fu">.path_set</span><span class="op">(</span><span class="va">cfg</span>, <span class="va">p</span>, <span class="va">parameters</span><span class="op">[[</span><span class="va">p</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
 <span>  <span class="va">m</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pdm_from_config.html">pdm_from_config</a></span><span class="op">(</span><span class="va">cfg</span><span class="op">)</span></span>
-<span>  <span class="fu"><a href="../reference/run_pdm.html">run_pdm</a></span><span class="op">(</span><span class="va">m</span>, <span class="va">forcing</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rain"</span>, <span class="st">"pet"</span><span class="op">)</span><span class="op">]</span>,</span>
-<span>          <span class="fu"><a href="../reference/initial_state_from_flow.html">initial_state_from_flow</a></span><span class="op">(</span><span class="va">m</span>, <span class="va">observed</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>, <span class="fl">0.7</span><span class="op">)</span><span class="op">)</span><span class="op">$</span><span class="va">output</span><span class="op">$</span><span class="va">q_m3s</span><span class="op">[</span><span class="va">rows</span><span class="op">]</span></span>
+<span>  <span class="co"># The same start as the calibration, and the same warning for every set, so it is hidden.</span></span>
+<span>  <span class="va">start</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/warning.html" class="external-link">suppressWarnings</a></span><span class="op">(</span><span class="fu"><a href="../reference/initial_state_from_flow.html">initial_state_from_flow</a></span><span class="op">(</span><span class="va">m</span>, <span class="va">observed</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>, <span class="fl">0.7</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/run_pdm.html">run_pdm</a></span><span class="op">(</span><span class="va">m</span>, <span class="va">forcing</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rain"</span>, <span class="st">"pet"</span><span class="op">)</span><span class="op">]</span>, <span class="va">start</span><span class="op">)</span><span class="op">$</span><span class="va">output</span><span class="op">$</span><span class="va">q_m3s</span><span class="op">[</span><span class="va">rows</span><span class="op">]</span></span>
 <span><span class="op">}</span></span>
 <span><span class="va">ensemble</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">good</span><span class="op">$</span><span class="va">sets</span>, <span class="kw">function</span><span class="op">(</span><span class="va">s</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/stats/simulate.html" class="external-link">simulate</a></span><span class="op">(</span><span class="va">s</span><span class="op">$</span><span class="va">parameters</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">candidate</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/simulate.html" class="external-link">simulate</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>

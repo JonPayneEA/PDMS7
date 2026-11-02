@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -226,7 +226,7 @@
 <td>The steady state ignores evaporation. Fine as documented.</td>
 </tr><tr class="odd"><td>26</td>
 <td><code>pdm_presets("standard")</code></td>
-<td>Found after the review, while building synthetic rivers: the preset drains its soil within a day (<code>kg</code> = 24 h, <code>st</code> = 0), so the soil stays nearly empty and actual evaporation is about 1 per cent of potential. Harmless for exercising code; unrealistic as a river. <code><a href="reference/synthetic_catchment.html">synthetic_catchment()</a></code> uses its own lowland water balance. Changing the preset would change the golden files and every test fixture, so it is left for decision.</td>
+<td>Found after the review, while building synthetic rivers: the preset drains its soil within a day (<code>kg</code> = 24 h, <code>st</code> = 0), so the soil stays nearly empty and actual evaporation is about 1 per cent of potential. Harmless for exercising code; unrealistic as a river. <code><a href="reference/synthetic_catchment.html">synthetic_catchment()</a></code> uses its own lowland water balance. Decided by the Owner: fixed in 0.6.0. The preset now has <code>cmax</code> 300 mm and <code>kg</code> 4000 h (no threshold, so every distribution stays valid): evaporation about half of potential, baseflow index near 0.6. <code><a href="reference/pdm_model.html">pdm_model()</a></code>’s defaults match. The golden files list their own parameters and are unchanged. <code><a href="reference/initial_state_from_flow.html">initial_state_from_flow()</a></code> now warns when a steady start would need more soil storage than the store holds (finding 8).</td>
 </tr></tbody></table></div>
 </div>
 <div class="section level2">

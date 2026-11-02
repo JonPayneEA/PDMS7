@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -170,13 +170,13 @@ flow of a “true” catchment with gauging noise and a three-day gap.</p>
 <span><span class="va">truth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pdm_presets.html">pdm_presets</a></span><span class="op">(</span><span class="st">"standard"</span><span class="op">)</span></span>
 <span><span class="va">truth</span><span class="op">$</span><span class="va">area_km2</span> <span class="op">&lt;-</span> <span class="fl">40</span></span>
 <span><span class="va">truth</span><span class="op">$</span><span class="va">fc</span> <span class="op">&lt;-</span> <span class="fl">1.15</span></span>
-<span><span class="va">truth</span><span class="op">$</span><span class="va">recharge</span><span class="op">$</span><span class="va">kg</span> <span class="op">&lt;-</span> <span class="fl">60</span></span>
+<span><span class="va">truth</span><span class="op">$</span><span class="va">recharge</span><span class="op">$</span><span class="va">kg</span> <span class="op">&lt;-</span> <span class="fl">1500</span></span>
 <span><span class="va">truth</span><span class="op">$</span><span class="va">surface</span><span class="op">$</span><span class="va">k1</span> <span class="op">&lt;-</span> <span class="fl">3</span></span>
 <span><span class="va">truth</span><span class="op">$</span><span class="va">surface</span><span class="op">$</span><span class="va">k2</span> <span class="op">&lt;-</span> <span class="fl">8</span></span>
 <span><span class="co"># The river is already flowing when the record starts: steady state, not empty stores.</span></span>
 <span><span class="va">truth_model</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pdm_from_config.html">pdm_from_config</a></span><span class="op">(</span><span class="va">truth</span><span class="op">)</span></span>
 <span><span class="va">observed</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_pdm.html">run_pdm</a></span><span class="op">(</span><span class="va">truth_model</span>, <span class="va">forcing</span>,</span>
-<span>                    <span class="fu"><a href="../reference/initial_state_from_flow.html">initial_state_from_flow</a></span><span class="op">(</span><span class="va">truth_model</span>, <span class="fl">1</span>, <span class="fl">0.7</span><span class="op">)</span><span class="op">)</span><span class="op">$</span><span class="va">output</span><span class="op">$</span><span class="va">q_m3s</span> <span class="op">*</span></span>
+<span>                    <span class="fu"><a href="../reference/initial_state_from_flow.html">initial_state_from_flow</a></span><span class="op">(</span><span class="va">truth_model</span>, <span class="fl">0.3</span>, <span class="fl">0.7</span><span class="op">)</span><span class="op">)</span><span class="op">$</span><span class="va">output</span><span class="op">$</span><span class="va">q_m3s</span> <span class="op">*</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n</span>, <span class="fl">0</span>, <span class="fl">0.04</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">observed</span><span class="op">[</span><span class="fl">1500</span><span class="op">:</span><span class="fl">1572</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="cn">NA</span></span></code></pre></div>
 </div>
@@ -248,29 +248,32 @@ The preview against its parent over part of the calibration window.
 </p>
 </div>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span>parent <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/unlist.html" class="external-link">unlist</a></span><span class="op">(</span><span class="fu"><a href="../reference/read_project.html">project_trials</a></span><span class="op">(</span><span class="va">project</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nse"</span>, <span class="st">"volume_error"</span>, <span class="st">"kge_alpha"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span>,</span>
-<span>            preview <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/unlist.html" class="external-link">unlist</a></span><span class="op">(</span><span class="va">preview</span><span class="op">$</span><span class="va">scores</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nse"</span>, <span class="st">"volume_error"</span>, <span class="st">"kge_alpha"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span></span>
-<span><span class="co">#&gt;           nse volume_error kge_alpha</span></span>
-<span><span class="co">#&gt; parent  0.794       -0.117     1.071</span></span>
-<span><span class="co">#&gt; preview 0.778        0.014     1.257</span></span></code></pre></div>
-<p>The volume error has gone from 12 per cent too dry to near zero, but
-the NSE has fallen slightly: the variability ratio shows the peaks are
-now too large. The trial is still an improvement, because the water
-balance is right and the peaks are a separate question. That judgement
-is the hydrologist’s, not the headline score’s, and the log records it
-with its reason:</p>
+<code class="sourceCode R"><span><span class="va">before</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/unlist.html" class="external-link">unlist</a></span><span class="op">(</span><span class="fu"><a href="../reference/read_project.html">project_trials</a></span><span class="op">(</span><span class="va">project</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nse"</span>, <span class="st">"volume_error"</span>, <span class="st">"kge_alpha"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="va">after</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/unlist.html" class="external-link">unlist</a></span><span class="op">(</span><span class="va">preview</span><span class="op">$</span><span class="va">scores</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nse"</span>, <span class="st">"volume_error"</span>, <span class="st">"kge_alpha"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span>parent <span class="op">=</span> <span class="va">before</span>, preview <span class="op">=</span> <span class="va">after</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span></span>
+<span><span class="co">#&gt;            nse volume_error kge_alpha</span></span>
+<span><span class="co">#&gt; parent  -0.331       -0.285     1.459</span></span>
+<span><span class="co">#&gt; preview -0.649       -0.141     1.915</span></span>
+<span><span class="va">dry</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">v</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/sprintf.html" class="external-link">sprintf</a></span><span class="op">(</span><span class="st">"%.0f per cent too %s"</span>, <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="fl">100</span> <span class="op">*</span> <span class="va">v</span><span class="op">)</span>, <span class="kw">if</span> <span class="op">(</span><span class="va">v</span> <span class="op">&lt;</span> <span class="fl">0</span><span class="op">)</span> <span class="st">"dry"</span> <span class="kw">else</span> <span class="st">"wet"</span><span class="op">)</span></span></code></pre></div>
+<p>The volume error has gone from 29 per cent too dry to 14 per cent too
+dry, but the NSE has fallen: the variability ratio, 1.92, shows the
+peaks are now too large. The trial is still an improvement, because the
+water balance is closer and the peaks are a separate question. That
+judgement is the hydrologist’s, not the headline score’s, and the log
+records it with its reason:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/calibration_log.html">log_trial</a></span><span class="op">(</span><span class="va">project</span>, parent <span class="op">=</span> <span class="fl">3</span>, changes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>fc <span class="op">=</span> <span class="fl">1.15</span><span class="op">)</span>, verdict <span class="op">=</span> <span class="st">"better"</span>,</span>
-<span>          reasoning <span class="op">=</span> <span class="st">"Volume 12 per cent low; raised the rainfall factor. Peaks now too big."</span><span class="op">)</span></span>
-<span><span class="fu"><a href="../reference/calibration_log.html">log_trial</a></span><span class="op">(</span><span class="va">project</span>, parent <span class="op">=</span> <span class="fl">4</span>, changes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>recharge.kg <span class="op">=</span> <span class="fl">10</span><span class="op">)</span>, verdict <span class="op">=</span> <span class="st">"worse"</span>,</span>
-<span>          reasoning <span class="op">=</span> <span class="st">"Faster recharge to move peak water into baseflow; recessions far too high."</span><span class="op">)</span></span>
-<span><span class="fu"><a href="../reference/calibration_log.html">log_trial</a></span><span class="op">(</span><span class="va">project</span>, parent <span class="op">=</span> <span class="fl">4</span>, changes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>recharge.kg <span class="op">=</span> <span class="fl">60</span><span class="op">)</span>, verdict <span class="op">=</span> <span class="st">"better"</span>,</span>
-<span>          reasoning <span class="op">=</span> <span class="st">"Slower recharge instead; peaks and recessions both match."</span><span class="op">)</span></span>
+<span>          reasoning <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"Volume "</span>, <span class="fu">dry</span><span class="op">(</span><span class="va">before</span><span class="op">[[</span><span class="st">"volume_error"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span>,</span>
+<span>                             <span class="st">"; raised the rainfall factor. Peaks now too big."</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/calibration_log.html">log_trial</a></span><span class="op">(</span><span class="va">project</span>, parent <span class="op">=</span> <span class="fl">4</span>, changes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>recharge.kg <span class="op">=</span> <span class="fl">500</span><span class="op">)</span>, verdict <span class="op">=</span> <span class="st">"worse"</span>,</span>
+<span>          reasoning <span class="op">=</span> <span class="st">"Much faster recharge, to feed baseflow; far too much water now."</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/calibration_log.html">log_trial</a></span><span class="op">(</span><span class="va">project</span>, parent <span class="op">=</span> <span class="fl">4</span>, changes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>recharge.kg <span class="op">=</span> <span class="fl">1500</span><span class="op">)</span>, verdict <span class="op">=</span> <span class="st">"better"</span>,</span>
+<span>          reasoning <span class="op">=</span> <span class="st">"A smaller change instead; volume and recessions both match."</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/calibration_log.html">log_trial</a></span><span class="op">(</span><span class="va">project</span>, parent <span class="op">=</span> <span class="fl">6</span>, changes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>surface.k1 <span class="op">=</span> <span class="fl">3</span>, surface.k2 <span class="op">=</span> <span class="fl">8</span><span class="op">)</span>,</span>
 <span>          verdict <span class="op">=</span> <span class="st">"better"</span>, reasoning <span class="op">=</span> <span class="st">"Peaks slightly early; slowed the surface cascade."</span><span class="op">)</span></span></code></pre></div>
-<p>Trial 0005 was a dead end; trial 0006 went back to 0004 and tried the
-other way. The log keeps both, because a defensible calibration includes
-what was tried and rejected.</p>
+<p>Trial 0005 was a dead end; trial 0006 went back to 0004 and tried a
+smaller change. The log keeps both, because a defensible calibration
+includes what was tried and rejected.</p>
 <p>A short automatic calibration can polish the result. It is logged
 like a trial, with its bounds, seed and the table of every start.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
@@ -292,18 +295,18 @@ like a trial, with its bounds, seed and the table of every start.</p>
 <span><span class="co">#&gt;    &lt;char&gt;             &lt;char&gt; &lt;char&gt;                               &lt;char&gt;</span></span>
 <span><span class="co">#&gt; 1:   0003 structure_selected   &lt;NA&gt;                                     </span></span>
 <span><span class="co">#&gt; 2:   0004              trial   0003                         fc 1 -&gt; 1.15</span></span>
-<span><span class="co">#&gt; 3:   0005              trial   0004                 recharge.kg 24 -&gt; 10</span></span>
-<span><span class="co">#&gt; 4:   0006              trial   0004                 recharge.kg 24 -&gt; 60</span></span>
+<span><span class="co">#&gt; 3:   0005              trial   0004              recharge.kg 4000 -&gt; 500</span></span>
+<span><span class="co">#&gt; 4:   0006              trial   0004             recharge.kg 4000 -&gt; 1500</span></span>
 <span><span class="co">#&gt; 5:   0007              trial   0006 surface.k1 2 -&gt; 3; surface.k2 4 -&gt; 8</span></span>
 <span><span class="co">#&gt; 6:   0008   auto_calibration   0007                                     </span></span>
-<span><span class="co">#&gt;    verdict   nse volume_error</span></span>
-<span><span class="co">#&gt;     &lt;char&gt; &lt;num&gt;        &lt;num&gt;</span></span>
-<span><span class="co">#&gt; 1:    &lt;NA&gt; 0.794       -0.117</span></span>
-<span><span class="co">#&gt; 2:  better 0.778        0.014</span></span>
-<span><span class="co">#&gt; 3:   worse 0.194        0.021</span></span>
-<span><span class="co">#&gt; 4:  better 0.982        0.001</span></span>
-<span><span class="co">#&gt; 5:  better 0.987        0.001</span></span>
-<span><span class="co">#&gt; 6:    &lt;NA&gt; 0.987        0.001</span></span>
+<span><span class="co">#&gt;    verdict    nse volume_error</span></span>
+<span><span class="co">#&gt;     &lt;char&gt;  &lt;num&gt;        &lt;num&gt;</span></span>
+<span><span class="co">#&gt; 1:    &lt;NA&gt; -0.331       -0.285</span></span>
+<span><span class="co">#&gt; 2:  better -0.649       -0.141</span></span>
+<span><span class="co">#&gt; 3:   worse -0.217        0.359</span></span>
+<span><span class="co">#&gt; 4:  better  0.677        0.001</span></span>
+<span><span class="co">#&gt; 5:  better  0.985       -0.001</span></span>
+<span><span class="co">#&gt; 6:    &lt;NA&gt;  0.985       -0.001</span></span>
 <span><span class="va">x</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">trials</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">colour</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="va">trials</span><span class="op">$</span><span class="va">type</span> <span class="op">==</span> <span class="st">"auto_calibration"</span>, <span class="va">pal</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
 <span>                 <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">trials</span><span class="op">$</span><span class="va">verdict</span><span class="op">)</span>, <span class="va">pal</span><span class="op">[</span><span class="fl">5</span><span class="op">]</span>,</span>
@@ -334,10 +337,10 @@ once.</p>
 <span>                 validation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/unlist.html" class="external-link">unlist</a></span><span class="op">(</span><span class="va">val</span><span class="op">$</span><span class="va">validation_scores</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nse"</span>, <span class="st">"kge"</span>, <span class="st">"volume_error"</span>,</span>
 <span>                                                               <span class="st">"fdc_high"</span><span class="op">)</span>, <span class="op">]</span>, <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt;              calibration validation</span></span>
-<span><span class="co">#&gt; nse                0.987      0.971</span></span>
-<span><span class="co">#&gt; kge                0.992      0.974</span></span>
-<span><span class="co">#&gt; volume_error       0.001      0.000</span></span>
-<span><span class="co">#&gt; fdc_high          -0.016     -0.023</span></span></code></pre></div>
+<span><span class="co">#&gt; nse                0.985      0.972</span></span>
+<span><span class="co">#&gt; kge                0.988      0.970</span></span>
+<span><span class="co">#&gt; volume_error      -0.001     -0.001</span></span>
+<span><span class="co">#&gt; fdc_high          -0.009     -0.019</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="warning-thresholds">Warning thresholds<a class="anchor" aria-label="anchor" href="#warning-thresholds"></a>
@@ -359,28 +362,29 @@ one event.</p>
 <span><span class="op">}</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span><span class="fu">pick</span><span class="op">(</span><span class="va">val</span><span class="op">$</span><span class="va">calibration_scores</span>, <span class="st">"calibration"</span><span class="op">)</span>, <span class="fu">pick</span><span class="op">(</span><span class="va">val</span><span class="op">$</span><span class="va">validation_scores</span>, <span class="st">"validation"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;       threshold      window observed_events hits misses false_alarms  pod far</span></span>
-<span><span class="co">#&gt; 1   Flood Alert calibration               4    3      1            0 0.75 0.0</span></span>
-<span><span class="co">#&gt; 2 Flood Warning calibration               5    4      1            1 0.80 0.2</span></span>
-<span><span class="co">#&gt; 3   Flood Alert  validation               3    1      2            1 0.33 0.5</span></span>
-<span><span class="co">#&gt; 4 Flood Warning  validation               1    0      1            0 0.00  NA</span></span>
+<span><span class="co">#&gt; 1   Flood Alert calibration              12    8      4            0 0.67   0</span></span>
+<span><span class="co">#&gt; 2 Flood Warning calibration               4    4      0            0 1.00   0</span></span>
+<span><span class="co">#&gt; 3   Flood Alert  validation               4    4      0            0 1.00   0</span></span>
+<span><span class="co">#&gt; 4 Flood Warning  validation               3    2      1            0 0.67   0</span></span>
 <span><span class="co">#&gt;    csi crossing_error_h csi_step</span></span>
-<span><span class="co">#&gt; 1 0.75             0.67     0.96</span></span>
-<span><span class="co">#&gt; 2 0.67             1.75     0.92</span></span>
-<span><span class="co">#&gt; 3 0.25             0.00     0.76</span></span>
-<span><span class="co">#&gt; 4 0.00               NA     0.00</span></span></code></pre></div>
-<p>Two lessons. First, a high NSE does not guarantee warning skill: the
-candidate scores an NSE near 0.97 in validation, yet catches only one of
-the three alert events, because January’s peaks barely cross the
-threshold and small errors decide whether they do. Second, event and
-step scores answer different questions. Step scores weight each event by
-its length, so a long flood simulated well dominates them and a short
-flood missed barely registers; here <code>csi_step</code> is the kinder
-score. Event scores count each flood once, which is how a warning
-service is judged, and they count a crossing an hour late as a hit,
-where steps count a miss and a false alarm. Note how few events there
-are: with one to five per window, one event moves POD by a fifth or
-more, so read these scores alongside the counts. The report draws all
-thresholds and both windows on one performance diagram.</p>
+<span><span class="co">#&gt; 1 0.67            -0.12     0.82</span></span>
+<span><span class="co">#&gt; 2 1.00             0.00     0.78</span></span>
+<span><span class="co">#&gt; 3 1.00             0.00     0.92</span></span>
+<span><span class="co">#&gt; 4 0.67             0.50     0.69</span></span></code></pre></div>
+<p>Two lessons. First, a high NSE does not guarantee warning skill: in
+the calibration window the candidate scores an NSE of 0.99, yet misses 4
+of the 12 Flood Alert events, because peaks near a threshold cross it or
+not on small errors. Second, event and step scores answer different
+questions. Step scores weight each event by its length, so a long flood
+simulated well dominates them and a short flood missed barely registers.
+Event scores count each flood once, which is how a warning service is
+judged, and they count a crossing an hour late as a hit, where steps
+count a miss and a false alarm. Here <code>csi_step</code> is the kinder
+score in 2 rows and the harsher in 2, so neither is simply more lenient.
+Note how few events there are: with 3 to 12 per window, one event moves
+POD by a twelfth or more, so read these scores alongside the counts. The
+report draws all thresholds and both windows on one performance
+diagram.</p>
 <p>A project for a warning service can rank runs by a threshold score,
 with <code>headline = "csi:Flood Warning"</code> at registration.
 Automatic calibration can reward threshold skill too. Event counts
@@ -443,7 +447,7 @@ event:</p>
 <div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">file</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">project</span>, <span class="st">"entries"</span>, <span class="st">"0005-trial.yml"</span><span class="op">)</span></span>
 <span><span class="va">original</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="va">file</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/writeLines.html" class="external-link">writeLines</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/grep.html" class="external-link">sub</a></span><span class="op">(</span><span class="st">"recessions far too high"</span>, <span class="st">"recessions slightly high"</span>, <span class="va">original</span><span class="op">)</span>, <span class="va">file</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/writeLines.html" class="external-link">writeLines</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/grep.html" class="external-link">sub</a></span><span class="op">(</span><span class="st">"far too much water"</span>, <span class="st">"a little too much water"</span>, <span class="va">original</span><span class="op">)</span>, <span class="va">file</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/verify_project.html">verify_project</a></span><span class="op">(</span><span class="va">project</span><span class="op">)</span><span class="op">[</span><span class="va">ok</span> <span class="op">==</span> <span class="cn">FALSE</span><span class="op">]</span></span>
 <span><span class="co">#&gt;     check  entry     ok                                      detail</span></span>
 <span><span class="co">#&gt;    &lt;char&gt; &lt;char&gt; &lt;lgcl&gt;                                      &lt;char&gt;</span></span>
@@ -484,8 +488,8 @@ answers it. It is off by default.</p>
 <span>                   <span class="va">project</span>, <span class="va">sign_off</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="co">#&gt;                          tag fingerprint  rows status   approval</span></span>
 <span><span class="co">#&gt;                       &lt;char&gt;      &lt;char&gt; &lt;int&gt; &lt;char&gt;     &lt;char&gt;</span></span>
-<span><span class="co">#&gt; 1: forecast 2024-02-01 06:00    ba4afeec   181     ok   approved</span></span>
-<span><span class="co">#&gt; 2: forecast 2024-02-01 06:00    ec8dc73e   181     ok unapproved</span></span>
+<span><span class="co">#&gt; 1: forecast 2024-02-01 06:00    1b757eb5   181     ok   approved</span></span>
+<span><span class="co">#&gt; 2: forecast 2024-02-01 06:00    5d6cb444   181     ok unapproved</span></span>
 <span><span class="co">#&gt;              project sign_off</span></span>
 <span><span class="co">#&gt;               &lt;char&gt;   &lt;char&gt;</span></span>
 <span><span class="co">#&gt; 1: brook-calibration     0012</span></span>

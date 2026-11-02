@@ -54,7 +54,8 @@ A validated FlodePdmState with step 0.
   is the soil storage at which the demand formula gives qb. With split
   recharge the soil store does not drain to groundwater, so the steady
   state does not determine it and `soil_fraction` of capacity is used.
-  The soil store is capped at capacity;
+  The soil store is capped at capacity, with a warning: the run then
+  starts out of balance;
 
 - the outlet delay queues hold the water already in transit at that
   flow.
@@ -83,5 +84,5 @@ Moore (2007), doi:10.5194/hess-11-483-2007.
 model <- pdm_model(area_km2 = 44)
 state <- initial_state_from_flow(model, observed_m3s = 0.8, baseflow_fraction = 0.6)
 run_pdm(model, data.frame(rain = c(0, 0), pet = c(0, 0)), state)$output$q_m3s
-#> [1] 0.7944496 0.7681147
+#> [1] 0.7944496 0.7682738
 ```

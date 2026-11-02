@@ -58,8 +58,8 @@ compiled core, measured as this article was built.
 ``` r
 round(timings, 1)
 #>         R   C
-#> PDM  1870 3.1
-#> PACK  375 1.2
+#> PDM  2028 3.6
+#> PACK  306 0.9
 ```
 
 The exact figures depend on the machine, but the ratio is in the
@@ -179,7 +179,8 @@ It prints the same twelve flows as the equivalent run in R:
 m <- pdm_model(area_km2 = 50)
 storm <- data.frame(rain = c(rep(0, 6), rep(4, 6), rep(0, 36)), pet = 0.1)
 round(run_pdm(m, storm, initial_state_from_flow(m, 0.8, 0.7))$output$q_m3s[1:12], 3)
-#>  [1] 0.796 0.776 0.747 0.717 0.688 0.662 0.647 0.691 0.839 1.096 1.460 1.929
+#>  [1]  0.796  0.776  0.748  0.718  0.691  0.666  0.955  2.409  4.538  6.846
+#> [11]  9.084 11.141
 ```
 
 Every function returns 0 on success, 1 for invalid input and 2 for a

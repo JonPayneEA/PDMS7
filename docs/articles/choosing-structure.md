@@ -32,7 +32,7 @@ truth$area_km2 <- 60
 truth$fc <- 1.1
 truth$distribution$meanlog <- 4.8
 truth$distribution$sdlog <- 0.5
-truth$recharge$kg <- 120
+truth$recharge$kg <- 2000
 truth$surface$k1 <- 3
 truth$surface$k2 <- 10
 # The river is already flowing when the record starts: steady state, not empty stores.
@@ -118,29 +118,29 @@ elapsed <- system.time(
                                 reasoning = "Which structure suits this catchment?")
 )[["elapsed"]]
 round(elapsed)
-#> [1] 48
+#> [1] 49
 ranking[, .(rank, structure, parameters, calibration = round(calibration, 4),
             validation = round(validation, 4), change = round(change, 4), starts_agree)]
 #>     rank               structure parameters calibration validation  change
 #>    <int>                  <char>      <int>       <num>      <num>   <num>
-#> 1:     1              triangular          6      0.9903     0.9335 -0.0568
-#> 2:     2                standard          7      0.9903     0.9333 -0.0570
-#> 3:     3               lognormal          7      0.9902     0.9329 -0.0573
-#> 4:     4             rectangular          6      0.9902     0.9329 -0.0574
-#> 5:     5 exponential_groundwater          8      0.9900     0.9328 -0.0572
-#> 6:     6             exponential          6      0.9902     0.9325 -0.0577
-#> 7:     7                  demand          9      0.9825     0.8811 -0.1014
-#> 8:     8                   split          7      0.9693     0.8290 -0.1404
+#> 1:     1               lognormal          7      0.9962     0.9952 -0.0010
+#> 2:     2                   split          7      0.9861     0.9943  0.0082
+#> 3:     3                standard          7      0.9958     0.9895 -0.0062
+#> 4:     4 exponential_groundwater          8      0.9957     0.9879 -0.0078
+#> 5:     5             rectangular          6      0.9950     0.9844 -0.0107
+#> 6:     6             exponential          6      0.9916     0.9795 -0.0121
+#> 7:     7                  demand          9      0.9453     0.9243 -0.0210
+#> 8:     8              triangular          6      0.9198     0.8929 -0.0270
 #>    starts_agree
 #>          <lgcl>
-#> 1:         TRUE
+#> 1:        FALSE
 #> 2:         TRUE
-#> 3:        FALSE
-#> 4:         TRUE
-#> 5:         TRUE
+#> 3:         TRUE
+#> 4:        FALSE
+#> 5:        FALSE
 #> 6:        FALSE
 #> 7:        FALSE
-#> 8:         TRUE
+#> 8:        FALSE
 ```
 
 ``` r
@@ -163,16 +163,15 @@ on validation at the top.
 
 ## Reading the ranking
 
-The true structure, `lognormal`, ranks 3rd of 8, 0.0006 NSE behind the
-top. Either way it would be wrong to conclude much from that: 6
-structures lie within 0.005 NSE of it on validation, a spread of 0.001.
-Over six weeks of autumn data the soil stores never fill or empty far
-enough to tell their shapes apart. A difference that small is a tie, not
-a result.
+The true structure, `lognormal`, ranks first. It would be wrong to
+conclude much from that alone: 2 structures lie within 0.005 NSE of the
+top on validation, a spread of 9.2^{-4}. A difference that small is a
+tie, not a result; another seed or another few weeks of data could
+reorder them.
 
-The recharge rule is another matter. `demand` and `split` recharge lose
-clearly, on both windows: they move water to groundwater in ways this
-catchment does not. That is a conclusion the data do support.
+At the other end, `demand` and `triangular` trail the top by more than
+0.05 NSE on validation. A gap that size is a conclusion the data do
+support: on this catchment, those structures should not be chosen.
 
 Three things to read in any comparison:
 
@@ -183,8 +182,9 @@ Three things to read in any comparison:
   in calibration and loses in validation is fitting noise with its extra
   parameters.
 - **Whether the starts agreed.** Where they did not, as for lognormal,
-  exponential, demand, the structure may have been under-calibrated;
-  give it more starts or iterations before ruling it out.
+  exponential_groundwater, rectangular, exponential, demand, triangular,
+  the structure may have been under-calibrated; give it more starts or
+  iterations before ruling it out.
 
 Faced with a tie, prefer the simplest structure, the one with fewest
 parameters, among those within a stated margin of the best. Stating the
@@ -195,9 +195,9 @@ margin <- 0.005
 tied <- ranking[validation >= ranking$validation[1] - margin]
 choice <- tied[order(parameters, rank)][1]
 choice[, .(structure, parameters, validation = round(validation, 4), calibration_entry)]
-#>     structure parameters validation calibration_entry
-#>        <char>      <int>      <num>            <char>
-#> 1: triangular          6     0.9335              0008
+#>    structure parameters validation calibration_entry
+#>       <char>      <int>      <num>            <char>
+#> 1: lognormal          7     0.9952              0012
 ```
 
 ## Validation and the final test
@@ -215,7 +215,7 @@ final <- test_candidate(project, "Final check on held-back data.")
 round(c(calibration = final$calibration_scores$nse,
         validation = final$validation_scores$nse, test = final$test_scores$nse), 4)
 #> calibration  validation        test 
-#>      0.9903      0.9335      0.9197
+#>      0.9962      0.9952      0.9939
 ```
 
 The test score is the honest estimate of how the chosen model will do on

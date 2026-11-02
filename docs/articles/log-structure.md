@@ -77,17 +77,17 @@ cat(readLines(file.path(project, "entries", "0004-trial.yml")), sep = "\n")
 #> format: 1
 #> id: '0004'
 #> type: trial
-#> timestamp: '2026-11-02T20:34:57Z'
+#> timestamp: '2026-11-02T22:06:35Z'
 #> author:
 #>   name: Ann Hydrologist
 #>   role: custodian
 #>   login: root
 #> software:
-#>   pdmS7: 0.5.0
+#>   pdmS7: 0.6.0
 #>   r: 4.3.3
 #>   platform: x86_64-pc-linux-gnu
 #>   engine: c
-#> previous: de927468245d4184ea35634be32c3174
+#> previous: 0c9ad0d300d3fa5ea071d6b6bc18db05
 #> registration: '0002'
 #> parent: '0003'
 #> changes:
@@ -98,11 +98,11 @@ cat(readLines(file.path(project, "entries", "0004-trial.yml")), sep = "\n")
 #>   distribution:
 #>     type: pareto
 #>     cmin: 0.0
-#>     cmax: 140.0
+#>     cmax: 300.0
 #>     b: 0.4
 #>   recharge:
 #>     type: standard
-#>     kg: 24.0
+#>     kg: 4000.0
 #>     bg: 1.0
 #>     st: 0.0
 #>   surface:
@@ -120,21 +120,21 @@ cat(readLines(file.path(project, "entries", "0004-trial.yml")), sep = "\n")
 #>   area_km2: 30.0
 #>   dt: 1.0
 #> scores:
-#>   nse: 0.9999999797071072
-#>   log_nse: 0.9999998850490445
-#>   kge: 0.9999296235156127
-#>   kge_r: 0.9999999939365506
-#>   kge_alpha: 1.0000605934879074
-#>   kge_beta: 0.99996420504587
-#>   rmse: 7.957360150913943e-05
-#>   log_rmse: 0.00019376348277363534
-#>   volume_error: -3.579495412997513e-05
-#>   abs_volume_error: 3.579495412997513e-05
-#>   peak_error: -2.2035676962017803e-06
-#>   fdc_high: -2.2329209362584403e-06
-#>   fdc_mid: 3.9804752836075144e-05
-#>   fdc_low: -0.0012673756384583817
-#> output_md5: c3470925a873de4a32346c96c6c5746c
+#>   nse: 0.9998721996674008
+#>   log_nse: 0.9999246780295005
+#>   kge: 0.988416684380552
+#>   kge_r: 0.9999984309198103
+#>   kge_alpha: 0.9906915035920552
+#>   kge_beta: 0.9931061554339385
+#>   rmse: 0.01139241531289811
+#>   log_rmse: 0.005788976240009147
+#>   volume_error: -0.006893844566061347
+#>   abs_volume_error: 0.006893844566061347
+#>   peak_error: -0.009671840374430363
+#>   fdc_high: -0.009088628345974932
+#>   fdc_mid: -0.004126685552038721
+#>   fdc_low: 0.013948403283603906
+#> output_md5: 581b78a70b383762206c78df2d4bc17a
 #> verdict: better
 #> reasoning: Volume was 10 per cent low.
 ```
@@ -302,8 +302,8 @@ names(runs)
 runs[, .(tag, fingerprint = substr(fingerprint, 1, 8), rows, status, approval)]
 #>        tag fingerprint  rows status   approval
 #>     <char>      <char> <int> <char>     <char>
-#> 1: example    a42af148    48     ok unapproved
-#> 2: example    4df8c99c    48     ok unapproved
+#> 1: example    c22081b9    48     ok unapproved
+#> 2: example    24485fa7    48     ok unapproved
 ```
 
 | Column                                         | Content                                                                                                                                       |

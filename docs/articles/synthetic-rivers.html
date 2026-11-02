@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -296,7 +296,7 @@ flow through a simulated gauge.</p>
 <span><span class="va">river</span></span>
 <span><span class="co">#&gt; Synthetic catchment: 3650 steps of 24 h from 2010-10-01T00:00:00Z </span></span>
 <span><span class="co">#&gt;   Rain: nsrp - 777 mm a year; 1 added storm </span></span>
-<span><span class="co">#&gt;   True flow: mean 0.837 m3/s, peak 37.6 m3/s</span></span>
+<span><span class="co">#&gt;   True flow: mean 0.906 m3/s, peak 34.7 m3/s</span></span>
 <span><span class="co">#&gt;   Gauge error: sd 0.05 in logs, memory 72 h</span></span>
 <span><span class="co">#&gt;   Rating: exact to 10 m3/s, then 15 per cent low at twice that; 4 steps above</span></span></code></pre></div>
 <table class="table">
@@ -349,7 +349,7 @@ extrapolated rating often is</td>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/legend.html" class="external-link">legend</a></span><span class="op">(</span><span class="st">"topright"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"true flow"</span>, <span class="st">"recorded"</span>, <span class="st">"highest gauging"</span><span class="op">)</span>, col <span class="op">=</span> <span class="va">pal</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">1</span>, <span class="fl">7</span><span class="op">)</span><span class="op">]</span>,</span>
 <span>       lty <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="cn">NA</span>, <span class="fl">2</span><span class="op">)</span>, pch <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="cn">NA</span>, <span class="fl">16</span>, <span class="cn">NA</span><span class="op">)</span>, bty <span class="op">=</span> <span class="st">"n"</span><span class="op">)</span></span></code></pre></div>
 <p><img src="synthetic-rivers_files/figure-html/river-plot-1.png" class="r-plt" alt="" width="880"></p>
-<p>At the storm’s peak the gauge records 30 m3/s against a true 38: 19
+<p>At the storm’s peak the gauge records 28 m3/s against a true 35: 18
 per cent low, mostly from the rating.</p>
 </div>
 <div class="section level2">
@@ -376,13 +376,13 @@ rest:</p>
 <span><span class="op">)</span></span>
 <span><span class="va">compare</span></span>
 <span><span class="co">#&gt;                     truth calibrated</span></span>
-<span><span class="co">#&gt; fc                    1.0   9.35e-01</span></span>
-<span><span class="co">#&gt; distribution.cmax   300.0   3.05e+02</span></span>
-<span><span class="co">#&gt; distribution.b        0.4   8.47e-01</span></span>
-<span><span class="co">#&gt; recharge.kg        4000.0   4.18e+03</span></span>
-<span><span class="co">#&gt; surface.k1           12.0   7.00e+00</span></span>
-<span><span class="co">#&gt; surface.k2           12.0   1.88e+01</span></span>
-<span><span class="co">#&gt; groundwater.kb    10000.0   1.49e+05</span></span>
+<span><span class="co">#&gt; fc                    1.0   9.66e-01</span></span>
+<span><span class="co">#&gt; distribution.cmax   300.0   3.29e+02</span></span>
+<span><span class="co">#&gt; distribution.b        0.4   6.30e-01</span></span>
+<span><span class="co">#&gt; recharge.kg        4000.0   3.61e+03</span></span>
+<span><span class="co">#&gt; surface.k1           12.0   7.28e+00</span></span>
+<span><span class="co">#&gt; surface.k2           12.0   1.83e+01</span></span>
+<span><span class="co">#&gt; groundwater.kb    10000.0   1.44e+05</span></span>
 <span><span class="va">model</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pdm_from_config.html">pdm_from_config</a></span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="va">config</span><span class="op">)</span></span>
 <span><span class="va">sim</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_pdm.html">run_pdm</a></span><span class="op">(</span><span class="va">model</span>, <span class="va">f</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rain"</span>, <span class="st">"pet"</span><span class="op">)</span><span class="op">]</span>,</span>
 <span>               <span class="fu"><a href="../reference/initial_state_from_flow.html">initial_state_from_flow</a></span><span class="op">(</span><span class="va">model</span>, <span class="va">river</span><span class="op">$</span><span class="va">observed</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>, <span class="fl">0.7</span><span class="op">)</span><span class="op">)</span><span class="op">$</span><span class="va">output</span><span class="op">$</span><span class="va">q_m3s</span></span>
@@ -390,10 +390,10 @@ rest:</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>nse_against_recorded <span class="op">=</span> <span class="fu"><a href="../reference/pdm_scorecard.html">pdm_scorecard</a></span><span class="op">(</span><span class="va">sim</span><span class="op">[</span><span class="va">later</span><span class="op">]</span>, <span class="va">river</span><span class="op">$</span><span class="va">observed</span><span class="op">[</span><span class="va">later</span><span class="op">]</span><span class="op">)</span><span class="op">[[</span><span class="st">"nse"</span><span class="op">]</span><span class="op">]</span>,</span>
 <span>  nse_against_truth <span class="op">=</span> <span class="fu"><a href="../reference/pdm_scorecard.html">pdm_scorecard</a></span><span class="op">(</span><span class="va">sim</span><span class="op">[</span><span class="va">later</span><span class="op">]</span>, <span class="va">river</span><span class="op">$</span><span class="va">true_flow</span><span class="op">[</span><span class="va">later</span><span class="op">]</span><span class="op">)</span><span class="op">[[</span><span class="st">"nse"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
 <span><span class="co">#&gt; nse_against_recorded    nse_against_truth </span></span>
-<span><span class="co">#&gt;            0.9871202            0.9904919</span></span></code></pre></div>
+<span><span class="co">#&gt;            0.9900075            0.9965656</span></span></code></pre></div>
 <p>The calibrated parameters are not the true ones: <code>kb</code> is
-15 times too large, and the two surface stores, both 12 hours in truth,
-come out at 7 and 19 hours. Yet the fit scores 0.99 against the truth.
+14 times too large, and the two surface stores, both 12 hours in truth,
+come out at 7 and 18 hours. Yet the fit scores 1.00 against the truth.
 Many parameter sets fit a record almost equally well; <a href="extrapolation.html">Larger floods</a> shows where that
 matters.</p>
 <p>Only on a synthetic river can the last line be computed: the score

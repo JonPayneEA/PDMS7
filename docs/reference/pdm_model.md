@@ -6,8 +6,8 @@ Component of the configurable Moore (2007) rainfall-runoff framework.
 
 ``` r
 pdm_model(
-  distribution = FlodeParetoCapacity(cmin = 0, cmax = 140, b = 0.4),
-  recharge = FlodeStandardRecharge(kg = 24, bg = 1, st = 0),
+  distribution = FlodeParetoCapacity(cmin = 0, cmax = 300, b = 0.4),
+  recharge = FlodeStandardRecharge(kg = 4000, bg = 1, st = 0),
   surface = FlodeCascadeRouting(k1 = 2, k2 = 4),
   groundwater = cubic_routing(),
   be = 1,
@@ -86,10 +86,10 @@ pdm_model(area_km2 = 44, dt = 0.25)
 #> <pdmS7::FlodePdmModel>
 #>  @ distribution: <pdmS7::FlodeParetoCapacity>
 #>  .. @ cmin: num 0
-#>  .. @ cmax: num 140
+#>  .. @ cmax: num 300
 #>  .. @ b   : num 0.4
 #>  @ recharge    : <pdmS7::FlodeStandardRecharge>
-#>  .. @ kg: num 24
+#>  .. @ kg: num 4000
 #>  .. @ bg: num 1
 #>  .. @ st: num 0
 #>  @ surface     : <pdmS7::FlodeCascadeRouting>

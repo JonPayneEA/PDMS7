@@ -58,14 +58,14 @@ hc <- pdm_hindcast(pdm_model(area_km2 = 40), forcing, observed, horizon_h = 12)
 #> The EA 2024 AR default is defined for 15-minute steps; this model uses 1 h steps
 scores <- hindcast_scores(hc, thresholds = c(high = 3))
 scores[scores$method == "ea_2024" & scores$lead_h %in% c(1, 6, 12), ]
-#>     method lead_h lead_ratio     n       nse        rmse         mae
-#>     <char>  <num>      <num> <int>     <num>       <num>       <num>
-#> 1: ea_2024      1 0.07376612   108 0.9999944 0.003779765 0.001757062
-#> 2: ea_2024      6 0.44259672   107 0.9981930 0.067465810 0.029213132
-#> 3: ea_2024     12 0.88519343   106 0.9940245 0.122290941 0.064658541
-#>            bias     skill  pod:high   far:high  csi:high
-#>           <num>     <num>     <num>      <num>     <num>
-#> 1: 0.0010178101 0.9969904 1.0000000 0.00000000 1.0000000
-#> 2: 0.0009089592 0.9789638 0.9615385 0.03846154 0.9259259
-#> 3: 0.0015758778 0.9772074 0.9200000 0.04166667 0.8846154
+#>     method lead_h lead_ratio     n        nse      rmse        mae         bias
+#>     <char>  <num>      <num> <int>      <num>     <num>      <num>        <num>
+#> 1: ea_2024      1  0.3382448   108  0.9885051 0.1311254 0.03928045  0.009661769
+#> 2: ea_2024      6  2.0294690   107  0.2368216 1.1518652 0.42079175 -0.057543883
+#> 3: ea_2024     12  4.0589380   106 -0.1514985 1.4189842 0.61331633 -0.099589356
+#>        skill pod:high far:high  csi:high
+#>        <num>    <num>    <num>     <num>
+#> 1: 0.6518021      1.0      0.0 1.0000000
+#> 2: 0.4415588      0.2      0.8 0.1111111
+#> 3: 0.3838577      0.0      1.0 0.0000000
 ```

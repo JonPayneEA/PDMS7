@@ -22,7 +22,9 @@ calibrate_staged(
   control = list(maxit = 200),
   method = c("lbfgsb", "nelder_mead"),
   soil_fraction = 0.5,
-  log_offset = 0.01
+  log_offset = 0.01,
+  start = c("flow", "soil"),
+  baseflow_fraction = 0.7
 )
 
 log_staged_calibration(
@@ -44,10 +46,12 @@ log_staged_calibration(
 
   A configuration list, the starting point.
 
-- forcing, observed, warmup, soil_fraction, log_offset:
+- forcing, observed, warmup, soil_fraction, log_offset, start,
+  baseflow_fraction:
 
   Passed to
-  [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md).
+  [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md):
+  how the data are scored and how every trial starts.
 
 - stages:
 
@@ -115,7 +119,7 @@ fit <- calibrate_staged(config, forcing, observed, warmup = 48,
                         control = list(maxit = 20))
 round(fit$parameters, 2)
 #>                fc distribution.cmax    distribution.b       recharge.kg 
-#>              1.28            155.38              2.00             26.01 
+#>              0.90            148.10              1.17           1004.17 
 #>    groundwater.kb        surface.k1        surface.k2 
-#>            525.13             17.45             29.00 
+#>            344.98              3.87              3.87 
 ```

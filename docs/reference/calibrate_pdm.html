@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -294,7 +294,7 @@ in the unit search box as its <code>unit</code> attribute.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $config$distribution$cmax</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 140</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 300</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $config$distribution$b</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.4</span>
@@ -305,7 +305,7 @@ in the unit search box as its <code>unit</code> attribute.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "standard"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $config$recharge$kg</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 24</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 4000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $config$recharge$bg</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1</span>
@@ -360,10 +360,10 @@ in the unit search box as its <code>unit</code> attribute.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pdmS7::FlodePdmModel&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  @ distribution: &lt;pdmS7::FlodeParetoCapacity&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  .. @ cmin: num 0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  .. @ cmax: num 140</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  .. @ cmax: num 300</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  .. @ b   : num 0.4</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  @ recharge    : &lt;pdmS7::FlodeStandardRecharge&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  .. @ kg: num 24</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  .. @ kg: num 4000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  .. @ bg: num 1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  .. @ st: num 0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  @ surface     : &lt;pdmS7::FlodeCascadeRouting&gt;</span>
@@ -388,7 +388,7 @@ in the unit search box as its <code>unit</code> attribute.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1.2 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $objective</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.03046412</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.03924323</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $objective_name</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "rmse"</span>
@@ -407,11 +407,11 @@ in the unit search box as its <code>unit</code> attribute.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $optim$value</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.03046412</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.03924323</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $optim$counts</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> function gradient </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>        7        7 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>        8        8 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $optim$convergence</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0</span>
@@ -423,15 +423,15 @@ in the unit search box as its <code>unit</code> attribute.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $start_results</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    start  objective convergence evaluations   best    fc</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    &lt;int&gt;      &lt;num&gt;       &lt;int&gt;       &lt;int&gt; &lt;lgcl&gt; &lt;num&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1:     1 0.03046412           0          21   TRUE   1.2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1:     1 0.03924323           0          24   TRUE   1.2</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span><span class="fu">calibrate_pdm</span><span class="op">(</span><span class="va">config</span>, <span class="va">f</span>, <span class="va">q</span>, lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>fc <span class="op">=</span> <span class="fl">0.8</span><span class="op">)</span>, upper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>fc <span class="op">=</span> <span class="fl">1.2</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>  control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>maxit <span class="op">=</span> <span class="fl">2</span><span class="op">)</span>, starts <span class="op">=</span> <span class="fl">3L</span>, seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">$</span><span class="va">start_results</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    start  objective convergence evaluations   best    fc</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    &lt;int&gt;      &lt;num&gt;       &lt;int&gt;       &lt;int&gt; &lt;lgcl&gt; &lt;num&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1:     1 0.03046412           0          21   TRUE   1.2</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2:     2 0.03046412           0          21  FALSE   1.2</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3:     3 0.03046412           0          21  FALSE   1.2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1:     1 0.03924323           0          24   TRUE   1.2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2:     2 0.03924323           0          24  FALSE   1.2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3:     3 0.03924323           0          24  FALSE   1.2</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

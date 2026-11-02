@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -261,15 +261,17 @@ evenly (top) and on a log scale (bottom), plotted on a log axis.
 <span><span class="va">start</span><span class="op">$</span><span class="va">recharge</span><span class="op">$</span><span class="va">kg</span> <span class="op">&lt;-</span> <span class="fl">1000</span></span>
 <span><span class="va">args</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">start</span>, <span class="va">forcing</span>, <span class="va">flat_obs</span>, lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>recharge.kg <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>, upper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>recharge.kg <span class="op">=</span> <span class="fl">5000</span><span class="op">)</span>,</span>
 <span>             warmup <span class="op">=</span> <span class="fl">240</span>, objective <span class="op">=</span> <span class="st">"nse"</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>maxit <span class="op">=</span> <span class="fl">50</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">even_fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">calibrate_pdm</span>, <span class="va">args</span><span class="op">)</span></span>
+<span><span class="co"># The even search ends far from the truth, at a recharge constant whose steady start cannot</span></span>
+<span><span class="co"># balance at the first flow; calibrate_pdm() warns about that, and the warning is hidden here.</span></span>
+<span><span class="va">even_fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/warning.html" class="external-link">suppressWarnings</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">calibrate_pdm</span>, <span class="va">args</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">log_fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">calibrate_pdm</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">args</span>, <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>log_scale <span class="op">=</span> <span class="st">"recharge.kg"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>scale <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"even"</span>, <span class="st">"log"</span><span class="op">)</span>,</span>
 <span>           kg <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">even_fit</span><span class="op">$</span><span class="va">parameters</span>, <span class="va">log_fit</span><span class="op">$</span><span class="va">parameters</span><span class="op">)</span>, <span class="fl">2</span><span class="op">)</span>,</span>
 <span>           model_runs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">even_fit</span><span class="op">$</span><span class="va">start_results</span><span class="op">$</span><span class="va">evaluations</span><span class="op">)</span>,</span>
 <span>                          <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">log_fit</span><span class="op">$</span><span class="va">start_results</span><span class="op">$</span><span class="va">evaluations</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt;   scale    kg model_runs</span></span>
-<span><span class="co">#&gt; 1  even 40.42        153</span></span>
-<span><span class="co">#&gt; 2   log 40.00         30</span></span></code></pre></div>
+<span><span class="co">#&gt;   scale     kg model_runs</span></span>
+<span><span class="co">#&gt; 1  even 555.16         33</span></span>
+<span><span class="co">#&gt; 2   log  40.00         33</span></span></code></pre></div>
 <p>Both find the right answer; the log-scale search gets there in about
 a third of the model runs. The bounds table marks which parameters
 should be searched this way, and <code><a href="../reference/compare_structures.html">compare_structures()</a></code> and
@@ -342,8 +344,8 @@ Warning is a staircase.
 </p>
 </div>
 <p>On the left there is always a slope to follow down to the best value.
-On the right, the score sits at 0.75 for every value from about 2.3 to
-3.8 hours. Standing anywhere on that step, the slope-feeling method
+On the right, the score sits at 0.60 for every value from about 3.7 to
+6.0 hours. Standing anywhere on that step, the slope-feeling method
 feels no slope at all, decides it has arrived, and stops. At the edge of
 a step, the slope it feels is a sudden cliff that tells it nothing
 useful.</p>
@@ -543,15 +545,15 @@ once, the other in stages:</p>
 <span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">comparison</span>, <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt;                nse log_nse volume_error model_runs</span></span>
-<span><span class="co">#&gt; start       -2.143  -1.290        0.318          0</span></span>
-<span><span class="co">#&gt; all_at_once  0.992   0.991        0.000       3375</span></span>
-<span><span class="co">#&gt; stage_1      0.989   0.989        0.000       2024</span></span>
-<span><span class="co">#&gt; stage_2      0.990   0.989        0.000        196</span></span>
-<span><span class="co">#&gt; staged       0.992   0.991        0.000       5970</span></span></code></pre></div>
+<span><span class="co">#&gt; start       -0.954  -4.424       -0.283          0</span></span>
+<span><span class="co">#&gt; all_at_once  0.992   0.991        0.000       4395</span></span>
+<span><span class="co">#&gt; stage_1      0.967   0.976        0.000       1012</span></span>
+<span><span class="co">#&gt; stage_2      0.978   0.979        0.005        364</span></span>
+<span><span class="co">#&gt; staged       0.990   0.989        0.001       3626</span></span></code></pre></div>
 <p>In this example both reach the same answer: NSE 0.992 at once and
-0.992 in stages. Stage 1 alone reaches 0.989, which shows how much of
+0.990 in stages. Stage 1 alone reaches 0.967, which shows how much of
 the fit comes from the water balance and the slow stores. Staging took
-more model runs here, 5,970 against 3,375.</p>
+more model runs here, 3,626 against 4,395.</p>
 <p>So why stage? A made-up catchment with a known truth and clean data
 is the easy case. On real data, with rating errors at the top end and a
 long record of low flows, fitting everything to NSE at once can let the

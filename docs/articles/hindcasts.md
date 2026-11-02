@@ -60,7 +60,7 @@ high <- unname(stats::quantile(observed, 0.9))
 rt <- pdm_response_time(model, flow = high, feh_time_to_peak_h = 9)
 round(unlist(rt[c("time_to_peak_h", "recession_h", "centroid_lag_h")]), 1)
 #> time_to_peak_h    recession_h centroid_lag_h 
-#>           14.0           39.7           51.1
+#>            2.8            6.4            6.3
 ```
 
 ``` r
@@ -76,23 +76,24 @@ flow.](hindcasts_files/figure-html/response-plot-1.png)
 
 The extra flow from a 10 mm pulse of rain, starting at a high flow.
 
-At a high flow of 10.4 m3/s, the model’s flow peaks 14 hours after the
-rain. The answer depends on the flow you choose. A wet catchment
-responds faster, because the groundwater store is nonlinear and more of
-the rain runs straight off. For forecasting, a typical high flow is the
-right choice.
+At a high flow of 9.5 m3/s, the model’s flow peaks 2.8 hours after the
+rain. The answer can depend on the flow you choose: where the fast
+response runs through a nonlinear store, a wet catchment responds
+faster. This model’s fast stores are linear, so at the median flow the
+time to peak is 2.8 hours, much the same. For forecasting, a typical
+high flow is the right choice.
 [`pdm_hindcast()`](https://jonpayneea.github.io/PDMS7/reference/pdm_hindcast.md)
 uses the 90th percentile of observed flow unless you give another.
 
 **The FEH check.** If you have FEH catchment descriptors,
 [`reach.postproc::feh_time_to_peak()`](https://rdrr.io/pkg/reach.postproc/man/feh_time_to_peak.html)
 gives an independent time to peak. Here we suppose the descriptors give
-9 hours. The ratio is 1.56, inside the factor of two either way that
+9 hours. The ratio is 0.31, outside the factor of two either way that
 [`pdm_response_time()`](https://jonpayneea.github.io/PDMS7/reference/pdm_response_time.md)
-accepts. A ratio outside it raises a flag, `rt$feh$flag`, which is FALSE
-here. A flag means the model’s fast stores or the descriptors deserve a
-look. When the two disagree, trust the model’s figure for that model: it
-is what the model will actually do.
+accepts, so the flag, `rt$feh$flag`, is TRUE here. A flag means the
+model’s fast stores or the descriptors deserve a look. When the two
+disagree, trust the model’s figure for that model: it is what the model
+will actually do.
 
 ## Step 2: AR coefficients
 
@@ -110,9 +111,9 @@ ar_ea_default()
 #>  1.765000 -0.726250 -0.040656
 ar_from_response_time(rt$time_to_peak_h, dt = 0.25)
 #>         a_1         a_2         a_3 
-#>  1.76500000 -0.72739974 -0.04071351 
+#>  1.76500000 -0.73296494 -0.04099058 
 #> attr(,"roots")
-#> [1]  0.98229587  0.83249120 -0.04978707
+#> [1]  0.91411338  0.90067369 -0.04978707
 ```
 
 [`ar_ea_default()`](https://jonpayneea.github.io/PDMS7/reference/ar_from_response_time.md)
@@ -139,9 +140,9 @@ names(hc$ar)
 head(hc$forecasts, 3)
 #>    origin                time  lead lead_h method forecast observed
 #>     <int>              <POSc> <int>  <num> <char>    <num>    <num>
-#> 1:   5761 2024-11-30 00:00:00     1   0.25   none 2.754628 3.084904
-#> 2:   5785 2024-11-30 06:00:00     1   0.25   none 2.490013 2.737598
-#> 3:   5809 2024-11-30 12:00:00     1   0.25   none 2.235164 2.465681
+#> 1:   5761 2024-11-30 00:00:00     1   0.25   none 1.108149 1.184295
+#> 2:   5785 2024-11-30 06:00:00     1   0.25   none 1.098438 1.140089
+#> 3:   5809 2024-11-30 12:00:00     1   0.25   none 1.095237 1.149768
 ```
 
 From every 6th hour in the test period, the hindcast forecasts 48 hours
@@ -199,13 +200,13 @@ knitr::kable(data.table::dcast(data.table::as.data.table(lead_table), lead_h ~ m
 
 | lead_h | ea_2024 | fitted |   none | persistence | response_time | state |
 |-------:|--------:|-------:|-------:|------------:|--------------:|------:|
-|   0.25 |   -0.43 |   0.43 | -93.08 |           0 |         -0.44 |  0.17 |
-|   1.00 |   -0.02 |   0.80 | -17.51 |           0 |         -0.05 |  0.58 |
-|   3.00 |    0.64 |   0.84 |  -1.12 |           0 |          0.62 |  0.75 |
-|   6.00 |    0.87 |   0.90 |   0.46 |           0 |          0.86 |  0.85 |
-|  12.00 |    0.92 |   0.91 |   0.82 |           0 |          0.90 |  0.90 |
-|  24.00 |    0.94 |   0.94 |   0.93 |           0 |          0.94 |  0.94 |
-|  48.00 |    0.96 |   0.95 |   0.95 |           0 |          0.95 |  0.96 |
+|   0.25 |    0.62 |   0.81 | -39.89 |           0 |          0.61 |  0.60 |
+|   1.00 |    0.80 |   0.86 |  -2.37 |           0 |          0.79 |  0.73 |
+|   3.00 |    0.87 |   0.88 |   0.68 |           0 |          0.87 |  0.83 |
+|   6.00 |    0.94 |   0.95 |   0.92 |           0 |          0.94 |  0.93 |
+|  12.00 |    0.95 |   0.96 |   0.95 |           0 |          0.95 |  0.95 |
+|  24.00 |    0.96 |   0.96 |   0.96 |           0 |          0.96 |  0.96 |
+|  48.00 |    0.96 |   0.96 |   0.96 |           0 |          0.96 |  0.96 |
 
 Skill against persistence, by lead time in hours
 
@@ -218,29 +219,29 @@ plot_hindcast(scores, "skill", methods = c("none", "ea_2024", "response_time", "
 
 ![Skill against persistence, cut off at -1. Above the dashed line, a
 method beats persistence. The simulation without updating starts far
-below the chart, at -93.](hindcasts_files/figure-html/skill-plot-1.png)
+below the chart, at -40.](hindcasts_files/figure-html/skill-plot-1.png)
 
 Skill against persistence, cut off at -1. Above the dashed line, a
 method beats persistence. The simulation without updating starts far
-below the chart, at -93.
+below the chart, at -40.
 
 What the table and chart show:
 
 - **Without updating, the model loses to persistence for the first few
-  hours.** Its skill at 15 minutes is -93: a big negative number,
+  hours.** Its skill at 15 minutes is -40: a big negative number,
   because persistence is almost perfect one step ahead. The simulation
-  first beats persistence at 4.5 hours. That is the gap updating fills.
+  first beats persistence at 1.75 hours. That is the gap updating fills.
 - **The fixed AR sets close most of the gap.** The EA 2024 default
-  reaches skill 0.64 at 3 hours, against -1.12 without updating. In the
-  first hour it is no better than persistence, with skill -0.43 at 15
-  minutes and -0.02 at 1 hour: the AR projects the latest error forward,
-  and with noisy observations part of that error is gauge noise. The
-  response-time set behaves almost identically: the EA default is close
-  to the family member for a 24-hour decay, and the family changes
-  little between that and this model’s 14 hours.
+  reaches skill 0.87 at 3 hours, against 0.68 without updating. In the
+  first hour its skill is lower, 0.62 at 15 minutes and 0.8 at 1 hour:
+  the AR projects the latest error forward, and with noisy observations
+  part of that error is gauge noise. The response-time set behaves
+  almost identically: the EA default is close to the family member for a
+  24-hour decay, and the family changes little between that and this
+  model’s 3 hours.
 - **AR fitted to this model’s own errors does best at short lead
-  times.** Its coefficients, 0.47, 0.28, 0.25, were fitted to the
-  calibration period alone, yet it reaches skill 0.8 at 1 hour and 0.84
+  times.** Its coefficients, 1.12, 0.31, -0.43, were fitted to the
+  calibration period alone, yet it reaches skill 0.86 at 1 hour and 0.88
   at 3 hours. It works here because the model’s errors are systematic,
   the same wrong rainfall factor and store speeds in both periods. Real
   errors vary more from flood to flood. A fit over a whole record is
@@ -251,18 +252,18 @@ What the table and chart show:
   and pass the result in through `ar`, as in
   `ar = list(events = c(a_1 = ..., a_2 = ..., a_3 = ...))`.
 - **State correction beats persistence from the first step**, with skill
-  0.17 at 15 minutes and 0.58 at 1 hour, because it moves the model’s
+  0.6 at 15 minutes and 0.73 at 1 hour, because it moves the model’s
   stores rather than projecting the error. Operationally IMFS uses AR
   post-processing, so treat this as a comparison, not a recommendation.
 - **At long lead times every method converges on the simulation.** The
   AR correction has decayed, and skill against persistence is high
   because persistence itself has become poor. NSE is the better guide
-  there: 0.936 for the simulation at 48 hours.
+  there: 0.926 for the simulation at 48 hours.
 
 **Thresholds.** With `thresholds`, each lead time also gets step-based
 POD, FAR and CSI: at that lead, was the forecast above the threshold
-when the river was? At the 95th-percentile flow of 13.1 m3/s, the CSI at
-6 hours is 0.63 for persistence, 0.64 for the simulation and 0.95 with
+when the river was? At the 95th-percentile flow of 15.2 m3/s, the CSI at
+6 hours is 0.27 for persistence, 0.84 for the simulation and 0.81 with
 the EA 2024 AR.
 
 ## Comparing catchments: lead time over response time

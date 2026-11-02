@@ -60,8 +60,8 @@ the error.
 
 The error moves slowly: it builds up during a flood and drains away
 afterwards. Measured over the whole record, the error now and the error
-15 minutes later have a correlation of 0.982; one hour apart, 0.978; six
-hours apart, still 0.83. That memory is what an AR model exploits.
+15 minutes later have a correlation of 0.995; one hour apart, 0.959; six
+hours apart, still 0.30. That memory is what an AR model exploits.
 
 ## The simplest case: one coefficient
 
@@ -251,20 +251,26 @@ fits the coefficients to a model’s errors by maximum likelihood, using
 ``` r
 calibration <- seq_len(n / 2)
 fitted <- fit_error_updater(observed[calibration], simulated[calibration], order = c(3, 0))
+#> Maximum likelihood failed; the AR fit used method CSS-ML
 round(fitted$updater@ar, 4)
-#> [1] 0.4387 0.3085 0.2488
+#> [1]  1.2200  0.2375 -0.4676
 ar_roots(fitted$updater@ar)
-#>              root decay_steps decay_hours_at_15min
-#> 1 -0.2795+0.4138i        1.44                 0.36
-#> 2 -0.2795-0.4138i        1.44                 0.36
-#> 3  0.9978+0.0000i      445.51               111.38
+#>         root decay_steps decay_hours_at_15min
+#> 1  0.8396+0i        5.72                 1.43
+#> 2 -0.5799+0i        1.84                 0.46
+#> 3  0.9602+0i       24.65                 6.16
 ```
 
+Exact maximum likelihood failed on this series, so the fit fell back to
+method CSS-ML, as the message says; the coefficients are still a proper
+fit.
+
 The fitted set is quite unlike the default. Its slowest root decays over
-about 111 hours, against the default’s 24, and its two fast roots are a
-complex pair, which makes the projected error wobble from step to step.
-A long decay time is the fit’s way of saying this model’s error is
-mostly a persistent bias, the low rainfall factor, which is true here.
+about 6 hours, against the default’s 24, and one root is clearly
+negative, which makes part of the projected error flip sign from step to
+step. A shorter decay than the default says this model’s errors fade
+faster than the default assumes; part of the reason is gauge noise,
+which pulls a fit towards fast decay (below).
 [`reach.postproc::assess()`](https://rdrr.io/pkg/reach.postproc/man/assess.html)
 would test both the decay time and any oscillation against the review
 criteria.
@@ -307,7 +313,7 @@ hindcast shows it helps.
 arma <- fit_error_updater(observed[calibration], simulated[calibration], order = c(2, 1))
 c(ar = round(arma$updater@ar, 3), ma = round(arma$updater@ma, 3))
 #>    ar1    ar2     ma 
-#>  0.808  0.189 -0.361
+#>  1.251 -0.256  0.138
 ```
 
 ## Additive or log errors

@@ -177,12 +177,12 @@ scored <- (24 * 14 + 1):n
 first <- pdm_scorecard(simulated$q_m3s[scored], observed$q_m3s[scored])
 round(first[c("nse", "kge", "volume_error", "peak_error", "fdc_high", "fdc_low")], 3)
 #>          nse          kge volume_error   peak_error     fdc_high      fdc_low 
-#>        0.111        0.466       -0.014        0.087        0.189       -1.306
+#>       -1.987        0.128       -0.406        1.166        0.816        0.725
 ```
 
-NSE and KGE are 1 for a perfect fit, so 0.11 is poor. The total volume
-is close (volume error -1 per cent), so the amount of water is about
-right; the problem is how it is shared out over time. The flow-duration
+NSE and KGE are 1 for a perfect fit, so -1.99 is poor. The total volume
+is 41 per cent too low, and the peak error of +117 per cent says the
+water that does arrive comes in the wrong shape. The flow-duration
 scores `fdc_high` and `fdc_low` say the floods and the low flows are
 both off, which points at how quickly water drains to groundwater, and
 how quickly the surface stores empty. [Scoring a
@@ -208,7 +208,7 @@ fit <- calibrate_pdm(config, forcing[1:(24 * 45), ], observed$q_m3s[1:(24 * 45)]
                      control = list(maxit = 60))
 round(fit$parameters, 2)
 #>          fc recharge.kg  surface.k1  surface.k2 
-#>        1.10      254.15        2.69        8.50
+#>        1.10      250.08        8.26        2.67
 better <- run_pdm(fit$model, forcing, initial_state_from_flow(fit$model, observed$q_m3s[1], 0.7))
 check <- (24 * 45 + 1):n
 keep <- c("nse", "kge", "volume_error", "peak_error")
@@ -216,9 +216,9 @@ round(rbind(
   standard = pdm_scorecard(simulated$q_m3s[check], observed$q_m3s[check])[keep],
   calibrated = pdm_scorecard(better$output$q_m3s[check], observed$q_m3s[check])[keep]
 ), 3)
-#>               nse    kge volume_error peak_error
-#> standard   -4.396 -0.983        0.022      0.870
-#> calibrated  0.973  0.974        0.001     -0.024
+#>                nse    kge volume_error peak_error
+#> standard   -11.411 -1.363       -0.323      2.770
+#> calibrated   0.961  0.972       -0.001     -0.035
 ```
 
 ``` r

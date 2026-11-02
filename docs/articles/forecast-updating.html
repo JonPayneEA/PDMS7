@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -210,7 +210,7 @@ adjusts the soil store.</p>
 <span><span class="va">corrected</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_pdm.html">run_pdm</a></span><span class="op">(</span><span class="va">model</span>, <span class="va">future</span>, <span class="va">correction</span><span class="op">$</span><span class="va">state</span><span class="op">)</span><span class="op">$</span><span class="va">output</span><span class="op">$</span><span class="va">q_m3s</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>innovation_mmh <span class="op">=</span> <span class="va">correction</span><span class="op">$</span><span class="va">innovation_mmh</span>, added_mm <span class="op">=</span> <span class="va">correction</span><span class="op">$</span><span class="va">correction_mm</span><span class="op">)</span></span>
 <span><span class="co">#&gt; innovation_mmh       added_mm </span></span>
-<span><span class="co">#&gt;      0.1480093      1.7594328</span></span></code></pre></div>
+<span><span class="co">#&gt;     0.01092492     0.46943864</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="arma-error-prediction">ARMA error prediction<a class="anchor" aria-label="anchor" href="#arma-error-prediction"></a>
@@ -224,7 +224,7 @@ and applies them to the plain forecast.</p>
 <code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/fit_error_updater.html">fit_error_updater</a></span><span class="op">(</span><span class="va">observed</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">n_history</span><span class="op">)</span><span class="op">]</span>, <span class="va">simulated</span>, order <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">0</span><span class="op">)</span>,</span>
 <span>                         scale <span class="op">=</span> <span class="st">"log"</span>, offset <span class="op">=</span> <span class="fl">0.01</span><span class="op">)</span></span>
 <span><span class="va">fit</span><span class="op">$</span><span class="va">updater</span><span class="op">@</span><span class="va">ar</span></span>
-<span><span class="co">#&gt; [1] 0.5474005 0.4347131</span></span>
+<span><span class="co">#&gt; [1] 0.5716838 0.3530202</span></span>
 <span><span class="va">arma</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/update_forecast.html">update_forecast</a></span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="va">updater</span>, <span class="va">observed</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">n_history</span><span class="op">)</span><span class="op">]</span>, <span class="va">simulated</span>, <span class="va">plain</span><span class="op">)</span><span class="op">$</span><span class="va">forecast</span></span></code></pre></div>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">hours</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="op">-</span><span class="fl">72</span>, <span class="va">n_forecast</span><span class="op">)</span></span>
@@ -254,7 +254,7 @@ observations; the vertical line is the forecast origin.
 <span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>no_updating <span class="op">=</span> <span class="fu">rmse</span><span class="op">(</span><span class="va">plain</span><span class="op">)</span>, state_correction <span class="op">=</span> <span class="fu">rmse</span><span class="op">(</span><span class="va">corrected</span><span class="op">)</span>,</span>
 <span>        arma <span class="op">=</span> <span class="fu">rmse</span><span class="op">(</span><span class="va">arma</span><span class="op">)</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt;      no_updating state_correction             arma </span></span>
-<span><span class="co">#&gt;            1.027            0.604            0.475</span></span></code></pre></div>
+<span><span class="co">#&gt;            0.735            0.694            0.605</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">

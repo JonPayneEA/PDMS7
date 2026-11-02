@@ -328,7 +328,7 @@ old <- options(pdmS7.user = "A Hydrologist", pdmS7.role = "custodian")
 start_calibration_project(folder, catchment = "Example", gauge = "00000",
   purpose = "Illustration", area_km2 = 50, owner = "Deputy Director",
   steward = "A Steward")
-#> INFO [2026-11-02 20:30:41] Started calibration project example-project in /tmp/RtmpXu9zGg/example-project
+#> INFO [2026-11-02 22:02:35] Started calibration project example-project in /tmp/RtmpKW5oCe/example-project
 set.seed(1)
 forcing <- data.frame(rain = ifelse(runif(500) < 0.1, rexp(500, 0.3), 0), pet = 0.1)
 truth <- pdm_presets("standard")
@@ -336,35 +336,31 @@ truth$area_km2 <- 50
 observed <- run_pdm(pdm_from_config(truth), forcing)$output$q_m3s
 register_data(folder, forcing, observed, calibration = c(101, 350),
   validation = c(351, 500), wettest_years = 0)
-#> INFO [2026-11-02 20:30:41] Registered data 0002: 500 rows
+#> INFO [2026-11-02 22:02:35] Registered data 0002: 500 rows
 select_structure(folder, truth, reasoning = "Standard structure as a starting point")
 #> Warning: Column name 'time' (colClasses[[1]][1]) not found
-#> INFO [2026-11-02 20:30:41] Structure 0003: nse 0.9449
+#> INFO [2026-11-02 22:02:35] Structure 0003: nse 0.1513
 log_trial(folder, parent = 3, changes = c(surface.k1 = 3), verdict = "worse",
   reasoning = "Testing a slower first store")
 #> Warning: Column name 'time' (colClasses[[1]][1]) not found
-#> INFO [2026-11-02 20:30:41] Trial 0004 from 0003: nse 0.9444
+#> INFO [2026-11-02 22:02:35] Trial 0004 from 0003: nse 0.1122
 project_trials(folder)
 #>        id               type parent            timestamp        author
 #>    <char>             <char> <char>               <char>        <char>
-#> 1:   0003 structure_selected   <NA> 2026-11-02T20:30:41Z A Hydrologist
-#> 2:   0004              trial   0003 2026-11-02T20:30:41Z A Hydrologist
+#> 1:   0003 structure_selected   <NA> 2026-11-02T22:02:35Z A Hydrologist
+#> 2:   0004              trial   0003 2026-11-02T22:02:35Z A Hydrologist
 #>              changes verdict                              reasoning       nse
 #>               <char>  <char>                                 <char>     <num>
-#> 1:                      <NA> Standard structure as a starting point 0.9449442
-#> 2: surface.k1 2 -> 3   worse           Testing a slower first store 0.9444332
-#>      log_nse       kge     kge_r kge_alpha  kge_beta      rmse  log_rmse
-#>        <num>     <num>     <num>     <num>     <num>     <num>     <num>
-#> 1: 0.8743107 0.9234115 0.9808138  1.021970 0.9291834 0.2780398 0.1592131
-#> 2: 0.8737127 0.9219813 0.9807565  1.026471 0.9291770 0.2793272 0.1595914
-#>    volume_error abs_volume_error    peak_error     fdc_high     fdc_mid
-#>           <num>            <num>         <num>        <num>       <num>
-#> 1:  -0.07081656       0.07081656 -0.0002380833 -0.000257786 -0.09418773
-#> 2:  -0.07082295       0.07082295  0.0023699935  0.003621069 -0.09591936
-#>       fdc_low
-#>         <num>
-#> 1: 0.06266598
-#> 2: 0.06585792
+#> 1:                      <NA> Standard structure as a starting point 0.1512671
+#> 2: surface.k1 2 -> 3   worse           Testing a slower first store 0.1122327
+#>      log_nse         kge     kge_r kge_alpha  kge_beta      rmse log_rmse
+#>        <num>       <num>     <num>     <num>     <num>     <num>    <num>
+#> 1: -4.406179 -0.08824432 0.9905904 0.2879033 0.1771359 0.9036760 2.185968
+#> 2: -4.126379 -0.10334535 0.9777465 0.2653728 0.1770792 0.9242231 2.128649
+#>    volume_error abs_volume_error peak_error   fdc_high   fdc_mid   fdc_low
+#>           <num>            <num>      <num>      <num>     <num>     <num>
+#> 1:   -0.8228641        0.8228641 -0.7120517 -0.7137379 0.6841290 0.8463010
+#> 2:   -0.8229208        0.8229208 -0.7571941 -0.7446864 0.5848666 0.8297538
 options(old)
 unlink(folder, recursive = TRUE)
 ```

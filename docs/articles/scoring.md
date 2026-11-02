@@ -291,10 +291,11 @@ multi[, .(threshold, flow_m3s, observed_events, hits, misses, false_alarms, pod,
 #> 3: 0.0000000    NA  0.00
 ```
 
-The misses grow with the threshold, as the low, late peaks suggested.
-The model never reaches Severe Flood Warning at all, so it has no
-simulated events there: POD is 0 and FAR is undefined, which is why that
-threshold has no point on the diagram below.
+The share of events caught (POD) falls as the threshold rises, as the
+low, late peaks suggested. The model never reaches Severe Flood Warning
+at all, so it has no simulated events there: POD is 0 and FAR is
+undefined, which is why that threshold has no point on the diagram
+below.
 
 In a calibration project, thresholds may be given as river levels
 instead, and are converted to flows through a rating table registered

@@ -54,13 +54,13 @@ forcing <- data.frame(
 truth <- pdm_presets("standard")
 truth$area_km2 <- 40
 truth$fc <- 1.15
-truth$recharge$kg <- 60
+truth$recharge$kg <- 1500
 truth$surface$k1 <- 3
 truth$surface$k2 <- 8
 # The river is already flowing when the record starts: steady state, not empty stores.
 truth_model <- pdm_from_config(truth)
 observed <- run_pdm(truth_model, forcing,
-                    initial_state_from_flow(truth_model, 1, 0.7))$output$q_m3s *
+                    initial_state_from_flow(truth_model, 0.3, 0.7))$output$q_m3s *
   exp(stats::rnorm(n, 0, 0.04))
 observed[1500:1572] <- NA
 ```
@@ -138,34 +138,37 @@ window.](calibration-log_files/figure-html/preview-1.png)
 The preview against its parent over part of the calibration window.
 
 ``` r
-round(rbind(parent = unlist(project_trials(project)[1, c("nse", "volume_error", "kge_alpha")]),
-            preview = unlist(preview$scores[c("nse", "volume_error", "kge_alpha")])), 3)
-#>           nse volume_error kge_alpha
-#> parent  0.794       -0.117     1.071
-#> preview 0.778        0.014     1.257
+before <- unlist(project_trials(project)[1, c("nse", "volume_error", "kge_alpha")])
+after <- unlist(preview$scores[c("nse", "volume_error", "kge_alpha")])
+round(rbind(parent = before, preview = after), 3)
+#>            nse volume_error kge_alpha
+#> parent  -0.331       -0.285     1.459
+#> preview -0.649       -0.141     1.915
+dry <- function(v) sprintf("%.0f per cent too %s", abs(100 * v), if (v < 0) "dry" else "wet")
 ```
 
-The volume error has gone from 12 per cent too dry to near zero, but the
-NSE has fallen slightly: the variability ratio shows the peaks are now
-too large. The trial is still an improvement, because the water balance
-is right and the peaks are a separate question. That judgement is the
-hydrologist’s, not the headline score’s, and the log records it with its
-reason:
+The volume error has gone from 29 per cent too dry to 14 per cent too
+dry, but the NSE has fallen: the variability ratio, 1.92, shows the
+peaks are now too large. The trial is still an improvement, because the
+water balance is closer and the peaks are a separate question. That
+judgement is the hydrologist’s, not the headline score’s, and the log
+records it with its reason:
 
 ``` r
 log_trial(project, parent = 3, changes = c(fc = 1.15), verdict = "better",
-          reasoning = "Volume 12 per cent low; raised the rainfall factor. Peaks now too big.")
-log_trial(project, parent = 4, changes = c(recharge.kg = 10), verdict = "worse",
-          reasoning = "Faster recharge to move peak water into baseflow; recessions far too high.")
-log_trial(project, parent = 4, changes = c(recharge.kg = 60), verdict = "better",
-          reasoning = "Slower recharge instead; peaks and recessions both match.")
+          reasoning = paste0("Volume ", dry(before[["volume_error"]]),
+                             "; raised the rainfall factor. Peaks now too big."))
+log_trial(project, parent = 4, changes = c(recharge.kg = 500), verdict = "worse",
+          reasoning = "Much faster recharge, to feed baseflow; far too much water now.")
+log_trial(project, parent = 4, changes = c(recharge.kg = 1500), verdict = "better",
+          reasoning = "A smaller change instead; volume and recessions both match.")
 log_trial(project, parent = 6, changes = c(surface.k1 = 3, surface.k2 = 8),
           verdict = "better", reasoning = "Peaks slightly early; slowed the surface cascade.")
 ```
 
-Trial 0005 was a dead end; trial 0006 went back to 0004 and tried the
-other way. The log keeps both, because a defensible calibration includes
-what was tried and rejected.
+Trial 0005 was a dead end; trial 0006 went back to 0004 and tried a
+smaller change. The log keeps both, because a defensible calibration
+includes what was tried and rejected.
 
 A short automatic calibration can polish the result. It is logged like a
 trial, with its bounds, seed and the table of every start.
@@ -189,18 +192,18 @@ trials[, .(id, type, parent, changes, verdict, nse = round(nse, 3),
 #>    <char>             <char> <char>                               <char>
 #> 1:   0003 structure_selected   <NA>                                     
 #> 2:   0004              trial   0003                         fc 1 -> 1.15
-#> 3:   0005              trial   0004                 recharge.kg 24 -> 10
-#> 4:   0006              trial   0004                 recharge.kg 24 -> 60
+#> 3:   0005              trial   0004              recharge.kg 4000 -> 500
+#> 4:   0006              trial   0004             recharge.kg 4000 -> 1500
 #> 5:   0007              trial   0006 surface.k1 2 -> 3; surface.k2 4 -> 8
 #> 6:   0008   auto_calibration   0007                                     
-#>    verdict   nse volume_error
-#>     <char> <num>        <num>
-#> 1:    <NA> 0.794       -0.117
-#> 2:  better 0.778        0.014
-#> 3:   worse 0.194        0.021
-#> 4:  better 0.982        0.001
-#> 5:  better 0.987        0.001
-#> 6:    <NA> 0.987        0.001
+#>    verdict    nse volume_error
+#>     <char>  <num>        <num>
+#> 1:    <NA> -0.331       -0.285
+#> 2:  better -0.649       -0.141
+#> 3:   worse -0.217        0.359
+#> 4:  better  0.677        0.001
+#> 5:  better  0.985       -0.001
+#> 6:    <NA>  0.985       -0.001
 x <- seq_len(nrow(trials))
 colour <- ifelse(trials$type == "auto_calibration", pal[1],
                  ifelse(is.na(trials$verdict), pal[5],
@@ -232,10 +235,10 @@ round(data.frame(calibration = unlist(val$calibration_scores),
                  validation = unlist(val$validation_scores))[c("nse", "kge", "volume_error",
                                                                "fdc_high"), ], 3)
 #>              calibration validation
-#> nse                0.987      0.971
-#> kge                0.992      0.974
-#> volume_error       0.001      0.000
-#> fdc_high          -0.016     -0.023
+#> nse                0.985      0.972
+#> kge                0.988      0.970
+#> volume_error      -0.001     -0.001
+#> fdc_high          -0.009     -0.019
 ```
 
 ## Warning thresholds
@@ -258,30 +261,30 @@ pick <- function(scores, window) {
 }
 rbind(pick(val$calibration_scores, "calibration"), pick(val$validation_scores, "validation"))
 #>       threshold      window observed_events hits misses false_alarms  pod far
-#> 1   Flood Alert calibration               4    3      1            0 0.75 0.0
-#> 2 Flood Warning calibration               5    4      1            1 0.80 0.2
-#> 3   Flood Alert  validation               3    1      2            1 0.33 0.5
-#> 4 Flood Warning  validation               1    0      1            0 0.00  NA
+#> 1   Flood Alert calibration              12    8      4            0 0.67   0
+#> 2 Flood Warning calibration               4    4      0            0 1.00   0
+#> 3   Flood Alert  validation               4    4      0            0 1.00   0
+#> 4 Flood Warning  validation               3    2      1            0 0.67   0
 #>    csi crossing_error_h csi_step
-#> 1 0.75             0.67     0.96
-#> 2 0.67             1.75     0.92
-#> 3 0.25             0.00     0.76
-#> 4 0.00               NA     0.00
+#> 1 0.67            -0.12     0.82
+#> 2 1.00             0.00     0.78
+#> 3 1.00             0.00     0.92
+#> 4 0.67             0.50     0.69
 ```
 
-Two lessons. First, a high NSE does not guarantee warning skill: the
-candidate scores an NSE near 0.97 in validation, yet catches only one of
-the three alert events, because January’s peaks barely cross the
-threshold and small errors decide whether they do. Second, event and
-step scores answer different questions. Step scores weight each event by
-its length, so a long flood simulated well dominates them and a short
-flood missed barely registers; here `csi_step` is the kinder score.
+Two lessons. First, a high NSE does not guarantee warning skill: in the
+calibration window the candidate scores an NSE of 0.99, yet misses 4 of
+the 12 Flood Alert events, because peaks near a threshold cross it or
+not on small errors. Second, event and step scores answer different
+questions. Step scores weight each event by its length, so a long flood
+simulated well dominates them and a short flood missed barely registers.
 Event scores count each flood once, which is how a warning service is
 judged, and they count a crossing an hour late as a hit, where steps
-count a miss and a false alarm. Note how few events there are: with one
-to five per window, one event moves POD by a fifth or more, so read
-these scores alongside the counts. The report draws all thresholds and
-both windows on one performance diagram.
+count a miss and a false alarm. Here `csi_step` is the kinder score in 2
+rows and the harsher in 2, so neither is simply more lenient. Note how
+few events there are: with 3 to 12 per window, one event moves POD by a
+twelfth or more, so read these scores alongside the counts. The report
+draws all thresholds and both windows on one performance diagram.
 
 A project for a warning service can rank runs by a threshold score, with
 `headline = "csi:Flood Warning"` at registration. Automatic calibration
@@ -352,7 +355,7 @@ Now suppose someone tidies the reasoning of trial 0005 after the event:
 ``` r
 file <- file.path(project, "entries", "0005-trial.yml")
 original <- readLines(file)
-writeLines(sub("recessions far too high", "recessions slightly high", original), file)
+writeLines(sub("far too much water", "a little too much water", original), file)
 verify_project(project)[ok == FALSE]
 #>     check  entry     ok                                      detail
 #>    <char> <char> <lgcl>                                      <char>
@@ -397,8 +400,8 @@ read_run_log()[, .(tag, fingerprint = substr(fingerprint, 1, 8), rows, status, a
                    project, sign_off)]
 #>                          tag fingerprint  rows status   approval
 #>                       <char>      <char> <int> <char>     <char>
-#> 1: forecast 2024-02-01 06:00    ba4afeec   181     ok   approved
-#> 2: forecast 2024-02-01 06:00    ec8dc73e   181     ok unapproved
+#> 1: forecast 2024-02-01 06:00    1b757eb5   181     ok   approved
+#> 2: forecast 2024-02-01 06:00    5d6cb444   181     ok unapproved
 #>              project sign_off
 #>               <char>   <char>
 #> 1: brook-calibration     0012

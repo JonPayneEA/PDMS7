@@ -11,7 +11,7 @@ moment, as it approximately is in a dry-weather recession:"></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -147,7 +147,7 @@ equilibrium, using <code><a href="storage_for_flow.html">storage_for_flow()</a><
 S = st + (kg * qb)^(1 / bg); with demand recharge it is the soil storage at which the
 demand formula gives qb. With split recharge the soil store does not drain to groundwater,
 so the steady state does not determine it and <code>soil_fraction</code> of capacity is used. The
-soil store is capped at capacity;</p></li>
+soil store is capped at capacity, with a warning: the run then starts out of balance;</p></li>
 <li><p>the outlet delay queues hold the water already in transit at that flow.</p></li>
 </ul><p>The state's instantaneous flow then equals <code>observed_m3s</code>. The first simulated interval is a
 mean over the interval, so it departs from the observation as the stores respond to the
@@ -168,7 +168,7 @@ the flow must be positive.</p>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">model</span> <span class="op">&lt;-</span> <span class="fu"><a href="pdm_model.html">pdm_model</a></span><span class="op">(</span>area_km2 <span class="op">=</span> <span class="fl">44</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">state</span> <span class="op">&lt;-</span> <span class="fu">initial_state_from_flow</span><span class="op">(</span><span class="va">model</span>, observed_m3s <span class="op">=</span> <span class="fl">0.8</span>, baseflow_fraction <span class="op">=</span> <span class="fl">0.6</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="run_pdm.html">run_pdm</a></span><span class="op">(</span><span class="va">model</span>, <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>rain <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0</span><span class="op">)</span>, pet <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0</span><span class="op">)</span><span class="op">)</span>, <span class="va">state</span><span class="op">)</span><span class="op">$</span><span class="va">output</span><span class="op">$</span><span class="va">q_m3s</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.7944496 0.7681147</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.7944496 0.7682738</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

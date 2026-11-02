@@ -57,32 +57,32 @@ river <- synthetic_catchment(
 river
 #> Synthetic catchment: 3650 steps of 24 h from 2010-10-01T00:00:00Z 
 #>   Rain: nsrp - 807 mm a year; 2 added storms 
-#>   True flow: mean 0.889 m3/s, peak 32.4 m3/s
+#>   True flow: mean 0.954 m3/s, peak 28.4 m3/s
 #>   Gauge error: sd 0.05 in logs, memory 72 h
-#>   Rating: exact to 11 m3/s, then 15 per cent low at twice that; 7 steps above
+#>   Rating: exact to 11 m3/s, then 15 per cent low at twice that; 5 steps above
 forcing <- river$forcing
 observed <- river$observed
 truth <- river$truth
 years <- wettest_years(forcing$time, observed, n = 2)
 years[, c("water_year", "start", "peak_m3s", "held")]
 #>    water_year                start  peak_m3s  held
-#> 1     2013-14 2013-10-01T00:00:00Z 25.557574  TRUE
-#> 2     2018-19 2018-10-01T00:00:00Z 22.130988  TRUE
-#> 3     2012-13 2012-10-01T00:00:00Z  9.284612 FALSE
-#> 4     2019-20 2019-10-01T00:00:00Z  8.613200 FALSE
-#> 5     2010-11 2010-10-01T00:00:00Z  7.261260 FALSE
-#> 6     2011-12 2011-10-01T00:00:00Z  6.449420 FALSE
-#> 7     2014-15 2014-10-01T00:00:00Z  6.230862 FALSE
-#> 8     2017-18 2017-10-01T00:00:00Z  5.510830 FALSE
-#> 9     2016-17 2016-10-01T00:00:00Z  5.334338 FALSE
-#> 10    2015-16 2015-10-01T00:00:00Z  3.854268 FALSE
+#> 1     2013-14 2013-10-01T00:00:00Z 22.703046  TRUE
+#> 2     2018-19 2018-10-01T00:00:00Z 19.372790  TRUE
+#> 3     2012-13 2012-10-01T00:00:00Z  7.664298 FALSE
+#> 4     2019-20 2019-10-01T00:00:00Z  6.956333 FALSE
+#> 5     2010-11 2010-10-01T00:00:00Z  6.373497 FALSE
+#> 6     2011-12 2011-10-01T00:00:00Z  5.600537 FALSE
+#> 7     2014-15 2014-10-01T00:00:00Z  5.264775 FALSE
+#> 8     2017-18 2017-10-01T00:00:00Z  4.796519 FALSE
+#> 9     2016-17 2016-10-01T00:00:00Z  4.508485 FALSE
+#> 10    2015-16 2015-10-01T00:00:00Z  3.349098 FALSE
 ```
 
 [`wettest_years()`](https://jonpayneea.github.io/PDMS7/reference/wettest_years.md)
 is what
 [`register_data()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
-uses. The two held-back years have recorded peaks of 26 and 22 m3/s; no
-other year exceeds 9.
+uses. The two held-back years have recorded peaks of 23 and 19 m3/s; no
+other year exceeds 8.
 
 This is a best case. The true model is a PDM, so its structure is
 exactly right; the rain is known exactly; and the gauge error is simpler
@@ -97,27 +97,27 @@ unlink(project, recursive = TRUE)
 start_calibration_project(project, catchment = "Wet Brook", gauge = "00001",
                           purpose = "Flood forecasting", area_km2 = 60,
                           owner = "Area Manager", steward = "Sam Steward")
-#> INFO [2026-11-02 20:34:03] Started calibration project wet-brook in /tmp/RtmpY0TvPt/wet-brook
+#> INFO [2026-11-02 22:05:46] Started calibration project wet-brook in /tmp/Rtmp2dzi0I/wet-brook
 reg <- register_data(project, forcing, observed,
                      calibration = c("2011-01-01", "2016-09-30"),
                      validation = c("2016-10-01", "2019-09-30"),
                      test = c("2019-10-01", "2020-09-27"),
                      highest_gauged_m3s = river$highest_gauged_m3s,
                      reasoning = "Ten years; rating checked to 11 m3/s.")
-#> INFO [2026-11-02 20:34:03] Registered data 0002: 3650 rows
+#> INFO [2026-11-02 22:05:46] Registered data 0002: 3650 rows
 check <- reg$rating_check$windows
 data.frame(window = names(check), steps_above = sapply(check, `[[`, "steps_above"),
            highest_m3s = round(sapply(check, `[[`, "highest_m3s"), 1))
 #>                  window steps_above highest_m3s
-#> calibration calibration           0         9.3
-#> validation   validation           0         5.5
-#> test               test           0         8.6
-#> wettest         wettest           7        25.6
+#> calibration calibration           0         7.7
+#> validation   validation           0         4.8
+#> test               test           0         7.0
+#> wettest         wettest           5        22.7
 ```
 
 The rating check, recorded in the entry, shows the problem at once.
 Every flow above the gauged limit lies in the held-back years. Without
-the hold-out, the calibration would have been fitted to 7 days of
+the hold-out, the calibration would have been fitted to 5 days of
 extrapolated flow, and nothing in the record would have said so.
 
 ## Calibrating
@@ -130,23 +130,33 @@ start <- pdm_presets("standard")
 start$dt <- 24
 start$area_km2 <- 60
 select_structure(project, start, "Standard structure.")
-#> INFO [2026-11-02 20:34:03] Structure 0003: nse -2.283
+#> INFO [2026-11-02 22:05:47] Structure 0003: nse 0.4081
 b <- calibration_bounds(start)
 fit <- log_auto_calibration(
   project, parent = 3, lower = setNames(b$lower, b$path), upper = setNames(b$upper, b$path),
   log_scale = b$path[b$scale == "log"], starts = 3, seed = 2, control = list(maxit = 40),
   reasoning = "All parameters, three starts."
 )
-#> INFO [2026-11-02 20:34:36] Calibration 0004: nse 0.9939
+#> Warning: A steady start at 1.702 m3/s with baseflow_fraction 0.70 needs 266.5
+#> mm of soil storage, more than the store's capacity of 203 mm; the soil is
+#> capped and the run starts out of balance. Start at a lower flow or a smaller
+#> baseflow_fraction, or use start = "soil".
+#> INFO [2026-11-02 22:06:12] Calibration 0004: nse 0.9927
 good <- fit$equally_good
 c(nse = fit$scores$nse, trials_within_tolerance = good$within, sets_kept = length(good$sets))
 #>                     nse trials_within_tolerance               sets_kept 
-#>                0.993907              885.000000               50.000000
+#>               0.9927173            1080.0000000              50.0000000
 ```
 
-The calibration NSE is 0.994. Of the parameter sets the search tried,
-885 scored within 0.02 of the best; 50 spread-out ones are kept. How far
-apart are they?
+The warning is the calibration’s own: the record opens at 1.7 m3/s, 1.8
+times the average flow, and the calibrated model cannot hold 70 per cent
+of that as steady baseflow, so its runs begin a little out of balance.
+The three months of warm-up before the calibration window are there for
+this.
+
+The calibration NSE is 0.993. Of the parameter sets the search tried,
+1080 scored within 0.02 of the best; 50 spread-out ones are kept. How
+far apart are they?
 
 ``` r
 sets <- do.call(rbind, lapply(good$sets, function(s) unlist(s$parameters)))
@@ -156,22 +166,21 @@ data.frame(truth = sapply(colnames(sets), function(p) pdmS7:::.path_get(truth, p
              pdmS7:::.path_get(fit$configuration, p)
            }), 3),
            lowest = signif(spread[, 1], 3), highest = signif(spread[, 2], 3))
-#>                     truth calibrated   lowest  highest
-#> fc                    1.0   9.77e-01    0.898 1.01e+00
-#> distribution.cmax   300.0   2.60e+02  201.000 3.05e+02
-#> distribution.b        0.4   4.55e-01    0.345 9.45e-01
-#> recharge.kg        4000.0   4.62e+03 3030.000 5.00e+03
-#> surface.k1           12.0   1.15e+01    5.590 1.15e+01
-#> surface.k2           12.0   1.26e+01   12.300 2.13e+01
-#> groundwater.kb    10000.0   4.21e+04  169.000 5.99e+04
+#>                     truth calibrated   lowest highest
+#> fc                    1.0      0.992    0.893    1.01
+#> distribution.cmax   300.0    286.000  268.000  503.00
+#> distribution.b        0.4      0.407    0.375    1.32
+#> recharge.kg        4000.0   3730.000 2640.000 4250.00
+#> surface.k1           12.0     12.000    3.580   20.70
+#> surface.k2           12.0     12.000    4.890   24.10
+#> groundwater.kb    10000.0   9990.000  285.000 9920.00
 ```
 
 Fits that reproduce the calibration record almost equally well disagree
-widely. The groundwater constant `kb` spans 169 to 59885, a factor of
-353; the soil capacity `cmax` spans 201 to 305 mm. The record cannot
-tell them apart. These are the parameters the introduction warned of:
-barely tested by ordinary years, and exactly the ones a large flood
-depends on.
+widely. The groundwater constant `kb` spans 285 to 9924, a factor of 35;
+the soil capacity `cmax` spans 268 to 503 mm. The record cannot tell
+them apart. These are the parameters the introduction warned of: barely
+tested by ordinary years, and exactly the ones a large flood depends on.
 
 ## The test
 
@@ -181,50 +190,50 @@ the held-back years.
 ``` r
 propose_candidate(project, fit$id, "Best automatic fit.")
 validation <- validate_candidate(project, "Validation holds up.")
-#> INFO [2026-11-02 20:34:36] Validation 0006: nse 0.992
+#> INFO [2026-11-02 22:06:13] Validation 0006: nse 0.992
 test <- test_candidate(project, "Final check, including the wettest years.")
-#> INFO [2026-11-02 20:34:38] Test 0007: nse 0.9932
-#> INFO [2026-11-02 20:34:38] Wettest years 0007: nse 0.9526
+#> INFO [2026-11-02 22:06:14] Test 0007: nse 0.9926
+#> INFO [2026-11-02 22:06:14] Wettest years 0007: nse 0.9589
 c(validation = validation$validation_scores$nse, test_window = test$test_scores$nse,
   wettest_years = test$wettest$scores$nse)
 #>    validation   test_window wettest_years 
-#>     0.9919969     0.9931954     0.9526002
+#>     0.9920390     0.9925939     0.9589164
 peaks <- do.call(rbind, lapply(test$wettest$years, as.data.frame))
 held <- reg$scorecard$wettest$years
 peaks$true_peak_m3s <- sapply(held, function(y) max(river$true_flow[y$first_row:y$last_row]))
 peaks[, -1] <- lapply(peaks[, -1], function(x) if (is.numeric(x)) round(x, 1) else x)
 peaks
 #>   water_year observed_peak_m3s simulated_peak_m3s spread_low_m3s
-#> 1    2013-14              25.6               32.1           25.9
-#> 2    2018-19              22.1               29.7           25.6
+#> 1    2013-14              22.7               28.4           19.3
+#> 2    2018-19              19.4               24.9           19.6
 #>   spread_high_m3s above_gauged true_peak_m3s
-#> 1            32.5         TRUE          32.4
-#> 2            29.8         TRUE          28.9
+#> 1            28.8         TRUE          28.4
+#> 2            25.2         TRUE          24.3
 ```
 
-The scores look respectable: NSE over the wettest years is 0.95, dragged
+The scores look respectable: NSE over the wettest years is 0.96, dragged
 down by the peaks but propped up by the many ordinary days. The peaks
 tell the real story, and here, unlike on a real river, the true peak is
 known.
 
 | Water year | Candidate against the recorded peak | Candidate against the true peak | Rating’s error at the peak | Width of the equally good range |
 |------------|-------------------------------------|---------------------------------|----------------------------|---------------------------------|
-| 2013-14    | +25%                                | -1%                             | 21% low                    | 20% of the true peak            |
-| 2018-19    | +34%                                | +3%                             | 24% low                    | 15% of the true peak            |
+| 2013-14    | +25%                                | +0%                             | 20% low                    | 33% of the true peak            |
+| 2018-19    | +28%                                | +2%                             | 20% low                    | 23% of the true peak            |
 
 Two lessons follow.
 
 - **The recorded peak is not the truth.** Judged against the recorded
-  peaks, the candidate overestimates by 25 and 34 per cent. Against the
-  true peaks it is within 3 per cent. Both peaks lie above the highest
-  gauging, and the extrapolated rating recorded them 21 to 24 per cent
+  peaks, the candidate overestimates by 25 and 28 per cent. Against the
+  true peaks it is within 2 per cent. Both peaks lie above the highest
+  gauging, and the extrapolated rating recorded them about 20 per cent
   low: the rating is wrong, not the model. On a real river the true peak
   is unknown, which is why the report flags such peaks rather than
   scoring them as fact. A modeller who “fixed” this apparent
   overestimate by recalibrating to the recorded peaks would make the
   model worse.
 - **The calibration cannot pin the big floods down.** Equally good fits
-  span 15 to 20 per cent of the true peak. The candidate landing near
+  span 23 to 33 per cent of the true peak. The candidate landing near
   the truth is partly luck: another fit, scoring as well on the record,
   would have missed by more.
 
@@ -236,8 +245,9 @@ simulate <- function(parameters) {
   cfg <- fit$configuration
   for (p in names(parameters)) cfg <- pdmS7:::.path_set(cfg, p, parameters[[p]])
   m <- pdm_from_config(cfg)
-  run_pdm(m, forcing[c("rain", "pet")],
-          initial_state_from_flow(m, observed[1], 0.7))$output$q_m3s[rows]
+  # The same start as the calibration, and the same warning for every set, so it is hidden.
+  start <- suppressWarnings(initial_state_from_flow(m, observed[1], 0.7))
+  run_pdm(m, forcing[c("rain", "pet")], start)$output$q_m3s[rows]
 }
 ensemble <- sapply(good$sets, function(s) simulate(s$parameters))
 candidate <- simulate(list())

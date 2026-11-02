@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -168,16 +168,16 @@ random starts.</p>
 <span><span class="va">fit</span><span class="op">$</span><span class="va">start_results</span></span>
 <span><span class="co">#&gt;     start  objective convergence evaluations   best surface.k1 surface.k2</span></span>
 <span><span class="co">#&gt;     &lt;int&gt;      &lt;num&gt;       &lt;int&gt;       &lt;int&gt; &lt;lgcl&gt;      &lt;num&gt;      &lt;num&gt;</span></span>
-<span><span class="co">#&gt;  1:     1 0.02850866           0          40  FALSE   6.824751   6.824751</span></span>
-<span><span class="co">#&gt;  2:     2 0.02391528           0          65  FALSE   3.020969  11.978389</span></span>
-<span><span class="co">#&gt;  3:     3 0.02391528           0          55  FALSE  11.978299   3.021138</span></span>
-<span><span class="co">#&gt;  4:     4 0.02391528           0         145  FALSE  11.978287   3.021142</span></span>
-<span><span class="co">#&gt;  5:     5 0.02391528           0         105  FALSE   3.021137  11.978257</span></span>
-<span><span class="co">#&gt;  6:     6 0.02391528           0          85  FALSE   3.021146  11.978280</span></span>
-<span><span class="co">#&gt;  7:     7 0.02391528          52         255  FALSE  11.978322   3.021104</span></span>
-<span><span class="co">#&gt;  8:     8 0.02391528           0          60  FALSE  11.978270   3.021144</span></span>
-<span><span class="co">#&gt;  9:     9 0.02391528           0          70   TRUE   3.020862  11.978698</span></span>
-<span><span class="co">#&gt; 10:    10 0.02391528           0          75  FALSE  11.978288   3.021142</span></span></code></pre></div>
+<span><span class="co">#&gt;  1:     1 0.03259536           0          50  FALSE   6.817050   6.817050</span></span>
+<span><span class="co">#&gt;  2:     2 0.03122871           0          60  FALSE   3.049018  11.935294</span></span>
+<span><span class="co">#&gt;  3:     3 0.03122871           0          60  FALSE  11.935286   3.049017</span></span>
+<span><span class="co">#&gt;  4:     4 0.03122871           0         175  FALSE  11.935256   3.049026</span></span>
+<span><span class="co">#&gt;  5:     5 0.03122871           0          70  FALSE   3.049015  11.935297</span></span>
+<span><span class="co">#&gt;  6:     6 0.03122871           0          90  FALSE   3.049013  11.935293</span></span>
+<span><span class="co">#&gt;  7:     7 0.03122871           0          50  FALSE  11.935310   3.049015</span></span>
+<span><span class="co">#&gt;  8:     8 0.03122871           0          60   TRUE  11.935333   3.048998</span></span>
+<span><span class="co">#&gt;  9:     9 0.03122871           0          85  FALSE   3.049021  11.935290</span></span>
+<span><span class="co">#&gt; 10:    10 0.03122871           0          75  FALSE  11.935306   3.049015</span></span></code></pre></div>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">grid</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">30</span>, length.out <span class="op">=</span> <span class="fl">40</span><span class="op">)</span></span>
 <span><span class="va">loss</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">k1</span>, <span class="va">k2</span><span class="op">)</span> <span class="op">{</span></span>

@@ -78,10 +78,10 @@ pdm_model()
 #> <pdmS7::FlodePdmModel>
 #>  @ distribution: <pdmS7::FlodeParetoCapacity>
 #>  .. @ cmin: num 0
-#>  .. @ cmax: num 140
+#>  .. @ cmax: num 300
 #>  .. @ b   : num 0.4
 #>  @ recharge    : <pdmS7::FlodeStandardRecharge>
-#>  .. @ kg: num 24
+#>  .. @ kg: num 4000
 #>  .. @ bg: num 1
 #>  .. @ st: num 0
 #>  @ surface     : <pdmS7::FlodeCascadeRouting>
