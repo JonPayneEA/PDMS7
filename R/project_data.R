@@ -187,8 +187,12 @@
   card <- registration$scorecard
   # Projects registered before version 0.4.1 record no start rule; they started from the soil
   # fraction with empty routing stores, and must keep doing so to reproduce their entries.
-  state <- .start_state(model, card$start %||% "soil", .first_observed(data$observed),
-                        card$baseflow_fraction %||% 0.7, card$soil_fraction)
+  # Silent here: every logged run repeats a calibration that has already warned if its start
+  # could not balance.
+  state <- suppressWarnings(.start_state(
+    model, card$start %||% "soil", .first_observed(data$observed),
+    card$baseflow_fraction %||% 0.7, card$soil_fraction
+  ))
   sim <- .quietly(run_pdm(model, data$forcing, state))$output$q_m3s
   # Rows scored: the window less any held-back wettest year, or, for "wettest", those years.
   rows <- .scored_rows(card, window)

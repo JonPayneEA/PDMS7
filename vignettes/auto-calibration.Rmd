@@ -126,7 +126,9 @@ start <- flat
 start$recharge$kg <- 1000
 args <- list(start, forcing, flat_obs, lower = c(recharge.kg = 1), upper = c(recharge.kg = 5000),
              warmup = 240, objective = "nse", control = list(maxit = 50))
-even_fit <- do.call(calibrate_pdm, args)
+# The even search ends far from the truth, at a recharge constant whose steady start cannot
+# balance at the first flow; calibrate_pdm() warns about that, and the warning is hidden here.
+even_fit <- suppressWarnings(do.call(calibrate_pdm, args))
 log_fit <- do.call(calibrate_pdm, c(args, list(log_scale = "recharge.kg")))
 data.frame(scale = c("even", "log"),
            kg = round(c(even_fit$parameters, log_fit$parameters), 2),

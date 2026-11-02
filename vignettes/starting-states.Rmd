@@ -99,23 +99,41 @@ data.frame(
 )
 ```
 
-# What the experiment shows
+```{r numbers, include=FALSE}
+err <- vapply(runs, function(q) mean(abs(q[first_week] - reference[first_week])), numeric(1))
+first_two_days <- seq_len(48)
+cold_flow <- max(runs[["Cold, 50% soil"]][first_two_days])
+true_flow <- max(reference[first_two_days])
+last_day <- vapply(runs, function(q) {
+  e <- abs(q - reference) > 0.01 * mean(reference)
+  if (any(e)) max(which(e)) / 24 else 0
+}, numeric(1))
+f3 <- function(x) sprintf("%.3f", x)
+```
 
-- **A cold start manufactures a flood.** With empty routing stores and a half-full or nearly
-  full soil store, the soil drains rapidly into groundwater and the model produces a peak many
-  times the true flow, in dry weather. The 90 per cent start is worse than the 50 per cent
-  start: guessing "wet" is not safer.
-- **The steady-state start removes most of that error.** It starts from the observed flow,
-  and the remaining error comes from the assumption that the catchment is in equilibrium. Even the poor baseflow guess beats a cold start by more than an order of
-  magnitude.
-- **Spin-up does about as well as a good steady-state start** here, but it needs forcing to
-  repeat and it settles towards the forcing period's own average conditions, not the
-  conditions on the start date.
+- **A cold start starves the river.** Its routing stores start empty, and this catchment's
+  groundwater store is slow to fill. In the first two days the 50 per cent cold start gives at
+  most `r f3(cold_flow)` m3/s against a true `r f3(true_flow)`. The 90 per cent start does
+  better (mean error `r f3(err[["Cold, 90% soil"]])` against
+  `r f3(err[["Cold, 50% soil"]])` m3/s in the first week), because wetter soil refills the
+  groundwater store sooner; but neither is close.
+- **The steady-state start removes most of that error, if the baseflow share is right.** With
+  the good guess the first-week error is `r f3(err[["Warm, from flow (share 0.9)"]])` m3/s;
+  with the poor one, `r f3(err[["Warm, from flow (share 0.5)"]])`. The share matters because
+  it decides how much water sits in the slow store, which the run then remembers for weeks.
+- **Spin-up** (error `r f3(err[["Warm, spin-up"]])`) sits between the two steady-state
+  guesses. It needs forcing to repeat, and it settles towards the forcing period's own
+  average conditions, not the conditions on the start date.
 - **A hot start is exact**, as it should be: restarts are exactly continuous.
 
-In this catchment every start converges within about three weeks. A catchment with a slower
-groundwater store remembers its start for longer, sometimes for months, which is when the
-choice matters most.
+```{r memory, include=FALSE}
+off <- sum(last_day[names(last_day) != "Hot, previous state"] >= 59.9)
+```
+
+`r if (off == 5) "Every other start is" else paste(off, "of the five other starts are")` still
+more than 1 per cent of the mean flow away from the reference on day 60: the slow
+groundwater store remembers how it began for months. That is typical of
+a catchment with a high baseflow index, and it is why the warm-up below matters.
 
 # Recommendations
 

@@ -70,7 +70,7 @@ truth$surface$k2 <- 8
 # The river is already flowing when the record starts: steady state, not empty stores.
 truth_model <- pdm_from_config(truth)
 observed <- run_pdm(truth_model, forcing,
-                    initial_state_from_flow(truth_model, 1, 0.7))$output$q_m3s *
+                    initial_state_from_flow(truth_model, 0.5, 0.7))$output$q_m3s *
   exp(stats::rnorm(n, 0, 0.04))
 observed[1500:1572] <- NA
 ```
