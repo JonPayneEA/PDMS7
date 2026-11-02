@@ -118,20 +118,15 @@ synthetic_catchment <- function(rain = NULL, truth = NULL, start = "2010-10-01",
   ), class = "pdm_synthetic_catchment")
 }
 
-# The default true model: the standard structure with a water balance like a mixed lowland
-# catchment's. Under the illustrative rain (about 760 mm a year) it evaporates about 350 mm,
-# turns about half the rain into flow, and has a baseflow index near 0.5. Every calibrated
-# parameter lies inside calibration_bounds(), so a calibration can recover it. The standard preset
-# itself drains its soil within a day (kg = 24 h, no threshold), so it evaporates almost
-# nothing; it suits exercising code, not imitating a river.
+# The default true model: the standard preset (a lowland water balance) with surface stores of
+# 12 hours, slower than the preset's 2 and 4, to suit a catchment of tens of km2. Under the
+# illustrative rain (about 760 mm a year) it evaporates about 350 mm, turns about half the rain
+# into flow, and has a baseflow index near 0.5. Every calibrated parameter lies inside
+# calibration_bounds(), so a calibration can recover it.
 .synthetic_truth <- function(dt, area_km2) {
   truth <- pdm_presets("standard")
   truth$dt <- dt
   truth$area_km2 <- area_km2
-  truth$distribution$cmax <- 300
-  truth$distribution$b <- 0.4
-  truth$recharge$kg <- 4000
-  truth$recharge$st <- 50
   truth$surface$k1 <- 12
   truth$surface$k2 <- 12
   truth
