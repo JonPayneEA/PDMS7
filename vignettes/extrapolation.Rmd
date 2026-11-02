@@ -53,40 +53,36 @@ the observed numbers deserve less trust.
 
 # The example
 
-Ten water years of daily data from a made-up 60 km2 catchment. Two storms, in 2013-14 and
-2018-19, are far larger than anything else in the record. The model's soil store holds up to
-250 mm, and only those two storms come close to filling it. The observations carry 5 per cent
-noise.
+`synthetic_catchment()` builds a river with a known answer: rain from a stochastic generator,
+a PDM with chosen parameters, and a gauge that records the flow with persistent error and an
+extrapolated rating. Here, ten water years of daily data for a 60 km2 catchment, with two
+large storms added in 2013-14 and 2018-19. The station's highest check gauging is 11 m3/s;
+above it, the rating records flows low, by 15 per cent at twice that flow.
 
 ```{r data}
-set.seed(21)
-n <- 365 * 10
-time <- seq(as.POSIXct("2010-10-01", tz = "UTC"), by = 86400, length.out = n)
-rain <- ifelse(runif(n) < 0.45, rgamma(n, 0.7, scale = 7), 0)
-rain[c(1200, 1201, 2950, 2951, 2952)] <- c(70, 55, 60, 75, 40)
-forcing <- data.frame(time = format(time, "%Y-%m-%dT%H:%M:%SZ"), rain = rain,
-                      pet = 1.2 + sin(2 * pi * (seq_len(n) - 100) / 365))
-truth <- pdm_presets("standard")
-truth$dt <- 24
-truth$area_km2 <- 60
-truth$distribution$cmax <- 250
-truth$surface$k1 <- 30
-truth$fc <- 1.05
-model <- pdm_from_config(truth)
-observed <- run_pdm(model, forcing[, -1], initial_state_from_flow(model, 1.5, 0.7))$output$q_m3s *
-  exp(rnorm(n, 0, 0.05))
-years <- wettest_years(time, observed, n = 2)
+river <- synthetic_catchment(
+  years = 10, dt = 24, area_km2 = 60, seed = 21,
+  storms = data.frame(time = c("2013-12-20", "2018-11-02"), depth_mm = c(130, 170),
+                      duration_h = c(48, 72)),
+  highest_gauged_m3s = 11
+)
+river
+forcing <- river$forcing
+observed <- river$observed
+truth <- river$truth
+years <- wettest_years(forcing$time, observed, n = 2)
 years[, c("water_year", "start", "peak_m3s", "held")]
 ```
 
-`wettest_years()` is what `register_data()` uses. The two held-back years have peaks of
-`r f0(years$peak_m3s[1])` and `r f0(years$peak_m3s[2])` m3/s; no other year exceeds
+`wettest_years()` is what `register_data()` uses. The two held-back years have recorded peaks
+of `r f0(years$peak_m3s[1])` and `r f0(years$peak_m3s[2])` m3/s; no other year exceeds
 `r f0(years$peak_m3s[3])`.
 
-# Registering the data
+This is a best case. The true model is a PDM, so its structure is exactly right; the rain is
+known exactly; and the gauge error is simpler than a real one's. A real catchment will do
+worse than anything shown here.
 
-Suppose the station's highest check gauging is 30 m3/s. Everything above that comes from an
-extended rating.
+# Registering the data
 
 ```{r register}
 project <- file.path(tempdir(), "wet-brook")
@@ -98,19 +94,17 @@ reg <- register_data(project, forcing, observed,
                      calibration = c("2011-01-01", "2016-09-30"),
                      validation = c("2016-10-01", "2019-09-30"),
                      test = c("2019-10-01", "2020-09-27"),
-                     highest_gauged_m3s = 30,
-                     reasoning = "Ten years; rating checked to 30 m3/s.")
+                     highest_gauged_m3s = river$highest_gauged_m3s,
+                     reasoning = "Ten years; rating checked to 11 m3/s.")
 check <- reg$rating_check$windows
 data.frame(window = names(check), steps_above = sapply(check, `[[`, "steps_above"),
            highest_m3s = round(sapply(check, `[[`, "highest_m3s"), 1))
 ```
 
 The rating check, recorded in the entry, shows the problem at once. Every flow above the
-gauged limit lies in the held-back years. The highest flow left for calibration and
-validation is `r f1(max(check$calibration$highest_m3s, check$validation$highest_m3s))` m3/s,
-about half the limit. Without the hold-out, the calibration would have been fitted to
-`r check$wettest$steps_above` days of extrapolated flow, and nothing in the record would have
-said so.
+gauged limit lies in the held-back years. Without the hold-out, the calibration would have
+been fitted to `r check$wettest$steps_above` days of extrapolated flow, and nothing in the
+record would have said so.
 
 # Calibrating
 
@@ -139,17 +133,22 @@ apart are they?
 sets <- do.call(rbind, lapply(good$sets, function(s) unlist(s$parameters)))
 spread <- t(apply(sets, 2, range))
 data.frame(truth = sapply(colnames(sets), function(p) pdmS7:::.path_get(truth, p)),
+           calibrated = signif(sapply(colnames(sets), function(p) {
+             pdmS7:::.path_get(fit$configuration, p)
+           }), 3),
            lowest = signif(spread[, 1], 3), highest = signif(spread[, 2], 3))
 ```
 
-```{r cmax, include=FALSE}
+```{r widest, include=FALSE}
 cmax <- range(sets[, "distribution.cmax"])
+kb <- range(sets[, "groundwater.kb"])
 ```
 
-The soil capacity `cmax` spans `r f0(cmax[1])` to `r f0(cmax[2])` mm among fits that all
-reproduce the calibration record almost equally well. The record cannot tell them apart,
-because in those years the soil never comes near full. This is the arbitrary parameter the
-introduction warned of, and it is exactly the one a large flood depends on.
+Fits that reproduce the calibration record almost equally well disagree widely. The
+groundwater constant `kb` spans `r f0(kb[1])` to `r f0(kb[2])`, a factor of
+`r f0(kb[2] / kb[1])`; the soil capacity `cmax` spans `r f0(cmax[1])` to `r f0(cmax[2])` mm.
+The record cannot tell them apart. These are the parameters the introduction warned of: barely
+tested by ordinary years, and exactly the ones a large flood depends on.
 
 # The test
 
@@ -162,52 +161,71 @@ test <- test_candidate(project, "Final check, including the wettest years.")
 c(validation = validation$validation_scores$nse, test_window = test$test_scores$nse,
   wettest_years = test$wettest$scores$nse)
 peaks <- do.call(rbind, lapply(test$wettest$years, as.data.frame))
+held <- reg$scorecard$wettest$years
+peaks$true_peak_m3s <- sapply(held, function(y) max(river$true_flow[y$first_row:y$last_row]))
 peaks[, -1] <- lapply(peaks[, -1], function(x) if (is.numeric(x)) round(x, 1) else x)
 peaks
 ```
 
 ```{r peaks, include=FALSE}
-miss <- 100 * (peaks$simulated_peak_m3s / peaks$observed_peak_m3s - 1)
-width <- 100 * (peaks$spread_high_m3s - peaks$spread_low_m3s) / peaks$observed_peak_m3s
-above <- peaks$observed_peak_m3s > peaks$spread_high_m3s
+vs_obs <- 100 * (peaks$simulated_peak_m3s / peaks$observed_peak_m3s - 1)
+vs_true <- 100 * (peaks$simulated_peak_m3s / peaks$true_peak_m3s - 1)
+low <- 100 * (1 - peaks$observed_peak_m3s / peaks$true_peak_m3s)
+width <- 100 * (peaks$spread_high_m3s - peaks$spread_low_m3s) / peaks$true_peak_m3s
+pm <- function(x) sprintf("%+.0f", x)
 ```
 
-Every score looks fine, including over the wettest years, where NSE is dominated by the many
-ordinary days. The peaks tell the real story.
+The scores look respectable: NSE over the wettest years is
+`r sprintf("%.2f", test$wettest$scores$nse)`, dragged down by the peaks but propped up by the
+many ordinary days. The peaks tell the real story, and here, unlike on a real river, the true
+peak is known.
 
-- The candidate's peaks are `r f0(abs(miss[1]))` and `r f0(abs(miss[2]))` per cent
-  `r if (all(miss < 0)) "low" else "off"`.
-- The equally good sets span `r f0(width[1])` and `r f0(width[2])` per cent of the observed
-  peak.
-- In `r if (all(above)) "both years" else paste(peaks$water_year[above], collapse = " and ")`
-  the observed peak lies above every one of them. The range
-  shows how far fits the record cannot tell apart disagree. It is not a confidence interval,
-  and the truth can lie outside it.
-- Both observed peaks lie above the highest gauging, so on a real river even the "observed"
-  values would be uncertain.
+| Water year | Candidate against the recorded peak | Candidate against the true peak | Rating's error at the peak | Width of the equally good range |
+|---|---|---|---|---|
+| `r peaks$water_year[1]` | `r pm(vs_obs[1])`% | `r pm(vs_true[1])`% | `r f0(low[1])`% low | `r f0(width[1])`% of the true peak |
+| `r peaks$water_year[2]` | `r pm(vs_obs[2])`% | `r pm(vs_true[2])`% | `r f0(low[2])`% low | `r f0(width[2])`% of the true peak |
+
+Two lessons follow.
+
+- **The recorded peak is not the truth.** Judged against the recorded peaks, the candidate
+  overestimates by `r f0(vs_obs[1])` and `r f0(vs_obs[2])` per cent. Against the true peaks it
+  is within `r f0(max(abs(vs_true)))` per cent. Both peaks lie above the highest gauging, and
+  the extrapolated rating recorded them `r f0(min(low))` to `r f0(max(low))` per cent low: the
+  rating is wrong, not the model. On a real river the true peak is unknown, which is why the
+  report flags such peaks rather than scoring them as fact. A modeller who "fixed" this
+  apparent overestimate by recalibrating to the recorded peaks would make the model worse.
+- **The calibration cannot pin the big floods down.** Equally good fits span
+  `r f0(min(width))` to `r f0(max(width))` per cent of the true peak. The candidate landing
+  near the truth is partly luck: another fit, scoring as well on the record, would have missed
+  by more.
 
 ```{r hydrograph, fig.height=4.2}
-y <- reg$scorecard$wettest$years[[1]]
-peak <- y$first_row - 1 + which.max(observed[y$first_row:y$last_row])
+y <- held[[which.max(peaks$true_peak_m3s)]]
+peak <- y$first_row - 1 + which.max(river$true_flow[y$first_row:y$last_row])
 rows <- (peak - 15):(peak + 45)
 simulate <- function(parameters) {
   cfg <- fit$configuration
   for (p in names(parameters)) cfg <- pdmS7:::.path_set(cfg, p, parameters[[p]])
   m <- pdm_from_config(cfg)
-  run_pdm(m, forcing[, -1], initial_state_from_flow(m, observed[1], 0.7))$output$q_m3s[rows]
+  run_pdm(m, forcing[c("rain", "pet")],
+          initial_state_from_flow(m, observed[1], 0.7))$output$q_m3s[rows]
 }
 ensemble <- sapply(good$sets, function(s) simulate(s$parameters))
 candidate <- simulate(list())
-plot(time[rows], observed[rows], type = "n", ylim = c(0, max(ensemble, observed[rows]) * 1.05),
+time <- forcing$time[rows]
+plot(time, observed[rows], type = "n", ylim = c(0, max(ensemble, river$true_flow[rows]) * 1.05),
      xlab = "", ylab = "Flow (m3/s)", main = paste("Largest flood, water year", y$water_year))
-polygon(c(time[rows], rev(time[rows])), c(apply(ensemble, 1, min), rev(apply(ensemble, 1, max))),
+polygon(c(time, rev(time)), c(apply(ensemble, 1, min), rev(apply(ensemble, 1, max))),
         col = adjustcolor(pal[2], 0.25), border = NA)
-abline(h = 30, lty = 2, col = pal[7])
-lines(time[rows], candidate, col = pal[2], lwd = 2)
-points(time[rows], observed[rows], pch = 16, cex = 0.5, col = pal[1])
-legend("topright", c("observed", "candidate", "equally good sets", "highest gauging"),
-       col = c(pal[1], pal[2], adjustcolor(pal[2], 0.4), pal[7]), pch = c(16, NA, 15, NA),
-       lty = c(NA, 1, NA, 2), lwd = c(NA, 2, NA, 1), bty = "n")
+abline(h = river$highest_gauged_m3s, lty = 2, col = pal[7])
+lines(time, river$true_flow[rows], col = pal[3], lwd = 1.5, lty = 2)
+lines(time, candidate, col = pal[2], lwd = 2)
+points(time, observed[rows], pch = 16, cex = 0.5, col = pal[1])
+legend("topright", c("recorded", "true flow", "candidate", "equally good sets",
+                     "highest gauging"),
+       col = c(pal[1], pal[3], pal[2], adjustcolor(pal[2], 0.4), pal[7]),
+       pch = c(16, NA, NA, 15, NA), lty = c(NA, 2, 1, NA, 2), lwd = c(NA, 1.5, 2, NA, 1),
+       bty = "n")
 ```
 
 # Reading the result
@@ -217,7 +235,8 @@ question a forecaster asks: "would it have got the big one right?". Read the tab
 parts.
 
 - **The candidate against the observed peak.** A large miss on floods the model never saw is
-  the plainest sign that the calibration does not extrapolate.
+  the plainest sign that the calibration does not extrapolate, unless the rating flag says the
+  observed peak is itself in doubt.
 - **The width of the range.** A wide range means the record cannot pin down the parameters
   that control large floods. The candidate's own peak is then partly luck, good or bad.
 - **The rating flag.** Where the observed peak lies above the highest gauging, a miss may be
@@ -225,7 +244,7 @@ parts.
 
 When the range is wide, more calibration effort will not help. The remedies change what the
 calibration knows: fix the poorly constrained parameter from independent evidence (soil
-data for `cmax`, say), choose a simpler structure that extrapolates predictably (see
+data for `cmax`, or the baseflow index for `kb`), choose a simpler structure that extrapolates predictably (see
 [Choosing a model structure](choosing-structure.html)), or extend the rating with new
 gaugings. Record the decision, with its reasons, in a note before sign-off.
 

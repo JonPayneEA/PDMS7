@@ -45,6 +45,8 @@ Getting started:
   from EA sources, through reach.io, to model files, with a checklist
 - [Your first model run](https://jonpayneea.github.io/PDMS7/articles/example-workflow.html):
   from your own data files to a scored, calibrated and saved model
+- [Synthetic rivers: try everything on a known answer](https://jonpayneea.github.io/PDMS7/articles/synthetic-rivers.html):
+  stochastic rain, a known model and a realistic gauge, with no data needed
 
 How the model works:
 

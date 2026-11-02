@@ -46,6 +46,7 @@ articles:
   - reading-paths
   - data-preparation
   - example-workflow
+  - synthetic-rivers
 - title: How the model works
   navbar: How the model works
   contents:
@@ -175,6 +176,14 @@ reference:
   - pack_step
   - sim_pack
   - sim_snow_pdm
+- title: Synthetic rivers
+  desc: Stochastic rain and known-answer catchments, for demonstrations and method tests.
+  contents:
+  - synthetic_catchment
+  - synthetic_rain
+  - fit_rain
+  - rain_parameters
+  - rain_statistics
 - title: Calibration
   contents:
   - calibrate_pdm

@@ -18,7 +18,8 @@ explains any term along the way.
 1. [How the PDM works](pdm-explained.html): what the model does, in plain English.
 2. [Preparing your data](data-preparation.html): from EA sources to model files, with a
    checklist.
-3. [Your first model run](example-workflow.html): data to a calibrated, saved model.
+3. [Your first model run](example-workflow.html): data to a calibrated, saved model. Or,
+   with no data to hand, [Synthetic rivers](synthetic-rivers.html).
 4. [Starting a run](starting-states.html) and [Choosing model components](model-options.html).
 5. [Scoring a simulation](scoring.html): what each score shows.
 6. [Automatic calibration, explained](auto-calibration.html), including staged calibration.
