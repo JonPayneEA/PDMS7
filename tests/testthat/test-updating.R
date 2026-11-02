@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         test-updating
-# Description:  Configurable PDM framework: test-updating
+# Description:  Tests for state correction and ARMA error prediction
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
@@ -11,6 +11,7 @@
 # Dependencies: S7; data.table; yaml; logger (structured logging; no fastverse equivalent)
 # ============================================================ #
 
+# Guards: full-gain state correction makes the model's flow equal the observation
 test_that(
   "state correction matches observed endpoint flow",
   {
@@ -36,6 +37,7 @@ test_that(
   }
 )
 
+# Guards: ARMA projections and log-scale corrections equal hand-computed values
 test_that(
   "ARMA and log correction match hand calculations",
   {

@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         test-model
-# Description:  Configurable PDM framework: test-model
+# Description:  Tests for water balance, restarts and the outlet delay
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
@@ -11,6 +11,7 @@
 # Dependencies: S7; data.table; yaml; logger (structured logging; no fastverse equivalent)
 # ============================================================ #
 
+# Guards: every combination of components closes the water balance to rounding
 test_that(
   "compatible model components conserve water",
   {
@@ -52,6 +53,7 @@ test_that(
   }
 )
 
+# Guards: stopping and restarting a run changes nothing
 test_that(
   "restart matches uninterrupted output and rejects invalid inputs",
   {
@@ -70,6 +72,7 @@ test_that(
   }
 )
 
+# Guards: a fractional outlet delay splits volume correctly and loses none
 test_that(
   "fractional delay conserves and converts interval volume",
   {
@@ -93,6 +96,7 @@ test_that(
   }
 )
 
+# Guards: every routing form works as the fast store; dry-soil limits conserve water
 test_that(
   "fast pathways and water-limited losses conserve water",
   {

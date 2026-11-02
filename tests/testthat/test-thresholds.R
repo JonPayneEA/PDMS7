@@ -14,6 +14,7 @@
 obs_hand <- c(1, 2, 6, 8, 5, 2, 1, 1, 3, 7, 4, 1)
 sim_hand <- c(1, 1, 3, 7, 9, 4, 2, 1, 1, 2, 2, 1)
 
+# Guards: POD, FAR, CSI and the event errors equal a hand count
 test_that("event scores match a hand count", {
   s <- pdm_threshold_scores(sim_hand, obs_hand, c(alert = 4, warning = 7.5),
                             tolerance_h = 1, gap_h = 1)
@@ -31,6 +32,7 @@ test_that("event scores match a hand count", {
   expect_equal(c(warning$pod_step, warning$far_step, warning$csi_step), c(0, 1, 0))
 })
 
+# Guards: the timing tolerance decides hit or miss-plus-false-alarm
 test_that("a late crossing is a hit within the tolerance and two errors outside it", {
   obs <- c(rep(1, 10), rep(5, 4), rep(1, 10))
   sim <- c(rep(1, 13), rep(5, 4), rep(1, 7))
@@ -45,6 +47,7 @@ test_that("a late crossing is a hit within the tolerance and two errors outside 
                                     tolerance_h = 1.5)$crossing_error_h, 1.5)
 })
 
+# Guards: the gap and minimum-duration settings work
 test_that("events merge across short gaps and short blips can be ignored", {
   flicker <- c(1, 5, 1, 5, 1, 5, rep(1, 30), 5, rep(1, 5))
   expect_equal(nrow(.find_events(flicker > 3, gap = 2, min_duration = 0)), 2L)
@@ -56,6 +59,7 @@ test_that("events merge across short gaps and short blips can be ignored", {
   expect_equal(c(s$observed_events, s$csi, s$crossing_error_h), c(2, 1, 0))
 })
 
+# Guards: no event is matched twice; the closest pair wins
 test_that("matching is one to one and closest first", {
   obs <- c(1, 5, 1, 1, 1, 5, 1, 1, 1, 1)
   sim <- c(1, 1, 1, 5, 1, 1, 1, 1, 1, 1)
@@ -64,6 +68,7 @@ test_that("matching is one to one and closest first", {
   expect_equal(s$crossing_error_h, 2) # a tie goes to the earlier observed event
 })
 
+# Guards: no events gives NA, and gaps never invent a flood
 test_that("empty denominators give NA and missing observations count as below", {
   quiet <- pdm_threshold_scores(rep(1, 20), rep(1, 20), c(t = 3))
   expect_true(is.na(quiet$pod) && is.na(quiet$far) && is.na(quiet$csi))
@@ -76,6 +81,7 @@ test_that("empty denominators give NA and missing observations count as below", 
   expect_equal(s$far_step, 0)
 })
 
+# Guards: the step scores equal their contingency-table formulas
 test_that("step scores follow the contingency definitions", {
   obs <- c(5, 5, 1, 1, 5, 1, 1, 1)
   sim <- c(5, 1, 5, 1, 5, 1, 1, 1)
@@ -93,6 +99,7 @@ test_that("step scores follow the contingency definitions", {
   expect_equal(s$pss_step, a / (a + c) - b / (b + d))
 })
 
+# Guards: invalid thresholds and settings are refused
 test_that("arguments are checked", {
   expect_error(pdm_threshold_scores(1:3, 1:2, c(t = 1)), "equal length")
   expect_error(pdm_threshold_scores(1:3, 1:3, 2), "named")
@@ -102,6 +109,7 @@ test_that("arguments are checked", {
   expect_error(pdm_threshold_scores(c(1, NA, 3), 1:3, c(t = 1)), "finite")
 })
 
+# Guards: levels convert by the rating and out-of-range levels are refused
 test_that("level thresholds convert through the rating and never extrapolate", {
   rating <- .as_rating(data.frame(stage_m = c(1, 0.5, 2), q_m3s = c(4, 1, 16)))
   expect_equal(.level_to_flow(c(0.5, 1, 2), rating), c(1, 4, 16))
@@ -119,6 +127,7 @@ test_that("level thresholds convert through the rating and never extrapolate", {
                "flow")
 })
 
+# Guards: registered thresholds are scored on every logged run
 test_that("projects score thresholds on every run and can rank by them", {
   folder <- tempfile("project-")
   on.exit(unlink(folder, recursive = TRUE), add = TRUE)
@@ -171,6 +180,7 @@ calibration_case <- function() {
        thresholds = c(alert = unname(stats::quantile(observed, 0.95))))
 }
 
+# Guards: the derivative-free search respects bounds and finds a known value
 test_that("Nelder-Mead stays in bounds and recovers a parameter", {
   k <- calibration_case()
   fit <- calibrate_pdm(k$start, k$forcing, k$observed, c(fc = 0.8), c(fc = 1.5), warmup = 200,
@@ -188,6 +198,7 @@ test_that("Nelder-Mead stays in bounds and recovers a parameter", {
   expect_equal(default$objective_name, "1-NSE")
 })
 
+# Guards: the composite objective equals its formula
 test_that("the threshold objective is 1 - NSE plus the threshold loss at the optimum", {
   k <- calibration_case()
   fit <- calibrate_pdm(k$start, k$forcing, k$observed, c(fc = 0.8), c(fc = 1.5), warmup = 200,
@@ -206,6 +217,7 @@ test_that("the threshold objective is 1 - NSE plus the threshold loss at the opt
   expect_true(only$objective >= 0 && only$objective <= 1)
 })
 
+# Guards: threshold objectives with L-BFGS-B or uncrossed thresholds are refused
 test_that("threshold objectives are refused where they cannot work", {
   k <- calibration_case()
   args <- list(k$start, k$forcing, k$observed, c(fc = 0.8), c(fc = 1.5), objective = "nse")
@@ -222,6 +234,7 @@ test_that("threshold objectives are refused where they cannot work", {
                                                    threshold_weight = -1))), "weight")
 })
 
+# Guards: the log records the composite objective in words
 test_that("a logged threshold calibration records what the optimiser was rewarded for", {
   folder <- tempfile("project-")
   on.exit(unlink(folder, recursive = TRUE), add = TRUE)

@@ -16,6 +16,7 @@ score_flows <- function(n = 400) {
   0.5 + cumsum(stats::rnorm(n))^2 / 50
 }
 
+# Guards: every score takes its perfect value when sim equals obs
 test_that("a perfect simulation scores perfectly", {
   obs <- score_flows()
   s <- pdm_scorecard(obs, obs)
@@ -28,6 +29,7 @@ test_that("a perfect simulation scores perfectly", {
                           "peak_error", "fdc_high", "fdc_mid", "fdc_low")]), rep(0, 8))
 })
 
+# Guards: biases have the documented sign and size
 test_that("a uniformly wet simulation shows its sign and size", {
   obs <- score_flows()
   s <- pdm_scorecard(obs * 1.1, obs)
@@ -42,6 +44,7 @@ test_that("a uniformly wet simulation shows its sign and size", {
   expect_equal(dry[["volume_error"]], -0.1)
 })
 
+# Guards: the scorecard and the calibration losses agree
 test_that("scores agree with pdm_objectives losses", {
   obs <- score_flows()
   sim <- obs * 0.95 + 0.1 * sin(seq_along(obs))
@@ -56,6 +59,7 @@ test_that("scores agree with pdm_objectives losses", {
   expect_equal(abs(s[["peak_error"]]), loss[["peak_relative_error"]])
 })
 
+# Guards: the FDC signatures equal the published formulas
 test_that("flow-duration signatures follow Yilmaz et al. (2008)", {
   obs <- score_flows()
   sim <- rev(obs) # same flow-duration curve, different timing
@@ -66,6 +70,7 @@ test_that("flow-duration signatures follow Yilmaz et al. (2008)", {
   expect_gt(steep[["fdc_mid"]], 0)
 })
 
+# Guards: gaps are dropped pairwise and undefined scores are NA, not errors
 test_that("missing observations are skipped and undefined scores are NA", {
   obs <- score_flows(100)
   obs[c(5, 50)] <- NA

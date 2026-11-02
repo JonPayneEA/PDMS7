@@ -11,6 +11,7 @@
 # Dependencies: testthat
 # ============================================================ #
 
+# Guards: a configuration read back from the log is bit-for-bit the one written
 test_that("numbers survive the log exactly", {
   x <- c(0.4, 1 / 3, 140, 1e-10, -2.5e30, 0, 123456789.123, .Machine$double.eps, pi)
   text <- yaml::as.yaml(.yaml_ready(list(v = x, s = 0.1 + 0.2, n = NA_real_, i = 3L)))
@@ -23,6 +24,7 @@ test_that("numbers survive the log exactly", {
                    list(k = 2))
 })
 
+# Guards: every entry type is written in order with its fields and parent links
 test_that("a project records the full calibration path", {
   p <- new_project()
   first <- log_trial(p$folder, 3, c(fc = 1), "better", "Volume too low")
@@ -44,6 +46,7 @@ test_that("a project records the full calibration path", {
   expect_true(all(verify_project(p$folder, rerun = TRUE)$ok))
 })
 
+# Guards: validation data never influence a trial's scores
 test_that("trials are scored on the calibration window only", {
   p <- new_project()
   preview <- preview_trial(p$folder, 3, c(fc = 1))
@@ -53,6 +56,7 @@ test_that("trials are scored on the calibration window only", {
   expect_length(list.files(file.path(p$folder, "entries")), 3L)
 })
 
+# Guards: self-sign-off, out-of-order entries and writes to a closed project are refused
 test_that("candidate, validation, sign-off and reopen follow the rules", {
   p <- new_project()
   log_trial(p$folder, 3, c(fc = 1), "better", "Volume too low")
@@ -79,6 +83,7 @@ test_that("candidate, validation, sign-off and reopen follow the rules", {
   expect_error(reopen_project(p$folder, "x"), "steward")
 })
 
+# Guards: read_entry() and read_projects() report what was written
 test_that("single entries and validation scores can be read back", {
   p <- new_project()
   log_trial(p$folder, 3, c(fc = 1), "better", "Volume too low")
@@ -94,6 +99,7 @@ test_that("single entries and validation scores can be read back", {
   expect_true(is.na(read_projects(p$folder)$validation_score))
 })
 
+# Guards: the test window cannot be scored twice or skipped when registered
 test_that("the test window is scored once, last, and required for sign-off", {
   folder <- tempfile("project-")
   on.exit(unlink(folder, recursive = TRUE), add = TRUE)
@@ -125,6 +131,7 @@ test_that("the test window is scored once, last, and required for sign-off", {
   expect_equal(sign_off_project(folder, "Accepted", all_reviewed)$test, tested$id)
 })
 
+# Guards: the test requirement applies only when a test window exists
 test_that("projects without a test window sign off without one", {
   p <- new_project()
   propose_candidate(p$folder, 3, "Structure")
@@ -134,6 +141,7 @@ test_that("projects without a test window sign off without one", {
   expect_null(sign_off_project(p$folder, "Accepted", all_reviewed)$test)
 })
 
+# Guards: the sign-off records a delegated steward's role
 test_that("a delegated steward signs off in that capacity", {
   p <- new_project()
   propose_candidate(p$folder, 3, "Starting structure is adequate")
@@ -144,6 +152,7 @@ test_that("a delegated steward signs off in that capacity", {
   expect_equal(read_projects(p$folder)$signed_off_by, "Dee Delegate")
 })
 
+# Guards: every start of a logged automatic calibration is kept for review
 test_that("automatic calibration is logged with its start table", {
   p <- new_project()
   fit <- log_auto_calibration(p$folder, 3, lower = c(fc = 0.5), upper = c(fc = 1.5),
@@ -156,6 +165,7 @@ test_that("automatic calibration is logged with its start table", {
   expect_true(all(verify_project(p$folder, rerun = TRUE)$ok))
 })
 
+# Guards: verify_project() catches edited entries, changed data and runs that no longer reproduce
 test_that("tampering, missing data and changed outputs are detected", {
   p <- new_project()
   log_trial(p$folder, 3, c(fc = 1), "better", "Volume too low")
@@ -178,6 +188,7 @@ test_that("tampering, missing data and changed outputs are detected", {
   expect_error(log_trial(p$folder, 3, c(fc = 0.9), "worse", "x"), "changed since")
 })
 
+# Guards: a CRLF checkout does not break the checksum chain
 test_that("checksums survive a change of line endings, as on a Windows checkout", {
   p <- new_project()
   propose_candidate(p$folder, 3, "Starting structure")
@@ -193,6 +204,7 @@ test_that("checksums survive a change of line endings, as on a Windows checkout"
   expect_true(all(verify_project(p$folder)$ok))
 })
 
+# Guards: a failed rerun says which software changed since the entry was written
 test_that("a rerun that differs names the software change", {
   p <- new_project()
   local_mocked_bindings(.series_md5 = function(x) "different")
@@ -201,6 +213,7 @@ test_that("a rerun that differs names the software change", {
   expect_match(checks[check == "rerun", detail], "Output differs")
 })
 
+# Guards: copy = FALSE stores a path and checksum instead of a copy
 test_that("data can be referenced rather than copied", {
   folder <- tempfile("project-")
   on.exit(unlink(folder, recursive = TRUE), add = TRUE)
@@ -221,6 +234,7 @@ test_that("data can be referenced rather than copied", {
   expect_false(all(verify_project(folder)$ok))
 })
 
+# Guards: invalid arguments leave the project untouched
 test_that("bad input is refused before anything is written", {
   folder <- tempfile("project-")
   on.exit(unlink(folder, recursive = TRUE), add = TRUE)
@@ -259,6 +273,7 @@ test_that("bad input is refused before anything is written", {
   expect_equal(nrow(read_project(folder)$entries), 4L)
 })
 
+# Guards: concurrent writers wait for the lock, and a dead session's lock is cleared
 test_that("the lock serialises writers and clears when stale", {
   folder <- tempfile("project-")
   on.exit(unlink(folder, recursive = TRUE), add = TRUE)

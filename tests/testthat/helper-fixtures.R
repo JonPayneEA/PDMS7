@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         helper-fixtures
-# Description:  Configurable PDM framework: helper-fixtures
+# Description:  Shared test fixtures: expectations, components, forcing, conservation checks
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
@@ -11,6 +11,8 @@
 # Dependencies: S7; data.table; yaml; logger (structured logging; no fastverse equivalent)
 # ============================================================ #
 
+# Short expectations: a condition that must be exactly TRUE, values equal within a tolerance
+# scaled to their size, and an expression that must fail.
 check <- function(x) testthat::expect_true(isTRUE(x))
 expect_close <- function(a, b, tol = 1e-07) {
   testthat::expect_lt(
@@ -19,6 +21,7 @@ expect_close <- function(a, b, tol = 1e-07) {
   )
 }
 fails <- function(expr) testthat::expect_error(force(expr))
+# One instance of each capacity distribution, for tests that loop over all of them.
 make_distributions <- function() {
   list(
     ParetoCapacity(cmin = 10, cmax = 140, b = 0.4),
@@ -31,6 +34,7 @@ make_distributions <- function() {
     )
   )
 }
+# A short forcing series with wet and dry spells.
 make_forcing <- function() {
   data.frame(
     rain = c(
@@ -43,6 +47,7 @@ make_forcing <- function() {
     pet = rep(2, 33)
   )
 }
+# One instance of each routing form.
 make_routes <- function() {
   list(
     linear_routing(), quadratic_routing(), cubic_routing(), power_routing(m = 2.5),

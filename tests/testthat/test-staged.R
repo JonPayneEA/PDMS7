@@ -11,6 +11,7 @@
 # Dependencies: testthat
 # ============================================================ #
 
+# Guards: pdm_stages() adapts its parameter lists to the structure
 test_that("default stages follow the structure", {
   standard <- pdm_stages(pdm_presets("standard"))
   expect_equal(vapply(standard, function(s) s$name, ""),
@@ -29,6 +30,7 @@ test_that("default stages follow the structure", {
   expect_length(short, 1)
 })
 
+# Guards: stage 3 bounds are the documented band, in logs where logged
 test_that("the polish band is a quarter of each range on the search scale", {
   config <- pdm_presets("standard")
   bounds <- calibration_bounds(config)
@@ -47,6 +49,7 @@ test_that("the polish band is a quarter of each range on the search scale", {
   expect_error(pdmS7:::.stage_bounds(list(parameters = "nope"), bounds, config), "No bounds")
 })
 
+# Guards: the new objective and penalty equal their formulas
 test_that("log NSE and the volume penalty score as documented", {
   config <- pdm_presets("standard")
   f <- data.frame(rain = c(0, 8, 3, 0, 0, 5, 0, 0), pet = 0.05)
@@ -79,6 +82,7 @@ staged_data <- function() {
   list(forcing = forcing, observed = run_pdm(pdm_from_config(truth), forcing)$output$q_m3s)
 }
 
+# Guards: stages are sequential and leave other parameters alone
 test_that("each stage moves only its own parameters and starts where the last ended", {
   d <- staged_data()
   config <- pdm_presets("standard")
@@ -102,6 +106,7 @@ test_that("each stage moves only its own parameters and starts where the last en
   expect_gte(nse(fit$config), nse(second) - 1e-9)
 })
 
+# Guards: each stage is its own entry, parented on the stage before
 test_that("a logged staged calibration writes one entry per stage, chained", {
   p <- new_project()
   stages <- pdm_stages(p$data$truth, exclude = c("groundwater.kb", "distribution.cmax"),
@@ -121,6 +126,7 @@ test_that("a logged staged calibration writes one entry per stage, chained", {
   expect_true(all(verify_project(p$folder)$ok))
 })
 
+# Guards: an interrupted staged basin resumes mid-way
 test_that("a staged batch resumes from its last finished stage", {
   root <- tempfile("basins-")
   output <- tempfile("batch-")

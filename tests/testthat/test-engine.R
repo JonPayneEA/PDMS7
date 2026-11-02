@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         test-engine
-# Description:  Configurable PDM framework: test-engine
+# Description:  Tests that the compiled core matches the R reference implementation
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
@@ -87,6 +87,7 @@ engine_models <- function() {
   )
 }
 
+# Guards: the C core and the R reference agree on every flux column
 test_that(
   "compiled engine reproduces the R loop to rounding",
   {
@@ -106,6 +107,7 @@ test_that(
   }
 )
 
+# Guards: the C path handles starting states, restarts and times like the R path
 test_that(
   "compiled engine honours initial state, restart and time columns",
   {
@@ -129,6 +131,7 @@ test_that(
   }
 )
 
+# Guards: a state whose numbers happen to be integers is converted, not rejected
 test_that(
   "compiled engine accepts a state held as integers",
   {
@@ -147,6 +150,7 @@ test_that(
   }
 )
 
+# Guards: options(pdmS7.engine = 'r') really switches to the R implementation
 test_that(
   "the r option uses the R loop",
   {
@@ -154,6 +158,7 @@ test_that(
   }
 )
 
+# Guards: a full store at exactly Smax is not judged over capacity by rounding
 test_that(
   "a rectangular store filled exactly to capacity runs on both engines",
   {
@@ -171,6 +176,7 @@ test_that(
   }
 )
 
+# Guards: the flow-only calibration path gives run_pdm()'s values
 test_that(
   "lean flow path matches run_pdm and calibration is engine independent",
   {
@@ -195,6 +201,7 @@ test_that(
   }
 )
 
+# Guards: both engines refuse the same invalid inputs
 test_that(
   "compiled engine rejects invalid inputs as the R loop does",
   {
@@ -210,6 +217,7 @@ test_that(
   }
 )
 
+# Guards: the Smith-solver accuracy warning fires once, not on every calibration trial
 test_that(
   "Smith with a step above one hour warns once per session",
   {

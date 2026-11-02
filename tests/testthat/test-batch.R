@@ -39,6 +39,7 @@ make_basins <- function(n_basins = 3, env = parent.frame()) {
 quick <- list(starts = 1, control = list(maxit = 5),
               exclude = c("groundwater.kb", "distribution.b", "recharge.kg"))
 
+# Guards: a failing basin is recorded and skipped, and a rerun repairs it without redoing the others
 test_that("a batch calibrates every basin, records failures and resumes", {
   b <- make_basins()
   as_person("Ann Custodian", "custodian", "ann") # nolint: object_usage_linter.
@@ -64,6 +65,7 @@ test_that("a batch calibrates every basin, records failures and resumes", {
   expect_true(all(!is.na(results$validation_score)))
 })
 
+# Guards: resuming never rewrites a logged step; asking for the test later adds only that
 test_that("finished steps are never repeated and new steps are added", {
   b <- make_basins(2)
   as_person("Ann Custodian", "custodian", "ann") # nolint: object_usage_linter.
@@ -75,6 +77,7 @@ test_that("finished steps are never repeated and new steps are added", {
   expect_true(all(verify_project(file.path(b$output, "B01"))$ok))
 })
 
+# Guards: a basin stopped mid-way continues from its log rather than starting again
 test_that("an interrupted basin carries on from its last step", {
   b <- make_basins(1)
   as_person("Ann Custodian", "custodian", "ann") # nolint: object_usage_linter.
@@ -90,6 +93,7 @@ test_that("an interrupted basin carries on from its last step", {
                              "validation"))
 })
 
+# Guards: per-basin seeds are stable and distinct, and bad folders are refused
 test_that("seeds depend on the basin and inputs are checked", {
   expect_identical(.basin_seed("B07", 1), .basin_seed("B07", 1))
   expect_false(identical(.basin_seed("B07", 1), .basin_seed("B08", 1)))
@@ -104,6 +108,7 @@ test_that("seeds depend on the basin and inputs are checked", {
   expect_error(batch_status(empty), "No batch status")
 })
 
+# Guards: running basins in worker processes does not change any result
 test_that("a parallel batch gives the same results as a serial one", {
   skip_on_cran()
   b <- make_basins(2)
@@ -116,6 +121,7 @@ test_that("a parallel batch gives the same results as a serial one", {
                batch_results(serial)$candidate_score)
 })
 
+# Guards: snow basins register PACK output, note the settings, and resume cleanly
 test_that("a snow basin is calibrated on PACK rain and melt at fixed parameters", {
   b <- make_basins(1)
   as_person("Ann Custodian", "custodian", "ann") # nolint: object_usage_linter.

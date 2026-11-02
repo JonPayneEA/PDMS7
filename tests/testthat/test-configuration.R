@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         test-configuration
-# Description:  Configurable PDM framework: test-configuration
+# Description:  Tests that calibration recovers a known parameter
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
@@ -11,6 +11,7 @@
 # Dependencies: S7; data.table; yaml; logger (structured logging; no fastverse equivalent)
 # ============================================================ #
 
+# Guards: calibrate_pdm() finds a known fc from synthetic data
 test_that(
   "calibration recovers known rainfall correction",
   {

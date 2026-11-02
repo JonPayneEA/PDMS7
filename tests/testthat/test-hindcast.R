@@ -16,6 +16,7 @@ surface_only <- function(k, dt = 0.05) {
             recharge = FlodeStandardRecharge(kg = 1e7, bg = 1, st = 0))
 }
 
+# Guards: pdm_response_time() reproduces a known analytic response
 test_that("response time matches the analytic two-store cascade", {
   # Two equal linear stores: response t exp(-t/k) / k^2, peak at k, centroid at 2k,
   # and 1/e of the peak is reached 2.146 k after it.
@@ -27,6 +28,7 @@ test_that("response time matches the analytic two-store cascade", {
   }
 })
 
+# Guards: the measured response time does not depend on the model step
 test_that("response time is consistent across time steps and flows", {
   hourly <- pdm_response_time(pdm_model(area_km2 = 50), flow = 5)
   quarter <- pdm_response_time(pdm_model(area_km2 = 50, dt = 0.25), flow = 5)
@@ -37,6 +39,7 @@ test_that("response time is consistent across time steps and flows", {
   expect_equal(nrow(hourly$response), 24 * 60)
 })
 
+# Guards: the FEH check flags a large disagreement and accepts a small one
 test_that("the FEH comparison flags a factor of two", {
   model <- surface_only(3)
   near <- pdm_response_time(model, 2, max_hours = 100, feh_time_to_peak_h = 4)
@@ -48,6 +51,7 @@ test_that("the FEH comparison flags a factor of two", {
   expect_error(pdm_response_time(model, 0), "flow")
 })
 
+# Guards: AR coefficients equal reach.postproc's published default family
 test_that("default-family AR matches the published table", {
   # reach.postproc::standard_family_ar_table(), 15-minute steps: principal decay in hours,
   # then a_2 and a_3 (a_1 is 1.765 throughout). Checked against reach.postproc 0.12.2.
@@ -72,6 +76,7 @@ hindcast_case <- function(n = 24 * 30, seed = 4) {
   list(forcing = forcing, observed = observed, model = pdm_model(area_km2 = 40))
 }
 
+# Guards: none, persistence and AR forecasts are exactly what they claim to be
 test_that("hindcast methods reproduce their definitions", {
   case <- hindcast_case()
   start <- initial_state_from_flow(case$model, case$observed[1], 0.7)
@@ -93,6 +98,7 @@ test_that("hindcast methods reproduce their definitions", {
   expect_true(all(f$origin + f$lead <= nrow(case$forcing)))
 })
 
+# Guards: default AR sets come from the response time; a known AR(1) is recovered
 test_that("default AR sets use the response time, and fitting recovers an AR(1)", {
   case <- hindcast_case()
   n <- length(case$observed)
@@ -115,6 +121,7 @@ test_that("default AR sets use the response time, and fitting recovers an AR(1)"
   expect_true(all(hc$forecasts$origin > n / 2))
 })
 
+# Guards: a gap at an origin blanks only the methods that need the observation
 test_that("missing observations remove AR forecasts but not the simulation", {
   case <- hindcast_case()
   observed <- case$observed
@@ -127,6 +134,7 @@ test_that("missing observations remove AR forecasts but not the simulation", {
   expect_true(all(is.finite(gap$forecast[gap$method == "none"])))
 })
 
+# Guards: each state forecast starts from the open-loop state corrected at its origin
 test_that("state correction forecasts start from the corrected state", {
   case <- hindcast_case()
   start <- initial_state_from_flow(case$model, case$observed[1], 0.7)
@@ -142,6 +150,7 @@ test_that("state correction forecasts start from the corrected state", {
                tolerance = 1e-10)
 })
 
+# Guards: RMSE, bias, skill, NSE and threshold scores equal hand-computed values
 test_that("lead-time scores match a hand calculation", {
   pairs <- data.frame(
     origin = rep(1:4, 2), lead_h = 1, method = rep(c("persistence", "model"), each = 4),
@@ -159,6 +168,7 @@ test_that("lead-time scores match a hand calculation", {
   expect_error(hindcast_scores(pairs[pairs$method == "model", ]), "persistence")
 })
 
+# Guards: lead ratio uses the hindcast's response time; plots draw without error
 test_that("scores from a hindcast carry the response time and plot", {
   case <- hindcast_case()
   hc <- suppressMessages(pdm_hindcast(case$model, case$forcing, case$observed, horizon_h = 6))

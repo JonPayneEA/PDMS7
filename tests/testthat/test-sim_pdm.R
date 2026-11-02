@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         test-sim_pdm
-# Description:  Configurable PDM framework: test-sim_pdm
+# Description:  Tests for the sim_pdm() interface
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
@@ -11,6 +11,7 @@
 # Dependencies: S7; data.table; yaml; logger (structured logging; no fastverse equivalent)
 # ============================================================ #
 
+# Guards: sim_pdm() returns UTC times and run_pdm()'s numbers
 test_that(
   "new simulation API uses UTC and preserves numerical results",
   {
@@ -42,6 +43,7 @@ test_that(
   }
 )
 
+# Guards: sim_pdm() refuses mismatched steps and inputs
 test_that(
   "new simulation API rejects ambiguous and invalid inputs",
   {

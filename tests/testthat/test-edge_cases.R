@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         test-edge_cases
-# Description:  Configurable PDM framework: test-edge_cases
+# Description:  Tests that invalid inputs are refused across the package
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
@@ -11,6 +11,7 @@
 # Dependencies: S7; data.table; yaml; logger (structured logging; no fastverse equivalent)
 # ============================================================ #
 
+# Guards: negative or inverted capacities are refused at construction
 test_that(
   "capacity constructors reject nonphysical parameters",
   {
@@ -40,6 +41,7 @@ test_that(
   }
 )
 
+# Guards: states with wrong shapes or negative stores cannot be built
 test_that(
   "model states reject invalid content at construction",
   {
@@ -51,6 +53,7 @@ test_that(
   }
 )
 
+# Guards: routing steps refuse bad storage vectors, inflows and steps
 test_that(
   "routing rejects malformed states and rates",
   {
@@ -77,6 +80,7 @@ test_that(
   }
 )
 
+# Guards: missing rain or PET stops a run; given times are kept as UTC
 test_that(
   "forcing refuses gaps and preserves caller timestamps",
   {
@@ -114,6 +118,7 @@ test_that(
   }
 )
 
+# Guards: state correction reports what it changed; bad error histories are refused
 test_that(
   "updating schemes expose external adjustments and invalid histories",
   {
@@ -147,6 +152,7 @@ test_that(
   }
 )
 
+# Guards: calibrate_pdm() refuses inconsistent bounds, observations and warm-up
 test_that(
   "calibration validates bounds, observations, and warmup",
   {
@@ -188,6 +194,7 @@ test_that(
   }
 )
 
+# Guards: spin_up() and restarts carry the full state, delay queues included
 test_that(
   "spin-up and canonical API retain restart memory",
   {

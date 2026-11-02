@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         test-routing
-# Description:  Configurable PDM framework: test-routing
+# Description:  Tests for the routing stores against exact solutions
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
@@ -11,6 +11,7 @@
 # Dependencies: S7; data.table; yaml; logger (structured logging; no fastverse equivalent)
 # ============================================================ #
 
+# Guards: the exact cascade step agrees with Moore's Eq. 27 recursion
 test_that(
   "cascade routing matches transfer recursion",
   {
@@ -43,6 +44,7 @@ test_that(
   }
 )
 
+# Guards: each store's step matches its exact solution or a refined integration
 test_that(
   "reservoirs match analytical solutions and step refinement",
   {

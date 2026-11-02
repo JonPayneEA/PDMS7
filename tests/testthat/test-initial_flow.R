@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         test-initial_flow
-# Description:  Configurable PDM framework: test-initial_flow
+# Description:  Tests for steady-state starts from an observed flow
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
@@ -25,6 +25,7 @@ flow_models <- function() {
   )
 }
 
+# Guards: a steady start reproduces the observed flow on its first step
 test_that(
   "the start is in steady state with the observed flow",
   {
@@ -50,6 +51,7 @@ test_that(
   }
 )
 
+# Guards: pre-filled delay queues release the observed flow immediately
 test_that(
   "with an outlet delay the queued water reproduces the observed flow",
   {
@@ -61,6 +63,7 @@ test_that(
   }
 )
 
+# Guards: the C and R steady-state starts agree
 test_that(
   "both engines give the same start",
   {
@@ -83,6 +86,7 @@ test_that(
   }
 )
 
+# Guards: soil is capped at Smax and impossible flows are refused
 test_that(
   "a full soil store is capped and invalid inputs are rejected",
   {

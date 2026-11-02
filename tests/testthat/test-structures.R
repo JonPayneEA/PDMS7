@@ -11,6 +11,7 @@
 # Dependencies: testthat
 # ============================================================ #
 
+# Guards: every candidate structure builds and starts within its bounds
 test_that("every structure in the set is valid and starts inside its bounds", {
   set <- structure_set()
   expect_named(set, c("standard", "rectangular", "triangular", "exponential", "lognormal",
@@ -25,6 +26,7 @@ test_that("every structure in the set is valid and starts inside its bounds", {
   expect_equal(set$split$distribution$type, "pareto")
 })
 
+# Guards: a structure name always means the same components
 test_that("structure names mean the same structure whatever the base", {
   base <- structure_set("lognormal")$lognormal
   base$area_km2 <- 33
@@ -36,6 +38,7 @@ test_that("structure names mean the same structure whatever the base", {
   expect_error(structure_set("nope"), "among")
 })
 
+# Guards: bound overrides, additions and exclusions behave as documented
 test_that("bounds can be overridden, extended and excluded", {
   overrides <- list(fc = c(0.8, 1.2), td = c(0, 3))
   b <- calibration_bounds(pdm_presets("standard"), overrides = overrides,
@@ -49,6 +52,7 @@ test_that("bounds can be overridden, extended and excluded", {
                "Unknown parameter")
 })
 
+# Guards: log-scale search helps where it should
 test_that("log-scale search finds wide-ranging parameters in fewer runs", {
   set.seed(1)
   forcing <- data.frame(rain = ifelse(stats::runif(1500) < 0.07,
@@ -93,6 +97,7 @@ comparison_project <- function(env = parent.frame()) {
   folder
 }
 
+# Guards: every structure gets the same treatment and is ranked on held-out data
 test_that("structures are calibrated alike, logged and ranked on validation", {
   folder <- comparison_project()
   ranking <- compare_structures(folder, structure_set(c("standard", "lognormal", "split")),
@@ -115,6 +120,7 @@ test_that("structures are calibrated alike, logged and ranked on validation", {
   expect_match(html, "Structure comparison")
 })
 
+# Guards: two-way cross-validation ranks on the mean
 test_that("cross-validation ranks on the mean of two held-out scores", {
   folder <- comparison_project()
   ranking <- compare_structures(folder, structure_set(c("standard", "rectangular")),
@@ -127,6 +133,7 @@ test_that("cross-validation ranks on the mean of two held-out scores", {
                (fit$comparison_validation_scores$nse + fit$cross_validation_scores$nse) / 2)
 })
 
+# Guards: a comparison without held-out data is refused
 test_that("a comparison needs a validation window and a named list", {
   folder <- tempfile("compare-")
   on.exit(unlink(folder, recursive = TRUE), add = TRUE)
@@ -138,6 +145,7 @@ test_that("a comparison needs a validation window and a named list", {
   expect_error(structure_comparison(folder), "no structure comparison")
 })
 
+# Guards: worker processes do not change the ranking
 test_that("parallel comparison gives the same ranking as serial", {
   skip_on_cran()
   folder <- comparison_project()
