@@ -45,6 +45,8 @@ Getting started:
   from EA sources, through reach.io, to model files, with a checklist
 - [Your first model run](https://jonpayneea.github.io/PDMS7/articles/example-workflow.html):
   from your own data files to a scored, calibrated and saved model
+- [Synthetic rivers: try everything on a known answer](https://jonpayneea.github.io/PDMS7/articles/synthetic-rivers.html):
+  stochastic rain, a known model and a realistic gauge, with no data needed
 
 How the model works:
 
@@ -71,6 +73,9 @@ Calibration:
   flow-duration signatures, and POD, FAR and CSI at warning thresholds
 - [Choosing a model structure](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.html):
   calibrate the alternatives alike, rank on validation, and keep a final test window
+- [Larger floods: extrapolation and the rating](https://jonpayneea.github.io/PDMS7/articles/extrapolation.html):
+  the wettest years held back, the spread of equally good fits, and flows above the highest
+  gauging
 - [Calibrating many catchments](https://jonpayneea.github.io/PDMS7/articles/many-catchments.html):
   a step-by-step guide to `calibrate_batch()`: preparing folders, running, resuming after an
   interruption, fixing failures, and reading the results

@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -38,6 +38,7 @@
     <li><a class="dropdown-item" href="../articles/reading-paths.html">Where to start</a></li>
     <li><a class="dropdown-item" href="../articles/data-preparation.html">Preparing your data</a></li>
     <li><a class="dropdown-item" href="../articles/example-workflow.html">Your first model run</a></li>
+    <li><a class="dropdown-item" href="../articles/synthetic-rivers.html">Synthetic rivers: try everything on a known answer</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>How the model works</h6></li>
     <li><a class="dropdown-item" href="../articles/pdm-explained.html">How the PDM works</a></li>
@@ -53,6 +54,7 @@
     <li><a class="dropdown-item" href="../articles/auto-calibration.html">Automatic calibration, explained</a></li>
     <li><a class="dropdown-item" href="../articles/scoring.html">Scoring a simulation: from NSE to POD, FAR and CSI</a></li>
     <li><a class="dropdown-item" href="../articles/choosing-structure.html">Choosing a model structure</a></li>
+    <li><a class="dropdown-item" href="../articles/extrapolation.html">Larger floods: extrapolation and the rating</a></li>
     <li><a class="dropdown-item" href="../articles/many-catchments.html">Calibrating many catchments</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Records and review</h6></li>
@@ -263,6 +265,22 @@ lock left by a session that no longer exists.</p>
 <h2 id="the-calibration-log">The calibration log<a class="anchor" aria-label="anchor" href="#the-calibration-log"></a>
 </h2>
 <div class="section level3">
+<h3 id="not-enough-years-to-hold-back">Not enough years to hold back<a class="anchor" aria-label="anchor" href="#not-enough-years-to-hold-back"></a>
+</h3>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">time</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.POSIXlt.html" class="external-link">as.POSIXct</a></span><span class="op">(</span><span class="st">"2020-10-01"</span>, tz <span class="op">=</span> <span class="st">"UTC"</span><span class="op">)</span>, by <span class="op">=</span> <span class="fl">86400</span>, length.out <span class="op">=</span> <span class="fl">3</span> <span class="op">*</span> <span class="fl">365</span><span class="op">)</span></span>
+<span><span class="fu">says</span><span class="op">(</span><span class="fu"><a href="../reference/wettest_years.html">wettest_years</a></span><span class="op">(</span><span class="va">time</span>, <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">time</span><span class="op">)</span><span class="op">)</span>, n <span class="op">=</span> <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] "Only 3 water years have at least half a year of observed flow; holding back 2 would leave fewer than 3. Hold back fewer years, or none with 0"</span></span></code></pre></div>
+<p>By default <code><a href="../reference/calibration_log.html">register_data()</a></code> holds back the two wettest
+water years, which needs a record of at least five years with half of
+each observed. For a shorter record, set <code>wettest_years = 1</code>
+or <code>0</code> and say why in the registration’s reasoning. Without a
+<code>time</code> column in the forcing, registration refuses for the
+same reason: water years need dates. If holding back the wettest year
+leaves the validation window almost empty, lengthen the window; the
+message names it. <a href="extrapolation.html">Larger floods</a>.</p>
+</div>
+<div class="section level3">
 <h3 id="a-data-file-has-changed">A data file has changed<a class="anchor" aria-label="anchor" href="#a-data-file-has-changed"></a>
 </h3>
 <p><code>Registered ... file has changed since registration</code> means
@@ -283,7 +301,7 @@ the record.</p>
 <div class="section level3">
 <h3 id="a-steward-cannot-sign-off">A Steward cannot sign off<a class="anchor" aria-label="anchor" href="#a-steward-cannot-sign-off"></a>
 </h3>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/calibration_log.html">sign_off_project</a></span><span class="op">(</span><span class="va">project</span>, <span class="st">"Accepted."</span>, <span class="va">reviewed</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Error: You wrote calibration entries in this project; another Steward must sign off</span></span></code></pre></div>
 <p>By design. A Steward who took part in the calibration cannot sign it
@@ -293,7 +311,7 @@ off. Ask another Steward, or a Delegated Steward. <a href="steward-guide.html">R
 <div class="section level2">
 <h2 id="forecasting">Forecasting<a class="anchor" aria-label="anchor" href="#forecasting"></a>
 </h2>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">says</span><span class="op">(</span><span class="fu"><a href="../reference/pdm_hindcast.html">pdm_hindcast</a></span><span class="op">(</span><span class="va">model</span>, <span class="va">forcing</span>, observed <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">3</span>, <span class="fl">2</span>, <span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span>, window <span class="op">=</span> <span class="fl">6</span><span class="op">:</span><span class="fl">6</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] "No forecast origins fit in the window"</span></span></code></pre></div>
 <p>A hindcast needs room for forecast origins inside the window, with at

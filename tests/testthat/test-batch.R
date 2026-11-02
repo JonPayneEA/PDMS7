@@ -30,7 +30,8 @@ make_basins <- function(n_basins = 3, env = parent.frame()) {
     data.table::fwrite(forcing, file.path(folder, "forcing.csv"))
     data.table::fwrite(data.frame(q_m3s = q), file.path(folder, "flow.csv"))
     writeLines(c(paste("area_km2:", 20 * i), "calibration: [2023-10-08, 2023-10-28]",
-                 "validation: [2023-10-29, 2023-11-03]", "test: [2023-11-04, 2023-11-09]"),
+                 "validation: [2023-10-29, 2023-11-03]", "test: [2023-11-04, 2023-11-09]",
+                 "wettest_years: 0"),
                file.path(folder, "basin.yml"))
   }
   list(root = root, output = output)
@@ -85,7 +86,7 @@ test_that("an interrupted basin carries on from its last step", {
   start_calibration_project(project, "B01", "B01", "Batch calibration", 20, "O", "S", id = "B01")
   register_data(project, file.path(b$root, "B01", "forcing.csv"),
                 file.path(b$root, "B01", "flow.csv"), c("2023-10-08", "2023-10-28"),
-                c("2023-10-29", "2023-11-03"))
+                c("2023-10-29", "2023-11-03"), wettest_years = 0)
   do.call(calibrate_batch, c(list(b$root, b$output), quick))
   types <- read_project(project)$entries$type
   expect_equal(sum(types == "data_registered"), 1L)

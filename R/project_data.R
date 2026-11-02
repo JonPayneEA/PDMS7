@@ -190,7 +190,8 @@
   state <- .start_state(model, card$start %||% "soil", .first_observed(data$observed),
                         card$baseflow_fraction %||% 0.7, card$soil_fraction)
   sim <- .quietly(run_pdm(model, data$forcing, state))$output$q_m3s
-  rows <- .window_rows(card[[window]])
+  # Rows scored: the window less any held-back wettest year, or, for "wettest", those years.
+  rows <- .scored_rows(card, window)
   list(
     simulated = sim, observed = data$observed, rows = rows,
     time = if ("time" %in% names(data$forcing)) data$forcing$time else NULL,

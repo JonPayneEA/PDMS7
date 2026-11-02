@@ -69,6 +69,10 @@
 #' weight times the absolute relative error in total flow over the scored rows. Zero, the
 #' default, adds nothing. [calibrate_staged()] uses it to hold the water balance while fitting
 #' low flows.
+#' @param archive Optional function of the full simulated flow returning one number. When given,
+#' every trial's parameters and that number are kept, and returned as `trials`. Calibration
+#' projects use it to record the headline score of each trial, from which the equally good
+#' parameter sets are drawn.
 #'
 #' @return A list of config, model, parameters, objective, convergence, message, optim
 #' diagnostics, and start_results. The first six describe the best start; optim is its
@@ -77,7 +81,9 @@
 #' evaluation), convergence (the stats::optim code), evaluations (every objective call,
 #' including the finite-difference gradient calls that stats::optim counts leave out),
 #' best (TRUE for the returned start), and one column per calibrated parameter holding the
-#' fitted value, which always lies within lower and upper.
+#' fitted value, which always lies within lower and upper. With `archive`, also `trials`, a
+#' data.table of every valid trial's `score` and parameter values, with the trials' positions
+#' in the unit search box as its `unit` attribute.
 #'
 #' @examples
 #' config <- pdm_presets('standard')
@@ -99,7 +105,7 @@ calibrate_pdm <- function(
   thresholds = NULL, threshold_weight = 1, threshold_score = "csi",
   event_settings = list(tolerance_h = 6, gap_h = 24, min_duration_h = 0),
   log_scale = character(0), volume_weight = 0, start = c("flow", "soil"),
-  baseflow_fraction = 0.7, start_flow = NULL
+  baseflow_fraction = 0.7, start_flow = NULL, archive = NULL
 ) {
   # Outline: check the arguments; map the parameters onto a unit box (log-scaled where asked);
   # build a loss function that runs the model and scores it; minimise that loss from each start;
@@ -139,6 +145,8 @@ calibrate_pdm <- function(
   # stats::optim leaves out of its own function count.
   counter <- new.env(parent = emptyenv())
   counter$calls <- 0L
+  counter$trials <- list()
+  .check(is.null(archive) || is.function(archive), "archive must be a function or NULL")
   scored <- seq_along(observed) > warmup
   # The objective for a point z in the unit box. Every trial starts by the same rule, so trials
   # differ only in their parameters. Any
@@ -160,6 +168,9 @@ calibrate_pdm <- function(
             all_sim[scored], observed[scored], thresholds, threshold_score, event_settings,
             mod@dt
           )
+        }
+        if (!is.null(archive) && is.finite(val)) {
+          counter$trials[[length(counter$trials) + 1L]] <- c(score = archive(all_sim), z)
         }
         if (is.finite(val)) val else 1e+30
       },
@@ -188,7 +199,27 @@ calibrate_pdm <- function(
     objective_name = .objective_name(objective, thresholds, threshold_weight, threshold_score,
                                      volume_weight),
     method = method
-  ), out[c("convergence", "message", "optim", "start_results")])
+  ), out[c("convergence", "message", "optim", "start_results")],
+  if (!is.null(archive)) list(trials = .trial_table(counter$trials, box, names(lower))))
+}
+
+# The archive of trials as a table of score and parameter values, with each trial's position in
+# the unit search box kept as an attribute for measuring how far apart two trials are.
+.trial_table <- function(trials, box, names) {
+  if (!length(trials)) {
+    out <- data.table::data.table(score = numeric(0))
+    attr(out, "unit") <- matrix(numeric(0), 0, length(names), dimnames = list(NULL, names))
+    return(out)
+  }
+  m <- do.call(rbind, trials)
+  unit <- m[, -1L, drop = FALSE]
+  colnames(unit) <- names
+  values <- t(apply(unit, 1L, box$to_value))
+  if (length(names) == 1L) values <- t(values)
+  colnames(values) <- names
+  out <- cbind(data.table::data.table(score = m[, 1L]), data.table::as.data.table(values))
+  attr(out, "unit") <- unit
+  out
 }
 
 # Argument checks for calibrate_pdm(), kept apart so the main function reads as the procedure.

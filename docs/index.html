@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -40,6 +40,7 @@
     <li><a class="dropdown-item" href="articles/reading-paths.html">Where to start</a></li>
     <li><a class="dropdown-item" href="articles/data-preparation.html">Preparing your data</a></li>
     <li><a class="dropdown-item" href="articles/example-workflow.html">Your first model run</a></li>
+    <li><a class="dropdown-item" href="articles/synthetic-rivers.html">Synthetic rivers: try everything on a known answer</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>How the model works</h6></li>
     <li><a class="dropdown-item" href="articles/pdm-explained.html">How the PDM works</a></li>
@@ -55,6 +56,7 @@
     <li><a class="dropdown-item" href="articles/auto-calibration.html">Automatic calibration, explained</a></li>
     <li><a class="dropdown-item" href="articles/scoring.html">Scoring a simulation: from NSE to POD, FAR and CSI</a></li>
     <li><a class="dropdown-item" href="articles/choosing-structure.html">Choosing a model structure</a></li>
+    <li><a class="dropdown-item" href="articles/extrapolation.html">Larger floods: extrapolation and the rating</a></li>
     <li><a class="dropdown-item" href="articles/many-catchments.html">Calibrating many catchments</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Records and review</h6></li>
@@ -134,6 +136,8 @@
 <a href="https://jonpayneea.github.io/PDMS7/articles/data-preparation.html">Preparing your data</a>: from EA sources, through reach.io, to model files, with a checklist</li>
 <li>
 <a href="https://jonpayneea.github.io/PDMS7/articles/example-workflow.html">Your first model run</a>: from your own data files to a scored, calibrated and saved model</li>
+<li>
+<a href="https://jonpayneea.github.io/PDMS7/articles/synthetic-rivers.html">Synthetic rivers: try everything on a known answer</a>: stochastic rain, a known model and a realistic gauge, with no data needed</li>
 </ul>
 <p>How the model works:</p>
 <ul>
@@ -159,6 +163,8 @@
 <a href="https://jonpayneea.github.io/PDMS7/articles/scoring.html">Scoring a simulation</a>: NSE, KGE, flow-duration signatures, and POD, FAR and CSI at warning thresholds</li>
 <li>
 <a href="https://jonpayneea.github.io/PDMS7/articles/choosing-structure.html">Choosing a model structure</a>: calibrate the alternatives alike, rank on validation, and keep a final test window</li>
+<li>
+<a href="https://jonpayneea.github.io/PDMS7/articles/extrapolation.html">Larger floods: extrapolation and the rating</a>: the wettest years held back, the spread of equally good fits, and flows above the highest gauging</li>
 <li>
 <a href="https://jonpayneea.github.io/PDMS7/articles/many-catchments.html">Calibrating many catchments</a>: a step-by-step guide to <code><a href="reference/calibrate_batch.html">calibrate_batch()</a></code>: preparing folders, running, resuming after an interruption, fixing failures, and reading the results</li>
 </ul>
@@ -207,7 +213,7 @@
 <h2 id="quick-start">Quick start<a class="anchor" aria-label="anchor" href="#quick-start"></a>
 </h2>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://jonpayneea.github.io/PDMS7/">pdmS7</a></span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">pdmS7</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">config</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/read_pdm_config.html">read_pdm_config</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"config"</span>, <span class="st">"standard.yml"</span>, package <span class="op">=</span> <span class="st">"pdmS7"</span><span class="op">)</span></span>

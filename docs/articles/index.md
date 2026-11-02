@@ -8,6 +8,8 @@
   data](https://jonpayneea.github.io/PDMS7/articles/data-preparation.md):
 - [Your first model
   run](https://jonpayneea.github.io/PDMS7/articles/example-workflow.md):
+- [Synthetic rivers: try everything on a known
+  answer](https://jonpayneea.github.io/PDMS7/articles/synthetic-rivers.md):
 
 ### How the model works
 
@@ -35,6 +37,8 @@
   CSI](https://jonpayneea.github.io/PDMS7/articles/scoring.md):
 - [Choosing a model
   structure](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.md):
+- [Larger floods: extrapolation and the
+  rating](https://jonpayneea.github.io/PDMS7/articles/extrapolation.md):
 - [Calibrating many
   catchments](https://jonpayneea.github.io/PDMS7/articles/many-catchments.md):
 

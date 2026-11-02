@@ -18,12 +18,15 @@ explains any term along the way.
 1. [How the PDM works](pdm-explained.html): what the model does, in plain English.
 2. [Preparing your data](data-preparation.html): from EA sources to model files, with a
    checklist.
-3. [Your first model run](example-workflow.html): data to a calibrated, saved model.
+3. [Your first model run](example-workflow.html): data to a calibrated, saved model. Or,
+   with no data to hand, [Synthetic rivers](synthetic-rivers.html).
 4. [Starting a run](starting-states.html) and [Choosing model components](model-options.html).
 5. [Scoring a simulation](scoring.html): what each score shows.
 6. [Automatic calibration, explained](auto-calibration.html), including staged calibration.
 7. [Logging a manual calibration](calibration-log.html): the record a Steward will review.
 8. [Choosing a model structure](choosing-structure.html), when the standard PDM may not suit.
+9. [Larger floods: extrapolation and the rating](extrapolation.html): what the held-back
+   wettest years and the rating flag show.
 
 For many catchments at once, add [Calibrating many catchments](many-catchments.html).
 [Troubleshooting](troubleshooting.html) covers the common errors.
@@ -35,6 +38,8 @@ For many catchments at once, add [Calibrating many catchments](many-catchments.h
 2. [Scoring a simulation](scoring.html): enough to read the report's scores.
 3. [Logging a manual calibration](calibration-log.html): how the record is built.
 4. [Inside the logs](log-structure.html): what the checksums prove.
+5. [Larger floods: extrapolation and the rating](extrapolation.html): how to read the
+   held-back years in the test.
 
 # I am accountable for a model's use (Owner)
 

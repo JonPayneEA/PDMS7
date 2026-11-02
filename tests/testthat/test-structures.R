@@ -93,7 +93,8 @@ comparison_project <- function(env = parent.frame()) {
     exp(stats::rnorm(n, 0, 0.03))
   as_person("Ann Custodian", "custodian", "ann", env) # nolint: object_usage_linter.
   start_calibration_project(folder, "Brook", "1", "Structures", 40, "O", "S")
-  register_data(folder, forcing, observed, c(169, 1000), c(1001, 1300), test = c(1301, n))
+  register_data(folder, forcing, observed, c(169, 1000), c(1001, 1300), test = c(1301, n),
+                wettest_years = 0)
   folder
 }
 
@@ -140,7 +141,7 @@ test_that("a comparison needs a validation window and a named list", {
   d <- log_data() # nolint: object_usage_linter.
   as_person("Ann Custodian", "custodian", "ann") # nolint: object_usage_linter.
   start_calibration_project(folder, "T", "1", "P", 20, "O", "S")
-  register_data(folder, d$forcing, d$observed, c(121, 700))
+  register_data(folder, d$forcing, d$observed, c(121, 700), wettest_years = 0)
   expect_error(compare_structures(folder, reasoning = "x"), "validation window")
   expect_error(structure_comparison(folder), "no structure comparison")
 })

@@ -38,7 +38,10 @@ register_data(
   event_tolerance_h = 6,
   event_gap_h = 24,
   event_min_duration_h = 0,
-  test = NULL
+  test = NULL,
+  highest_gauged_m3s = NULL,
+  wettest_years = 2,
+  tie_tolerance = 0.02
 )
 
 select_structure(project, configuration, reasoning)
@@ -187,6 +190,23 @@ reopen_project(project, reason)
   Event matching settings in hours; see
   [`pdm_threshold_scores()`](https://jonpayneea.github.io/PDMS7/reference/pdm_threshold_scores.md).
 
+- highest_gauged_m3s:
+
+  Optional highest flow ever gauged at the station, m3/s: the top of the
+  reliable rating. Flows above it are flagged, not changed.
+
+- wettest_years:
+
+  Number of the wettest water years to hold back, by default 2. Needs a
+  `time` column in `forcing` and enough record to leave three years; 0
+  holds none back.
+
+- tie_tolerance:
+
+  Parameter sets whose calibration headline score lies within this of
+  the best count as equally good, in the headline's own units (0.02 for
+  NSE).
+
 - configuration:
 
   A configuration list or the path of a YAML configuration file.
@@ -286,6 +306,20 @@ for the scores and
 [`verify_project()`](https://jonpayneea.github.io/PDMS7/reference/verify_project.md)
 for the integrity checks.
 
+**Extrapolation.** By default the two wettest water years in the
+calibration and validation windows (see
+[`wettest_years()`](https://jonpayneea.github.io/PDMS7/reference/wettest_years.md))
+are held back: no calibration, trial or validation scores them, and
+`test_candidate()` scores them once, with the test window, as a check on
+floods larger than those the model was fitted to. Each automatic
+calibration keeps the parameter sets it tried that score within
+`tie_tolerance` of its best, up to 50 spread-out sets, and the test
+reports the range of their peaks in each held year. Where
+`highest_gauged_m3s` is given, flows above it are counted window by
+window at registration and flagged in the test: above that flow the
+rating is extrapolated, so the observed peak is uncertain. Projects
+registered before version 0.5.0 hold nothing back.
+
 ## Examples
 
 ``` r
@@ -294,27 +328,27 @@ old <- options(pdmS7.user = "A Hydrologist", pdmS7.role = "custodian")
 start_calibration_project(folder, catchment = "Example", gauge = "00000",
   purpose = "Illustration", area_km2 = 50, owner = "Deputy Director",
   steward = "A Steward")
-#> INFO [2026-11-02 15:03:19] Started calibration project example-project in /tmp/RtmpST5Fla/example-project
+#> INFO [2026-11-02 20:30:41] Started calibration project example-project in /tmp/RtmpXu9zGg/example-project
 set.seed(1)
 forcing <- data.frame(rain = ifelse(runif(500) < 0.1, rexp(500, 0.3), 0), pet = 0.1)
 truth <- pdm_presets("standard")
 truth$area_km2 <- 50
 observed <- run_pdm(pdm_from_config(truth), forcing)$output$q_m3s
 register_data(folder, forcing, observed, calibration = c(101, 350),
-  validation = c(351, 500))
-#> INFO [2026-11-02 15:03:19] Registered data 0002: 500 rows
+  validation = c(351, 500), wettest_years = 0)
+#> INFO [2026-11-02 20:30:41] Registered data 0002: 500 rows
 select_structure(folder, truth, reasoning = "Standard structure as a starting point")
 #> Warning: Column name 'time' (colClasses[[1]][1]) not found
-#> INFO [2026-11-02 15:03:19] Structure 0003: nse 0.9449
+#> INFO [2026-11-02 20:30:41] Structure 0003: nse 0.9449
 log_trial(folder, parent = 3, changes = c(surface.k1 = 3), verdict = "worse",
   reasoning = "Testing a slower first store")
 #> Warning: Column name 'time' (colClasses[[1]][1]) not found
-#> INFO [2026-11-02 15:03:19] Trial 0004 from 0003: nse 0.9444
+#> INFO [2026-11-02 20:30:41] Trial 0004 from 0003: nse 0.9444
 project_trials(folder)
 #>        id               type parent            timestamp        author
 #>    <char>             <char> <char>               <char>        <char>
-#> 1:   0003 structure_selected   <NA> 2026-11-02T15:03:19Z A Hydrologist
-#> 2:   0004              trial   0003 2026-11-02T15:03:19Z A Hydrologist
+#> 1:   0003 structure_selected   <NA> 2026-11-02T20:30:41Z A Hydrologist
+#> 2:   0004              trial   0003 2026-11-02T20:30:41Z A Hydrologist
 #>              changes verdict                              reasoning       nse
 #>               <char>  <char>                                 <char>     <num>
 #> 1:                      <NA> Standard structure as a starting point 0.9449442

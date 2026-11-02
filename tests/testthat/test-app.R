@@ -40,7 +40,7 @@ test_that("the app runs a calibration from setup to sign-off", {
                       observed_path = file.path(f$folder, "flow.csv"),
                       cal_start = "121", cal_end = "700", val_start = "2021-01-31",
                       val_end = "2021-02-09 23:00", headline = "kge", log_offset = 0.01,
-                      soil_fraction = 0.5, copy = TRUE, register_reasoning = "")
+                      soil_fraction = 0.5, wettest_years = 0, copy = TRUE, register_reasoning = "")
     session$setInputs(register = 1)
     session$setInputs(config_path = "", preset = "standard",
                       structure_reasoning = "Standard structure")
@@ -147,7 +147,7 @@ test_that("the app registers thresholds and runs a threshold calibration", {
                       observed_path = file.path(f$folder, "flow.csv"), cal_start = "121",
                       cal_end = "700", val_start = "", val_end = "",
                       headline = "csi:Flood Alert", log_offset = 0.01, soil_fraction = 0.5,
-                      copy = TRUE, register_reasoning = "", rating_path = "",
+                      wettest_years = 0, copy = TRUE, register_reasoning = "", rating_path = "",
                       thresholds = paste0("Flood Alert, ", alert, ", flow"),
                       event_tolerance = 4, event_gap = 12, event_min = 0)
     session$setInputs(register = 1)

@@ -27,7 +27,8 @@ calibrate_pdm(
   volume_weight = 0,
   start = c("flow", "soil"),
   baseflow_fraction = 0.7,
-  start_flow = NULL
+  start_flow = NULL,
+  archive = NULL
 )
 }
 \arguments{
@@ -108,6 +109,11 @@ version 0.4.1; it then needs a warm-up long enough for the slowest store to fill
 
 \item{start_flow}{With \code{start = "flow"}, the flow to start from, m3/s. By default the first
 observed value of \code{observed}.}
+
+\item{archive}{Optional function of the full simulated flow returning one number. When given,
+every trial's parameters and that number are kept, and returned as \code{trials}. Calibration
+projects use it to record the headline score of each trial, from which the equally good
+parameter sets are drawn.}
 }
 \value{
 A list of config, model, parameters, objective, convergence, message, optim
@@ -117,7 +123,9 @@ configured point), objective (on the scale given by objective_name, 1e+30 if no 
 evaluation), convergence (the stats::optim code), evaluations (every objective call,
 including the finite-difference gradient calls that stats::optim counts leave out),
 best (TRUE for the returned start), and one column per calibrated parameter holding the
-fitted value, which always lies within lower and upper.
+fitted value, which always lies within lower and upper. With \code{archive}, also \code{trials}, a
+data.table of every valid trial's \code{score} and parameter values, with the trials' positions
+in the unit search box as its \code{unit} attribute.
 }
 \description{
 Component of the configurable Moore (2007) rainfall-runoff framework.

@@ -56,6 +56,10 @@ Getting started:
 - [Your first model
   run](https://jonpayneea.github.io/PDMS7/articles/example-workflow.html):
   from your own data files to a scored, calibrated and saved model
+- [Synthetic rivers: try everything on a known
+  answer](https://jonpayneea.github.io/PDMS7/articles/synthetic-rivers.html):
+  stochastic rain, a known model and a realistic gauge, with no data
+  needed
 
 How the model works:
 
@@ -96,6 +100,10 @@ Calibration:
   structure](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.html):
   calibrate the alternatives alike, rank on validation, and keep a final
   test window
+- [Larger floods: extrapolation and the
+  rating](https://jonpayneea.github.io/PDMS7/articles/extrapolation.html):
+  the wettest years held back, the spread of equally good fits, and
+  flows above the highest gauging
 - [Calibrating many
   catchments](https://jonpayneea.github.io/PDMS7/articles/many-catchments.html):
   a step-by-step guide to
@@ -581,6 +589,22 @@ The PACK snow model, alone or feeding the PDM.
 - [`sim_snow_pdm()`](https://jonpayneea.github.io/PDMS7/reference/sim_snow_pdm.md)
   : Simulate coupled PACK and PDM
 
+## Synthetic rivers
+
+Stochastic rain and known-answer catchments, for demonstrations and
+method tests.
+
+- [`synthetic_catchment()`](https://jonpayneea.github.io/PDMS7/reference/synthetic_catchment.md)
+  : Synthetic catchment
+- [`synthetic_rain()`](https://jonpayneea.github.io/PDMS7/reference/synthetic_rain.md)
+  : Synthetic rainfall
+- [`fit_rain()`](https://jonpayneea.github.io/PDMS7/reference/fit_rain.md)
+  : Fit a rainfall generator to a record
+- [`rain_parameters()`](https://jonpayneea.github.io/PDMS7/reference/rain_parameters.md)
+  : Rainfall generator parameters
+- [`rain_statistics()`](https://jonpayneea.github.io/PDMS7/reference/rain_statistics.md)
+  : Rainfall statistics
+
 ## Calibration
 
 - [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md)
@@ -641,6 +665,8 @@ calibration.
   [`sign_off_project()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
   [`reopen_project()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
   : Calibration log
+- [`wettest_years()`](https://jonpayneea.github.io/PDMS7/reference/wettest_years.md)
+  : Wettest water years
 - [`read_project()`](https://jonpayneea.github.io/PDMS7/reference/read_project.md)
   [`project_trials()`](https://jonpayneea.github.io/PDMS7/reference/read_project.md)
   [`read_entry()`](https://jonpayneea.github.io/PDMS7/reference/read_project.md)
@@ -715,6 +741,8 @@ State correction and ARMA error prediction (Moore 2007, Eq. 28-42).
   data](https://jonpayneea.github.io/PDMS7/articles/data-preparation.md):
 - [Your first model
   run](https://jonpayneea.github.io/PDMS7/articles/example-workflow.md):
+- [Synthetic rivers: try everything on a known
+  answer](https://jonpayneea.github.io/PDMS7/articles/synthetic-rivers.md):
 
 ### How the model works
 
@@ -742,6 +770,8 @@ State correction and ARMA error prediction (Moore 2007, Eq. 28-42).
   CSI](https://jonpayneea.github.io/PDMS7/articles/scoring.md):
 - [Choosing a model
   structure](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.md):
+- [Larger floods: extrapolation and the
+  rating](https://jonpayneea.github.io/PDMS7/articles/extrapolation.md):
 - [Calibrating many
   catchments](https://jonpayneea.github.io/PDMS7/articles/many-catchments.md):
 

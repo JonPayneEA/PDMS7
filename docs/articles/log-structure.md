@@ -30,7 +30,7 @@ start_calibration_project(project, catchment = "Example Brook", gauge = "99003",
                           purpose = "Illustration", area_km2 = 30,
                           owner = "Deputy Director", steward = "Sam Steward")
 register_data(project, forcing, observed, calibration = c(121, 600),
-              validation = c(601, 800), test = c(801, n))
+              validation = c(601, 800), test = c(801, n), wettest_years = 0)
 start <- truth
 start$fc <- 0.9
 select_structure(project, start, "Standard PDM.")
@@ -77,17 +77,17 @@ cat(readLines(file.path(project, "entries", "0004-trial.yml")), sep = "\n")
 #> format: 1
 #> id: '0004'
 #> type: trial
-#> timestamp: '2026-11-02T15:07:02Z'
+#> timestamp: '2026-11-02T20:34:57Z'
 #> author:
 #>   name: Ann Hydrologist
 #>   role: custodian
 #>   login: root
 #> software:
-#>   pdmS7: 0.4.1
+#>   pdmS7: 0.5.0
 #>   r: 4.3.3
 #>   platform: x86_64-pc-linux-gnu
 #>   engine: c
-#> previous: 4aede3aa4e414ab093116cfe43a7a6c9
+#> previous: de927468245d4184ea35634be32c3174
 #> registration: '0002'
 #> parent: '0003'
 #> changes:

@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -38,6 +38,7 @@
     <li><a class="dropdown-item" href="../articles/reading-paths.html">Where to start</a></li>
     <li><a class="dropdown-item" href="../articles/data-preparation.html">Preparing your data</a></li>
     <li><a class="dropdown-item" href="../articles/example-workflow.html">Your first model run</a></li>
+    <li><a class="dropdown-item" href="../articles/synthetic-rivers.html">Synthetic rivers: try everything on a known answer</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>How the model works</h6></li>
     <li><a class="dropdown-item" href="../articles/pdm-explained.html">How the PDM works</a></li>
@@ -53,6 +54,7 @@
     <li><a class="dropdown-item" href="../articles/auto-calibration.html">Automatic calibration, explained</a></li>
     <li><a class="dropdown-item" href="../articles/scoring.html">Scoring a simulation: from NSE to POD, FAR and CSI</a></li>
     <li><a class="dropdown-item" href="../articles/choosing-structure.html">Choosing a model structure</a></li>
+    <li><a class="dropdown-item" href="../articles/extrapolation.html">Larger floods: extrapolation and the rating</a></li>
     <li><a class="dropdown-item" href="../articles/many-catchments.html">Calibrating many catchments</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Records and review</h6></li>
@@ -311,13 +313,33 @@ for a flashy catchment with a warning service. Look at the hydrographs:
 a single number hides where the errors are.</p>
 </div>
 <div class="section level3">
-<h3 id="the-test-window">6. The test window<a class="anchor" aria-label="anchor" href="#the-test-window"></a>
+<h3 id="the-test-window-and-the-held-back-years">6. The test window and the held-back years<a class="anchor" aria-label="anchor" href="#the-test-window-and-the-held-back-years"></a>
 </h3>
 <p>If a test window was registered, it is scored once, after every
 choice is made, and sign-off requires it. A poor test result does not
 block sign-off, but it must be explained. A test result much worse than
 validation suggests the validation window was used, perhaps without
 intending it, to make choices.</p>
+<p>Most projects also hold back the two wettest water years, and the
+test scores them too. Look past the scores, which ordinary days
+dominate, to the table of peaks:</p>
+<ul>
+<li>
+<strong>The candidate’s peak against the observed peak.</strong> A
+large miss on floods the model never saw means the calibration does not
+extrapolate.</li>
+<li>
+<strong>The range across equally good fits.</strong> A wide range
+means the record cannot pin down the parameters that control large
+floods, and the candidate’s peak is partly luck.</li>
+<li>
+<strong>The rating flag.</strong> A peak above the highest gauged
+flow is itself uncertain. Ask whether a miss is the model’s or the
+rating’s.</li>
+</ul>
+<p>If the Data section shows that the calibration window contains many
+flows above the highest gauging, ask why. <a href="extrapolation.html">Larger floods: extrapolation and the
+rating</a> explains the table.</p>
 </div>
 </div>
 <div class="section level2">

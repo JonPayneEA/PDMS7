@@ -135,6 +135,20 @@ That is expected: the package clears a lock left by a session that no longer exi
 
 # The calibration log
 
+## Not enough years to hold back
+
+```{r wettest}
+time <- seq(as.POSIXct("2020-10-01", tz = "UTC"), by = 86400, length.out = 3 * 365)
+says(wettest_years(time, rep(1, length(time)), n = 2))
+```
+
+By default `register_data()` holds back the two wettest water years, which needs a record of
+at least five years with half of each observed. For a shorter record, set `wettest_years = 1`
+or `0` and say why in the registration's reasoning. Without a `time` column in the forcing,
+registration refuses for the same reason: water years need dates. If holding back the wettest
+year leaves the validation window almost empty, lengthen the window; the message names it.
+[Larger floods](extrapolation.html).
+
 ## A data file has changed
 
 `Registered ... file has changed since registration` means a data file no longer matches the

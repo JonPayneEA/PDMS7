@@ -79,7 +79,8 @@ for (i in 1:8) {
     paste("gauge:", id),
     paste("area_km2:", truth$area_km2),
     "calibration: [2023-10-11, 2023-11-14]",
-    "validation: [2023-11-15, 2023-11-29]"
+    "validation: [2023-11-15, 2023-11-29]",
+    "wettest_years: 0"
   ), file.path(folder, "basin.yml"))
 }
 list.files(basins)
@@ -97,6 +98,8 @@ cat(readLines(file.path(basins, "B01", "basin.yml")), sep = "\n")
 | `calibration` | First and last date of the period the calibration is fitted to. Anything before it is warm-up: simulated, so the model's stores settle, but not scored |
 | `validation` | A later period the calibration never sees, used to check the result honestly |
 | `test` (optional) | A final period kept back until everything is decided, scored once |
+| `wettest_years` (optional) | How many of the wettest water years to hold back and score with the test, as a check on larger floods than the calibration saw; 2 if not given. These example rivers have only two months of record, so they set 0 |
+| `highest_gauged_m3s` (optional) | The highest flow ever gauged. Flows above it, where the rating is extrapolated, are flagged in the record |
 | `config` (optional) | A model configuration file in the folder, if this catchment needs a different model |
 | `thresholds`, `rating` (optional) | Warning thresholds to score; see [Scoring a simulation](scoring.html) |
 | `snow` (optional) | `true` for a catchment with snow; see below |

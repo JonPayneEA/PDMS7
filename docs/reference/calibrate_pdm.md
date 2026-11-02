@@ -28,7 +28,8 @@ calibrate_pdm(
   volume_weight = 0,
   start = c("flow", "soil"),
   baseflow_fraction = 0.7,
-  start_flow = NULL
+  start_flow = NULL,
+  archive = NULL
 )
 ```
 
@@ -171,6 +172,14 @@ calibrate_pdm(
   With `start = "flow"`, the flow to start from, m3/s. By default the
   first observed value of `observed`.
 
+- archive:
+
+  Optional function of the full simulated flow returning one number.
+  When given, every trial's parameters and that number are kept, and
+  returned as `trials`. Calibration projects use it to record the
+  headline score of each trial, from which the equally good parameter
+  sets are drawn.
+
 ## Value
 
 A list of config, model, parameters, objective, convergence, message,
@@ -182,7 +191,9 @@ convergence (the stats::optim code), evaluations (every objective call,
 including the finite-difference gradient calls that stats::optim counts
 leave out), best (TRUE for the returned start), and one column per
 calibrated parameter holding the fitted value, which always lies within
-lower and upper.
+lower and upper. With `archive`, also `trials`, a data.table of every
+valid trial's `score` and parameter values, with the trials' positions
+in the unit search box as its `unit` attribute.
 
 ## References
 

@@ -144,6 +144,25 @@ by a session that no longer exists.
 
 ## The calibration log
 
+### Not enough years to hold back
+
+``` r
+time <- seq(as.POSIXct("2020-10-01", tz = "UTC"), by = 86400, length.out = 3 * 365)
+says(wettest_years(time, rep(1, length(time)), n = 2))
+#> [1] "Only 3 water years have at least half a year of observed flow; holding back 2 would leave fewer than 3. Hold back fewer years, or none with 0"
+```
+
+By default
+[`register_data()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
+holds back the two wettest water years, which needs a record of at least
+five years with half of each observed. For a shorter record, set
+`wettest_years = 1` or `0` and say why in the registration’s reasoning.
+Without a `time` column in the forcing, registration refuses for the
+same reason: water years need dates. If holding back the wettest year
+leaves the validation window almost empty, lengthen the window; the
+message names it. [Larger
+floods](https://jonpayneea.github.io/PDMS7/articles/extrapolation.md).
+
 ### A data file has changed
 
 `Registered ... file has changed since registration` means a data file

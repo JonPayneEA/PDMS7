@@ -122,13 +122,31 @@ adequate for a slow chalk river used for drought planning and inadequate
 for a flashy catchment with a warning service. Look at the hydrographs:
 a single number hides where the errors are.
 
-### 6. The test window
+### 6. The test window and the held-back years
 
 If a test window was registered, it is scored once, after every choice
 is made, and sign-off requires it. A poor test result does not block
 sign-off, but it must be explained. A test result much worse than
 validation suggests the validation window was used, perhaps without
 intending it, to make choices.
+
+Most projects also hold back the two wettest water years, and the test
+scores them too. Look past the scores, which ordinary days dominate, to
+the table of peaks:
+
+- **The candidate’s peak against the observed peak.** A large miss on
+  floods the model never saw means the calibration does not extrapolate.
+- **The range across equally good fits.** A wide range means the record
+  cannot pin down the parameters that control large floods, and the
+  candidate’s peak is partly luck.
+- **The rating flag.** A peak above the highest gauged flow is itself
+  uncertain. Ask whether a miss is the model’s or the rating’s.
+
+If the Data section shows that the calibration window contains many
+flows above the highest gauging, ask why. [Larger floods: extrapolation
+and the
+rating](https://jonpayneea.github.io/PDMS7/articles/extrapolation.md)
+explains the table.
 
 ## Signing off
 

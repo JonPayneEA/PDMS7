@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -23,6 +23,7 @@
     <li><a class="dropdown-item" href="articles/reading-paths.html">Where to start</a></li>
     <li><a class="dropdown-item" href="articles/data-preparation.html">Preparing your data</a></li>
     <li><a class="dropdown-item" href="articles/example-workflow.html">Your first model run</a></li>
+    <li><a class="dropdown-item" href="articles/synthetic-rivers.html">Synthetic rivers: try everything on a known answer</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>How the model works</h6></li>
     <li><a class="dropdown-item" href="articles/pdm-explained.html">How the PDM works</a></li>
@@ -38,6 +39,7 @@
     <li><a class="dropdown-item" href="articles/auto-calibration.html">Automatic calibration, explained</a></li>
     <li><a class="dropdown-item" href="articles/scoring.html">Scoring a simulation: from NSE to POD, FAR and CSI</a></li>
     <li><a class="dropdown-item" href="articles/choosing-structure.html">Choosing a model structure</a></li>
+    <li><a class="dropdown-item" href="articles/extrapolation.html">Larger floods: extrapolation and the rating</a></li>
     <li><a class="dropdown-item" href="articles/many-catchments.html">Calibrating many catchments</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Records and review</h6></li>
@@ -145,7 +147,7 @@
 <div class="section level2">
 <h2 id="use-and-restart">Use and restart<a class="anchor" aria-label="anchor" href="#use-and-restart"></a></h2>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://jonpayneea.github.io/PDMS7/">pdmS7</a></span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">pdmS7</span><span class="op">)</span></span>
 <span><span class="va">config</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>pdm <span class="op">=</span> <span class="fu"><a href="reference/pdm_presets.html">pdm_presets</a></span><span class="op">(</span><span class="st">"standard"</span><span class="op">)</span>, snow <span class="op">=</span> <span class="fu"><a href="reference/pack_presets.html">pack_presets</a></span><span class="op">(</span><span class="st">"image_hourly"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">config</span><span class="op">$</span><span class="va">pdm</span><span class="op">$</span><span class="va">fc</span> <span class="op">&lt;-</span> <span class="fl">1</span></span>
 <span><span class="va">out</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/sim_snow_pdm.html">sim_snow_pdm</a></span><span class="op">(</span></span>

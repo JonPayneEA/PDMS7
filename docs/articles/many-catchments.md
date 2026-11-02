@@ -65,7 +65,8 @@ for (i in 1:8) {
     paste("gauge:", id),
     paste("area_km2:", truth$area_km2),
     "calibration: [2023-10-11, 2023-11-14]",
-    "validation: [2023-11-15, 2023-11-29]"
+    "validation: [2023-11-15, 2023-11-29]",
+    "wettest_years: 0"
   ), file.path(folder, "basin.yml"))
 }
 list.files(basins)
@@ -82,17 +83,20 @@ cat(readLines(file.path(basins, "B01", "basin.yml")), sep = "\n")
 #> area_km2: 80
 #> calibration: [2023-10-11, 2023-11-14]
 #> validation: [2023-11-15, 2023-11-29]
+#> wettest_years: 0
 ```
 
-| Line                              | Meaning                                                                                                                                                |
-|-----------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `area_km2`                        | Catchment area, used to turn millimetres into cubic metres per second                                                                                  |
-| `calibration`                     | First and last date of the period the calibration is fitted to. Anything before it is warm-up: simulated, so the model’s stores settle, but not scored |
-| `validation`                      | A later period the calibration never sees, used to check the result honestly                                                                           |
-| `test` (optional)                 | A final period kept back until everything is decided, scored once                                                                                      |
-| `config` (optional)               | A model configuration file in the folder, if this catchment needs a different model                                                                    |
-| `thresholds`, `rating` (optional) | Warning thresholds to score; see [Scoring a simulation](https://jonpayneea.github.io/PDMS7/articles/scoring.md)                                        |
-| `snow` (optional)                 | `true` for a catchment with snow; see below                                                                                                            |
+| Line                              | Meaning                                                                                                                                                                                                            |
+|-----------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `area_km2`                        | Catchment area, used to turn millimetres into cubic metres per second                                                                                                                                              |
+| `calibration`                     | First and last date of the period the calibration is fitted to. Anything before it is warm-up: simulated, so the model’s stores settle, but not scored                                                             |
+| `validation`                      | A later period the calibration never sees, used to check the result honestly                                                                                                                                       |
+| `test` (optional)                 | A final period kept back until everything is decided, scored once                                                                                                                                                  |
+| `wettest_years` (optional)        | How many of the wettest water years to hold back and score with the test, as a check on larger floods than the calibration saw; 2 if not given. These example rivers have only two months of record, so they set 0 |
+| `highest_gauged_m3s` (optional)   | The highest flow ever gauged. Flows above it, where the rating is extrapolated, are flagged in the record                                                                                                          |
+| `config` (optional)               | A model configuration file in the folder, if this catchment needs a different model                                                                                                                                |
+| `thresholds`, `rating` (optional) | Warning thresholds to score; see [Scoring a simulation](https://jonpayneea.github.io/PDMS7/articles/scoring.md)                                                                                                    |
+| `snow` (optional)                 | `true` for a catchment with snow; see below                                                                                                                                                                        |
 
 ### Catchments with snow
 
@@ -122,7 +126,7 @@ one_run <- system.time(
 c(seconds_per_run = signif(one_run, 2),
   estimated_minutes_for_8 = round(8 * 1500 * one_run / 60, 1))
 #>         seconds_per_run estimated_minutes_for_8 
-#>                  0.0061                  1.2000
+#>                  0.0072                  1.4000
 ```
 
 For a real batch, measure on a few catchments first; see the pilot
@@ -146,9 +150,9 @@ part <- do.call(calibrate_batch, c(list(basins, results, only = c("B01", "B02", 
 part
 #>     basin  state     step seconds message
 #>    <char> <char>   <char>   <num>  <char>
-#> 1:    B01   done complete     6.2        
+#> 1:    B01   done complete     6.0        
 #> 2:    B02   done complete     6.1        
-#> 3:    B03   done complete     6.1
+#> 3:    B03   done complete     6.2
 ```
 
 Suppose the computer was switched off at this point, after three
@@ -166,11 +170,11 @@ status
 #> 1:    B01   done complete     0.0                                            
 #> 2:    B02   done complete     0.0                                            
 #> 3:    B03   done complete     0.0                                            
-#> 4:    B04   done complete     6.8                                            
-#> 5:    B05   done complete     6.7                                            
+#> 4:    B04   done complete     7.1                                            
+#> 5:    B05   done complete     5.7                                            
 #> 6:    B06 failed register     0.0 pet must contain finite nonnegative numbers
-#> 7:    B07   done complete     6.0                                            
-#> 8:    B08   done complete     7.3
+#> 7:    B07   done complete     6.4                                            
+#> 8:    B08   done complete     6.9
 ```
 
 The three finished catchments took a moment each: the batch read their
@@ -216,11 +220,11 @@ status
 #> 1:    B01   done complete     0.0        
 #> 2:    B02   done complete     0.0        
 #> 3:    B03   done complete     0.0        
-#> 4:    B04   done complete     6.8        
-#> 5:    B05   done complete     6.7        
-#> 6:    B06   done complete     7.7        
-#> 7:    B07   done complete     6.0        
-#> 8:    B08   done complete     7.3
+#> 4:    B04   done complete     7.1        
+#> 5:    B05   done complete     5.7        
+#> 6:    B06   done complete     7.1        
+#> 7:    B07   done complete     6.4        
+#> 8:    B08   done complete     6.9
 ```
 
 The failed attempt is still on record in B06’s project, followed by the

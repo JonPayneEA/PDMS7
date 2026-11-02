@@ -164,6 +164,22 @@ The PACK snow model, alone or feeding the PDM.
 - [`sim_snow_pdm()`](https://jonpayneea.github.io/PDMS7/reference/sim_snow_pdm.md)
   : Simulate coupled PACK and PDM
 
+## Synthetic rivers
+
+Stochastic rain and known-answer catchments, for demonstrations and
+method tests.
+
+- [`synthetic_catchment()`](https://jonpayneea.github.io/PDMS7/reference/synthetic_catchment.md)
+  : Synthetic catchment
+- [`synthetic_rain()`](https://jonpayneea.github.io/PDMS7/reference/synthetic_rain.md)
+  : Synthetic rainfall
+- [`fit_rain()`](https://jonpayneea.github.io/PDMS7/reference/fit_rain.md)
+  : Fit a rainfall generator to a record
+- [`rain_parameters()`](https://jonpayneea.github.io/PDMS7/reference/rain_parameters.md)
+  : Rainfall generator parameters
+- [`rain_statistics()`](https://jonpayneea.github.io/PDMS7/reference/rain_statistics.md)
+  : Rainfall statistics
+
 ## Calibration
 
 - [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md)
@@ -224,6 +240,8 @@ calibration.
   [`sign_off_project()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
   [`reopen_project()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
   : Calibration log
+- [`wettest_years()`](https://jonpayneea.github.io/PDMS7/reference/wettest_years.md)
+  : Wettest water years
 - [`read_project()`](https://jonpayneea.github.io/PDMS7/reference/read_project.md)
   [`project_trials()`](https://jonpayneea.github.io/PDMS7/reference/read_project.md)
   [`read_entry()`](https://jonpayneea.github.io/PDMS7/reference/read_project.md)

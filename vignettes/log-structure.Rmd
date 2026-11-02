@@ -43,7 +43,7 @@ start_calibration_project(project, catchment = "Example Brook", gauge = "99003",
                           purpose = "Illustration", area_km2 = 30,
                           owner = "Deputy Director", steward = "Sam Steward")
 register_data(project, forcing, observed, calibration = c(121, 600),
-              validation = c(601, 800), test = c(801, n))
+              validation = c(601, 800), test = c(801, n), wettest_years = 0)
 start <- truth
 start$fc <- 0.9
 select_structure(project, start, "Standard PDM.")

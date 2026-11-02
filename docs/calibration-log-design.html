@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -23,6 +23,7 @@
     <li><a class="dropdown-item" href="articles/reading-paths.html">Where to start</a></li>
     <li><a class="dropdown-item" href="articles/data-preparation.html">Preparing your data</a></li>
     <li><a class="dropdown-item" href="articles/example-workflow.html">Your first model run</a></li>
+    <li><a class="dropdown-item" href="articles/synthetic-rivers.html">Synthetic rivers: try everything on a known answer</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>How the model works</h6></li>
     <li><a class="dropdown-item" href="articles/pdm-explained.html">How the PDM works</a></li>
@@ -38,6 +39,7 @@
     <li><a class="dropdown-item" href="articles/auto-calibration.html">Automatic calibration, explained</a></li>
     <li><a class="dropdown-item" href="articles/scoring.html">Scoring a simulation: from NSE to POD, FAR and CSI</a></li>
     <li><a class="dropdown-item" href="articles/choosing-structure.html">Choosing a model structure</a></li>
+    <li><a class="dropdown-item" href="articles/extrapolation.html">Larger floods: extrapolation and the rating</a></li>
     <li><a class="dropdown-item" href="articles/many-catchments.html">Calibrating many catchments</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Records and review</h6></li>
@@ -205,13 +207,13 @@
 <td>
 <code>project</code>: identifier, catchment, gauge, purpose, area_km2, owner, steward, description</td>
 </tr><tr class="even"><td><code>data_registered</code></td>
-<td>Each series’ source path, stored path, MD5 and summary (rows, period, step, missing values, longest gap); <code>scorecard</code>: warm-up, calibration and validation windows, metrics, headline, log offset, soil fraction</td>
+<td>Each series’ source path, stored path, MD5 and summary (rows, period, step, missing values, longest gap); <code>scorecard</code>: warm-up, calibration, validation and test windows, metrics, headline, log offset, soil fraction, start rule, held-back wettest years, highest gauged flow, tie tolerance; <code>rating_check</code>: flows above the highest gauged flow, window by window</td>
 </tr><tr class="odd"><td><code>structure_selected</code></td>
 <td>Full configuration; reasoning</td>
 </tr><tr class="even"><td><code>trial</code></td>
 <td>Parent entry; changes from the parent; full configuration; calibration scores; output MD5; verdict (better, worse, inconclusive); reasoning</td>
 </tr><tr class="odd"><td><code>auto_calibration</code></td>
-<td>Parent; bounds; objective; starts; seed; control; the start table; resulting configuration; calibration scores; output MD5; reasoning</td>
+<td>Parent; bounds; objective; starts; seed; control; the start table; resulting configuration; calibration scores; output MD5; equally good parameter sets (when years are held back); reasoning</td>
 </tr><tr class="even"><td><code>note</code></td>
 <td>Text; optional entry it refers to</td>
 </tr><tr class="odd"><td><code>candidate</code></td>
@@ -219,7 +221,7 @@
 </tr><tr class="even"><td><code>validation</code></td>
 <td>The candidate; validation scores, alongside calibration scores; series file and MD5; reasoning</td>
 </tr><tr class="odd"><td><code>test</code></td>
-<td>The validated candidate; test scores beside the calibration and validation scores; series file and MD5; reasoning</td>
+<td>The validated candidate; test scores beside the calibration and validation scores; the held-back years’ scores and, for each year, observed and simulated peaks, the range across the equally good sets and the rating flag; series file and MD5; reasoning</td>
 </tr><tr class="even"><td><code>sign_off</code></td>
 <td>The candidate and validation; final configuration; capacity (steward or delegated steward); review checklist; statement</td>
 </tr><tr class="odd"><td><code>reopen</code></td>
@@ -282,6 +284,32 @@
 <td>Final check</td>
 <td>An optional test window, scored once by a <code>test</code> entry (the eleventh type) after every choice; required before sign-off when registered; a poor result does not block sign-off</td>
 </tr></tbody></table><p>Each compared structure is logged as ordinary <code>structure_selected</code> and <code>auto_calibration</code> entries sharing a comparison id, so no further entry type is needed and the ranking can be rebuilt from the log. Structures are fitted in parallel workers that write nothing; the entries are written afterwards, in order, by the session that started the comparison.</p>
+</div>
+<div class="section level2">
+<h2 id="extrapolation">Extrapolation<a class="anchor" aria-label="anchor" href="#extrapolation"></a></h2>
+<p>Agreed 2026-11-02.</p>
+<table class="table"><colgroup><col width="33%"><col width="33%"><col width="33%"></colgroup><thead><tr class="header"><th>#</th>
+<th>Question</th>
+<th>Decision</th>
+</tr></thead><tbody><tr class="odd"><td>21</td>
+<td>Flows above the rating</td>
+<td>Flagged only. <code>register_data(highest_gauged_m3s =)</code> records the highest check gauging, stated by the Custodian; registration counts the flows above it in each window, and the test marks each held-back peak above it. The fit is unchanged</td>
+</tr><tr class="even"><td>22</td>
+<td>Testing larger floods</td>
+<td>A differential split-sample test (Klemeš 1986): the wettest water years (October to September), ranked by annual maximum within the calibration and validation windows, are held back</td>
+</tr><tr class="odd"><td>23</td>
+<td>Relation to the test window</td>
+<td>A second hidden set, removed from calibration and validation scoring and revealed by <code><a href="reference/calibration_log.html">test_candidate()</a></code> under the same once-only rule; the date-based test window keeps its role</td>
+</tr><tr class="even"><td>24</td>
+<td>How many years</td>
+<td>Stated at registration, default 2; refused if fewer than three counted years would remain. A year counts if half of it is observed</td>
+</tr><tr class="odd"><td>25</td>
+<td>Equally good sets</td>
+<td>Every parameter set an automatic calibration tried whose calibration headline lies within a stated tolerance of the best (default 0.02), thinned to at most 50 spread-out sets; the test reports the range of their peaks in each held year</td>
+</tr><tr class="even"><td>26</td>
+<td>Benchmark</td>
+<td>Reported on the PDM side only, as supporting evidence outside the head-to-head comparison</td>
+</tr></tbody></table><p>Projects registered before version 0.5.0 record no held years, and every run in them scores as before.</p>
 </div>
 <div class="section level2">
 <h2 id="run-log-and-register">Run log and register<a class="anchor" aria-label="anchor" href="#run-log-and-register"></a></h2>

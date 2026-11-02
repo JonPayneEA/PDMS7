@@ -107,9 +107,10 @@ test_that("the test window is scored once, last, and required for sign-off", {
   as_person("Ann Custodian", "custodian", "ann")
   start_calibration_project(folder, "T", "1", "Testing", 20, "O", "S")
   expect_error(register_data(folder, d$forcing, d$observed, c(121, 500), c(501, 700),
-                             test = c(650, 900)), "test must not overlap validation")
+                             test = c(650, 900), wettest_years = 0),
+               "test must not overlap validation")
   reg <- register_data(folder, d$forcing, d$observed, c(121, 500), c(501, 700),
-                       test = c(721, 960))
+                       test = c(721, 960), wettest_years = 0)
   expect_equal(reg$scorecard$test$first_row, 721L)
   select_structure(folder, d$truth, "Truth")
   expect_equal(preview_trial(folder, 3, c(fc = 0.9))$rows, 121:500)
@@ -126,7 +127,7 @@ test_that("the test window is scored once, last, and required for sign-off", {
   expect_true(all(verify_project(folder, rerun = TRUE)$ok))
   html <- paste(readLines(build_report(folder, sensitivity = FALSE, rerun = FALSE)),
                 collapse = "")
-  expect_match(html, "Tested once on the final window")
+  expect_match(html, "Tested once, after every choice was made")
   as_person("Sam Steward", "steward", "sam")
   expect_equal(sign_off_project(folder, "Accepted", all_reviewed)$test, tested$id)
 })
@@ -224,7 +225,8 @@ test_that("data can be referenced rather than copied", {
   data.table::fwrite(forcing, csv)
   as_person("Ann Custodian", "custodian", "ann")
   start_calibration_project(folder, "Test", "1", "Testing", 20, "Owner", "Steward")
-  reg <- register_data(folder, csv, d$observed, calibration = c(100, 600), copy = FALSE)
+  reg <- register_data(folder, csv, d$observed, calibration = c(100, 600), copy = FALSE,
+                       wettest_years = 0)
   expect_false(reg$data$forcing$copied)
   expect_true(reg$data$observed$copied)
   expect_false(file.exists(file.path(folder, "data", "0002", "forcing.csv")))
@@ -253,12 +255,13 @@ test_that("bad input is refused before anything is written", {
   start_calibration_project(folder, "T", "1", "P", 20, "O", "S")
   expect_error(start_calibration_project(folder, "T", "1", "P", 20, "O", "S"), "not empty")
   expect_error(select_structure(folder, d$truth, "x"), "Register data first")
-  expect_error(register_data(folder, d$forcing, d$observed[-1], c(1, 10)), "align")
-  expect_error(register_data(folder, d$forcing, d$observed, c(10, 500), c(400, 600)),
-               "overlap")
-  expect_error(register_data(folder, d$forcing, d$observed, c(10, 500), headline = "x"),
-               "headline")
-  register_data(folder, d$forcing, d$observed, c(10, 500))
+  expect_error(register_data(folder, d$forcing, d$observed[-1], c(1, 10), wettest_years = 0),
+               "align")
+  expect_error(register_data(folder, d$forcing, d$observed, c(10, 500), c(400, 600),
+                             wettest_years = 0), "overlap")
+  expect_error(register_data(folder, d$forcing, d$observed, c(10, 500), headline = "x",
+                             wettest_years = 0), "headline")
+  register_data(folder, d$forcing, d$observed, c(10, 500), wettest_years = 0)
   wrong_area <- d$truth
   wrong_area$area_km2 <- 5
   expect_error(select_structure(folder, wrong_area, "x"), "differs")

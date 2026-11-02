@@ -130,8 +130,7 @@ compare_structures <- function(project, structures = NULL, overrides = NULL, exc
   # its last row, and everything before its first row is warm-up.
   fit_on <- function(window) {
     w <- card[[window]]
-    observed <- data$observed
-    observed[-.window_rows(w)] <- NA
+    observed <- .scoring_observed(data$observed, card, window)
     calibrate_pdm(
       config, data$forcing[seq_len(w$last_row)], observed[seq_len(w$last_row)],
       lower = lower, upper = upper, warmup = w$first_row - 1L, objective = settings$objective,

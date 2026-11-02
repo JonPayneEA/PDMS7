@@ -1,6 +1,6 @@
 # PDM and LSTM benchmark protocol
 
-Version 0.2, 2026-11-02. Decisions closed; three facts to confirm before sign-off (section 12).
+Version 0.3, 2026-11-02. Decisions closed; three facts to confirm before sign-off (section 12).
 
 This protocol fixes how PDM and the LSTM models are compared before anyone sees a test result.
 Its purpose is simple: if the comparison is challenged, the answer is this document, dated and
@@ -73,7 +73,9 @@ models.
 | Test | 1998 to 2008, as Lees et al. (2021) | Scored once | Scored once |
 
 PDM is calibrated on the training and validation years combined, so that both models see the
-same years before the test and neither sees more. Because PDM then has no held-out years, its
+same years before the test and neither sees more. Every run under this protocol, the pilot
+included, therefore holds no years back: each basin's `basin.yml` sets `wettest_years: 0`. The
+one exception is the separate extrapolation run of section 10a. Because PDM then has no held-out years, its
 structure and calibration method are fixed in advance (section 6) and not chosen from results.
 
 The test period is scored once, after both models are frozen. Any rerun after test results are
@@ -168,6 +170,31 @@ of argument.
   points from all phase 1 basins set before scoring; and region as reported by Lees et al.
   (2021). Any other split is labelled exploratory.
 
+## 10a. Supporting evidence: extrapolation (PDM only)
+
+The comparison above says how well each model reproduces the test period. It does not say
+how either does on floods larger than those it was fitted to, which is where calibrations most
+often fail. This section reports that for
+PDM alone, as supporting evidence. It is not part of the head-to-head comparison, asks nothing
+of the LSTM team, and its results do not enter section 10's tables.
+
+- **Run:** a second `calibrate_batch()` over the same basins, with the setting fixed by the
+  pilot, on the same training and validation years, but with `wettest_years: 2`. The two water
+  years with the highest observed flow in those years are held back from calibration and
+  scored once, after the candidate is fixed (Klemeš 1986, differential split-sample test).
+- **Reported per basin:** NSE and KGE over the held-back years; for each held year, the
+  observed peak, the calibrated peak, and the range of peaks across the equally good parameter
+  sets (within 0.02 NSE of the best, up to 50 sets).
+- **Rating:** where the gauging authority supplies the highest gauged flow, it is registered
+  as `highest_gauged_m3s`, and held-back peaks above it are flagged. Flagged basins are
+  reported with and without them. Where it is not known, the results say so.
+- **Across basins:** the distribution of peak error on the held years, and of the width of the
+  peak range, by the strata of section 10.
+
+The test period of section 5 is not used here, so this run cannot inform anything in section
+10. An LSTM extrapolation test, with both models retrained without the wettest years, is left
+to phase 2 or later, by agreement.
+
 ## 11. Phase 2 decisions to close before phase 2
 
 Period dates; the basin list; the forcing product; the LSTM architecture for 15-minute data; and
@@ -216,3 +243,4 @@ comparison under the original protocol where possible.
 |---|---|---|
 | 0.1 | 2026-10-31 | Draft for agreement |
 | 0.2 | 2026-11-02 | Decisions closed: two phases; phase 1 on CAMELS-GB matching Lees et al. (2021); PDM calibrated on training plus validation; pilot to fix PDM method and effort; LSTM as Lees et al. with 8 seeds; `pdm_scorecard()` metrics, relative log offset and a day-of-year lower benchmark; four strata; simulation only |
+| 0.3 | 2026-11-02 | Section 10a: a PDM-only extrapolation check on the wettest water years, with the rating flag and the spread of equally good fits, outside the head-to-head comparison. Every other run holds no years back |
