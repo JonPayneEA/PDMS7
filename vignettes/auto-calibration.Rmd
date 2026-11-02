@@ -174,8 +174,16 @@ plot(grid, profile[, "csi"], type = "s", lwd = 2, col = pal[2], xlab = "surface.
      ylab = "CSI at Flood Warning", main = "Steps", cex.main = 0.95)
 ```
 
+```{r step, include=FALSE}
+runs <- rle(round(profile[, "csi"], 6))
+longest <- which.max(runs$lengths)
+step_end <- cumsum(runs$lengths)[longest]
+step_start <- step_end - runs$lengths[longest] + 1
+```
+
 On the left there is always a slope to follow down to the best value. On the right, the
-score sits at 0.75 for every value from about 2.3 to 3.8 hours. Standing anywhere on that
+score sits at `r sprintf("%.2f", runs$values[longest])` for every value from about
+`r sprintf("%.1f", grid[step_start])` to `r sprintf("%.1f", grid[step_end])` hours. Standing anywhere on that
 step, the slope-feeling method feels no slope at all, decides it has arrived, and stops. At
 the edge of a step, the slope it feels is a sudden cliff that tells it nothing useful.
 
