@@ -171,4 +171,6 @@ test_that("scores from a hindcast carry the response time and plot", {
   expect_invisible(plot_hindcast(s, metric = "nse", ratio = TRUE))
   expect_invisible(plot_hindcast(s, ylim = c(-1, 1)))
   expect_error(plot_hindcast(s, metric = "nope"), "no column")
+  expect_error(pdm_hindcast(case$model, case$forcing, case$observed, window = 720:720),
+               "No forecast origins")
 })

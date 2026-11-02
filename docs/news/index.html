@@ -15,11 +15,13 @@
     </button>
 
     <div id="navbar" class="collapse navbar-collapse ms-3">
-      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/example-workflow.html">Get started</a></li>
+      <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/reading-paths.html">Get started</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Getting started</h6></li>
+    <li><a class="dropdown-item" href="../articles/reading-paths.html">Where to start</a></li>
+    <li><a class="dropdown-item" href="../articles/data-preparation.html">Preparing your data</a></li>
     <li><a class="dropdown-item" href="../articles/example-workflow.html">Your first model run</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>How the model works</h6></li>
@@ -41,6 +43,7 @@
     <li><h6 class="dropdown-header" data-toc-skip>Records and review</h6></li>
     <li><a class="dropdown-item" href="../articles/calibration-log.html">Logging a manual calibration</a></li>
     <li><a class="dropdown-item" href="../articles/log-structure.html">Inside the logs: projects, entries, checksums and the run log</a></li>
+    <li><a class="dropdown-item" href="../articles/steward-guide.html">Reviewing a calibration: a Steward's guide</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Forecasting</h6></li>
     <li><a class="dropdown-item" href="../articles/forecast-updating.html">Forecast updating</a></li>
@@ -49,6 +52,11 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Under the bonnet</h6></li>
     <li><a class="dropdown-item" href="../articles/compiled-core.html">The C core: speed, equivalence and other languages</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Help</h6></li>
+    <li><a class="dropdown-item" href="../articles/glossary.html">Glossary</a></li>
+    <li><a class="dropdown-item" href="../articles/troubleshooting.html">Troubleshooting</a></li>
+    <li><a class="dropdown-item" href="../articles/further-reading.html">Further reading</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
@@ -79,6 +87,13 @@
       <small>Source: <a href="https://github.com/JonPayneEA/PDMS7/blob/HEAD/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="development version" id="pdms7-development-version">pdmS7 (development version)<a class="anchor" aria-label="anchor" href="#pdms7-development-version"></a></h2>
+<ul><li>Six new pages on the website: “Where to start” (reading paths by role), “Preparing your data” (from EA sources through reach.io to model files, with a checklist), “Reviewing a calibration: a Steward’s guide”, a glossary, troubleshooting, and further reading. The home page states the package’s purpose, “Get started” opens the reading paths, and the roadmap is rewritten.</li>
+<li>The benchmark protocol is at version 0.2, with its decisions closed.</li>
+<li>
+<code><a href="../reference/pdm_hindcast.html">pdm_hindcast()</a></code> reports “No forecast origins fit in the window” for a window too narrow for any origin, instead of an internal error.</li>
+</ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.4.0" id="pdms7-040">pdmS7 0.4.0<a class="anchor" aria-label="anchor" href="#pdms7-040"></a></h2>
 <ul><li><p>New <code><a href="../reference/pdm_hindcast.html">pdm_hindcast()</a></code> reruns past forecasts from many origins, using the rain that fell, with no updating, persistence, AR post-processing as in IMFS (the Environment Agency 2024 default, a default-family set from the model’s response time, and optionally a set fitted to the calibration period) and state correction. <code><a href="../reference/hindcast_scores.html">hindcast_scores()</a></code> scores each lead time: NSE, RMSE, bias, skill against persistence, threshold POD, FAR and CSI, and lead time over time to peak, so catchments and models line up on one axis. It also scores another model’s forecasts given as a table. <code><a href="../reference/plot_hindcast.html">plot_hindcast()</a></code> plots any score against lead time.</p></li>

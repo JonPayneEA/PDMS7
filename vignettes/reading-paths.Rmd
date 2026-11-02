@@ -1,0 +1,69 @@
+---
+title: "Where to start"
+author: "pdmS7 documentation"
+vignette: >
+  %\VignetteIndexEntry{Where to start}
+  %\VignetteEngine{knitr::knitr}
+  %\VignetteEncoding{UTF-8}
+---
+
+pdmS7 is a probability-distributed rainfall-runoff model (Moore, 2007) built for one purpose: to
+calibrate conceptual models fairly, record that calibration so it can be defended, and compare
+the result with machine-learning models on equal terms. Different readers need different parts.
+Pick the role closest to yours and read the articles in order. The [Glossary](glossary.html)
+explains any term along the way.
+
+# I calibrate models (Custodian)
+
+1. [How the PDM works](pdm-explained.html): what the model does, in plain English.
+2. [Preparing your data](data-preparation.html): from EA sources to model files, with a
+   checklist.
+3. [Your first model run](example-workflow.html): data to a calibrated, saved model.
+4. [Starting a run](starting-states.html) and [Choosing model components](model-options.html).
+5. [Scoring a simulation](scoring.html): what each score shows.
+6. [Automatic calibration, explained](auto-calibration.html), including staged calibration.
+7. [Logging a manual calibration](calibration-log.html): the record a Steward will review.
+8. [Choosing a model structure](choosing-structure.html), when the standard PDM may not suit.
+
+For many catchments at once, add [Calibrating many catchments](many-catchments.html).
+[Troubleshooting](troubleshooting.html) covers the common errors.
+
+# I review and sign off calibrations (Steward)
+
+1. [Reviewing a calibration: a Steward's guide](steward-guide.html): what to look at and what
+   should make you stop.
+2. [Scoring a simulation](scoring.html): enough to read the report's scores.
+3. [Logging a manual calibration](calibration-log.html): how the record is built.
+4. [Inside the logs](log-structure.html): what the checksums prove.
+
+# I am accountable for a model's use (Owner)
+
+1. This page and the [Steward's guide](steward-guide.html), for what sign-off means.
+2. [The benchmark protocol](../benchmark-protocol.html), if the model is part of the comparison
+   with machine learning.
+3. [Calibration log design](../calibration-log-design.html), for the governance decisions behind
+   the log.
+
+# I forecast
+
+1. [How the PDM works](pdm-explained.html).
+2. [Forecast updating](forecast-updating.html): state correction and error prediction.
+3. [AR and ARMA error correction, explained](ar-error-correction.html): what the IMFS
+   coefficients mean.
+4. [Testing forecasts with hindcasts](hindcasts.html): skill by lead time against persistence.
+5. [Scoring a simulation](scoring.html), for the threshold scores POD, FAR and CSI.
+
+# I build the LSTM side of the comparison
+
+1. [The benchmark protocol](../benchmark-protocol.html): data, periods, effort and scoring,
+   fixed in advance.
+2. [Scoring a simulation](scoring.html): the scoring function both models are judged by.
+3. [Testing forecasts with hindcasts](hindcasts.html): how forecasts from any model are scored.
+4. [How the PDM works](pdm-explained.html), to know what the LSTM is up against.
+
+# I develop or maintain the package
+
+1. [Model equations](model-equations.html): every equation, with Moore's numbering.
+2. [The C core](compiled-core.html): speed, equivalence tests and use from other languages.
+3. The Guides menu: validation, source notes, benchmark timing and the roadmap.
+4. [Further reading](further-reading.html).

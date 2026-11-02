@@ -1,3 +1,14 @@
+# pdmS7 (development version)
+
+- Six new pages on the website: "Where to start" (reading paths by role), "Preparing your
+  data" (from EA sources through reach.io to model files, with a checklist), "Reviewing a
+  calibration: a Steward's guide", a glossary, troubleshooting, and further reading. The home
+  page states the package's purpose, "Get started" opens the reading paths, and the roadmap is
+  rewritten.
+- The benchmark protocol is at version 0.2, with its decisions closed.
+- `pdm_hindcast()` reports "No forecast origins fit in the window" for a window too narrow for
+  any origin, instead of an internal error.
+
 # pdmS7 0.4.0
 
 - New `pdm_hindcast()` reruns past forecasts from many origins, using the rain that fell, with

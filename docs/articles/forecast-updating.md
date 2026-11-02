@@ -138,6 +138,12 @@ round(c(no_updating = rmse(plain), state_correction = rmse(corrected),
   the errors of the corrected runs. Judge any combination on held-out
   forecasts, not on the history it was fitted to.
 
+[AR and ARMA error correction,
+explained](https://jonpayneea.github.io/PDMS7/articles/ar-error-correction.md)
+covers the error model in more depth, and [Testing forecasts with
+hindcasts](https://jonpayneea.github.io/PDMS7/articles/hindcasts.md)
+shows how to measure either method over many past forecasts.
+
 These are the methods for operational forecasting. A benchmark of
 simulation skill, such as a comparison with machine learning models in
 simulation mode, should not use them: there, neither model sees observed

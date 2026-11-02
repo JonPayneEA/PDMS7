@@ -1,0 +1,84 @@
+---
+title: "Further reading"
+author: "pdmS7 documentation"
+vignette: >
+  %\VignetteIndexEntry{Further reading}
+  %\VignetteEngine{knitr::knitr}
+  %\VignetteEncoding{UTF-8}
+---
+
+The literature this site and the benchmark protocol rely on, with a line on why each matters.
+
+# The model
+
+- **Moore, R. J. (2007).** The PDM rainfall-runoff model. *Hydrology and Earth System Sciences*,
+  11, 483–499. [doi:10.5194/hess-11-483-2007](https://doi.org/10.5194/hess-11-483-2007).
+  The definitive description of the model, its variants and its updating methods. pdmS7 follows
+  its equations and numbering; see [Model equations](model-equations.html).
+
+# Testing models
+
+- **Klemeš, V. (1986).** Operational testing of hydrological simulation models. *Hydrological
+  Sciences Journal*, 31, 13–24. The split-sample hierarchy behind calibration, validation and test
+  windows, and the stronger differential test for changing conditions.
+- **Seibert, J., Vis, M. J. P., Lewis, E. and van Meerveld, H. J. (2018).** Upper and lower
+  benchmarks in hydrological modelling. *Hydrological Processes*, 32, 1120–1125. Why a score needs
+  a floor to mean anything; the source of the protocol's day-of-year lower benchmark.
+- **Andréassian, V. et al. (2009).** Crash tests for a standardized evaluation of hydrological
+  models. *Hydrology and Earth System Sciences*, 13, 1757–1764. Testing models where they are
+  most likely to fail.
+
+# Scores
+
+- **Gupta, H. V., Kling, H., Yilmaz, K. K. and Martinez, G. F. (2009).** Decomposition of the
+  mean squared error and NSE performance criteria. *Journal of Hydrology*, 377, 80–91. The origin
+  of KGE and its three terms.
+- **Yilmaz, K. K., Gupta, H. V. and Wagener, T. (2008).** A process-based diagnostic evaluation of
+  a hydrologic model. *Water Resources Research*, 44, W09417. The flow-duration curve signatures
+  reported by `pdm_scorecard()`.
+- **Knoben, W. J. M., Freer, J. E. and Woods, R. A. (2019).** Technical note: Inherent benchmark
+  or not? Comparing Nash–Sutcliffe and Kling–Gupta efficiency scores. *Hydrology and Earth System
+  Sciences*, 23, 4323–4331. Why NSE and KGE values cannot be compared with each other directly.
+- **Clark, M. P. et al. (2021).** The abuse of popular performance metrics in hydrologic modeling.
+  *Water Resources Research*, 57, e2020WR029001. How sampling uncertainty in a score can swamp
+  the difference between models; why the protocol reports distributions and paired differences.
+
+# Machine learning in hydrology
+
+- **Kratzert, F. et al. (2019).** Towards learning universal, regional, and local hydrological
+  behaviors via machine learning applied to large-sample datasets. *Hydrology and Earth System
+  Sciences*, 23, 5089–5110. The regional LSTM that set the modern benchmark.
+- **Gauch, M. et al. (2021).** Rainfall–runoff prediction at multiple timescales with a single
+  Long Short-Term Memory network. *Hydrology and Earth System Sciences*, 25, 2045–2062. LSTMs at
+  sub-daily steps, relevant to phase 2 of the protocol.
+- **Lees, T. et al. (2021).** Benchmarking data-driven rainfall–runoff models in Great Britain: a
+  comparison of long short-term memory (LSTM)-based models with four lumped conceptual models.
+  *Hydrology and Earth System Sciences*, 25, 5517–5534. The published comparison that phase 1 of
+  the protocol copies.
+- **Mai, J. et al. (2022).** The Great Lakes Runoff Intercomparison Project Phase 4: the Great
+  Lakes (GRIP-GL). *Hydrology and Earth System Sciences*, 26, 3537–3572. A model intercomparison
+  run to a fixed protocol, with conceptual and machine-learning models together.
+- **Nearing, G. S. et al. (2021).** What role does hydrological science play in the age of
+  machine learning? *Water Resources Research*, 57, e2020WR028091. The wider argument the
+  comparison speaks to.
+
+# Data
+
+- **Coxon, G. et al. (2020).** CAMELS-GB: hydrometeorological time series and landscape
+  attributes for 671 catchments in Great Britain. *Earth System Science Data*, 12, 2459–2483.
+  The dataset for phase 1 of the protocol.
+
+# Forecasting
+
+- **Pappenberger, F. et al. (2015).** How do I know if my forecasts are better? Using benchmarks
+  in hydrological ensemble prediction. *Journal of Hydrology*, 522, 697–713. Persistence and
+  climatology as baselines for forecast skill, as used by `hindcast_scores()`.
+
+# Related packages
+
+- [reach.io](https://github.com/JonPayneEA/reach.io): hydrometric data from the EA Hydrology
+  API, with Bronze and Silver stores, quality flags and ratings. See [Preparing your
+  data](data-preparation.html).
+- [reach.postproc](https://github.com/JonPayneEA/reach.postproc): AR and ARMA post-processing for
+  flood forecasts, with the Environment Agency parameter assessment. See [AR and ARMA error
+  correction, explained](ar-error-correction.html).
