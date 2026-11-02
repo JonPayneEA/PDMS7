@@ -44,7 +44,7 @@ truth$area_km2 <- 60
 truth$fc <- 1.1
 truth$distribution$meanlog <- 4.8
 truth$distribution$sdlog <- 0.5
-truth$recharge$kg <- 120
+truth$recharge$kg <- 2000
 truth$surface$k1 <- 3
 truth$surface$k2 <- 10
 # The river is already flowing when the record starts: steady state, not empty stores.
@@ -129,19 +129,18 @@ close <- ranking[validation >= top - 0.005]
 true_rank <- ranking$rank[ranking$structure == "lognormal"]
 true_gap <- top - ranking$validation[ranking$structure == "lognormal"]
 ordinal <- function(k) paste0(k, c("th", "st", "nd", "rd", rep("th", 6))[k %% 10 + 1])
+lose <- ranking[validation < top - 0.05]$structure
+code <- function(x) paste0("`", x, "`", collapse = " and ")
 ```
 
 # Reading the ranking
 
-The true structure, `lognormal`, ranks `r if (true_rank == 1) "first" else paste(ordinal(true_rank), "of", nrow(ranking))``r if (true_rank > 1) sprintf(", %.4f NSE behind the top", true_gap) else ""`. Either way it would be wrong to conclude much from
-that: `r nrow(close)` structures lie within 0.005 NSE of it on validation, a spread of
-`r signif(top - min(close$validation), 2)`. Over six weeks of autumn data the soil stores
-never fill or empty far enough to tell their shapes apart. A difference that small is a tie,
-not a result.
+The true structure, `lognormal`, ranks `r if (true_rank == 1) "first" else paste(ordinal(true_rank), "of", nrow(ranking))``r if (true_rank > 1) sprintf(", %.4f NSE behind the top", true_gap) else ""`. It would be wrong to conclude much from
+that alone: `r nrow(close)` structures lie within 0.005 NSE of the top on validation, a spread
+of `r signif(top - min(close$validation), 2)`. A difference that small is a tie, not a
+result; another seed or another few weeks of data could reorder them.
 
-The recharge rule is another matter. `demand` and `split` recharge lose clearly, on both
-windows: they move water to groundwater in ways this catchment does not. That is a
-conclusion the data do support.
+`r if (length(lose)) paste0("At the other end, ", code(lose), " ", if (length(lose) == 1) "trails" else "trail", " the top by more than 0.05 NSE on validation. A gap that size is a conclusion the data do support: on this catchment, ", if (length(lose) == 1) "that structure" else "those structures", " should not be chosen.") else "No structure trails the top by more than 0.05 NSE on validation, so this record supports no firm conclusion about structure at all."`
 
 Three things to read in any comparison:
 
