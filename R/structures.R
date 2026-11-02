@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         structures
-# Description:  Calibration bounds by component, and sets of model structures to compare
+# Description:  Calibration bounds from the shipped table; candidate model structures
 # Flode Module: standalone; target reach.hydro
 # Author:       pdmS7 contributors
 # Created:      2026-11-01
@@ -11,6 +11,8 @@
 # Dependencies: data.table
 # ============================================================ #
 
+# The shipped table of calibration bounds, one row per parameter of each component type, with the
+# search scale (linear or log) and a note on its meaning. See inst/calibration-bounds.csv.
 .bounds_table <- function() {
   data.table::fread(system.file("calibration-bounds.csv", package = "pdmS7"),
                     data.table = FALSE, colClasses = list(character = "type"))
@@ -33,6 +35,10 @@
 #' @examples
 #' calibration_bounds(pdm_presets("standard"))
 #' @export
+# Bounds for every calibratable parameter of a configuration, as configuration paths: the
+# catchment-wide rows, then the rows for each component's actual type (a split recharge gets
+# alpha, an exponential groundwater store gets a and gamma). Overrides replace or add rows;
+# exclude drops parameters to be held fixed.
 calibration_bounds <- function(config, overrides = NULL, exclude = NULL) {
   pdm_from_config(config)
   table <- .bounds_table()
@@ -59,6 +65,8 @@ calibration_bounds <- function(config, overrides = NULL, exclude = NULL) {
   out
 }
 
+# Each override is a named c(lower, upper). The path must exist in the configuration; a
+# parameter not in the table is added with a linear scale.
 .apply_bound_overrides <- function(out, overrides, config) {
   pair <- function(x) is.numeric(x) && length(x) == 2L && x[1] < x[2]
   .check(is.list(overrides) && !is.null(names(overrides)) &&
@@ -103,6 +111,9 @@ calibration_bounds <- function(config, overrides = NULL, exclude = NULL) {
 #' names(structure_set())
 #' structure_set(c("standard", "lognormal"))$lognormal$distribution
 #' @export
+# Candidate structures for compare_structures(): the standard PDM and seven variants, each
+# changing one component. The variants start from the base configuration's catchment settings
+# but always from the standard components, so each differs from the standard in one place only.
 structure_set <- function(names = NULL, base = pdm_presets("standard")) {
   variants <- list(
     standard = list(),

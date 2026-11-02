@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         configuration
-# Description:  Configurable PDM framework: configuration
+# Description:  calibrate_pdm(): single-objective calibration, multi-start, log scales
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
@@ -91,6 +91,9 @@ calibrate_pdm <- function(
   event_settings = list(tolerance_h = 6, gap_h = 24, min_duration_h = 0),
   log_scale = character(0), volume_weight = 0
 ) {
+  # Outline: check the arguments; map the parameters onto a unit box (log-scaled where asked);
+  # build a loss function that runs the model and scores it; minimise that loss from each start;
+  # report the best start and every start's result.
   objective <- match.arg(objective)
   flow <- match.arg(flow)
   method <- match.arg(method)
@@ -101,9 +104,11 @@ calibrate_pdm <- function(
   initial <- vapply(names(lower), function(p) .path_get(config, p), numeric(1))
   .check(all(initial >= lower & initial <= upper), "Initial parameters outside bounds")
   box <- .search_box(lower, upper, log_scale)
+  # Rows that are scored: after the warm-up, and observed. Missing flow is simply left out.
   keep <- is.finite(observed) & seq_along(observed) > warmup
   .check(sum(keep) >= 2, "At least two observed values after warmup are required")
   score <- .calibration_scorer(objective, observed[keep], log_offset)
+  # A configuration with the trial parameter values written in at their paths.
   build <- function(par) {
     out <- config
     for (i in seq_along(par)) {
@@ -116,6 +121,10 @@ calibrate_pdm <- function(
   counter <- new.env(parent = emptyenv())
   counter$calls <- 0L
   scored <- seq_along(observed) > warmup
+  # The objective for a point z in the unit box. Every trial starts from the same state (soil a
+  # given fraction full, routing stores empty), so trials differ only in their parameters. Any
+  # trial that fails, for example a parameter set the model rejects, scores 1e30 rather than
+  # stopping the search. .quietly() keeps calibration runs out of the run log.
   loss <- function(z) {
     counter$calls <- counter$calls + 1L
     tryCatch(
@@ -143,6 +152,8 @@ calibrate_pdm <- function(
   }
   # Unit-box scaling helps parameters with very different physical units.
   z_start <- .start_points(box$to_unit(initial), as.integer(starts), seed)
+  # One optimisation per start. L-BFGS-B works on the unit box directly with bounds [0, 1];
+  # Nelder-Mead has no bounds, so it searches a logistic transform of the box instead.
   runs <- lapply(z_start, function(z) {
     counter$calls <- 0L
     fit <- if (method == "lbfgsb") {
@@ -161,6 +172,7 @@ calibrate_pdm <- function(
   ), out[c("convergence", "message", "optim", "start_results")])
 }
 
+# Argument checks for calibrate_pdm(), kept apart so the main function reads as the procedure.
 .check_calibration_args <- function(forcing, observed, warmup, log_offset, lower, upper, starts,
                                     seed) {
   .check(is.numeric(observed) && length(observed) == nrow(forcing),
@@ -234,6 +246,9 @@ calibrate_pdm <- function(
   if (is.null(seed)) draw() else .with_seed(seed, draw())
 }
 
+# Collects the starts into the returned list: the best start's parameters, configuration and
+# model, and a table with every start's objective, convergence code, model runs and parameters.
+# If every trial of every start failed, there is no answer, and the call stops.
 .calibration_result <- function(runs, box, build, lower) {
   fits <- lapply(runs, function(r) r$fit)
   values <- vapply(fits, function(f) f$value, numeric(1))
@@ -274,6 +289,9 @@ calibrate_pdm <- function(
   fit
 }
 
+# The threshold part of the objective: for each threshold, 1 - score (or the score itself for a
+# false alarm ratio, where lower is better), averaged. An undefined score, such as CSI with no
+# events in either series, counts as the worst value, so the search cannot exploit it.
 .threshold_loss <- function(sim, obs, thresholds, score, events, dt) {
   table <- pdm_threshold_scores(sim, obs, thresholds, dt, events$tolerance_h, events$gap_h,
                                 events$min_duration_h)
@@ -284,6 +302,9 @@ calibrate_pdm <- function(
   mean(losses)
 }
 
+# A threshold term is only allowed with Nelder-Mead (event counts change in steps, so gradients
+# are zero almost everywhere), and only for thresholds the observed flow actually exceeds in the
+# scored period: a threshold never crossed gives the search nothing to learn from.
 .check_threshold_objective <- function(objective, method, thresholds, weight, score, events,
                                        observed, warmup) {
   if (is.null(thresholds)) {
@@ -312,6 +333,8 @@ calibrate_pdm <- function(
   invisible(TRUE)
 }
 
+# A readable description of the objective, recorded with every logged calibration, such as
+# "1-NSE + 1 x mean threshold loss (csi at Flood Warning)".
 .objective_name <- function(objective, thresholds, weight, score, volume_weight = 0) {
   base <- switch(objective, nse = "1-NSE", log_nse = "1-log NSE", objective)
   if (volume_weight > 0) {

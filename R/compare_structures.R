@@ -49,6 +49,10 @@
 #'   `evaluations`, `starts_agree`, and the two entry ids.
 #' @seealso [structure_set()], [calibration_bounds()], [calibration_log]
 #' @export
+# Calibrates several structures alike on a project's data and ranks them on the validation
+# window. Outline: fit every structure (in parallel workers when cores > 1, which write nothing),
+# then write each as a structure_selected entry and an auto_calibration entry sharing a comparison
+# id, in order, from this session; finally rebuild the ranking from the log.
 compare_structures <- function(project, structures = NULL, overrides = NULL, exclude = NULL,
                                objective = c("nse", "rmse", "log_rmse"), starts = 3L,
                                seed = 1, control = list(maxit = 200),
@@ -98,6 +102,8 @@ compare_structures <- function(project, structures = NULL, overrides = NULL, exc
   })
 }
 
+# Runs fun over jobs, serially or on a local cluster of worker processes. Workers load the
+# installed package. Used by compare_structures() and calibrate_batch().
 .run_jobs <- function(jobs, fun, cores, ...) {
   if (cores <= 1L || length(jobs) < 2L) return(lapply(jobs, fun, ...))
   cl <- parallel::makeCluster(min(cores, length(jobs)))
@@ -112,6 +118,7 @@ compare_structures <- function(project, structures = NULL, overrides = NULL, exc
 # Fits one structure; runs in a worker, so it writes nothing.
 .fit_structure <- function(job, data, card, info, registration, settings) {
   config <- job$config
+  # Bounds for this structure; starting values outside them are moved to the nearest bound.
   bounds <- calibration_bounds(config, settings$overrides, settings$exclude)
   lower <- stats::setNames(bounds$lower, bounds$path)
   upper <- stats::setNames(bounds$upper, bounds$path)
@@ -119,6 +126,8 @@ compare_structures <- function(project, structures = NULL, overrides = NULL, exc
     config <- .path_set(config, p, min(max(.path_get(config, p), lower[[p]]), upper[[p]]))
   }
   log_scale <- bounds$path[bounds$scale == "log"]
+  # Calibrates on one registered window: observations outside it are blanked, the run stops at
+  # its last row, and everything before its first row is warm-up.
   fit_on <- function(window) {
     w <- card[[window]]
     observed <- data$observed
@@ -131,6 +140,8 @@ compare_structures <- function(project, structures = NULL, overrides = NULL, exc
       method = settings$method, log_scale = log_scale
     )
   }
+  # Score the starting point, fit on the calibration window, score the fit on both windows, and
+  # with cross-validation also fit on validation and score that on calibration.
   initial <- .run_registered(NULL, info, registration, config, data = data)
   fit <- fit_on("calibration")
   calibrated <- .run_registered(NULL, info, registration, fit$config, data = data)
@@ -147,6 +158,8 @@ compare_structures <- function(project, structures = NULL, overrides = NULL, exc
        validation_scores = validated$scores, reverse_scores = reverse)
 }
 
+# Writes one structure's results to the log as two ordinary entries, so the comparison needs no
+# entry type of its own and can be rebuilt from the log alone.
 .write_structure_fit <- function(path, author, registration, f, comparison, settings, reasoning) {
   structure <- .append_entry(path, "structure_selected", author, function(id, entries) {
     list(registration = registration$id, configuration = f$config, scores = f$initial$scores,
@@ -173,6 +186,10 @@ compare_structures <- function(project, structures = NULL, overrides = NULL, exc
 #' @rdname compare_structures
 #' @param comparison A comparison id; by default the latest comparison in the project.
 #' @export
+# Rebuilds a comparison's ranking from the log: one row per structure with its headline score on
+# calibration and validation, the change between them, the cross-validated mean if run, and
+# whether all starts reached the same objective. Ranked on validation (or the cross-validated
+# mean), in the headline's better direction. The latest comparison unless one is named.
 structure_comparison <- function(project, comparison = NULL) {
   entries <- .read_entries(.project_path(project))
   fits <- Filter(function(e) e$type == "auto_calibration" && !is.null(e$comparison), entries)

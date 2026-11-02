@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         calibration_metrics
-# Description:  Evaluate discharge objectives and Pareto dominance
+# Description:  Loss functions for multi-objective calibration; the Pareto front
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-05
@@ -26,6 +26,11 @@
 #' @param log_offset Positive discharge offset for logarithms, in m3/s.
 #' @return Named numeric loss vector.
 #' @export
+# Losses for multi-objective calibration, each zero for a perfect fit:
+#   rmse, log_rmse        typical error, in flow or log flow;
+#   nse_loss, kge_loss    1 - NSE and 1 - KGE;
+#   abs_bias              absolute relative error in total volume;
+#   peak_relative_error   absolute relative error in the largest flow.
 pdm_objectives <- function(simulated, observed,
                            objectives = c("nse_loss", "log_rmse", "abs_bias"),
                            warmup = 0L, log_offset = 0.01) {
@@ -77,6 +82,8 @@ pdm_objectives <- function(simulated, observed,
 #' @param losses Finite numeric matrix, rows candidates and columns losses to minimize.
 #' @return Logical vector; tied loss vectors are retained.
 #' @export
+# TRUE for each row of losses that no other row dominates (as good on every objective and better
+# on at least one). Ties are kept. Compares all pairs, so cost grows with the square of the rows.
 pareto_front <- function(losses) {
   .check(is.matrix(losses) && is.numeric(losses) && ncol(losses) > 0 &&
            all(is.finite(losses)), "losses must be a finite numeric matrix")
