@@ -157,7 +157,8 @@ calibrate_pdm <- function(
     tryCatch(
       {
         mod <- pdm_from_config(build(box$to_value(z)))
-        all_sim <- .quietly(.run_flow(mod, forcing, begin(mod), flow))
+        # A trial whose start caps the soil is still scored; the configured start already warned.
+        all_sim <- .quietly(.run_flow(mod, forcing, suppressWarnings(begin(mod)), flow))
         sim <- all_sim[keep]
         val <- score(sim)
         if (volume_weight > 0) {

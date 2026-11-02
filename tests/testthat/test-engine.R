@@ -165,7 +165,9 @@ test_that(
     # (cmin + cmax) / 2 and cmin + (cmax - cmin) / 2 differ in the last place for these
     # bounds; a full store used to fail with "Soil storage exceeds capacity_mean".
     distribution <- FlodeRectangularCapacity(cmin = 0.2, cmax = 1.0)
-    model <- pdm_model(distribution = distribution)
+    # A 0.6 mm store: the recharge threshold must lie within it.
+    model <- pdm_model(distribution = distribution,
+                       recharge = FlodeStandardRecharge(kg = 1000, bg = 1, st = 0))
     state <- initial_state(model, 1)
     forcing <- data.frame(rain = c(0, 5, 0), pet = 0.1)
     expect_engines_agree(
@@ -190,7 +192,7 @@ test_that(
     cfg <- pdm_presets("standard")
     observed <- full$q_m3s
     args <- list(
-      cfg, forcing, observed, c(fc = 0.6, recharge.kg = 10), c(fc = 1.5, recharge.kg = 40),
+      cfg, forcing, observed, c(fc = 0.6, recharge.kg = 500), c(fc = 1.5, recharge.kg = 4000),
       control = list(maxit = 3)
     )
     fast <- do.call(calibrate_pdm, args)

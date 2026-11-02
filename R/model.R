@@ -180,7 +180,7 @@ FlodePdmState <- S7::new_class(
 #' @export
 pdm_model <- function(
   distribution = FlodeParetoCapacity(cmin = 0, cmax = 300, b = 0.4),
-  recharge = FlodeStandardRecharge(kg = 4000, bg = 1, st = 50),
+  recharge = FlodeStandardRecharge(kg = 1000, bg = 1, st = 100),
   surface = FlodeCascadeRouting(k1 = 2, k2 = 4),
   groundwater = cubic_routing(), be = 1, fc = 1, td = 0, qc = 0, area_km2 = 1, dt = 1
 ) {

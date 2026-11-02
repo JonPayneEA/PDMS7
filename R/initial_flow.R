@@ -25,7 +25,7 @@
 #'   S = st + (kg * qb)^(1 / bg); with demand recharge it is the soil storage at which the
 #'   demand formula gives qb. With split recharge the soil store does not drain to groundwater,
 #'   so the steady state does not determine it and `soil_fraction` of capacity is used. The
-#'   soil store is capped at capacity;
+#'   soil store is capped at capacity, with a warning: the run then starts out of balance;
 #' - the outlet delay queues hold the water already in transit at that flow.
 #'
 #' The state's instantaneous flow then equals `observed_m3s`. The first simulated interval is a
@@ -59,6 +59,7 @@ initial_state_from_flow <- function(model, observed_m3s, baseflow_fraction, soil
   .check(.scalar(observed_m3s), "observed_m3s must be finite")
   .check(.scalar(baseflow_fraction, 0, 1), "baseflow_fraction must lie in [0,1]")
   .check(.scalar(soil_fraction, 0, 1), "soil_fraction must lie in [0,1]")
+  .warn_soil_cap(model, observed_m3s, baseflow_fraction, soil_fraction)
   if (.engine_supported(model)) {
     # Compiled calculation; results agree with the R code below (see R/engine.R).
     return(.engine_state_from_flow(model, observed_m3s, baseflow_fraction, soil_fraction))
@@ -85,6 +86,29 @@ initial_state_from_flow <- function(model, observed_m3s, baseflow_fraction, soil
     delay_groundwater_end = .steady_queue(model, qb),
     step = 0
   )
+}
+
+# Warns when the baseflow asked for needs more soil storage than the store holds. The soil is then
+# capped at capacity and supplies less recharge than the groundwater store releases, so the run
+# starts out of balance: baseflow falls at first, whatever the rain.
+.warn_soil_cap <- function(model, observed_m3s, baseflow_fraction, soil_fraction) {
+  if (S7::S7_inherits(model@recharge, FlodeSplitRecharge)) return(invisible())
+  q <- (observed_m3s - model@qc) * 3.6 / model@area_km2
+  if (!is.finite(q) || q < 0) return(invisible())
+  qb <- baseflow_fraction * q
+  smax <- capacity_mean(model@distribution)
+  need <- tryCatch({
+    groundwater <- .steady_storage(model@groundwater, qb, "groundwater")
+    .steady_soil(model, qb, groundwater, smax, soil_fraction)
+  }, error = function(e) NA_real_)
+  if (is.finite(need) && need > smax * (1 + 1e-9)) {
+    warning(sprintf(paste(
+      "A steady start at %.4g m3/s with baseflow_fraction %.2f needs %.4g mm of soil storage,",
+      "more than the store's capacity of %.4g mm; the soil is capped and the run starts out of",
+      "balance. Start at a lower flow or a smaller baseflow_fraction, or use start = \"soil\"."
+    ), observed_m3s, baseflow_fraction, need, smax), call. = FALSE)
+  }
+  invisible()
 }
 
 # The starting state of a calibration or logged run. "flow": steady state at a given flow.

@@ -30,10 +30,16 @@ test_that("response time matches the analytic two-store cascade", {
 
 # Guards: the measured response time does not depend on the model step
 test_that("response time is consistent across time steps and flows", {
-  hourly <- pdm_response_time(pdm_model(area_km2 = 50), flow = 5)
-  quarter <- pdm_response_time(pdm_model(area_km2 = 50, dt = 0.25), flow = 5)
-  expect_equal(hourly$time_to_peak_h, quarter$time_to_peak_h, tolerance = 0.05)
-  wetter <- pdm_response_time(pdm_model(area_km2 = 50), flow = 20)
+  # Fast recharge puts the cubic groundwater store in the flood response, so the response
+  # quickens as the catchment wets up.
+  fast <- function(dt = 1) {
+    pdm_model(area_km2 = 50, dt = dt, recharge = FlodeStandardRecharge(kg = 24, bg = 1, st = 0))
+  }
+  hourly <- pdm_response_time(fast(), flow = 5)
+  quarter <- pdm_response_time(fast(0.25), flow = 5)
+  # Hourly steps place the peak to the nearest hour; a quarter-hour step to the nearest 15 min.
+  expect_lte(abs(hourly$time_to_peak_h - quarter$time_to_peak_h), 1)
+  wetter <- pdm_response_time(fast(), flow = 20)
   expect_lt(wetter$time_to_peak_h, hourly$time_to_peak_h)
   expect_gt(hourly$recession_h, hourly$time_to_peak_h)
   expect_equal(nrow(hourly$response), 24 * 60)

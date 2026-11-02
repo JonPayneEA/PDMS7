@@ -56,7 +56,7 @@ test_that("wettest_years labels, ranks and holds back the largest years", {
   expect_equal(pdmS7:::.water_year(as.POSIXct(c("2012-09-30", "2012-10-01"), tz = "UTC")),
                c("2011-12", "2012-13"))
   w <- wettest_years(d$time, d$observed, 2)
-  expect_equal(w$water_year[w$held], c("2015-16", "2012-13"))
+  expect_equal(w$water_year[w$held], c("2012-13", "2015-16"))
   expect_equal(w$peak_m3s, sort(w$peak_m3s, decreasing = TRUE))
   first <- w[w$water_year == "2012-13", ]
   expect_equal(first$peak_m3s, max(d$observed[first$first_row:first$last_row]))
@@ -77,7 +77,7 @@ test_that("registration holds back the wettest years and flags flows above the r
   folder <- daily_project(d, highest_gauged_m3s = limit)
   reg <- read_entry(folder, 2)
   years <- reg$scorecard$wettest$years
-  expect_equal(vapply(years, function(y) y$water_year, ""), c("2015-16", "2012-13"))
+  expect_equal(vapply(years, function(y) y$water_year, ""), c("2012-13", "2015-16"))
   expect_equal(reg$scorecard$highest_gauged_m3s, limit)
   expect_equal(reg$scorecard$tie_tolerance, 0.02)
   held <- pdmS7:::.held_rows(reg$scorecard)

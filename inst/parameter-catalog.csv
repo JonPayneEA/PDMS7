@@ -15,9 +15,9 @@ triangular,cmax,cmax,mm,>cmin,200,Appendix A,illustrative
 exponential_capacity,mean,cbar,mm,>0,100,Appendix A,illustrative
 lognormal,meanlog,zeta,log(mm),finite,4.105170186,Appendix A,illustrative
 lognormal,sdlog,sigma,1,>0; finite positive implied mean,1,Appendix A,illustrative
-standard_recharge,kg,kg,h mm^(bg-1),>0,4000,Eq 10,illustrative lowland default
+standard_recharge,kg,kg,h mm^(bg-1),>0,1000,Eq 10,illustrative lowland default
 standard_recharge,bg,bg,1,>0,1,Eq 10; usually 1,paper common choice
-standard_recharge,st,St,mm,0<=st<=Smax,50,Eq 10,illustrative lowland default
+standard_recharge,st,St,mm,0<=st<=Smax,100,Eq 10,illustrative lowland default
 demand_recharge,alpha,alpha,1,0<alpha<=1,0.5,Eq 11-13,illustrative
 demand_recharge,beta,beta,1,>0,1,Eq 12,illustrative
 demand_recharge,qsat,qsat,mm/h,>0; qsat*dt<=Smax; Sgmax>0,1,Eq 13; Sgmax derived from routing,illustrative

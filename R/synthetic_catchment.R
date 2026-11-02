@@ -41,11 +41,12 @@
 #'
 #' @param rain Forcing from [synthetic_rain()] or your own data frame; by default
 #'   `synthetic_rain(start, years, dt, method)`.
-#' @param truth The true configuration. By default, the standard structure with a lowland
-#'   water balance: soil capacity up to 300 mm (`b` 0.4), recharge `kg` 4000 h above a 50 mm
-#'   threshold, surface stores of 12 h each, and `dt` and `area_km2` set. Under the default
-#'   rain it evaporates about 350 mm a year and has a baseflow index near 0.5. Every calibrated
-#'   parameter lies inside [calibration_bounds()]. Its `dt` must match the forcing's step.
+#' @param truth The true configuration. By default, the standard preset (a lowland water
+#'   balance: soil capacity up to 300 mm, recharge `kg` 1000 h above a 100 mm threshold) with
+#'   surface stores of 12 h each, and `dt` and `area_km2` set. Under the default rain it
+#'   evaporates about 310 mm a year, turns about 60 per cent of the rain into flow, and has a
+#'   baseflow index near 0.65. Every calibrated parameter lies inside [calibration_bounds()].
+#'   Its `dt` must match the forcing's step.
 #' @param start,years,dt,method Passed to [synthetic_rain()] when `rain` is not given.
 #' @param area_km2 Catchment area, km2, used when `truth` is not given.
 #' @param storms Optional data frame of added storms: `time`, `depth_mm`, `duration_h`.
@@ -120,8 +121,8 @@ synthetic_catchment <- function(rain = NULL, truth = NULL, start = "2010-10-01",
 
 # The default true model: the standard preset (a lowland water balance) with surface stores of
 # 12 hours, slower than the preset's 2 and 4, to suit a catchment of tens of km2. Under the
-# illustrative rain (about 760 mm a year) it evaporates about 350 mm, turns about half the rain
-# into flow, and has a baseflow index near 0.5. Every calibrated parameter lies inside
+# illustrative rain (about 760 mm a year) it evaporates about 310 mm, turns about 60 per cent of
+# the rain into flow, and has a baseflow index near 0.65. Every calibrated parameter lies inside
 # calibration_bounds(), so a calibration can recover it.
 .synthetic_truth <- function(dt, area_km2) {
   truth <- pdm_presets("standard")
