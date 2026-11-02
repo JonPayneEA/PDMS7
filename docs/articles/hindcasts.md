@@ -162,20 +162,20 @@ that origin only. The `fitted` coefficients come from the calibration
 period, not the period being scored.
 
 ``` r
-f <- hc$forecasts
+f <- as.data.frame(hc$forecasts)
 peak_row <- half + which.max(observed[(half + 1):n])
-origin <- max(f$origin[f$origin <= peak_row - 4 * 6])
-show <- (origin - 4 * 24):(origin + 4 * 48)
+issued <- max(f$origin[f$origin <= peak_row - 4 * 6])
+show <- (issued - 4 * 24):(issued + 4 * 48)
 par(mar = c(3, 4.2, 0.6, 0.6))
 plot(time[show], observed[show], pch = 16, cex = 0.3, col = pal[1], xlab = "",
      ylab = "Flow (m3/s)")
 methods <- c("none", "ea_2024", "state", "persistence")
 for (i in seq_along(methods)) {
-  one <- f[f$origin == origin & f$method == methods[i], ]
+  one <- f[f$origin == issued & f$method == methods[i], ]
   lines(time[one$origin + one$lead], one$forecast, col = pal[i + 1], lwd = 2)
 }
-abline(v = time[origin], lty = 2, col = pal[7])
-legend("topright", methods, col = pal[2:5], lwd = 2, bty = "n")
+abline(v = time[issued], lty = 2, col = pal[7])
+legend("topleft", methods, col = pal[2:5], lwd = 2, bty = "n")
 ```
 
 ![One forecast, issued at the dashed line, on the rising limb of a
@@ -213,14 +213,16 @@ Skill against persistence, by lead time in hours
 par(mar = c(4, 4.2, 0.6, 0.6))
 plot_hindcast(scores, "skill", methods = c("none", "ea_2024", "response_time", "fitted",
                                            "state"),
-              col = pal[2:6])
+              col = pal[2:6], ylim = c(-1, 1))
 ```
 
-![Skill against persistence. Above the dashed line, a method beats
-persistence.](hindcasts_files/figure-html/skill-plot-1.png)
+![Skill against persistence, cut off at -1. Above the dashed line, a
+method beats persistence. The simulation without updating starts far
+below the chart, at -93.](hindcasts_files/figure-html/skill-plot-1.png)
 
-Skill against persistence. Above the dashed line, a method beats
-persistence.
+Skill against persistence, cut off at -1. Above the dashed line, a
+method beats persistence. The simulation without updating starts far
+below the chart, at -93.
 
 What the table and chart show:
 
@@ -277,7 +279,7 @@ response time.
 ``` r
 par(mar = c(4, 4.2, 0.6, 0.6))
 plot_hindcast(scores, "skill", ratio = TRUE, methods = c("none", "ea_2024", "state"),
-              col = pal[2:4])
+              col = pal[2:4], ylim = c(-1, 1))
 ```
 
 ![The same skill, against lead time as a fraction of the time to

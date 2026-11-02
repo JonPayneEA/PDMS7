@@ -152,7 +152,9 @@ pdm_hindcast <- function(model, forcing, observed, state = NULL, window = NULL, 
 
 .hindcast_origins <- function(window, n, every) {
   .check(is.numeric(window) && all(window >= 1 & window <= n), "window must be row numbers")
-  origins <- as.integer(seq.int(min(window), min(max(window), n) - 1L, by = every))
+  last <- min(max(window), n) - 1L
+  .check(min(window) <= last, "No forecast origins fit in the window")
+  origins <- as.integer(seq.int(min(window), last, by = every))
   origins <- origins[origins >= 3L & origins + 1L <= n]
   .check(length(origins) > 0, "No forecast origins fit in the window")
   origins

@@ -10,7 +10,9 @@ plot_hindcast(
   metric = "skill",
   ratio = FALSE,
   methods = NULL,
-  col = NULL
+  col = NULL,
+  ylim = NULL,
+  legend = "bottomright"
 )
 ```
 
@@ -37,6 +39,17 @@ plot_hindcast(
 - col:
 
   Line colours, one per method.
+
+- ylim:
+
+  Optional y-axis limits. Skill can be very negative at the shortest
+  lead times, which flattens the rest of the chart; `c(-1, 1)` is often
+  clearer.
+
+- legend:
+
+  Legend position, as in
+  [`graphics::legend()`](https://rdrr.io/r/graphics/legend.html).
 
 ## Value
 

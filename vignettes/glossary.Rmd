@@ -1,0 +1,187 @@
+---
+title: "Glossary"
+author: "pdmS7 documentation"
+vignette: >
+  %\VignetteIndexEntry{Glossary}
+  %\VignetteEngine{knitr::knitr}
+  %\VignetteEncoding{UTF-8}
+---
+
+Plain definitions of the terms used across this site. Each points to the article that explains
+it in full.
+
+# The model
+
+**PDM (Probability Distributed Model).** A rainfall-runoff model that treats the catchment as a
+collection of soil stores of different sizes, so that part of it is saturated and runs off
+quickly while the rest absorbs rain (Moore, 2007). [How the PDM works](pdm-explained.html).
+
+**Store, or reservoir.** A bucket of water in the model: the soil store, the surface stores and
+the groundwater store. Water drains from each at a rate set by how full it is.
+
+**Capacity distribution.** How the sizes of the soil stores are spread across the catchment.
+The Pareto distribution is the usual choice; `cmax` is the largest store and `b` its shape.
+[Choosing model components](model-options.html).
+
+**Saturated fraction.** The share of the catchment whose stores are full, so that rain falling
+there runs straight off.
+
+**Recharge.** Drainage from the soil store to groundwater, controlled by `kg`.
+
+**Routing.** How stores turn the water they receive into a flow. The surface cascade (`k1`,
+`k2`) gives the quick response; the groundwater store (`kb`) the slow baseflow.
+
+**Time constant.** The time a linear store takes to drain to about 37 per cent of its contents,
+in hours. Larger means slower.
+
+**Rainfall factor (`fc`).** A multiplier on the rainfall the model receives. Values far from 1
+usually point at the rain data rather than the catchment.
+
+**PACK.** The snow model that can sit in front of the PDM, turning precipitation and temperature
+into rain and melt. [How the snow model works](snowpack-explained.html).
+
+**State.** The contents of every store at a moment. **Warm-up** is the period at the start of a
+run, simulated but not scored, while the stores settle from their starting state.
+[Starting a run](starting-states.html).
+
+**Response time.** How quickly the model's flow responds to rain: the **time to peak** after a
+pulse of rain, and the **recession time** as it drains. `pdm_response_time()`.
+[Testing forecasts with hindcasts](hindcasts.html).
+
+**Water balance.** Rain in equals evaporation, flow out and change in storage. pdmS7 checks it at
+every step.
+
+# Calibration
+
+**Calibration.** Adjusting a model's parameters so its flow matches measured flow.
+[Automatic calibration, explained](auto-calibration.html).
+
+**Bounds.** The lowest and highest value each parameter may take during a calibration.
+
+**Objective.** The score a calibration tries to make as small as possible, such as 1 - NSE.
+
+**Search scale.** Whether a parameter is searched evenly in its own units or in its logarithm.
+Log scale suits parameters spanning orders of magnitude, such as `kb`.
+
+**Multi-start.** Running the search from several starting points and keeping the best, so a
+single unlucky start does not decide the result.
+
+**Staged calibration.** Calibrating groups of parameters in turn: the water balance and slow
+stores first, then the fast stores, then a joint polish. `calibrate_staged()`.
+
+**Calibration, validation and test windows.** Three separate periods. The model is fitted on
+the first, checked on the second, and scored once on the third after every choice is made. A
+**split-sample test** in Klemeš's (1986) terms.
+
+**Structure.** The choice of components: capacity distribution, recharge rule and routing.
+[Choosing a model structure](choosing-structure.html).
+
+**Equifinality.** Different parameter sets giving almost equally good fits. It means the data do
+not pin those parameters down.
+
+**Batch calibration.** Applying one calibration protocol to many catchments.
+[Calibrating many catchments](many-catchments.html).
+
+# Scores
+
+**NSE (Nash-Sutcliffe efficiency).** 1 minus the squared errors divided by the variance of the
+observed flow. 1 is perfect; 0 is no better than the mean flow. Dominated by floods.
+[Scoring a simulation](scoring.html).
+
+**KGE (Kling-Gupta efficiency).** Combines three terms: correlation (`kge_r`), the ratio of
+variability (`kge_alpha`) and the ratio of means (`kge_beta`). 1 is perfect.
+
+**Log NSE, log RMSE.** The same scores on the logarithm of flow, which gives low flows weight.
+
+**Volume error.** Total simulated flow over total observed, minus 1.
+
+**Flow-duration curve signatures.** Biases in the high-flow, mid-range and low-flow parts of the
+flow-duration curve (`fdc_high`, `fdc_mid`, `fdc_low`).
+
+**Threshold.** A flow or level that matters, such as a Flood Warning level.
+
+**POD (probability of detection).** The share of observed threshold crossings the model also
+made. 1 is perfect.
+
+**FAR (false alarm ratio).** The share of the model's threshold crossings that did not happen.
+0 is perfect.
+
+**CSI (critical success index).** Hits divided by hits, misses and false alarms together: one
+number combining POD and FAR. 1 is perfect.
+
+**Event and step scores.** Event scores count each episode above a threshold once; step scores
+count every time step.
+
+**Lower benchmark.** A deliberately simple prediction, such as the mean flow for each day of the
+year, that any useful model must beat (Seibert et al., 2018).
+
+# Forecasting
+
+**Forecast origin.** The moment a forecast is issued. **Lead time** is how far ahead of the
+origin a forecast value lies.
+
+**Updating.** Using the latest observations at the origin to improve a forecast.
+[Forecast updating](forecast-updating.html).
+
+**State correction.** Updating by adjusting the model's stores at the origin.
+
+**Error, in forecasting.** Observed minus simulated flow. A positive error means the model is too
+low.
+
+**AR and ARMA models.** Autoregressive (and moving-average) models that predict how the recent
+error will carry on; the forecast is the simulation plus the predicted error. **Post-processing**
+is this correction applied after the model runs, as in IMFS.
+[AR and ARMA error correction, explained](ar-error-correction.html).
+
+**Root, decay time.** An AR model behaves like several fading processes added together, one per
+root; each root's decay time is how long its part of the error takes to fade to 37 per cent.
+
+**Deltares convention.** The sign convention for AR coefficients used by IMFS, reach.postproc and
+pdmS7. Moore (2007) writes the same coefficients with the opposite sign.
+
+**Hindcast.** Rerunning past forecasts as if they were live, from many origins, using the rain
+that fell. [Testing forecasts with hindcasts](hindcasts.html).
+
+**Persistence.** The forecast that the river stays at its last measured flow. **Skill** is
+measured against it: 0 is no better than persistence, 1 is perfect.
+
+# Records and review
+
+**Calibration log.** The append-only, checksummed record of a calibration.
+[Logging a manual calibration](calibration-log.html).
+
+**Entry.** One record in the log: project start, data registration, structure, trial, automatic
+calibration, note, candidate, validation, test, sign-off or reopen.
+
+**Checksum (MD5).** A short fingerprint of a file. Any change to the file changes it, so a stored
+checksum proves the file is unchanged.
+
+**Candidate.** The run the Custodian proposes as the final calibration.
+
+**Sign-off.** A Steward's recorded acceptance. [Reviewing a calibration](steward-guide.html).
+
+**Owner, Steward, Custodian.** The governance roles: accountable, reviewing and doing.
+
+**Run log and fingerprint.** An optional record of every model run, each identified by a
+fingerprint of its configuration, so an operational run can be traced to the calibration that
+approved it.
+
+**Bronze, Silver, Gold.** The tiers of the hydrometric data store in reach.io: raw as received,
+quality controlled, and approved products. [Preparing your data](data-preparation.html).
+
+# Benchmarking
+
+**LSTM (long short-term memory network).** A type of neural network used for rainfall-runoff
+modelling, usually trained on many catchments at once.
+
+**Benchmark protocol.** The comparison of PDM and LSTM fixed in advance: data, periods, effort and
+scores. [The protocol](../benchmark-protocol.html).
+
+**Simulation mode.** Running a model without any observed flow at run time. **Forecast mode**
+uses observations at the origin.
+
+**CAMELS-GB.** An open dataset of 671 catchments in Great Britain with daily data and catchment
+attributes (Coxon et al., 2020).
+
+**Stratum.** A group of catchments, such as the third with the highest baseflow index, over which
+results are summarised.

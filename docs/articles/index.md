@@ -2,6 +2,10 @@
 
 ### Getting started
 
+- [Where to
+  start](https://jonpayneea.github.io/PDMS7/articles/reading-paths.md):
+- [Preparing your
+  data](https://jonpayneea.github.io/PDMS7/articles/data-preparation.md):
 - [Your first model
   run](https://jonpayneea.github.io/PDMS7/articles/example-workflow.md):
 
@@ -40,11 +44,15 @@
   calibration](https://jonpayneea.github.io/PDMS7/articles/calibration-log.md):
 - [Inside the logs: projects, entries, checksums and the run
   log](https://jonpayneea.github.io/PDMS7/articles/log-structure.md):
+- [Reviewing a calibration: a Steward's
+  guide](https://jonpayneea.github.io/PDMS7/articles/steward-guide.md):
 
 ### Forecasting
 
 - [Forecast
   updating](https://jonpayneea.github.io/PDMS7/articles/forecast-updating.md):
+- [AR and ARMA error correction,
+  explained](https://jonpayneea.github.io/PDMS7/articles/ar-error-correction.md):
 - [Testing forecasts with
   hindcasts](https://jonpayneea.github.io/PDMS7/articles/hindcasts.md):
 
@@ -52,3 +60,10 @@
 
 - [The C core: speed, equivalence and other
   languages](https://jonpayneea.github.io/PDMS7/articles/compiled-core.md):
+
+### Help
+
+- [Glossary](https://jonpayneea.github.io/PDMS7/articles/glossary.md):
+- [Troubleshooting](https://jonpayneea.github.io/PDMS7/articles/troubleshooting.md):
+- [Further
+  reading](https://jonpayneea.github.io/PDMS7/articles/further-reading.md):

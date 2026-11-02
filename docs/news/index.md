@@ -1,5 +1,18 @@
 # Changelog
 
+## pdmS7 (development version)
+
+- Six new pages on the website: “Where to start” (reading paths by
+  role), “Preparing your data” (from EA sources through reach.io to
+  model files, with a checklist), “Reviewing a calibration: a Steward’s
+  guide”, a glossary, troubleshooting, and further reading. The home
+  page states the package’s purpose, “Get started” opens the reading
+  paths, and the roadmap is rewritten.
+- The benchmark protocol is at version 0.2, with its decisions closed.
+- [`pdm_hindcast()`](https://jonpayneea.github.io/PDMS7/reference/pdm_hindcast.md)
+  reports “No forecast origins fit in the window” for a window too
+  narrow for any origin, instead of an internal error.
+
 ## pdmS7 0.4.0
 
 - New
@@ -53,9 +66,9 @@
   into rain and melt, the PDM is calibrated on that, and a log note
   records the PACK settings and the raw forcing’s checksum.
 
-- New article, “Testing forecasts with hindcasts”. “Automatic
-  calibration” and “Calibrating many catchments” cover staged
-  calibration and snow basins.
+- New articles, “Testing forecasts with hindcasts” and “AR and ARMA
+  error correction, explained”. “Automatic calibration” and “Calibrating
+  many catchments” cover staged calibration and snow basins.
 
 - Internal: the calibration functions are split into smaller helpers; no
   results change.

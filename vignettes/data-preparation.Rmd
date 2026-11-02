@@ -1,0 +1,245 @@
+---
+title: "Preparing your data"
+author: "pdmS7 documentation"
+vignette: >
+  %\VignetteIndexEntry{Preparing your data}
+  %\VignetteEngine{knitr::knitr}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+library(pdmS7)
+knitr::opts_chunk$set(
+  error = FALSE, collapse = TRUE, comment = "#>", fig.width = 8,
+  fig.height = 3.4, dpi = if (nzchar(Sys.getenv("IN_PKGDOWN"))) 110 else 60
+)
+pal <- c("#236b83", "#a26421", "#5b8c3a", "#8a3b6b", "#444444", "#b23b3b", "#9aa7b0")
+```
+
+Most calibration problems start in the data. A rainfall series shifted by one time step, a
+flow record in the wrong units or a gap filled with zeros will spoil a calibration, and no
+amount of searching will put it right. This guide takes you from Environment Agency sources to
+the three files pdmS7 reads, and ends with a checklist to run before every calibration.
+
+# What pdmS7 expects
+
+| File | Columns | Rules |
+|---|---|---|
+| `forcing.csv` | `time`, `rain`, `pet` | Rain and potential evaporation as **totals over the time step**, in mm. No gaps. |
+| `flow.csv` | `q_m3s` (and optionally `time`) | **Mean** flow over the time step, in m3/s. Gaps left empty. |
+| `basin.yml` | `area_km2`, `calibration`, and optional extras | Described in [Calibrating many catchments](many-catchments.html) |
+
+Three conventions matter more than any other:
+
+- **Time stamps mark the end of the step.** The row stamped 10:00 holds the rain that fell from
+  09:45 to 10:00, at 15 minutes, and the model's flow for the same quarter hour.
+- **Times are UTC.** British Summer Time never appears in a model file.
+- **The step is fixed.** Every row is one step after the last: 15 minutes, an hour or a day.
+
+# Step 1: get the data with reach.io
+
+[reach.io](https://github.com/JonPayneEA/reach.io) finds stations, downloads from the EA
+Hydrology API, keeps a Bronze store of raw data with provenance, and promotes it to a Silver
+store with quality flags. Use it rather than ad hoc downloads: every series then has a record of
+where it came from, which the calibration log can point to.
+
+```{r reach-io, eval=FALSE}
+library(reach.io)
+stations <- find_stations(lat = 51.5, long = -1.8, dist = 15)
+got <- download_hydrology(
+  parameters = c("rainfall", "flow"), from_date = "2010-01-01", to_date = "2024-12-31",
+  wiski_ids = c("SS92F014", "S11512_FW"), method = "batch", output = "disk",
+  out_dir = "data/hydrometric"
+)
+# Quality control: Bronze to Silver, with a qc_flag per reading.
+promote_to_silver("data/hydrometric/bronze/hydrometric/EA/Q/2024/EA_39001_Q_20240101.parquet")
+flow <- read_silver("data/hydrometric", "39001", "Q")
+```
+
+reach.io's `format_for_pdm()` writes the layout of the older PDM for PCs program, with separate
+year, month and day columns. pdmS7 reads plain CSV files with one `time` column, as below.
+
+# Step 2: use the quality flags
+
+reach.io's Silver data carry a flag on every reading: 1 good, 2 estimated, 3 suspect,
+4 rejected. A simple rule serves most calibrations:
+
+| Flag | Flow | Rainfall |
+|---|---|---|
+| 1 good, 2 estimated | Keep | Keep |
+| 3 suspect | Keep, and look at the worst periods by eye | Keep, and look at the worst periods by eye |
+| 4 rejected | Set to missing | Set to missing, then infill (step 5) |
+
+Missing flow is harmless: pdmS7 leaves it out of every score. Missing rain is not, because the
+model cannot run through a gap in its inputs.
+
+```{r flags}
+flow <- data.frame(value = c(2.1, 2.3, 2.2, 0, 2.6), qc_flag = c(1, 1, 3, 4, 1))
+flow$q_m3s <- ifelse(flow$qc_flag == 4, NA, flow$value)
+flow
+```
+
+# Step 3: get the time stamps right
+
+## Start or end of the step
+
+Check how your source stamps its totals. If a 15-minute rainfall total is stamped at the
+**start** of its quarter hour, every value must move one step later, or the model sees the rain
+15 minutes early. That is a small shift, but it biases every timing score and every hindcast.
+
+```{r shift}
+start_stamped <- data.frame(
+  time = as.POSIXct(c("2024-01-01 09:00", "2024-01-01 09:15", "2024-01-01 09:30"), tz = "UTC"),
+  rain = c(0.2, 1.4, 0.6)
+)
+end_stamped <- transform(start_stamped, time = time + 15 * 60)
+end_stamped
+```
+
+The test: plot rain and flow for a few sharp storms. Flow cannot rise before the rain that
+causes it. If it appears to, the rain is stamped late or the flow early.
+
+## Summer time
+
+Data exported from some systems is in local time. In local time the last Sunday in October has
+one hour twice and the last Sunday in March has one hour missing. Read such data with
+`tz = "Europe/London"` and convert to UTC: the duplicated and missing hours then disappear.
+
+```{r bst}
+local <- as.POSIXct(c("2024-03-31 00:45", "2024-03-31 02:00"), tz = "Europe/London")
+format(local, tz = "UTC", usetz = TRUE)
+```
+
+Local 00:45 and 02:00 on that night are only 15 minutes apart in UTC: the hour that never
+happened has gone.
+
+## A fixed step
+
+Gaps in the time column itself, rather than missing values, break the fixed step. Fill them
+with explicit rows:
+
+```{r grid}
+times <- as.POSIXct(c("2024-01-01 00:00", "2024-01-01 00:15", "2024-01-01 00:45"), tz = "UTC")
+values <- c(1.0, 1.1, 1.3)
+grid <- seq(min(times), max(times), by = 15 * 60)
+full <- data.frame(time = grid, q_m3s = values[match(grid, times)])
+full
+```
+
+# Step 4: units and step length
+
+- **Rainfall** is already a depth per step. To change the step, add depths: four 15-minute
+  totals make one hourly total.
+- **Flow** is a rate. To change the step, average: four 15-minute flows make one hourly mean.
+  pdmS7's `q_m3s` is a mean over the step, so compare it with the mean observed flow over the
+  same step, not with an instantaneous reading at its end.
+- **Levels** need a rating before they can be compared with modelled flow. Use reach.io's
+  `apply_rating()` and keep the rating with the data. Treat flows above the highest gauged flow
+  with caution; for warning thresholds set as levels, pdmS7's `register_data()` converts them
+  through the rating and refuses levels outside it.
+
+```{r aggregate}
+quarter <- data.frame(rain = c(0.2, 1.4, 0.6, 0, 0.1, 0, 0, 0),
+                      q_m3s = c(2.0, 2.1, 2.5, 3.0, 3.2, 3.1, 2.9, 2.8))
+hour <- rep(1:2, each = 4)
+data.frame(rain = tapply(quarter$rain, hour, sum), q_m3s = tapply(quarter$q_m3s, hour, mean))
+```
+
+# Step 5: catchment rainfall
+
+The model needs the rain falling on the whole catchment, not at one gauge. reach.io returns
+gauge series; combining them is your step. Three common choices:
+
+| Method | When |
+|---|---|
+| A gridded radar-gauge product, averaged over the catchment | Best where available; captures storms between gauges |
+| Gauge weights from Thiessen polygons, or from the share of catchment each gauge represents | A few gauges in or near the catchment |
+| One gauge | Small catchments only; say so in the calibration's reasoning |
+
+With fixed weights, a missing value at one gauge can be covered by re-weighting the others for
+that step:
+
+```{r weights}
+gauges <- cbind(a = c(1.2, 0.8, NA, 0.0), b = c(1.0, 0.6, 0.9, 0.1), c = c(1.4, NA, 1.1, 0.0))
+weights <- c(a = 0.5, b = 0.3, c = 0.2)
+catchment_rain <- apply(gauges, 1, function(r) {
+  ok <- !is.na(r)
+  sum(r[ok] * weights[ok]) / sum(weights[ok])
+})
+round(catchment_rain, 3)
+```
+
+Infill rainfall once, by one recorded method, before any model sees it, and keep a note of which
+steps were infilled. Never infill flow for scoring.
+
+# Step 6: potential evaporation
+
+PET has much less effect on floods than rainfall, but it controls how dry the soil gets in
+summer, and so how big the first autumn floods are.
+
+- Use a measured or modelled series (MORECS, MOSES or a Penman-Monteith calculation) where you
+  have one.
+- Otherwise reach.io's `fit_pe_sine()` and `generate_pe_sine()` give a smooth annual curve,
+  reliable for UK lowland catchments.
+- PET is a depth per step, like rain. Spread a daily value evenly across the day's steps
+  (a daily total of 2.4 mm becomes 0.025 mm per 15 minutes), unless you have a diurnal pattern
+  you trust.
+
+```{r pet}
+daily_pet <- 2.4
+rep(daily_pet / 96, 3)
+```
+
+# Step 7: write the files
+
+```{r write}
+folder <- file.path(tempdir(), "B01")
+dir.create(folder, showWarnings = FALSE)
+time <- seq(as.POSIXct("2024-01-01 00:15", tz = "UTC"), by = 15 * 60, length.out = 8)
+forcing <- data.frame(time = format(time, "%Y-%m-%dT%H:%M:%SZ"), rain = quarter$rain,
+                      pet = 0.025)
+data.table::fwrite(forcing, file.path(folder, "forcing.csv"))
+data.table::fwrite(data.frame(time = forcing$time, q_m3s = quarter$q_m3s),
+                   file.path(folder, "flow.csv"))
+writeLines(c("area_km2: 64", "calibration: [2024-01-01, 2024-01-02]"),
+           file.path(folder, "basin.yml"))
+cat(readLines(file.path(folder, "forcing.csv"), n = 3), sep = "\n")
+```
+
+```{r cleanup, include=FALSE}
+unlink(folder, recursive = TRUE)
+```
+
+# The checklist
+
+Run these before every calibration. Each takes a minute and each has caught a real error
+somewhere.
+
+```{r checklist, eval=FALSE}
+f <- data.table::fread("forcing.csv")
+q <- data.table::fread("flow.csv")
+f$time <- as.POSIXct(f$time, tz = "UTC")
+stopifnot(nrow(f) == nrow(q))                       # the files line up
+table(diff(as.numeric(f$time)))                     # one step length only
+c(rain_missing = sum(is.na(f$rain)), pet_missing = sum(is.na(f$pet)))  # both zero
+c(rain_negative = sum(f$rain < 0, na.rm = TRUE), pet_negative = sum(f$pet < 0, na.rm = TRUE))
+mean(is.na(q$q_m3s))                                # share of flow missing
+# Water balance: in a typical year, flow out should be less than rain in.
+area_km2 <- 64
+runoff_mm <- sum(q$q_m3s, na.rm = TRUE) * 900 / (area_km2 * 1000)  # 900 s per 15-min step
+rain_mm <- sum(f$rain[!is.na(q$q_m3s)])
+runoff_mm / rain_mm                                 # runoff ratio: well below 1
+```
+
+| Check | Expect | If not |
+|---|---|---|
+| Rows line up | Same number, same times | Re-join on time, not by position |
+| One step length | A single value | Fill the grid (step 3) |
+| Rain and PET missing | Zero | Infill rain (step 5); fill PET from a curve (step 6) |
+| Negative values | Zero | A data fault; reach.io's QC flags most of these |
+| Flow missing | Under 10 per cent in each period | Choose other periods, or note it |
+| Runoff ratio | Below 1: about 0.2 in the dry south-east, 0.8 or more in the wet north and west | Wrong area, wrong units, or rain from the wrong place |
+| Storm timing by eye | Flow rises after rain | Shift by one step (step 3) |
+
+Then follow [Your first model run](example-workflow.html), or, for many catchments at once,
+[Calibrating many catchments](many-catchments.html).

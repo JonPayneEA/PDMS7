@@ -1,6 +1,12 @@
 # pdmS7 — configurable PDM for Flode conventions
 
-Version 0.3.1 targets **Tier 3 engineering checks** for pseudo-operational use.
+pdmS7 is a probability-distributed rainfall-runoff model (Moore, 2007) built to calibrate
+conceptual models fairly, record each calibration so it can be defended, and compare the result
+with machine-learning models on equal terms. **New here?** Start with
+[Where to start](https://jonpayneea.github.io/PDMS7/articles/reading-paths.html), which gives a
+reading order for modellers, Stewards, Owners, forecasters and the LSTM team.
+
+Version 0.4.0 targets **Tier 3 engineering checks** for pseudo-operational use.
 It remains a standalone package, with `reach.hydro` as its proposed Flode home.
 Human maintainer attribution, independent review and catchment validation are
 outstanding; this is not a declaration of operational approval.
@@ -15,7 +21,7 @@ R >= 4.3 is required. For users of the installable source archive:
 
 ```r
 install.packages(c("S7", "data.table", "yaml", "logger"))
-install.packages("pdmS7_0.3.1.tar.gz", repos = NULL, type = "source")
+install.packages("pdmS7_0.4.0.tar.gz", repos = NULL, type = "source")
 ```
 
 The package contains compiled code (the model core in C, with a thin C++ wrapper for R), so
@@ -33,6 +39,10 @@ each built from a vignette in `vignettes/` with live examples and plots.
 
 Getting started:
 
+- [Where to start](https://jonpayneea.github.io/PDMS7/articles/reading-paths.html): a reading
+  order for each role
+- [Preparing your data](https://jonpayneea.github.io/PDMS7/articles/data-preparation.html):
+  from EA sources, through reach.io, to model files, with a checklist
 - [Your first model run](https://jonpayneea.github.io/PDMS7/articles/example-workflow.html):
   from your own data files to a scored, calibrated and saved model
 
@@ -71,6 +81,8 @@ Records and review:
   the audit trail from project start to sign-off, the report, and tracing operational runs
 - [Inside the logs](https://jonpayneea.github.io/PDMS7/articles/log-structure.html): project
   folders, entries, the checksum chain, the run log and the register
+- [Reviewing a calibration: a Steward's guide](https://jonpayneea.github.io/PDMS7/articles/steward-guide.html):
+  what to check in the report, warning signs, and what signing off means
 
 Forecasting:
 
@@ -86,6 +98,15 @@ Forecasting:
 Under the bonnet:
 
 - [The C core: speed, equivalence and other languages](https://jonpayneea.github.io/PDMS7/articles/compiled-core.html)
+
+Help:
+
+- [Glossary](https://jonpayneea.github.io/PDMS7/articles/glossary.html): every term the
+  articles use, in plain English
+- [Troubleshooting](https://jonpayneea.github.io/PDMS7/articles/troubleshooting.html): common
+  errors and what to do
+- [Further reading](https://jonpayneea.github.io/PDMS7/articles/further-reading.html): the
+  literature behind the model, the scores and the benchmark
 
 The PACK implementation is in `R/pack_model.R`, `R/pack_step.R` and `R/sim_pack.R`, with
 defaults in `inst/config/pack.yml`.
