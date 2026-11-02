@@ -40,17 +40,10 @@ void fill_route(pdm_route& r, const doubles& par, int at) {
   r.gamma = par[at + 9];
 }
 
-}  // namespace
-
-// Runs the time loop. par holds the 40 fields of pdm_params in struct order, as built by
-// .engine_params() in R/engine.R. state uses the layout documented in pdm_core.h. With
-// full = FALSE only q_m3s and q_end_m3s are filled; the flux columns are returned empty.
-[[cpp11::register]]
-cpp11::list pdm_engine_run(doubles rain, doubles pet, doubles par, doubles state, bool full) {
-  if (par.size() != 40) cpp11::stop("pdm_engine_run expects 40 parameters");
-  if (rain.size() != pet.size()) cpp11::stop("rain and pet must have equal length");
-  // Unpack the parameters in pdm_params order. The same unpacking appears in correct_engine_run()
-  // and from_flow_engine_run(); a change to the layout must be made in all three.
+// Builds the parameter struct from the flat vector made by .engine_params() in R/engine.R, in
+// pdm_params order. The one place that knows the layout: every entry point uses it, so a change
+// to the layout is made here once. Callers check the vector has 40 values first.
+pdm_params fill_params(const doubles& par) {
   pdm_params p;
   p.distribution = static_cast<int32_t>(par[0]);
   p.recharge = static_cast<int32_t>(par[1]);
@@ -62,6 +55,19 @@ cpp11::list pdm_engine_run(doubles rain, doubles pet, doubles par, doubles state
   fill_route(p.groundwater, par, 24);
   p.be = par[34]; p.fc = par[35]; p.td = par[36]; p.qc = par[37]; p.area_km2 = par[38];
   p.dt = par[39];
+  return p;
+}
+
+}  // namespace
+
+// Runs the time loop. par holds the 40 fields of pdm_params in struct order, as built by
+// .engine_params() in R/engine.R. state uses the layout documented in pdm_core.h. With
+// full = FALSE only q_m3s and q_end_m3s are filled; the flux columns are returned empty.
+[[cpp11::register]]
+cpp11::list pdm_engine_run(doubles rain, doubles pet, doubles par, doubles state, bool full) {
+  if (par.size() != 40) cpp11::stop("pdm_engine_run expects 40 parameters");
+  if (rain.size() != pet.size()) cpp11::stop("rain and pet must have equal length");
+  pdm_params p = fill_params(par);
 
   // Copy R's vectors into C++ storage: the C core writes to state and the outputs, and R's
   // vectors must not be modified in place.
@@ -144,17 +150,7 @@ cpp11::list pack_engine_run(doubles precipitation, doubles temperature, doubles 
 [[cpp11::register]]
 cpp11::list correct_engine_run(doubles par, doubles state, double observed, doubles upd) {
   if (par.size() != 40 || upd.size() != 7) cpp11::stop("correct_engine_run: wrong lengths");
-  pdm_params p;
-  p.distribution = static_cast<int32_t>(par[0]);
-  p.recharge = static_cast<int32_t>(par[1]);
-  p.cmin = par[2]; p.cmax = par[3]; p.b = par[4]; p.mean = par[5];
-  p.meanlog = par[6]; p.sdlog = par[7];
-  p.kg = par[8]; p.bg = par[9]; p.st = par[10];
-  p.alpha = par[11]; p.beta = par[12]; p.qsat = par[13];
-  fill_route(p.surface, par, 14);
-  fill_route(p.groundwater, par, 24);
-  p.be = par[34]; p.fc = par[35]; p.td = par[36]; p.qc = par[37]; p.area_km2 = par[38];
-  p.dt = par[39];
+  pdm_params p = fill_params(par);
   pdm_state_updater u;
   u.scheme = static_cast<int32_t>(upd[0]);
   u.soil_proportional = upd[1] != 0 ? 1 : 0;
@@ -210,17 +206,7 @@ cpp11::list forecast_engine_run(doubles ar, doubles ma, int scale, double offset
 cpp11::doubles from_flow_engine_run(doubles par, double observed, double baseflow_fraction,
                                     double soil_fraction) {
   if (par.size() != 40) cpp11::stop("from_flow_engine_run expects 40 parameters");
-  pdm_params p;
-  p.distribution = static_cast<int32_t>(par[0]);
-  p.recharge = static_cast<int32_t>(par[1]);
-  p.cmin = par[2]; p.cmax = par[3]; p.b = par[4]; p.mean = par[5];
-  p.meanlog = par[6]; p.sdlog = par[7];
-  p.kg = par[8]; p.bg = par[9]; p.st = par[10];
-  p.alpha = par[11]; p.beta = par[12]; p.qsat = par[13];
-  fill_route(p.surface, par, 14);
-  fill_route(p.groundwater, par, 24);
-  p.be = par[34]; p.fc = par[35]; p.td = par[36]; p.qc = par[37]; p.area_km2 = par[38];
-  p.dt = par[39];
+  pdm_params p = fill_params(par);
   int64_t len = pdm_state_length(&p);
   if (len < 0) cpp11::stop("Invalid parameter(s): dt or td");
   std::vector<double> state(static_cast<std::size_t>(len));
