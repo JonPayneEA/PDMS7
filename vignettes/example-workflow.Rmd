@@ -150,9 +150,8 @@ first <- pdm_scorecard(simulated$q_m3s[scored], observed$q_m3s[scored])
 round(first[c("nse", "kge", "volume_error", "peak_error", "fdc_high", "fdc_low")], 3)
 ```
 
-NSE and KGE are 1 for a perfect fit, so `r round(first[["nse"]], 2)` is poor. The total volume
-is close (volume error `r sprintf("%+.0f", 100 * first[["volume_error"]])` per cent), so the
-amount of water is about right; the problem is how it is shared out over time. The
+NSE and KGE are 1 for a perfect fit, so `r round(first[["nse"]], 2)` is poor.
+`r if (abs(first[["volume_error"]]) < 0.1) paste0("The total volume is close (volume error ", sprintf("%+.0f", 100 * first[["volume_error"]]), " per cent), so the amount of water is about right; the problem is how it is shared out over time.") else paste0("The total volume is ", sprintf("%.0f", abs(100 * first[["volume_error"]])), " per cent too ", if (first[["volume_error"]] < 0) "low" else "high", ", and the peak error of ", sprintf("%+.0f", 100 * first[["peak_error"]]), " per cent says the water that does arrive comes in the wrong shape.")` The
 flow-duration scores `fdc_high` and `fdc_low` say the floods and the low flows are both off,
 which points at how quickly water drains to groundwater, and how quickly the surface stores
 empty. [Scoring a simulation](scoring.html) explains every score and what it points to.
