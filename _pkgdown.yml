@@ -24,6 +24,8 @@ navbar:
         href: calibration-log-design.html
       - text: Validation
         href: validation.html
+      - text: Code review
+        href: code-review.html
       - text: Multi-objective calibration
         href: multi-objective.html
       - text: Snow model notes

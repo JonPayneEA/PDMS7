@@ -89,15 +89,15 @@ drive.
 
 Every entry carries:
 
-| Field       | Content                                                 |
-|-------------|---------------------------------------------------------|
-| `format`    | Entry format version, currently 1                       |
-| `id`        | Four-digit sequence, the same as the file name prefix   |
-| `type`      | One of the ten types                                    |
-| `timestamp` | UTC, ISO 8601                                           |
-| `author`    | `name`, `role`, `login`                                 |
-| `software`  | pdmS7 version, R version, platform, engine              |
-| `previous`  | MD5 of the previous entry file, or `none` for the first |
+| Field       | Content                                                                            |
+|-------------|------------------------------------------------------------------------------------|
+| `format`    | Entry format version, currently 1                                                  |
+| `id`        | Four-digit sequence, the same as the file name prefix                              |
+| `type`      | One of the eleven types: the ten agreed in decision 3, and `test` from decision 20 |
+| `timestamp` | UTC, ISO 8601                                                                      |
+| `author`    | `name`, `role`, `login`                                                            |
+| `software`  | pdmS7 version, R version, platform, engine                                         |
+| `previous`  | MD5 of the previous entry file, or `none` for the first                            |
 
 Then, by type:
 

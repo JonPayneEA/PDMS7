@@ -66,6 +66,7 @@
     <li><a class="dropdown-item" href="../benchmark-protocol.html">Benchmark protocol</a></li>
     <li><a class="dropdown-item" href="../calibration-log-design.html">Calibration log design</a></li>
     <li><a class="dropdown-item" href="../validation.html">Validation</a></li>
+    <li><a class="dropdown-item" href="../code-review.html">Code review</a></li>
     <li><a class="dropdown-item" href="../multi-objective.html">Multi-objective calibration</a></li>
     <li><a class="dropdown-item" href="../snow-model.html">Snow model notes</a></li>
     <li><a class="dropdown-item" href="../source-notes.html">Source notes</a></li>
@@ -91,6 +92,7 @@
 <h2 class="pkg-version" data-toc-text="development version" id="pdms7-development-version">pdmS7 (development version)<a class="anchor" aria-label="anchor" href="#pdms7-development-version"></a></h2>
 <ul><li>Six new pages on the website: “Where to start” (reading paths by role), “Preparing your data” (from EA sources through reach.io to model files, with a checklist), “Reviewing a calibration: a Steward’s guide”, a glossary, troubleshooting, and further reading. The home page states the package’s purpose, “Get started” opens the reading paths, and the roadmap is rewritten.</li>
 <li>The benchmark protocol is at version 0.2, with its decisions closed.</li>
+<li>Every source file is commented: the R package, the compiled core, the golden checker and the tests (each test states what it guards). A code review accompanies it, in <code>code-review.md</code> and under Guides on the website: no errors in the hydrology; two medium and seventeen low findings, ranked, with remedies for decision.</li>
 <li>
 <code><a href="../reference/pdm_hindcast.html">pdm_hindcast()</a></code> reports “No forecast origins fit in the window” for a window too narrow for any origin, instead of an internal error.</li>
 </ul></div>

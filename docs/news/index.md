@@ -9,6 +9,11 @@
   page states the package’s purpose, “Get started” opens the reading
   paths, and the roadmap is rewritten.
 - The benchmark protocol is at version 0.2, with its decisions closed.
+- Every source file is commented: the R package, the compiled core, the
+  golden checker and the tests (each test states what it guards). A code
+  review accompanies it, in `code-review.md` and under Guides on the
+  website: no errors in the hydrology; two medium and seventeen low
+  findings, ranked, with remedies for decision.
 - [`pdm_hindcast()`](https://jonpayneea.github.io/PDMS7/reference/pdm_hindcast.md)
   reports “No forecast origins fit in the window” for a window too
   narrow for any origin, instead of an internal error.
