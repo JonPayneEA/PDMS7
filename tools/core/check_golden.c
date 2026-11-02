@@ -38,6 +38,9 @@ typedef struct {
   double* values; /* row-major, nrow * ncol; the text column holds 0 */
 } table;
 
+/* Reads a whole CSV file into memory: the header gives the column names, and every later line
+   one row of numbers (or a text label in the first column when text_first is set). Rows grow
+   by doubling. A simple reader: fields may not be empty or quoted, which the golden files obey. */
 static int read_table(const char* path, int text_first, table* t) {
   FILE* f = fopen(path, "r");
   char line[MAX_LINE];
@@ -90,6 +93,8 @@ static void free_table(table* t) {
   free(t->labels);
 }
 
+/* The value in a named column of one row. A missing column is a broken golden file, so the
+   program stops with exit status 2 rather than report a misleading pass or fail. */
 static double cell(const table* t, int row, const char* name) {
   for (int j = 0; j < t->ncol; ++j) {
     if (strcmp(t->names[j], name) == 0) return t->values[(size_t)row * (size_t)t->ncol + (size_t)j];
@@ -98,6 +103,8 @@ static double cell(const table* t, int row, const char* name) {
   exit(2);
 }
 
+/* Builds a route from the columns prefixed "surface." or "groundwater." in the cases table,
+   which R wrote from .engine_params() so the names match the struct fields. */
 static pdm_route route_from(const table* t, int row, const char* prefix) {
   char name[96];
   pdm_route r;
@@ -116,6 +123,7 @@ static pdm_route route_from(const table* t, int row, const char* prefix) {
   return r;
 }
 
+/* Builds the full parameter struct for one case from its row of the cases table. */
 static pdm_params params_from(const table* t, int row) {
   pdm_params p;
   p.distribution = (int32_t)cell(t, row, "distribution");
@@ -539,6 +547,8 @@ static int check_flow_starts(const char* dir, const table* pdm_cases) {
   return failures;
 }
 
+/* Runs every case in every golden file against the core and prints one line per case. The exit
+   status is 0 only if every case is within tolerance, so the checker can gate a build. */
 int main(int argc, char** argv) {
   const char* dir = argc > 1 ? argv[1] : "inst/golden";
   char path[1024];

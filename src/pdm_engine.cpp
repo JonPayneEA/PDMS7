@@ -25,6 +25,8 @@ using cpp11::doubles;
 
 namespace {
 
+// Copies one route's ten fields from the flat parameter vector, starting at index at, in the
+// order of pdm_route. The surface route starts at 14 and the groundwater route at 24.
 void fill_route(pdm_route& r, const doubles& par, int at) {
   r.type = static_cast<int32_t>(par[at]);
   r.smith = static_cast<int32_t>(par[at + 1]);
@@ -47,6 +49,8 @@ void fill_route(pdm_route& r, const doubles& par, int at) {
 cpp11::list pdm_engine_run(doubles rain, doubles pet, doubles par, doubles state, bool full) {
   if (par.size() != 40) cpp11::stop("pdm_engine_run expects 40 parameters");
   if (rain.size() != pet.size()) cpp11::stop("rain and pet must have equal length");
+  // Unpack the parameters in pdm_params order. The same unpacking appears in correct_engine_run()
+  // and from_flow_engine_run(); a change to the layout must be made in all three.
   pdm_params p;
   p.distribution = static_cast<int32_t>(par[0]);
   p.recharge = static_cast<int32_t>(par[1]);
@@ -59,6 +63,8 @@ cpp11::list pdm_engine_run(doubles rain, doubles pet, doubles par, doubles state
   p.be = par[34]; p.fc = par[35]; p.td = par[36]; p.qc = par[37]; p.area_km2 = par[38];
   p.dt = par[39];
 
+  // Copy R's vectors into C++ storage: the C core writes to state and the outputs, and R's
+  // vectors must not be modified in place.
   const int64_t n = static_cast<int64_t>(rain.size());
   std::vector<double> rain_v(rain.begin(), rain.end());
   std::vector<double> pet_v(pet.begin(), pet.end());
@@ -70,8 +76,10 @@ cpp11::list pdm_engine_run(doubles rain, doubles pet, doubles par, doubles state
   int32_t code = pdm_run(&p, rain_v.data(), pet_v.data(), n, state_v.data(),
                          static_cast<int64_t>(state_v.size()), q.data(), q_end.data(),
                          full ? fluxes.data() : nullptr, message, sizeof(message));
+  // Any error from the core becomes an R error carrying the core's message.
   if (code != PDM_OK) cpp11::stop("%s", message);
 
+  // The core writes the flux table column by column; each column becomes one R vector.
   cpp11::writable::list columns(PDM_N_FLUX);
   for (int j = 0; j < PDM_N_FLUX; ++j) {
     if (full) {
