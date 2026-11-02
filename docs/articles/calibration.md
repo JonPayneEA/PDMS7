@@ -46,18 +46,18 @@ upper <- c(surface.k1 = 30, surface.k2 = 30)
 fit <- calibrate_pdm(config, forcing, observed, lower, upper, objective = "nse",
                      starts = 10L, seed = 2, control = list(maxit = 60))
 fit$start_results
-#>     start objective convergence evaluations   best surface.k1 surface.k2
-#>     <int>     <num>       <int>       <int> <lgcl>      <num>      <num>
-#>  1:     1 0.2013575           0          30  FALSE   6.918659   6.918659
-#>  2:     2 0.1956302           0          60  FALSE   2.916063  12.375617
-#>  3:     3 0.1956302           0          60  FALSE  12.376004   2.915833
-#>  4:     4 0.1956302           0         120  FALSE  12.375608   2.916078
-#>  5:     5 0.1956302           0          65   TRUE   2.915892  12.375838
-#>  6:     6 0.1956302           0          80  FALSE   2.916095  12.375549
-#>  7:     7 0.1956302           0          55  FALSE  12.375600   2.916080
-#>  8:     8 0.1956302           0          70  FALSE  12.375542   2.916081
-#>  9:     9 0.1956302           0         135  FALSE   2.915961  12.375772
-#> 10:    10 0.1956302           0         115  FALSE  12.375738   2.916001
+#>     start  objective convergence evaluations   best surface.k1 surface.k2
+#>     <int>      <num>       <int>       <int> <lgcl>      <num>      <num>
+#>  1:     1 0.02850866           0          40  FALSE   6.824751   6.824751
+#>  2:     2 0.02391528           0          65  FALSE   3.020969  11.978389
+#>  3:     3 0.02391528           0          55  FALSE  11.978299   3.021138
+#>  4:     4 0.02391528           0         145  FALSE  11.978287   3.021142
+#>  5:     5 0.02391528           0         105  FALSE   3.021137  11.978257
+#>  6:     6 0.02391528           0          85  FALSE   3.021146  11.978280
+#>  7:     7 0.02391528          52         255  FALSE  11.978322   3.021104
+#>  8:     8 0.02391528           0          60  FALSE  11.978270   3.021144
+#>  9:     9 0.02391528           0          70   TRUE   3.020862  11.978698
+#> 10:    10 0.02391528           0          75  FALSE  11.978288   3.021142
 ```
 
 ``` r
@@ -67,8 +67,9 @@ loss <- function(k1, k2) {
   cfg$surface$k1 <- k1
   cfg$surface$k2 <- k2
   model <- pdm_from_config(cfg)
-  # calibrate_pdm() starts every evaluation from initial_state(model, 0.5); so does this.
-  sim <- run_pdm(model, forcing, initial_state(model, 0.5))$output$q_m3s
+  # calibrate_pdm() starts every evaluation in steady state at the first observed flow; so does
+  # this.
+  sim <- run_pdm(model, forcing, initial_state_from_flow(model, observed[1], 0.7))$output$q_m3s
   sum((sim - observed)^2) / sum((observed - mean(observed))^2)
 }
 surface <- outer(grid, grid, Vectorize(loss))

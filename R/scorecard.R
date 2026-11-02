@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         scorecard
-# Description:  Diagnostic scores for manual and automatic calibration
+# Description:  pdm_scorecard(): every continuous score reported for a run
 # Flode Module: standalone; target reach.hydro
 # Author:       pdmS7 contributors
 # Created:      2026-11-01
@@ -48,6 +48,10 @@
 #' obs <- c(1, 3, 8, 5, 3, 2, 1.5, 1.2, 1, 0.9)
 #' pdm_scorecard(obs * 1.1, obs)
 #' @export
+# The full set of scores reported for every run in the calibration log and used by the benchmark
+# protocol. Missing observations are dropped pairwise. Scores that cannot be defined (NSE for a
+# constant observed flow, for example) are NA rather than an error, so one bad window does not
+# stop a report.
 pdm_scorecard <- function(simulated, observed, log_offset = 0.01) {
   .check(is.numeric(observed) && is.numeric(simulated) &&
            length(observed) == length(simulated), "Flow vectors must have equal length")
@@ -76,13 +80,18 @@ pdm_scorecard <- function(simulated, observed, log_offset = 0.01) {
   )
 }
 
+# Nash-Sutcliffe efficiency: 1 minus squared error over the variance of the observations.
 .nse <- function(sim, obs) {
   denominator <- sum((obs - mean(obs))^2)
   if (denominator > 0) 1 - sum((sim - obs)^2) / denominator else NA_real_
 }
 
+# Relative error of a total or a peak: simulated over observed, minus one.
 .ratio_error <- function(sim, obs) if (obs > 0) sim / obs - 1 else NA_real_
 
+# Kling-Gupta efficiency (Gupta et al. 2009) and its three terms: correlation r, variability
+# ratio alpha (sd sim / sd obs) and bias ratio beta (mean sim / mean obs). KGE is 1 minus the
+# distance of (r, alpha, beta) from (1, 1, 1).
 .kge_parts <- function(sim, obs) {
   sd_obs <- stats::sd(obs)
   sd_sim <- stats::sd(sim)
@@ -94,6 +103,11 @@ pdm_scorecard <- function(simulated, observed, log_offset = 0.01) {
 }
 
 # Yilmaz et al. (2008), Eq. 4-6, as fractions. Exceedance probability i / (n + 1).
+# fdc_high: volume bias of the highest 2 per cent of flows (peaks);
+# fdc_mid:  bias of the slope of the log flow-duration curve between 20 and 70 per cent
+#           exceedance (how flashy the response is);
+# fdc_low:  bias of the log low-flow segment above 70 per cent exceedance (baseflow), signed so
+#           that positive means too much low flow, as in the paper.
 .fdc_signatures <- function(sim, obs, log_offset) {
   n <- length(obs)
   s <- sort(sim, decreasing = TRUE)

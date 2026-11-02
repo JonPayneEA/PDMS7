@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         test-configuration
-# Description:  Configurable PDM framework: test-configuration
+# Description:  Tests that calibration recovers a known parameter
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
@@ -11,6 +11,7 @@
 # Dependencies: S7; data.table; yaml; logger (structured logging; no fastverse equivalent)
 # ============================================================ #
 
+# Guards: calibrate_pdm() finds a known fc from synthetic data
 test_that(
   "calibration recovers known rainfall correction",
   {
@@ -35,3 +36,25 @@ test_that(
     )
   }
 )
+
+# Guards: calibration starts in steady state at the first observed flow unless told otherwise
+test_that("calibration starts from the first observed flow by default", {
+  config <- pdm_presets("standard")
+  forcing <- data.frame(rain = c(0, 4, 1, 0, 0, 2, 0, 0, 0, 0), pet = 0.05)
+  model <- pdm_from_config(config)
+  observed <- run_pdm(model, forcing, initial_state_from_flow(model, 0.3, 0.7))$output$q_m3s
+  observed[1] <- NA
+  tight <- function(...) {
+    calibrate_pdm(config, forcing, observed, lower = c(fc = 1 - 1e-12),
+                  upper = c(fc = 1 + 1e-12), objective = "rmse", control = list(maxit = 1), ...)
+  }
+  rmse <- function(state) {
+    sim <- run_pdm(model, forcing, state)$output$q_m3s
+    sqrt(mean((sim[-1] - observed[-1])^2))
+  }
+  first <- observed[2]
+  expect_equal(tight()$objective, rmse(initial_state_from_flow(model, first, 0.7)))
+  expect_equal(tight(start = "soil")$objective, rmse(initial_state(model, 0.5)))
+  expect_equal(tight(start_flow = 0.3, baseflow_fraction = 0.7)$objective, 0, tolerance = 1e-12)
+  expect_error(tight(start_flow = -1), "first observed flow")
+})

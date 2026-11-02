@@ -11,6 +11,7 @@
 # Dependencies: testthat; data.table
 # ============================================================ #
 
+# Guards: each loss in pdm_objectives() equals its textbook formula
 test_that("objectives match independent analytical values", {
   obs <- c(1, 2, 3)
   names <- c("rmse", "log_rmse", "nse_loss", "kge_loss", "abs_bias", "peak_relative_error")
@@ -30,6 +31,7 @@ test_that("objectives match independent analytical values", {
   expect_error(pdm_objectives(c(1, 2), c(1, 2), "typo"))
 })
 
+# Guards: the front keeps every non-dominated point, including exact ties
 test_that("Pareto filtering retains trade-offs and ties", {
   x <- rbind(c(1, 3), c(2, 2), c(3, 1), c(3, 3), c(1, 3))
   expect_identical(pareto_front(x), c(TRUE, TRUE, TRUE, FALSE, TRUE))
@@ -37,6 +39,7 @@ test_that("Pareto filtering retains trade-offs and ties", {
   expect_error(pareto_front(matrix(NA_real_, 2, 2)))
 })
 
+# Guards: a seed gives the same archive, trials stay in bounds, the caller's RNG is untouched
 test_that("weighted search is reproducible, bounded and restores random state", {
   cfg <- pdm_presets("standard")
   forcing <- data.frame(rain = c(0, 30, 5, 0, 10, 0), pet = rep(0.1, 6))
@@ -64,6 +67,7 @@ test_that("weighted search is reproducible, bounded and restores random state", 
   ))
 })
 
+# Guards: PACK and PDM parameters can be searched together through the coupled simulator
 test_that("snow parameters can be calibrated jointly with PDM", {
   cfg <- list(pdm = pdm_presets("standard"), snow = pack_presets())
   forcing <- data.frame(

@@ -11,6 +11,7 @@
 # Dependencies: testthat; S7
 # ============================================================ #
 
+# Guards: the hourly and daily PACK presets are not accidentally the same
 test_that("image values and report values remain distinct", {
   a <- pack_presets()
   expect_equal(a$lower_rate_h, 0.00677)
@@ -28,6 +29,7 @@ test_that("image values and report values remain distinct", {
   expect_error(FlodePackState(wet_mm = -1))
 })
 
+# Guards: PACK's snow, melt and drainage equal hand-computed values
 test_that("dry accumulation, melt and two-outlet drainage follow hand calculations", {
   m <- FlodePackModel(
     melt_factor_mmh_c = 1, lower_rate_h = 0.1,
@@ -48,6 +50,7 @@ test_that("dry accumulation, melt and two-outlet drainage follow hand calculatio
   expect_equal(rain$flux[["bypass_mm"]], 5)
 })
 
+# Guards: snow cover falls and recovers as documented
 test_that("cover depletion and fresh snow memory have the documented shape", {
   m <- FlodePackModel()
   s <- FlodePackState(dry_mm = 20)
@@ -62,6 +65,7 @@ test_that("cover depletion and fresh snow memory have the documented shape", {
   expect_equal(pdmS7:::.pack_cover(m, FlodePackState(dry_mm = 200)), 1)
 })
 
+# Guards: PACK conserves water and a restart keeps the snowfall memory
 test_that("snow mass is conserved and restart includes cover history", {
   p <- c(20, 10, 0, 0, 5, rep(0, 30))
   t <- c(-3, -1, 2, 5, -2, rep(8, 30))
@@ -83,6 +87,7 @@ test_that("snow mass is conserved and restart includes cover history", {
   expect_error(pack_step(FlodePackModel(), FlodePackState(), 1, 0, dt = Inf))
 })
 
+# Guards: with no snow the coupled run equals a plain PDM run
 test_that("coupling conserves corrected water and reproduces rain-only runs", {
   cfg <- list(pdm = pdm_presets("standard"), snow = pack_presets())
   rain <- c(1, 10, 0, 4)

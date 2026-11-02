@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         distributions_part2
-# Description:  Configurable PDM framework: distributions_part2
+# Description:  Triangular and lognormal capacity distribution methods
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
@@ -11,10 +11,11 @@
 # Dependencies: S7; data.table; yaml; logger (structured logging; no fastverse equivalent)
 # ============================================================ #
 
+# Triangular methods. The density rises linearly to 2 / w at the midpoint and falls back to zero,
+# where w = cmax - cmin. Storage is cubic in C on each half (see .triangular_inverse below).
 S7::method(capacity_pdf, FlodeTriangularCapacity) <- function(x, c) {
   .capacity_x(c)
-  if (length(c) ==
-        0L) {
+  if (length(c) == 0L) {
     return(numeric())
   }
   w <- x@cmax - x@cmin
@@ -22,16 +23,14 @@ S7::method(capacity_pdf, FlodeTriangularCapacity) <- function(x, c) {
 }
 S7::method(storage_from_capacity, FlodeTriangularCapacity) <- function(x, c) {
   .capacity_x(c)
-  if (length(c) ==
-        0L) {
+  if (length(c) == 0L) {
     return(numeric())
   }
   w <- x@cmax - x@cmin
   z <- pmin(x@cmax, pmax(x@cmin, c))
   out <- ifelse(
     z <= capacity_mean(x),
-    z - 2 * (z - x@cmin)^3 / (3 * w^2), capacity_mean(x) -
-      2 * (x@cmax - z)^3 / (3 * w^2)
+    z - 2 * (z - x@cmin)^3 / (3 * w^2), capacity_mean(x) - 2 * (x@cmax - z)^3 / (3 * w^2)
   )
   ifelse(c < x@cmin, c, out)
 }
@@ -64,35 +63,33 @@ S7::method(capacity_from_storage, FlodeTriangularCapacity) <- function(x, s) {
   u <- u - f / (1 - 2 * u * u / (w * w))
   x@cmin + min(w / 2, max(0, u))
 }
+# Lognormal methods, from the standard lognormal results.
 S7::method(capacity_mean, FlodeLognormalCapacity) <- function(x) exp(x@meanlog + x@sdlog^2 / 2)
 S7::method(capacity_cdf, FlodeLognormalCapacity) <- function(x, c) {
   .capacity_x(c)
-  if (length(c) ==
-        0L) {
+  if (length(c) == 0L) {
     return(numeric())
   }
   stats::plnorm(c, x@meanlog, x@sdlog)
 }
 S7::method(capacity_pdf, FlodeLognormalCapacity) <- function(x, c) {
   .capacity_x(c)
-  if (length(c) ==
-        0L) {
+  if (length(c) == 0L) {
     return(numeric())
   }
   stats::dlnorm(c, x@meanlog, x@sdlog)
 }
+# S(C) = E[min(c, C)] = Smax Phi(z - sdlog) + C [1 - Phi(z)], with z = (log C - meanlog) / sdlog.
+# C = 0 holds nothing and C = Inf holds Smax; the final pmin guards against rounding above Smax.
 S7::method(storage_from_capacity, FlodeLognormalCapacity) <- function(x, c) {
   .capacity_x(c)
-  if (length(c) ==
-        0L) {
+  if (length(c) == 0L) {
     return(numeric())
   }
   out <- numeric(length(c))
   i <- c > 0 & is.finite(c)
-  z <- (log(c[i]) -
-          x@meanlog) / x@sdlog
-  out[i] <- capacity_mean(x) *
-    stats::pnorm(z - x@sdlog) +
+  z <- (log(c[i]) - x@meanlog) / x@sdlog
+  out[i] <- capacity_mean(x) * stats::pnorm(z - x@sdlog) +
     c[i] * stats::pnorm(z, lower.tail = FALSE)
   out[is.infinite(c)] <- capacity_mean(x)
   pmin(

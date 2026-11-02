@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -83,6 +83,7 @@
     <li><a class="dropdown-item" href="../benchmark-protocol.html">Benchmark protocol</a></li>
     <li><a class="dropdown-item" href="../calibration-log-design.html">Calibration log design</a></li>
     <li><a class="dropdown-item" href="../validation.html">Validation</a></li>
+    <li><a class="dropdown-item" href="../code-review.html">Code review</a></li>
     <li><a class="dropdown-item" href="../multi-objective.html">Multi-objective calibration</a></li>
     <li><a class="dropdown-item" href="../snow-model.html">Snow model notes</a></li>
     <li><a class="dropdown-item" href="../source-notes.html">Source notes</a></li>
@@ -189,7 +190,10 @@ corrupted file.</p>
 <span>  <span class="va">truth</span><span class="op">$</span><span class="va">surface</span><span class="op">$</span><span class="va">k1</span> <span class="op">&lt;-</span> <span class="va">k</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span></span>
 <span>  <span class="va">truth</span><span class="op">$</span><span class="va">surface</span><span class="op">$</span><span class="va">k2</span> <span class="op">&lt;-</span> <span class="va">k</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span></span>
 <span>  <span class="va">truths</span><span class="op">[[</span><span class="va">id</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">truth</span></span>
-<span>  <span class="va">flow</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_pdm.html">run_pdm</a></span><span class="op">(</span><span class="fu"><a href="../reference/pdm_from_config.html">pdm_from_config</a></span><span class="op">(</span><span class="va">truth</span><span class="op">)</span>, <span class="va">forcing</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rain"</span>, <span class="st">"pet"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span><span class="op">$</span><span class="va">output</span><span class="op">$</span><span class="va">q_m3s</span> <span class="op">*</span></span>
+<span>  <span class="co"># The river is already flowing when the record starts: steady state, not empty stores.</span></span>
+<span>  <span class="va">model</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pdm_from_config.html">pdm_from_config</a></span><span class="op">(</span><span class="va">truth</span><span class="op">)</span></span>
+<span>  <span class="va">flow</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_pdm.html">run_pdm</a></span><span class="op">(</span><span class="va">model</span>, <span class="va">forcing</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rain"</span>, <span class="st">"pet"</span><span class="op">)</span><span class="op">]</span>,</span>
+<span>                  <span class="fu"><a href="../reference/initial_state_from_flow.html">initial_state_from_flow</a></span><span class="op">(</span><span class="va">model</span>, <span class="va">truth</span><span class="op">$</span><span class="va">area_km2</span> <span class="op">/</span> <span class="fl">50</span>, <span class="fl">0.7</span><span class="op">)</span><span class="op">)</span><span class="op">$</span><span class="va">output</span><span class="op">$</span><span class="va">q_m3s</span> <span class="op">*</span></span>
 <span>    <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n</span>, <span class="fl">0</span>, <span class="fl">0.04</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="kw">if</span> <span class="op">(</span><span class="va">id</span> <span class="op">==</span> <span class="st">"B06"</span><span class="op">)</span> <span class="va">forcing</span><span class="op">$</span><span class="va">pet</span><span class="op">[</span><span class="fl">100</span><span class="op">:</span><span class="fl">110</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="op">-</span><span class="fl">0.05</span></span>
 <span>  <span class="fu">data.table</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/data.table/man/fwrite.html" class="external-link">fwrite</a></span><span class="op">(</span><span class="va">forcing</span>, <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">folder</span>, <span class="st">"forcing.csv"</span><span class="op">)</span><span class="op">)</span></span>
@@ -297,7 +301,7 @@ with three starting points uses roughly 1,000 to 2,000 model runs.</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>seconds_per_run <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">signif</a></span><span class="op">(</span><span class="va">one_run</span>, <span class="fl">2</span><span class="op">)</span>,</span>
 <span>  estimated_minutes_for_8 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fl">8</span> <span class="op">*</span> <span class="fl">1500</span> <span class="op">*</span> <span class="va">one_run</span> <span class="op">/</span> <span class="fl">60</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;         seconds_per_run estimated_minutes_for_8 </span></span>
-<span><span class="co">#&gt;                  0.0084                  1.7000</span></span></code></pre></div>
+<span><span class="co">#&gt;                  0.0061                  1.2000</span></span></code></pre></div>
 <p>For a real batch, measure on a few catchments first; see the pilot
 script in <a href="calibration.html">Calibration</a>.</p>
 </div>
@@ -318,9 +322,9 @@ may take, which parameters to leave alone.</p>
 <span><span class="va">part</span></span>
 <span><span class="co">#&gt;     basin  state     step seconds message</span></span>
 <span><span class="co">#&gt;    &lt;char&gt; &lt;char&gt;   &lt;char&gt;   &lt;num&gt;  &lt;char&gt;</span></span>
-<span><span class="co">#&gt; 1:    B01   done complete     5.8        </span></span>
-<span><span class="co">#&gt; 2:    B02   done complete     5.1        </span></span>
-<span><span class="co">#&gt; 3:    B03   done complete     6.0</span></span></code></pre></div>
+<span><span class="co">#&gt; 1:    B01   done complete     6.2        </span></span>
+<span><span class="co">#&gt; 2:    B02   done complete     6.1        </span></span>
+<span><span class="co">#&gt; 3:    B03   done complete     6.1</span></span></code></pre></div>
 <p>Suppose the computer was switched off at this point, after three
 catchments. Nothing is lost: each catchment has its own project folder
 recording exactly how far it got. Run the same command again, this time
@@ -335,11 +339,11 @@ for all of them:</p>
 <span><span class="co">#&gt; 1:    B01   done complete     0.0                                            </span></span>
 <span><span class="co">#&gt; 2:    B02   done complete     0.0                                            </span></span>
 <span><span class="co">#&gt; 3:    B03   done complete     0.0                                            </span></span>
-<span><span class="co">#&gt; 4:    B04   done complete     5.9                                            </span></span>
-<span><span class="co">#&gt; 5:    B05   done complete     6.1                                            </span></span>
+<span><span class="co">#&gt; 4:    B04   done complete     6.8                                            </span></span>
+<span><span class="co">#&gt; 5:    B05   done complete     6.7                                            </span></span>
 <span><span class="co">#&gt; 6:    B06 failed register     0.0 pet must contain finite nonnegative numbers</span></span>
-<span><span class="co">#&gt; 7:    B07   done complete     5.0                                            </span></span>
-<span><span class="co">#&gt; 8:    B08   done complete     7.5</span></span></code></pre></div>
+<span><span class="co">#&gt; 7:    B07   done complete     6.0                                            </span></span>
+<span><span class="co">#&gt; 8:    B08   done complete     7.3</span></span></code></pre></div>
 <p>The three finished catchments took a moment each: the batch read
 their records, saw every step already done, and moved on. The others ran
 in full. Each catchment’s random starting points come from its own name,
@@ -379,11 +383,11 @@ run the batch again for just that catchment:</p>
 <span><span class="co">#&gt; 1:    B01   done complete     0.0        </span></span>
 <span><span class="co">#&gt; 2:    B02   done complete     0.0        </span></span>
 <span><span class="co">#&gt; 3:    B03   done complete     0.0        </span></span>
-<span><span class="co">#&gt; 4:    B04   done complete     5.9        </span></span>
-<span><span class="co">#&gt; 5:    B05   done complete     6.1        </span></span>
-<span><span class="co">#&gt; 6:    B06   done complete     6.1        </span></span>
-<span><span class="co">#&gt; 7:    B07   done complete     5.0        </span></span>
-<span><span class="co">#&gt; 8:    B08   done complete     7.5</span></span></code></pre></div>
+<span><span class="co">#&gt; 4:    B04   done complete     6.8        </span></span>
+<span><span class="co">#&gt; 5:    B05   done complete     6.7        </span></span>
+<span><span class="co">#&gt; 6:    B06   done complete     7.7        </span></span>
+<span><span class="co">#&gt; 7:    B07   done complete     6.0        </span></span>
+<span><span class="co">#&gt; 8:    B08   done complete     7.3</span></span></code></pre></div>
 <p>The failed attempt is still on record in B06’s project, followed by
 the successful one.</p>
 </div>
@@ -433,11 +437,11 @@ periods:</p>
 <span><span class="co">#&gt;    project  state calibration validation</span></span>
 <span><span class="co">#&gt;     &lt;char&gt; &lt;char&gt;       &lt;num&gt;      &lt;num&gt;</span></span>
 <span><span class="co">#&gt; 1:     B01   done       0.982      0.980</span></span>
-<span><span class="co">#&gt; 2:     B02   done       0.989      0.995</span></span>
-<span><span class="co">#&gt; 3:     B03   done       0.971      0.968</span></span>
+<span><span class="co">#&gt; 2:     B02   done       0.990      0.995</span></span>
+<span><span class="co">#&gt; 3:     B03   done       0.968      0.968</span></span>
 <span><span class="co">#&gt; 4:     B04   done       0.981      0.995</span></span>
-<span><span class="co">#&gt; 5:     B05   done       0.982      0.921</span></span>
-<span><span class="co">#&gt; 6:     B06   done       0.977      0.979</span></span>
+<span><span class="co">#&gt; 5:     B05   done       0.973      0.924</span></span>
+<span><span class="co">#&gt; 6:     B06   done       0.978      0.979</span></span>
 <span><span class="co">#&gt; 7:     B07   done       0.992      0.994</span></span>
 <span><span class="co">#&gt; 8:     B08   done       0.989      0.993</span></span></code></pre></div>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
@@ -477,15 +481,15 @@ place.</p>
 <span><span class="op">}</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">agreement</span><span class="op">$</span><span class="va">agree</span> <span class="op">&lt;-</span> <span class="op">(</span><span class="va">agreement</span><span class="op">$</span><span class="va">worst</span> <span class="op">-</span> <span class="va">agreement</span><span class="op">$</span><span class="va">best</span><span class="op">)</span> <span class="op">&lt;</span> <span class="fl">1e-3</span></span>
 <span><span class="va">agreement</span></span>
-<span><span class="co">#&gt;   basin    best  worst finished agree</span></span>
-<span><span class="co">#&gt; 1   B01 0.01760 0.0176        0  TRUE</span></span>
-<span><span class="co">#&gt; 2   B02 0.01060 0.1920        1 FALSE</span></span>
-<span><span class="co">#&gt; 3   B03 0.02910 0.0302        0 FALSE</span></span>
-<span><span class="co">#&gt; 4   B04 0.01910 0.0633        0 FALSE</span></span>
-<span><span class="co">#&gt; 5   B05 0.01790 0.0181        1  TRUE</span></span>
-<span><span class="co">#&gt; 6   B06 0.02260 0.3070        0 FALSE</span></span>
-<span><span class="co">#&gt; 7   B07 0.00814 0.0260        1 FALSE</span></span>
-<span><span class="co">#&gt; 8   B08 0.01140 0.0149        1 FALSE</span></span></code></pre></div>
+<span><span class="co">#&gt;   basin    best   worst finished agree</span></span>
+<span><span class="co">#&gt; 1   B01 0.01770 0.01810        1  TRUE</span></span>
+<span><span class="co">#&gt; 2   B02 0.01040 0.09760        2 FALSE</span></span>
+<span><span class="co">#&gt; 3   B03 0.03240 0.03240        0  TRUE</span></span>
+<span><span class="co">#&gt; 4   B04 0.01850 0.03730        0 FALSE</span></span>
+<span><span class="co">#&gt; 5   B05 0.02740 0.02750        2  TRUE</span></span>
+<span><span class="co">#&gt; 6   B06 0.02150 0.35900        0 FALSE</span></span>
+<span><span class="co">#&gt; 7   B07 0.00813 0.00816        1  TRUE</span></span>
+<span><span class="co">#&gt; 8   B08 0.01050 0.01070        1  TRUE</span></span></code></pre></div>
 <p><code>finished</code> counts the starts that ended because they could
 improve no further, rather than because they ran out of steps. Where
 starts disagree but all finished, the catchment has more than one “best”
@@ -531,17 +535,17 @@ are exact.
 <span>                     FUN <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">typical</span></span>
 <span><span class="co">#&gt;   parameter typical_error</span></span>
-<span><span class="co">#&gt; 1      cmax         0.015</span></span>
+<span><span class="co">#&gt; 1      cmax         0.036</span></span>
 <span><span class="co">#&gt; 2        fc         0.002</span></span>
-<span><span class="co">#&gt; 3    k_fast         0.142</span></span>
-<span><span class="co">#&gt; 4    k_slow         0.131</span></span>
-<span><span class="co">#&gt; 5        kg         0.004</span></span>
+<span><span class="co">#&gt; 3    k_fast         0.102</span></span>
+<span><span class="co">#&gt; 4    k_slow         0.063</span></span>
+<span><span class="co">#&gt; 5        kg         0.010</span></span>
 <span><span class="va">best</span> <span class="op">&lt;-</span> <span class="va">typical</span><span class="op">$</span><span class="va">parameter</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="va">typical</span><span class="op">$</span><span class="va">typical_error</span><span class="op">)</span><span class="op">]</span></span></code></pre></div>
 <p>The typical error is the middle value across catchments, as a
 fraction: 0.01 means 1 per cent out. Here fc and kg come back almost
 exactly: they control how much water there is and how the river recedes,
 which every week of record shows. k_fast and k_slow are the furthest
-out, typically about 14 per cent, partly because this example stops each
+out, typically about 10 per cent, partly because this example stops each
 search after 25 steps, before most of them had finished. In other cases
 a parameter is badly off even when the fit is excellent, because the
 data hold little information about it: the size of a soil store that two

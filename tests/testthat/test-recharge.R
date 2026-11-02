@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         test-recharge
-# Description:  Configurable PDM framework: test-recharge
+# Description:  Tests for demand recharge limits
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
@@ -11,6 +11,7 @@
 # Dependencies: S7; data.table; yaml; logger (structured logging; no fastverse equivalent)
 # ============================================================ #
 
+# Guards: demand recharge reaches its documented limits
 test_that(
   "demand recharge has correct saturated and dry limits",
   {

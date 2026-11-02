@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         calibrate_multi
-# Description:  Search weighted objectives and retain sampled Pareto trade-offs
+# Description:  calibrate_pdm_multi(): weighted-sum multi-objective calibration, Pareto front
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-05
@@ -40,6 +40,10 @@
 #' compromise (best equal/supplied final weight row), weights, scales, optimization
 #' status and failed evaluation count. Candidates are not posterior probabilities.
 #' @export
+# Multi-objective calibration by weighted sums. Outline: sample random parameter sets; for each
+# row of weights, refine the best few samples with L-BFGS-B on the weighted, scaled losses; keep
+# every evaluated point in an archive; and return the archive's Pareto front (the points no other
+# point beats on every objective) and the best compromise under the last weight row.
 calibrate_pdm_multi <- function(config, forcing, observed, lower, upper,
                                 objectives = c("nse_loss", "log_rmse", "abs_bias"),
                                 scales = NULL, weights = NULL, n_samples = 64L,
@@ -63,6 +67,9 @@ calibrate_pdm_multi <- function(config, forcing, observed, lower, upper,
   evaluations <- new.env(parent = emptyenv())
   evaluations$archive <- list()
   evaluations$failures <- 0L
+  # Runs one point of the unit box: archives its raw losses and returns them divided by the
+  # scales, so that objectives in different units can be weighted together. A failed trial is
+  # counted and given huge losses rather than stopping the search.
   evaluate <- function(z) {
     par <- lower + z * (upper - lower)
     metrics <- tryCatch(pdm_objectives(
@@ -88,6 +95,7 @@ calibrate_pdm_multi <- function(config, forcing, observed, lower, upper,
   .multi_results(evaluations, objectives, scales, weights, lower, build, status)
 }
 
+# Argument checks for calibrate_pdm_multi().
 .multi_check_inputs <- function(forcing, observed, lower, upper, n_samples, starts, seed) {
   .check(is.data.frame(forcing) && all(c("rain", "pet") %in% names(forcing)) &&
            nrow(forcing) == length(observed), "Forcing needs aligned rain, pet and observations")
@@ -114,8 +122,10 @@ calibrate_pdm_multi <- function(config, forcing, observed, lower, upper,
   )
 }
 
+# A whole number within [lo, hi].
 .whole <- function(x, lo, hi) .scalar(x, lo, hi) && x == floor(x)
 
+# Divisors that bring each objective to a comparable size before weighting; one by default.
 .multi_scales <- function(scales, objectives) {
   if (is.null(scales)) scales <- stats::setNames(rep(1, length(objectives)), objectives)
   .check(is.numeric(scales) && identical(names(scales), objectives) &&
@@ -124,6 +134,8 @@ calibrate_pdm_multi <- function(config, forcing, observed, lower, upper,
   scales
 }
 
+# Weight rows, each normalised to sum to one. By default: each objective alone, then all equally,
+# which traces the corners of the trade-off and one balanced compromise.
 .multi_weights <- function(weights, objectives) {
   k <- length(objectives)
   if (is.null(weights)) {
@@ -180,6 +192,9 @@ calibrate_pdm_multi <- function(config, forcing, observed, lower, upper,
   force(code)
 }
 
+# The search: the configured point plus n_samples uniform random points, all evaluated; then, for
+# each weight row, the 'starts' best of them under that weighting are refined by L-BFGS-B. Returns
+# each refinement's convergence status. Every evaluation lands in the archive as a side effect.
 .multi_search <- function(evaluate, z0, n_samples, weights, starts, control) {
   candidates <- rbind(z0, matrix(stats::runif(n_samples * length(z0)), ncol = length(z0)))
   losses <- do.call(rbind, lapply(seq_len(nrow(candidates)), function(i) evaluate(candidates[i, ])))
@@ -200,6 +215,8 @@ calibrate_pdm_multi <- function(config, forcing, observed, lower, upper,
   status
 }
 
+# Builds the result: the archive with scaled losses and a Pareto flag, the configurations on the
+# front, and the compromise, the archived point best under the last (by default equal) weights.
 .multi_results <- function(evaluations, objectives, scales, weights, lower, build, status) {
   table <- unique(data.table::rbindlist(lapply(evaluations$archive, as.list)))
   loss_names <- paste0("loss_", objectives)

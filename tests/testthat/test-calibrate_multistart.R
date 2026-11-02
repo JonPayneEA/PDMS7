@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         test-calibrate_multistart
-# Description:  Configurable PDM framework: test-calibrate_multistart
+# Description:  Tests for multi-start calibration: starts, seeds and bounds
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
@@ -27,6 +27,7 @@ ms_setup <- function() {
   )
 }
 
+# Guards: the multi-start wrapper adds nothing when one start is asked for
 test_that(
   "starts = 1 matches a direct single L-BFGS-B run",
   {
@@ -67,6 +68,7 @@ test_that(
   }
 )
 
+# Guards: random starts are reproducible and the caller's random state is restored
 test_that(
   "a fixed seed reproduces the multi-start result and restores the RNG",
   {
@@ -93,6 +95,7 @@ test_that(
   }
 )
 
+# Guards: no start leaves its bounds and the returned fit is the best of them
 test_that(
   "every start respects the bounds and the best start is returned",
   {
@@ -126,6 +129,7 @@ test_that(
   }
 )
 
+# Guards: invalid starts or seed values are refused with a clear message
 test_that(
   "starts and seed are validated",
   {
@@ -140,6 +144,7 @@ test_that(
   }
 )
 
+# Guards: the start table keeps its shape when only one parameter is calibrated
 test_that(
   "multi-start works with a single calibrated parameter",
   {

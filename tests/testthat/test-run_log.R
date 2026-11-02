@@ -25,6 +25,7 @@ use_run_log <- function(env = parent.frame(), register = NULL) {
 
 small_forcing <- function() data.frame(rain = c(0, 4, 2, 0, 0, 1), pet = 0.1)
 
+# Guards: the run log is strictly opt-in
 test_that("nothing is logged unless asked", {
   old <- options(pdmS7.run_log = NULL)
   on.exit(options(old))
@@ -35,6 +36,7 @@ test_that("nothing is logged unless asked", {
   expect_silent(run_pdm(pdm_model(), small_forcing()))
 })
 
+# Guards: a logged run records model, data, timing and approval
 test_that("each run writes one row describing it", {
   path <- use_run_log()
   options(pdmS7.run_tag = "forecast 06:00")
@@ -59,6 +61,7 @@ test_that("each run writes one row describing it", {
   expect_equal(result$output$q_m3s, direct$output$q_m3s)
 })
 
+# Guards: logging an error does not swallow it
 test_that("a failed run is logged and still fails", {
   path <- use_run_log()
   bad <- data.frame(rain = c(1, -1), pet = 0)
@@ -68,6 +71,7 @@ test_that("a failed run is logged and still fails", {
   expect_match(log$message, "nonnegative")
 })
 
+# Guards: internal runs stay out of the operational log
 test_that("calibration, spin-up and the calibration log are not logged as runs", {
   path <- use_run_log()
   forcing <- make_forcing() # nolint: object_usage_linter.
@@ -85,6 +89,7 @@ test_that("calibration, spin-up and the calibration log are not logged as runs",
   expect_equal(nrow(read_run_log(path)), before)
 })
 
+# Guards: code-built and file-built copies of a model share a fingerprint
 test_that("a fingerprint identifies the model however it was built", {
   config <- pdm_presets("standard")
   model <- pdm_from_config(config)
@@ -99,6 +104,7 @@ test_that("a fingerprint identifies the model however it was built", {
   expect_error(pdm_fingerprint(42), "configuration")
 })
 
+# Guards: approval status follows the register's sign-offs and reopens
 test_that("runs are flagged approved, superseded or unapproved", {
   p <- new_project()
   log_trial(p$folder, 3, c(fc = 1), "better", "Volume too low")
@@ -127,6 +133,7 @@ test_that("runs are flagged approved, superseded or unapproved", {
   expect_equal(log$sign_off[1], "0007")
 })
 
+# Guards: a broken run log cannot break a model run
 test_that("a logging failure warns once and never stops a run", {
   blocker <- tempfile()
   writeLines("x", blocker)
@@ -137,4 +144,16 @@ test_that("a logging failure warns once and never stops a run", {
   expect_true(is.list(out))
   expect_silent(run_pdm(pdm_model(), small_forcing()))
   .run_log_state$warned <- FALSE
+})
+
+# Guards: rows are never appended under a header with different columns
+test_that("a CSV with different columns is refused, not appended to", {
+  path <- tempfile(fileext = ".csv")
+  on.exit(unlink(path), add = TRUE)
+  .append_csv(path, data.table::data.table(a = 1, b = 2), "Test file")
+  .append_csv(path, data.table::data.table(a = 3, b = 4), "Test file")
+  expect_equal(nrow(data.table::fread(path)), 2L)
+  expect_error(.append_csv(path, data.table::data.table(a = 5, c = 6), "Test file"),
+               "different columns")
+  expect_equal(nrow(data.table::fread(path)), 2L)
 })

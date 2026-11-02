@@ -105,8 +105,7 @@ pdm_hindcast <- function(model, forcing, observed, state = NULL, window = NULL, 
   methods <- list(none = sim_at, persistence = matrix(observed[origins], length(origins), horizon))
   errors <- observed - sim
   for (name in names(ar)) {
-    methods[[name]] <- pmax(sim_at + .ar_project(ar[[name]], errors, origins, horizon),
-                            lower_limit)
+    methods[[name]] <- pmax(sim_at + .ar_project(ar[[name]], errors, origins, horizon), lower_limit)
   }
   if (!is.null(state_correction)) {
     methods$state <- .state_forecasts(model, forcing, observed, open$states, origins, horizon,
@@ -140,6 +139,7 @@ pdm_hindcast <- function(model, forcing, observed, state = NULL, window = NULL, 
   stats::setNames(as.numeric(qr.coef(qr(x[ok, , drop = FALSE]), y[ok])), paste0("a_", 1:3))
 }
 
+# Argument checks for pdm_hindcast().
 .check_hindcast_args <- function(model, forcing, observed, every_h, horizon_h) {
   .check(S7::S7_inherits(model, FlodePdmModel), "model must be a FlodePdmModel")
   .check(is.data.frame(forcing) && all(c("rain", "pet") %in% names(forcing)),
@@ -150,6 +150,8 @@ pdm_hindcast <- function(model, forcing, observed, state = NULL, window = NULL, 
          "every_h and horizon_h must be positive hours")
 }
 
+# Forecast origins: every `every` steps from the start of the window, leaving at least one step
+# after each origin and three before it (an AR(3) needs three past errors).
 .hindcast_origins <- function(window, n, every) {
   .check(is.numeric(window) && all(window >= 1 & window <= n), "window must be row numbers")
   last <- min(max(window), n) - 1L
@@ -160,12 +162,14 @@ pdm_hindcast <- function(model, forcing, observed, state = NULL, window = NULL, 
   origins
 }
 
+# The first observed flow, for a steady-state start.
 .first_flow <- function(observed) {
   first <- observed[is.finite(observed)][1]
   .check(!is.na(first), "observed has no finite values")
   first
 }
 
+# The two default AR sets: the EA 2024 default and a default-family set from the response time.
 .default_ar <- function(rt, dt) {
   if (abs(dt - 0.25) > 1e-9) {
     message("The EA 2024 AR default is defined for 15-minute steps; this model uses ",
@@ -174,6 +178,8 @@ pdm_hindcast <- function(model, forcing, observed, state = NULL, window = NULL, 
   list(ea_2024 = ar_ea_default(), response_time = ar_from_response_time(rt$time_to_peak_h, dt))
 }
 
+# A typical high flow, the 90th percentile of observed flow, at which the response time is
+# measured by default.
 .high_flow <- function(observed) {
   q <- stats::quantile(observed, 0.9, na.rm = TRUE, names = FALSE)
   .check(is.finite(q) && q > 0, "Cannot set response_flow from observed; give it directly")
@@ -219,6 +225,8 @@ pdm_hindcast <- function(model, forcing, observed, state = NULL, window = NULL, 
   out
 }
 
+# State-correction forecasts: at each origin, correct the open-loop state towards the observed
+# flow and run forward. The correction affects that forecast only, not the open-loop run.
 .state_forecasts <- function(model, forcing, observed, states, origins, horizon, updater) {
   n <- nrow(forcing)
   out <- matrix(NA_real_, length(origins), horizon)
@@ -309,6 +317,8 @@ hindcast_scores <- function(hindcast, thresholds = NULL, response_time_h = NULL)
   scores
 }
 
+# Scores for one method at one lead time over all origins. Skill compares mean squared errors
+# with persistence on the same pairs, so origins where persistence is undefined are left out.
 .lead_scores <- function(forecast, observed, base) {
   err <- forecast - observed
   mse <- mean(err^2)
@@ -324,6 +334,7 @@ hindcast_scores <- function(hindcast, thresholds = NULL, response_time_h = NULL)
   )
 }
 
+# POD, FAR and CSI from step-wise threshold exceedance at one lead time.
 .contingency <- function(forecast_above, observed_above) {
   hits <- sum(forecast_above & observed_above)
   misses <- sum(!forecast_above & observed_above)

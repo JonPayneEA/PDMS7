@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         configuration
-# Description:  Configurable PDM framework: configuration
+# Description:  calibrate_pdm(): single-objective calibration, multi-start, log scales
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
@@ -31,7 +31,16 @@
 #' @param log_offset Positive offset added before logarithms in log-RMSE and log NSE, cubic
 #' metres per second.
 #' @param control Named control list forwarded to stats::optim.
-#' @param soil_fraction Initial fraction of basin capacity between zero and one.
+#' @param soil_fraction Initial fraction of basin capacity between zero and one: the soil store's
+#' start with `start = "soil"`, and with split recharge, whose soil level the flow does not set.
+#' @param start How every trial starts. `"flow"` (the default) starts in steady state at the
+#' first observed flow, as [initial_state_from_flow()] does, so that a slow groundwater store
+#' is already full when scoring begins and does not bias its own parameters. `"soil"` starts
+#' with the soil store `soil_fraction` full and the routing stores empty, the behaviour before
+#' version 0.4.1; it then needs a warm-up long enough for the slowest store to fill.
+#' @param baseflow_fraction With `start = "flow"`, the share of the first flow that is baseflow.
+#' @param start_flow With `start = "flow"`, the flow to start from, m3/s. By default the first
+#' observed value of `observed`.
 #' @param starts Positive integer number of L-BFGS-B starts. The default, 1, runs a single
 #' start from the values in config, as earlier versions did. With more than one,
 #' the first start is still the values in config and the others are drawn uniformly inside
@@ -89,11 +98,16 @@ calibrate_pdm <- function(
   soil_fraction = 0.5, starts = 1L, seed = NULL, method = c("lbfgsb", "nelder_mead"),
   thresholds = NULL, threshold_weight = 1, threshold_score = "csi",
   event_settings = list(tolerance_h = 6, gap_h = 24, min_duration_h = 0),
-  log_scale = character(0), volume_weight = 0
+  log_scale = character(0), volume_weight = 0, start = c("flow", "soil"),
+  baseflow_fraction = 0.7, start_flow = NULL
 ) {
+  # Outline: check the arguments; map the parameters onto a unit box (log-scaled where asked);
+  # build a loss function that runs the model and scores it; minimise that loss from each start;
+  # report the best start and every start's result.
   objective <- match.arg(objective)
   flow <- match.arg(flow)
   method <- match.arg(method)
+  start <- match.arg(start)
   .check(.scalar(volume_weight, 0), "volume_weight must be a nonnegative number")
   .check_threshold_objective(objective, method, thresholds, threshold_weight, threshold_score,
                              event_settings, observed, warmup)
@@ -101,9 +115,19 @@ calibrate_pdm <- function(
   initial <- vapply(names(lower), function(p) .path_get(config, p), numeric(1))
   .check(all(initial >= lower & initial <= upper), "Initial parameters outside bounds")
   box <- .search_box(lower, upper, log_scale)
+  # Rows that are scored: after the warm-up, and observed. Missing flow is simply left out.
   keep <- is.finite(observed) & seq_along(observed) > warmup
   .check(sum(keep) >= 2, "At least two observed values after warmup are required")
   score <- .calibration_scorer(objective, observed[keep], log_offset)
+  # Every trial starts the same way. The start is built once for the configured model first, so
+  # a start that cannot work (a first flow below qc, say) stops here with its own message rather
+  # than failing every trial.
+  start_flow <- start_flow %||% observed[is.finite(observed)][1L]
+  begin <- function(mod) {
+    .start_state(mod, start, start_flow, baseflow_fraction, soil_fraction)
+  }
+  begin(pdm_from_config(config))
+  # A configuration with the trial parameter values written in at their paths.
   build <- function(par) {
     out <- config
     for (i in seq_along(par)) {
@@ -116,12 +140,16 @@ calibrate_pdm <- function(
   counter <- new.env(parent = emptyenv())
   counter$calls <- 0L
   scored <- seq_along(observed) > warmup
+  # The objective for a point z in the unit box. Every trial starts by the same rule, so trials
+  # differ only in their parameters. Any
+  # trial that fails, for example a parameter set the model rejects, scores 1e30 rather than
+  # stopping the search. .quietly() keeps calibration runs out of the run log.
   loss <- function(z) {
     counter$calls <- counter$calls + 1L
     tryCatch(
       {
         mod <- pdm_from_config(build(box$to_value(z)))
-        all_sim <- .quietly(.run_flow(mod, forcing, initial_state(mod, soil_fraction), flow))
+        all_sim <- .quietly(.run_flow(mod, forcing, begin(mod), flow))
         sim <- all_sim[keep]
         val <- score(sim)
         if (volume_weight > 0) {
@@ -143,6 +171,8 @@ calibrate_pdm <- function(
   }
   # Unit-box scaling helps parameters with very different physical units.
   z_start <- .start_points(box$to_unit(initial), as.integer(starts), seed)
+  # One optimisation per start. L-BFGS-B works on the unit box directly with bounds [0, 1];
+  # Nelder-Mead has no bounds, so it searches a logistic transform of the box instead.
   runs <- lapply(z_start, function(z) {
     counter$calls <- 0L
     fit <- if (method == "lbfgsb") {
@@ -161,6 +191,7 @@ calibrate_pdm <- function(
   ), out[c("convergence", "message", "optim", "start_results")])
 }
 
+# Argument checks for calibrate_pdm(), kept apart so the main function reads as the procedure.
 .check_calibration_args <- function(forcing, observed, warmup, log_offset, lower, upper, starts,
                                     seed) {
   .check(is.numeric(observed) && length(observed) == nrow(forcing),
@@ -234,6 +265,9 @@ calibrate_pdm <- function(
   if (is.null(seed)) draw() else .with_seed(seed, draw())
 }
 
+# Collects the starts into the returned list: the best start's parameters, configuration and
+# model, and a table with every start's objective, convergence code, model runs and parameters.
+# If every trial of every start failed, there is no answer, and the call stops.
 .calibration_result <- function(runs, box, build, lower) {
   fits <- lapply(runs, function(r) r$fit)
   values <- vapply(fits, function(f) f$value, numeric(1))
@@ -274,6 +308,9 @@ calibrate_pdm <- function(
   fit
 }
 
+# The threshold part of the objective: for each threshold, 1 - score (or the score itself for a
+# false alarm ratio, where lower is better), averaged. An undefined score, such as CSI with no
+# events in either series, counts as the worst value, so the search cannot exploit it.
 .threshold_loss <- function(sim, obs, thresholds, score, events, dt) {
   table <- pdm_threshold_scores(sim, obs, thresholds, dt, events$tolerance_h, events$gap_h,
                                 events$min_duration_h)
@@ -284,6 +321,9 @@ calibrate_pdm <- function(
   mean(losses)
 }
 
+# A threshold term is only allowed with Nelder-Mead (event counts change in steps, so gradients
+# are zero almost everywhere), and only for thresholds the observed flow actually exceeds in the
+# scored period: a threshold never crossed gives the search nothing to learn from.
 .check_threshold_objective <- function(objective, method, thresholds, weight, score, events,
                                        observed, warmup) {
   if (is.null(thresholds)) {
@@ -312,6 +352,8 @@ calibrate_pdm <- function(
   invisible(TRUE)
 }
 
+# A readable description of the objective, recorded with every logged calibration, such as
+# "1-NSE + 1 x mean threshold loss (csi at Flood Warning)".
 .objective_name <- function(objective, thresholds, weight, score, volume_weight = 0) {
   base <- switch(objective, nse = "1-NSE", log_nse = "1-log NSE", objective)
   if (volume_weight > 0) {

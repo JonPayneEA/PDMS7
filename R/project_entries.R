@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         project_entries
-# Description:  Calibration log: the ten entry types
+# Description:  Calibration log: the eleven entry types
 # Flode Module: standalone; target reach.hydro
 # Author:       pdmS7 contributors
 # Created:      2026-11-01
@@ -37,10 +37,12 @@
 #' operating-system login. A Steward cannot sign off a project in which they wrote a trial,
 #' automatic calibration, candidate or validation.
 #'
-#' Every run simulates the whole registered record from `initial_state(model,
-#' soil_fraction)`. Trials and automatic calibrations are scored on the calibration window
-#' only; the validation window is scored once, by `validate_candidate()`, and an optional
-#' test window once more, by `test_candidate()`, after every choice is made. See
+#' Every run simulates the whole registered record, starting in steady state at the first
+#' observed flow (`start = "flow"`, the default), or from `initial_state(model, soil_fraction)`
+#' with `start = "soil"`. Projects registered before version 0.4.1 keep the soil start.
+#' Trials and automatic calibrations are scored on the calibration window only; the
+#' validation window is scored once, by `validate_candidate()`, and an optional test window
+#' once more, by `test_candidate()`, after every choice is made. See
 #' [pdm_scorecard()] for the scores and [verify_project()] for the integrity checks.
 #'
 #' @param project Path of the project folder.
@@ -72,7 +74,9 @@
 #' @param event_tolerance_h,event_gap_h,event_min_duration_h Event matching settings in
 #'   hours; see [pdm_threshold_scores()].
 #' @param log_offset Offset added before logarithms, m3/s.
-#' @param soil_fraction Initial soil store as a fraction of capacity for every run.
+#' @param soil_fraction Initial soil store as a fraction of capacity, used with
+#'   `start = "soil"` and with split recharge.
+#' @param start,baseflow_fraction How every run in the project starts; see [calibrate_pdm()].
 #' @param copy If `TRUE`, files are copied into the project; if `FALSE` they are referenced
 #'   by path and MD5. Data frames and vectors are always written into the project.
 #' @param reasoning,statement,reason,text Free text explaining the entry.
@@ -118,20 +122,25 @@
 #' @name calibration_log
 NULL
 
+# Reasoning, statements and reasons must be real text: the log exists to record why.
 .require_text <- function(x, name) {
   .check(is.character(x) && length(x) == 1L && !is.na(x) && nzchar(trimws(x)),
          paste(name, "must be a non-empty explanation"))
   trimws(x)
 }
 
+# The project's fixed details (catchment, area, Owner, Steward) from its first entry.
 .project_info <- function(entries) .latest(entries, "project_start")$project
 
+# The data registration in force: the latest data_registered entry.
 .registration <- function(entries) {
   out <- .latest(entries, "data_registered")
   .check(!is.null(out), "Register data first with register_data()")
   out
 }
 
+# An entry that carries a configuration (structure, trial or automatic calibration), the only
+# kinds a trial may start from or a candidate may name.
 .model_node <- function(entries, id) {
   node <- .find_entry(entries, id)
   .check(node$type %in% .model_entry_types,
@@ -139,6 +148,7 @@ NULL
   node
 }
 
+# A configuration given as a list or a YAML path, checked by building it once.
 .read_configuration <- function(configuration) {
   if (is.character(configuration)) configuration <- read_pdm_config(configuration)
   .check(is.list(configuration), "configuration must be a list or a YAML file path")
@@ -151,6 +161,7 @@ NULL
   all(is.finite(changes), nzchar(names(changes)), !duplicated(names(changes)))
 }
 
+# Applies a trial's parameter changes and records each as from and to, for the report.
 .apply_changes <- function(config, changes) {
   .check(.valid_changes(changes), "changes must be a named finite numeric vector")
   record <- list()
@@ -174,6 +185,7 @@ NULL
                          numeric(1)), names)
 }
 
+# A short "nse 0.8712" text for log messages.
 .headline_text <- function(registration, scores) {
   name <- registration$scorecard$headline
   sprintf("%s %.4g", name, scores[[name]])
@@ -195,6 +207,7 @@ start_calibration_project <- function(path, catchment, gauge, purpose, area_km2,
     owner = .require_text(owner, "owner"), steward = .require_text(steward, "steward"),
     description = as.character(description)
   )
+  # The marker file identifies the folder as a project; entries then go under entries/.
   dir.create(file.path(path, "entries"), recursive = TRUE, showWarnings = FALSE)
   marker <- yaml::as.yaml(list(format = .log_format, project = fields$id, created = .timestamp()))
   writeBin(charToRaw(enc2utf8(paste0("# pdmS7 calibration project\n", marker))),
@@ -209,6 +222,7 @@ start_calibration_project <- function(path, catchment, gauge, purpose, area_km2,
 #' @export
 register_data <- function(project, forcing, observed, calibration, validation = NULL,
                           headline = "nse", log_offset = 0.01, soil_fraction = 0.5,
+                          start = c("flow", "soil"), baseflow_fraction = 0.7,
                           copy = TRUE, reasoning = "", thresholds = NULL, rating = NULL,
                           event_tolerance_h = 6, event_gap_h = 24, event_min_duration_h = 0,
                           test = NULL) {
@@ -228,7 +242,10 @@ register_data <- function(project, forcing, observed, calibration, validation = 
   ))
   .check(.scalar(log_offset, 0, strict = TRUE), "log_offset must be positive")
   .check(.scalar(soil_fraction, 0, 1), "soil_fraction must lie between 0 and 1")
+  start <- match.arg(start)
+  .check(.scalar(baseflow_fraction, 0, 1), "baseflow_fraction must lie between 0 and 1")
   .check(isTRUE(copy) || isFALSE(copy), "copy must be TRUE or FALSE")
+  # Windows may be given as rows or times; they must not overlap, and each needs observed flow.
   cal <- .resolve_window(calibration, forcing_data, "calibration")
   val <- .resolve_window(validation, forcing_data, "validation")
   tst <- .resolve_window(test, forcing_data, "test")
@@ -240,6 +257,8 @@ register_data <- function(project, forcing, observed, calibration, validation = 
     }
   }
   summary <- .data_summary(forcing_data, observed_data)
+  # Files are stored under the lock, in a folder named by the entry id, and the scorecard (windows,
+  # headline, thresholds, event settings) is fixed here for every later run in the project.
   entry <- .append_entry(path, "data_registered", author, function(id, entries) {
     .check(!is.null(.project_info(entries)), "This project has no project_start entry")
     data <- list(
@@ -256,7 +275,8 @@ register_data <- function(project, forcing, observed, calibration, validation = 
       scorecard = list(
         warmup_rows = cal$first_row - 1L, calibration = cal, validation = val, test = tst,
         metrics = names(pdm_scorecard(c(1, 2), c(1, 2))), headline = headline,
-        log_offset = log_offset, soil_fraction = soil_fraction, thresholds = levels,
+        log_offset = log_offset, soil_fraction = soil_fraction, start = start,
+        baseflow_fraction = baseflow_fraction, thresholds = levels,
         events = list(tolerance_h = event_tolerance_h, gap_h = event_gap_h,
                       min_duration_h = event_min_duration_h)
       ),
@@ -318,8 +338,7 @@ log_trial <- function(project, parent, changes, verdict, reasoning) {
 #' @rdname calibration_log
 #' @export
 log_auto_calibration <- function(project, parent, lower, upper,
-                                 objective = c("nse", "rmse", "log_rmse", "log_nse",
-                                               "threshold"),
+                                 objective = c("nse", "rmse", "log_rmse", "log_nse", "threshold"),
                                  starts = 1L, seed = NULL, control = list(maxit = 200),
                                  reasoning, method = c("lbfgsb", "nelder_mead"),
                                  threshold_objective = NULL, threshold_weight = 1,
@@ -341,7 +360,9 @@ log_auto_calibration <- function(project, parent, lower, upper,
     node$configuration, data$forcing[seq_len(last)], data$observed[seq_len(last)],
     lower = lower, upper = upper, warmup = card$calibration$first_row - 1L,
     objective = objective, log_offset = card$log_offset, control = control,
-    soil_fraction = card$soil_fraction, starts = starts, seed = seed, method = method,
+    soil_fraction = card$soil_fraction, start = card$start %||% "soil",
+    baseflow_fraction = card$baseflow_fraction %||% 0.7,
+    start_flow = .first_observed(data$observed), starts = starts, seed = seed, method = method,
     thresholds = flows, threshold_weight = threshold_weight, threshold_score = threshold_score,
     event_settings = card$events, log_scale = log_scale, volume_weight = volume_weight
   )
@@ -414,6 +435,10 @@ validate_candidate <- function(project, reasoning) {
   info <- .project_info(entries)
   run <- .run_registered(path, info, registration, candidate$configuration, "validation", data)
   out <- .append_entry(path, "validation", author, function(id, entries) {
+    # Checked again under the lock: a candidate proposed by another session while this one was
+    # running would otherwise be skipped, and this validation recorded against the older one.
+    .check(identical(.latest(entries, "candidate")$id, candidate$id),
+           "A newer candidate was proposed while validating; run validate_candidate() again")
     list(candidate = candidate$id, registration = registration$id,
          validation_scores = run$scores, calibration_scores = candidate$scores,
          output_md5 = run$output_md5, series = .save_series(path, id, run),
@@ -440,6 +465,7 @@ test_candidate <- function(project, reasoning) {
          "The registration has no test window; register data with one")
   .check(is.null(.candidate_test(entries, candidate)),
          "This candidate has already been tested; the test window is scored once")
+  # Checked again under the lock below, so two sessions cannot both score the test window.
   run <- .run_registered(path, .project_info(entries), registration, candidate$configuration,
                          "test")
   out <- .append_entry(path, "test", author, function(id, entries) {
@@ -454,12 +480,14 @@ test_candidate <- function(project, reasoning) {
   invisible(out)
 }
 
+# The test entry for a candidate, if it has been tested.
 .candidate_test <- function(entries, candidate) {
   if (is.null(candidate)) return(NULL)
   hits <- Filter(function(e) e$type == "test" && identical(e$candidate, candidate$id), entries)
   if (length(hits)) hits[[length(hits)]] else NULL
 }
 
+# Calibration, validation and test windows must be disjoint, pairwise.
 .check_no_overlap <- function(windows) {
   windows <- Filter(Negate(is.null), windows)
   if (length(windows) < 2L) return(invisible(TRUE))
@@ -473,6 +501,8 @@ test_candidate <- function(project, reasoning) {
   invisible(TRUE)
 }
 
+# Two authors are the same person if either their declared names or their logins match, ignoring
+# case and surrounding spaces. Matching on either defeats signing off under a different name.
 .same_person <- function(a, b) {
   clean <- function(x) tolower(trimws(as.character(x)))
   identical(clean(a$name), clean(b$name)) || identical(clean(a$login), clean(b$login))
@@ -489,6 +519,8 @@ sign_off_project <- function(project, statement,
   .check(is.logical(checklist) && all(needed %in% names(checklist)) &&
            all(checklist[needed] %in% TRUE),
          paste("Confirm you reviewed", paste(needed, collapse = ", "), "in checklist"))
+  # Integrity is checked first, outside the lock (it reads every file); the conditions that
+  # depend on the latest entries are checked again inside it.
   path <- .project_path(project)
   checks <- verify_project(path)
   .check(all(checks$ok), "Integrity checks fail; see verify_project() before signing off")

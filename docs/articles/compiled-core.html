@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -83,6 +83,7 @@
     <li><a class="dropdown-item" href="../benchmark-protocol.html">Benchmark protocol</a></li>
     <li><a class="dropdown-item" href="../calibration-log-design.html">Calibration log design</a></li>
     <li><a class="dropdown-item" href="../validation.html">Validation</a></li>
+    <li><a class="dropdown-item" href="../code-review.html">Code review</a></li>
     <li><a class="dropdown-item" href="../multi-objective.html">Multi-objective calibration</a></li>
     <li><a class="dropdown-item" href="../snow-model.html">Snow model notes</a></li>
     <li><a class="dropdown-item" href="../source-notes.html">Source notes</a></li>
@@ -205,8 +206,8 @@ compiled core, measured as this article was built.
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">timings</span>, <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="co">#&gt;         R   C</span></span>
-<span><span class="co">#&gt; PDM  2062 3.5</span></span>
-<span><span class="co">#&gt; PACK  308 1.1</span></span></code></pre></div>
+<span><span class="co">#&gt; PDM  1955 3.5</span></span>
+<span><span class="co">#&gt; PACK  291 1.7</span></span></code></pre></div>
 <p>The exact figures depend on the machine, but the ratio is in the
 hundreds. For a calibration that needs a million model runs, that is the
 difference between weeks and hours. The <a href="../performance.html">performance guide</a> gives measured figures

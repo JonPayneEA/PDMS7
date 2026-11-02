@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         distributions_2
-# Description:  Configurable PDM framework: distributions_2
+# Description:  Soil store step and the lognormal inverse storage function
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
@@ -28,11 +28,14 @@
 #'
 #' @references Moore (2007), doi:10.5194/hess-11-483-2007.
 #' @export
+# One step of the soil store in the pure R path: storage S (mm) receives net_depth (rain minus
+# evaporation and drainage, mm). Wetting raises the critical capacity from C(S) to C(S) + depth;
+# the store keeps S(C + depth) - S and the rest runs off. The new storage is clamped between the
+# old storage and old storage plus depth, so rounding can neither lose nor create water.
 soil_step <- function(distribution, storage, net_depth) {
   .scheck(distribution, storage)
   .check(
-    length(storage) ==
-      1L && .scalar(net_depth),
+    length(storage) == 1L && .scalar(net_depth),
     "soil_step needs scalar inputs"
   )
   if (net_depth <= 0) {
@@ -48,6 +51,7 @@ soil_step <- function(distribution, storage, net_depth) {
   next_s <- min(storage + net_depth, max(storage, next_s))
   list(storage = next_s, runoff = max(0, net_depth - (next_s - storage)))
 }
+# The lognormal storage function has no closed-form inverse, so C(S) is found numerically.
 S7::method(capacity_from_storage, FlodeLognormalCapacity) <- function(x, s) {
   .scheck(x, s)
   vapply(s, function(si) .lognormal_inverse(x, si), numeric(1))

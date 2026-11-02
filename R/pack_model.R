@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         pack_model
-# Description:  Configure the PACK snow model and restart state
+# Description:  PACK snow model classes, presets and snow cover
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-05
@@ -23,6 +23,16 @@
 #' @param max_step_min Maximum internal Euler accounting interval in minutes.
 #' @return A FlodePackModel.
 #' @export
+# PACK, the snow model that can sit in front of the PDM. The pack has a dry (frozen) store and a
+# wet (liquid) store, in mm of water. Parameters:
+#   precipitation_factor  multiplier on precipitation, applied before partitioning;
+#   snow_threshold_c      below this air temperature precipitation falls as snow;
+#   melt_threshold_c, melt_factor_mmh_c  degree-hour melt above the threshold;
+#   retention_fraction    liquid the pack holds, as a share of its water equivalent;
+#   lower_rate_h, upper_rate_h  drainage rates of the wet store, below and above that share;
+#   drain_threshold_c     below this temperature the wet store does not drain;
+#   areal_depletion, adc_depth_mm, adc_alpha  how snow cover shrinks as the pack thins;
+#   max_step_min          longest internal sub-step, minutes.
 FlodePackModel <- S7::new_class("FlodePackModel", properties = list(
   precipitation_factor = S7::new_property(S7::class_numeric, default = 1),
   lower_rate_h = S7::new_property(S7::class_numeric, default = 0.00677),
@@ -59,6 +69,9 @@ FlodePackModel <- S7::new_class("FlodePackModel", properties = list(
 #' @param fresh_mm Accumulated fresh snowfall defining the cover reversion segment.
 #' @return A FlodePackState; persist the complete object for restart.
 #' @export
+# PACK state: dry and wet storages (mm), and the memory of the latest snowfall 'excursion'. A fresh
+# fall covers the ground fully; as it melts, cover returns along a straight line to the cover before
+# the fall (anchor_fraction at pack depth anchor_mm), over adc_alpha of the fresh depth.
 FlodePackState <- S7::new_class("FlodePackState", properties = list(
   dry_mm = S7::new_property(S7::class_numeric, default = 0),
   wet_mm = S7::new_property(S7::class_numeric, default = 0),
@@ -78,6 +91,7 @@ FlodePackState <- S7::new_class("FlodePackState", properties = list(
 #' @param name Either image_hourly (user image; assumed hourly rates) or report_daily.
 #' @return Named list accepted by pack_from_config; canonical coefficients use hours.
 #' @export
+# Named PACK parameter sets from inst/config/pack.yml, for hourly and daily steps.
 pack_presets <- function(name = c("image_hourly", "report_daily")) {
   name <- match.arg(name)
   path <- system.file("config", "pack.yml", package = "pdmS7")
@@ -96,6 +110,9 @@ pack_from_config <- function(config = pack_presets()) {
   do.call(FlodePackModel, config)
 }
 
+# Fraction of the catchment covered by snow. Without areal depletion any snow covers everything.
+# With it, cover rises with log depth up to full cover at adc_depth_mm (the 'base' curve); after a
+# fresh fall, cover stays at least on the straight line from full cover back to the pre-fall cover.
 .pack_cover <- function(model, state) {
   theta <- state@dry_mm + state@wet_mm
   if (theta <= 0) {

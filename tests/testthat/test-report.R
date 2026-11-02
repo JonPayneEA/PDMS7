@@ -11,6 +11,7 @@
 # Dependencies: testthat
 # ============================================================ #
 
+# Guards: the embedded-image encoder matches RFC 4648 test vectors
 test_that("base64 encoding matches the standard", {
   expect_equal(.base64(charToRaw("Man")), "TWFu")
   expect_equal(.base64(charToRaw("Ma")), "TWE=")
@@ -24,6 +25,7 @@ test_that("base64 encoding matches the standard", {
   ))
 })
 
+# Guards: a report on an unfinished project still renders and says what is missing
 test_that("an early report says what is missing and embeds its figures", {
   p <- new_project()
   file <- build_report(p$folder)
@@ -42,6 +44,7 @@ test_that("an early report says what is missing and embeds its figures", {
   expect_true(all(verify_project(p$folder)$ok))
 })
 
+# Guards: a complete project's report has every section
 test_that("a validated project reports candidate, sensitivity and sign-off", {
   p <- new_project()
   log_trial(p$folder, 3, c(fc = 1), "better", "Volume too low")
@@ -64,6 +67,7 @@ test_that("a validated project reports candidate, sensitivity and sign-off", {
   expect_match(paste(readLines(quick), collapse = ""), "runs not repeated")
 })
 
+# Guards: a tampered project is flagged at the head of its report
 test_that("failed integrity is flagged at the top", {
   p <- new_project()
   log_trial(p$folder, 3, c(fc = 1), "better", "Volume too low")
@@ -74,6 +78,7 @@ test_that("failed integrity is flagged at the top", {
   expect_lt(regexpr("FAILED", html), regexpr(">Data<", html))
 })
 
+# Guards: invalid report settings are refused
 test_that("report arguments are checked", {
   p <- new_project()
   expect_error(build_report(p$folder, sensitivity_range = 1), "sensitivity_range")

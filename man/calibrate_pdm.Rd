@@ -24,7 +24,10 @@ calibrate_pdm(
   threshold_score = "csi",
   event_settings = list(tolerance_h = 6, gap_h = 24, min_duration_h = 0),
   log_scale = character(0),
-  volume_weight = 0
+  volume_weight = 0,
+  start = c("flow", "soil"),
+  baseflow_fraction = 0.7,
+  start_flow = NULL
 )
 }
 \arguments{
@@ -55,7 +58,8 @@ metres per second.}
 
 \item{control}{Named control list forwarded to stats::optim.}
 
-\item{soil_fraction}{Initial fraction of basin capacity between zero and one.}
+\item{soil_fraction}{Initial fraction of basin capacity between zero and one: the soil store's
+start with \code{start = "soil"}, and with split recharge, whose soil level the flow does not set.}
 
 \item{starts}{Positive integer number of L-BFGS-B starts. The default, 1, runs a single
 start from the values in config, as earlier versions did. With more than one,
@@ -93,6 +97,17 @@ parameters' own units.}
 weight times the absolute relative error in total flow over the scored rows. Zero, the
 default, adds nothing. \code{\link[=calibrate_staged]{calibrate_staged()}} uses it to hold the water balance while fitting
 low flows.}
+
+\item{start}{How every trial starts. \code{"flow"} (the default) starts in steady state at the
+first observed flow, as \code{\link[=initial_state_from_flow]{initial_state_from_flow()}} does, so that a slow groundwater store
+is already full when scoring begins and does not bias its own parameters. \code{"soil"} starts
+with the soil store \code{soil_fraction} full and the routing stores empty, the behaviour before
+version 0.4.1; it then needs a warm-up long enough for the slowest store to fill.}
+
+\item{baseflow_fraction}{With \code{start = "flow"}, the share of the first flow that is baseflow.}
+
+\item{start_flow}{With \code{start = "flow"}, the flow to start from, m3/s. By default the first
+observed value of \code{observed}.}
 }
 \value{
 A list of config, model, parameters, objective, convergence, message, optim

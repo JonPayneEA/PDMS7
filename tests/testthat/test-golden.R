@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         test-golden
-# Description:  Configurable PDM framework: test-golden
+# Description:  Tests against the golden reference files in inst/golden
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
@@ -68,6 +68,7 @@ golden_state <- function(v, p) {
   )
 }
 
+# Guards: PDM results match the stored reference outputs within 1e-12
 test_that(
   "both engines reproduce the golden files",
   {
@@ -97,6 +98,7 @@ test_that(
   }
 )
 
+# Guards: every invalid parameter case in the golden files is refused
 test_that(
   "the core rejects every invalid golden parameter set",
   {
@@ -130,6 +132,7 @@ golden_pack_state <- function(v) {
                  fresh_mm = v[5L])
 }
 
+# Guards: PACK results match their stored reference outputs
 test_that(
   "both snowpack engines reproduce the PACK golden files",
   {
@@ -158,6 +161,7 @@ test_that(
   }
 )
 
+# Guards: the coupled snow and PDM run matches its references
 test_that(
   "snow feeding PDM reproduces the coupled golden files",
   {
@@ -194,6 +198,7 @@ test_that(
   }
 )
 
+# Guards: state correction matches its references
 test_that(
   "both engines reproduce the state correction golden files",
   {
@@ -232,6 +237,7 @@ test_that(
   }
 )
 
+# Guards: ARMA error prediction matches its references
 test_that(
   "both engines reproduce the ARMA updating golden files",
   {
@@ -257,6 +263,7 @@ test_that(
   }
 )
 
+# Guards: steady-state starts match their references
 test_that(
   "both engines reproduce the steady-state start golden files",
   {

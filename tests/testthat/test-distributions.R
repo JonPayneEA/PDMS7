@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         test-distributions
-# Description:  Configurable PDM framework: test-distributions
+# Description:  Tests for the five capacity distributions
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
@@ -11,6 +11,7 @@
 # Dependencies: S7; data.table; yaml; logger (structured logging; no fastverse equivalent)
 # ============================================================ #
 
+# Guards: each distribution's density, CDF, storage and inverse agree with quadrature and each other
 test_that(
   "capacity laws integrate and invert consistently",
   {

@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -83,6 +83,7 @@
     <li><a class="dropdown-item" href="../benchmark-protocol.html">Benchmark protocol</a></li>
     <li><a class="dropdown-item" href="../calibration-log-design.html">Calibration log design</a></li>
     <li><a class="dropdown-item" href="../validation.html">Validation</a></li>
+    <li><a class="dropdown-item" href="../code-review.html">Code review</a></li>
     <li><a class="dropdown-item" href="../multi-objective.html">Multi-objective calibration</a></li>
     <li><a class="dropdown-item" href="../snow-model.html">Snow model notes</a></li>
     <li><a class="dropdown-item" href="../source-notes.html">Source notes</a></li>
@@ -139,7 +140,9 @@ record</a> explains why they are built this way.</p>
 <span>                      rain <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/Uniform.html" class="external-link">runif</a></span><span class="op">(</span><span class="va">n</span><span class="op">)</span> <span class="op">&lt;</span> <span class="fl">0.07</span>, <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/GammaDist.html" class="external-link">rgamma</a></span><span class="op">(</span><span class="va">n</span>, <span class="fl">0.7</span>, scale <span class="op">=</span> <span class="fl">3</span><span class="op">)</span>, <span class="fl">0</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">truth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pdm_presets.html">pdm_presets</a></span><span class="op">(</span><span class="st">"standard"</span><span class="op">)</span></span>
 <span><span class="va">truth</span><span class="op">$</span><span class="va">area_km2</span> <span class="op">&lt;-</span> <span class="fl">30</span></span>
-<span><span class="va">observed</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_pdm.html">run_pdm</a></span><span class="op">(</span><span class="fu"><a href="../reference/pdm_from_config.html">pdm_from_config</a></span><span class="op">(</span><span class="va">truth</span><span class="op">)</span>, <span class="va">forcing</span><span class="op">)</span><span class="op">$</span><span class="va">output</span><span class="op">$</span><span class="va">q_m3s</span></span>
+<span><span class="va">truth_model</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pdm_from_config.html">pdm_from_config</a></span><span class="op">(</span><span class="va">truth</span><span class="op">)</span></span>
+<span><span class="va">observed</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_pdm.html">run_pdm</a></span><span class="op">(</span><span class="va">truth_model</span>, <span class="va">forcing</span>,</span>
+<span>                    <span class="fu"><a href="../reference/initial_state_from_flow.html">initial_state_from_flow</a></span><span class="op">(</span><span class="va">truth_model</span>, <span class="fl">0.6</span>, <span class="fl">0.7</span><span class="op">)</span><span class="op">)</span><span class="op">$</span><span class="va">output</span><span class="op">$</span><span class="va">q_m3s</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>pdmS7.user <span class="op">=</span> <span class="st">"Ann Hydrologist"</span>, pdmS7.role <span class="op">=</span> <span class="st">"custodian"</span><span class="op">)</span></span>
 <span><span class="va">project</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir</a></span><span class="op">(</span><span class="op">)</span>, <span class="st">"inside"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/calibration_log.html">start_calibration_project</a></span><span class="op">(</span><span class="va">project</span>, catchment <span class="op">=</span> <span class="st">"Example Brook"</span>, gauge <span class="op">=</span> <span class="st">"99003"</span>,</span>
@@ -217,17 +220,17 @@ on a shared drive or in git, and archived as it is.</p>
 <span><span class="co">#&gt; format: 1</span></span>
 <span><span class="co">#&gt; id: '0004'</span></span>
 <span><span class="co">#&gt; type: trial</span></span>
-<span><span class="co">#&gt; timestamp: '2026-11-02T08:52:33Z'</span></span>
+<span><span class="co">#&gt; timestamp: '2026-11-02T15:07:02Z'</span></span>
 <span><span class="co">#&gt; author:</span></span>
 <span><span class="co">#&gt;   name: Ann Hydrologist</span></span>
 <span><span class="co">#&gt;   role: custodian</span></span>
 <span><span class="co">#&gt;   login: root</span></span>
 <span><span class="co">#&gt; software:</span></span>
-<span><span class="co">#&gt;   pdmS7: 0.4.0</span></span>
+<span><span class="co">#&gt;   pdmS7: 0.4.1</span></span>
 <span><span class="co">#&gt;   r: 4.3.3</span></span>
 <span><span class="co">#&gt;   platform: x86_64-pc-linux-gnu</span></span>
 <span><span class="co">#&gt;   engine: c</span></span>
-<span><span class="co">#&gt; previous: a7f12b55378249f098adb777fd6179b9</span></span>
+<span><span class="co">#&gt; previous: 4aede3aa4e414ab093116cfe43a7a6c9</span></span>
 <span><span class="co">#&gt; registration: '0002'</span></span>
 <span><span class="co">#&gt; parent: '0003'</span></span>
 <span><span class="co">#&gt; changes:</span></span>
@@ -260,21 +263,21 @@ on a shared drive or in git, and archived as it is.</p>
 <span><span class="co">#&gt;   area_km2: 30.0</span></span>
 <span><span class="co">#&gt;   dt: 1.0</span></span>
 <span><span class="co">#&gt; scores:</span></span>
-<span><span class="co">#&gt;   nse: 1.0</span></span>
-<span><span class="co">#&gt;   log_nse: 1.0</span></span>
-<span><span class="co">#&gt;   kge: 0.9999999999999998</span></span>
-<span><span class="co">#&gt;   kge_r: 1.0</span></span>
-<span><span class="co">#&gt;   kge_alpha: 1.0000000000000002</span></span>
-<span><span class="co">#&gt;   kge_beta: 1.0</span></span>
-<span><span class="co">#&gt;   rmse: 3.973382158910592e-15</span></span>
-<span><span class="co">#&gt;   log_rmse: 4.032376870133154e-15</span></span>
-<span><span class="co">#&gt;   volume_error: 0.0</span></span>
-<span><span class="co">#&gt;   abs_volume_error: 0.0</span></span>
-<span><span class="co">#&gt;   peak_error: 8.881784197001252e-16</span></span>
-<span><span class="co">#&gt;   fdc_high: -5.2473942796622905e-16</span></span>
-<span><span class="co">#&gt;   fdc_mid: 3.2452207057899907e-15</span></span>
-<span><span class="co">#&gt;   fdc_low: -1.2724042040683314e-15</span></span>
-<span><span class="co">#&gt; output_md5: bdedca7a3fce213ae4fd135670d4fae4</span></span>
+<span><span class="co">#&gt;   nse: 0.9999999797071072</span></span>
+<span><span class="co">#&gt;   log_nse: 0.9999998850490445</span></span>
+<span><span class="co">#&gt;   kge: 0.9999296235156127</span></span>
+<span><span class="co">#&gt;   kge_r: 0.9999999939365506</span></span>
+<span><span class="co">#&gt;   kge_alpha: 1.0000605934879074</span></span>
+<span><span class="co">#&gt;   kge_beta: 0.99996420504587</span></span>
+<span><span class="co">#&gt;   rmse: 7.957360150913943e-05</span></span>
+<span><span class="co">#&gt;   log_rmse: 0.00019376348277363534</span></span>
+<span><span class="co">#&gt;   volume_error: -3.579495412997513e-05</span></span>
+<span><span class="co">#&gt;   abs_volume_error: 3.579495412997513e-05</span></span>
+<span><span class="co">#&gt;   peak_error: -2.2035676962017803e-06</span></span>
+<span><span class="co">#&gt;   fdc_high: -2.2329209362584403e-06</span></span>
+<span><span class="co">#&gt;   fdc_mid: 3.9804752836075144e-05</span></span>
+<span><span class="co">#&gt;   fdc_low: -0.0012673756384583817</span></span>
+<span><span class="co">#&gt; output_md5: c3470925a873de4a32346c96c6c5746c</span></span>
 <span><span class="co">#&gt; verdict: better</span></span>
 <span><span class="co">#&gt; reasoning: Volume was 10 per cent low.</span></span></code></pre></div>
 <p>Every entry starts with the same header:</p>

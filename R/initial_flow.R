@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         initial_flow
-# Description:  Steady-state initial state from an observed flow
+# Description:  Steady-state starting states from an observed flow
 # Flode Module: standalone; target reach.hydro
 # Author:       Claude Code (AI-generated); human maintainer attribution not supplied
 # Created:      2026-11-01
@@ -63,14 +63,20 @@ initial_state_from_flow <- function(model, observed_m3s, baseflow_fraction, soil
     # Compiled calculation; results agree with the R code below (see R/engine.R).
     return(.engine_state_from_flow(model, observed_m3s, baseflow_fraction, soil_fraction))
   }
+  # Steady state at the observed flow: convert m3/s to mm/h over the catchment, after removing the
+  # constant flow qc, and split it between the slow and fast pathways.
   q <- (observed_m3s - model@qc) * 3.6 / model@area_km2
   .check(q >= 0, "observed_m3s is below the constant flow qc")
   qb <- baseflow_fraction * q
   qs <- (1 - baseflow_fraction) * q
   groundwater <- .steady_storage(model@groundwater, qb, "groundwater")
   surface <- .steady_storage(model@surface, qs, "surface")
+  # Soil storage is set so that recharge supplies the baseflow. If that needs more than Smax it is
+  # capped, and the run then starts slightly out of balance.
   smax <- capacity_mean(model@distribution)
   soil <- min(smax, max(0, .steady_soil(model, qb, groundwater, smax, soil_fraction)))
+  # Delay queues are pre-filled as if the same flows had been passing for the whole delay: volumes
+  # (mm per step) for the main queues, rates (mm/h) for the endpoint queues.
   FlodePdmState(
     soil = soil, surface = surface, groundwater = groundwater,
     delay_surface = .steady_queue(model, qs * model@dt),
@@ -79,6 +85,14 @@ initial_state_from_flow <- function(model, observed_m3s, baseflow_fraction, soil
     delay_groundwater_end = .steady_queue(model, qb),
     step = 0
   )
+}
+
+# The starting state of a calibration or logged run. "flow": steady state at a given flow.
+# "soil": the soil store a fraction full and the routing stores empty.
+.start_state <- function(model, start, flow, baseflow_fraction, soil_fraction) {
+  if (identical(start, "soil")) return(initial_state(model, soil_fraction))
+  .check(.scalar(flow, 0), "start = \"flow\" needs a finite, nonnegative first observed flow")
+  initial_state_from_flow(model, flow, baseflow_fraction, soil_fraction)
 }
 
 # Storage giving flow q (mm/h) in equilibrium; a cascade gets both stores.
@@ -93,9 +107,11 @@ initial_state_from_flow <- function(model, observed_m3s, baseflow_fraction, soil
 # Soil storage at which recharge equals baseflow qb (mm/h).
 .steady_soil <- function(model, qb, groundwater, smax, soil_fraction) {
   r <- model@recharge
+  # Standard recharge: invert (S - st)^bg / kg = qb.
   if (S7::S7_inherits(r, FlodeStandardRecharge)) {
     return(r@st + (r@kg * qb)^(1 / r@bg))
   }
+  # Demand recharge: invert Eq. 13 for the soil storage, given the groundwater storage.
   if (S7::S7_inherits(r, FlodeDemandRecharge)) {
     sgmax <- storage_for_flow(model@groundwater, r@qsat)
     g <- min(1, max(0, (sgmax - groundwater) / sgmax))
@@ -103,6 +119,8 @@ initial_state_from_flow <- function(model, observed_m3s, baseflow_fraction, soil
     dsat <- r@qsat * model@dt
     return(qb * model@dt * smax / (dsat + (smax - dsat) * demand))
   }
+  # Split recharge takes groundwater input from runoff, not soil drainage, so the soil level is
+  # not determined by the flow; use the fraction given.
   soil_fraction * smax
 }
 

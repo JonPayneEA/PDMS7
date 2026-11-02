@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         read_pdm_config
-# Description:  Configurable PDM framework: read_pdm_config
+# Description:  Reading and writing YAML configurations safely and exactly
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
@@ -24,12 +24,12 @@
 #'
 #' @references Moore (2007), doi:10.5194/hess-11-483-2007.
 #' @export
+# Reads a YAML configuration. Two safeguards: YAML's !expr tag, which would run R code, is refused
+# outright, and the configuration is built once as a model, so a file that cannot make a valid
+# model fails here rather than later. Returns the list, not the model.
 read_pdm_config <- function(path) {
   .check(
-    is.character(path) &&
-      length(path) ==
-        1L && !is.na(path) &&
-      file.exists(path),
+    is.character(path) && length(path) == 1L && !is.na(path) && file.exists(path),
     "path must identify an existing YAML file"
   )
   text <- readLines(path, warn = FALSE)
@@ -76,6 +76,10 @@ load_pdm_model <- function(path) pdm_from_config(read_pdm_config(path))
 #' write_pdm_config(config, path)
 #' identical(read_pdm_config(path)$fc, 1 / 3)
 #' @export
+# Writes a configuration that read_pdm_config() reads back exactly. .yaml_ready() writes each
+# number with the fewest digits that reproduce it, because yaml::as.yaml() would round to seven
+# significant figures and the model read back would differ from the one calibrated. The file is
+# written as raw UTF-8 bytes, so line endings and encoding do not depend on the platform.
 write_pdm_config <- function(config, path) {
   pdm_from_config(config)
   .check(is.character(path) && length(path) == 1L && !is.na(path), "path must be a file path")

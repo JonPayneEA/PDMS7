@@ -21,7 +21,9 @@ forcing <- data.frame(time = time, pet = 0.05,
                       rain = ifelse(stats::runif(n) < 0.07, stats::rgamma(n, 0.7, scale = 3), 0))
 truth <- pdm_presets("standard")
 truth$area_km2 <- 30
-observed <- run_pdm(pdm_from_config(truth), forcing)$output$q_m3s
+truth_model <- pdm_from_config(truth)
+observed <- run_pdm(truth_model, forcing,
+                    initial_state_from_flow(truth_model, 0.6, 0.7))$output$q_m3s
 options(pdmS7.user = "Ann Hydrologist", pdmS7.role = "custodian")
 project <- file.path(tempdir(), "inside")
 start_calibration_project(project, catchment = "Example Brook", gauge = "99003",
@@ -75,17 +77,17 @@ cat(readLines(file.path(project, "entries", "0004-trial.yml")), sep = "\n")
 #> format: 1
 #> id: '0004'
 #> type: trial
-#> timestamp: '2026-11-02T08:52:33Z'
+#> timestamp: '2026-11-02T15:07:02Z'
 #> author:
 #>   name: Ann Hydrologist
 #>   role: custodian
 #>   login: root
 #> software:
-#>   pdmS7: 0.4.0
+#>   pdmS7: 0.4.1
 #>   r: 4.3.3
 #>   platform: x86_64-pc-linux-gnu
 #>   engine: c
-#> previous: a7f12b55378249f098adb777fd6179b9
+#> previous: 4aede3aa4e414ab093116cfe43a7a6c9
 #> registration: '0002'
 #> parent: '0003'
 #> changes:
@@ -118,21 +120,21 @@ cat(readLines(file.path(project, "entries", "0004-trial.yml")), sep = "\n")
 #>   area_km2: 30.0
 #>   dt: 1.0
 #> scores:
-#>   nse: 1.0
-#>   log_nse: 1.0
-#>   kge: 0.9999999999999998
-#>   kge_r: 1.0
-#>   kge_alpha: 1.0000000000000002
-#>   kge_beta: 1.0
-#>   rmse: 3.973382158910592e-15
-#>   log_rmse: 4.032376870133154e-15
-#>   volume_error: 0.0
-#>   abs_volume_error: 0.0
-#>   peak_error: 8.881784197001252e-16
-#>   fdc_high: -5.2473942796622905e-16
-#>   fdc_mid: 3.2452207057899907e-15
-#>   fdc_low: -1.2724042040683314e-15
-#> output_md5: bdedca7a3fce213ae4fd135670d4fae4
+#>   nse: 0.9999999797071072
+#>   log_nse: 0.9999998850490445
+#>   kge: 0.9999296235156127
+#>   kge_r: 0.9999999939365506
+#>   kge_alpha: 1.0000605934879074
+#>   kge_beta: 0.99996420504587
+#>   rmse: 7.957360150913943e-05
+#>   log_rmse: 0.00019376348277363534
+#>   volume_error: -3.579495412997513e-05
+#>   abs_volume_error: 3.579495412997513e-05
+#>   peak_error: -2.2035676962017803e-06
+#>   fdc_high: -2.2329209362584403e-06
+#>   fdc_mid: 3.9804752836075144e-05
+#>   fdc_low: -0.0012673756384583817
+#> output_md5: c3470925a873de4a32346c96c6c5746c
 #> verdict: better
 #> reasoning: Volume was 10 per cent low.
 ```

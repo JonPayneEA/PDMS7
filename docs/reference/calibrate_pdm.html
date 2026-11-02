@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -66,6 +66,7 @@
     <li><a class="dropdown-item" href="../benchmark-protocol.html">Benchmark protocol</a></li>
     <li><a class="dropdown-item" href="../calibration-log-design.html">Calibration log design</a></li>
     <li><a class="dropdown-item" href="../validation.html">Validation</a></li>
+    <li><a class="dropdown-item" href="../code-review.html">Code review</a></li>
     <li><a class="dropdown-item" href="../multi-objective.html">Multi-objective calibration</a></li>
     <li><a class="dropdown-item" href="../snow-model.html">Snow model notes</a></li>
     <li><a class="dropdown-item" href="../source-notes.html">Source notes</a></li>
@@ -114,7 +115,10 @@
 <span>  threshold_score <span class="op">=</span> <span class="st">"csi"</span>,</span>
 <span>  event_settings <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>tolerance_h <span class="op">=</span> <span class="fl">6</span>, gap_h <span class="op">=</span> <span class="fl">24</span>, min_duration_h <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>,</span>
 <span>  log_scale <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
-<span>  volume_weight <span class="op">=</span> <span class="fl">0</span></span>
+<span>  volume_weight <span class="op">=</span> <span class="fl">0</span>,</span>
+<span>  start <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"flow"</span>, <span class="st">"soil"</span><span class="op">)</span>,</span>
+<span>  baseflow_fraction <span class="op">=</span> <span class="fl">0.7</span>,</span>
+<span>  start_flow <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -170,7 +174,8 @@ metres per second.</p></dd>
 
 
 <dt id="arg-soil-fraction">soil_fraction<a class="anchor" aria-label="anchor" href="#arg-soil-fraction"></a></dt>
-<dd><p>Initial fraction of basin capacity between zero and one.</p></dd>
+<dd><p>Initial fraction of basin capacity between zero and one: the soil store's
+start with <code>start = "soil"</code>, and with split recharge, whose soil level the flow does not set.</p></dd>
 
 
 <dt id="arg-starts">starts<a class="anchor" aria-label="anchor" href="#arg-starts"></a></dt>
@@ -226,6 +231,23 @@ parameters' own units.</p></dd>
 weight times the absolute relative error in total flow over the scored rows. Zero, the
 default, adds nothing. <code><a href="calibrate_staged.html">calibrate_staged()</a></code> uses it to hold the water balance while fitting
 low flows.</p></dd>
+
+
+<dt id="arg-start">start<a class="anchor" aria-label="anchor" href="#arg-start"></a></dt>
+<dd><p>How every trial starts. <code>"flow"</code> (the default) starts in steady state at the
+first observed flow, as <code><a href="initial_state_from_flow.html">initial_state_from_flow()</a></code> does, so that a slow groundwater store
+is already full when scoring begins and does not bias its own parameters. <code>"soil"</code> starts
+with the soil store <code>soil_fraction</code> full and the routing stores empty, the behaviour before
+version 0.4.1; it then needs a warm-up long enough for the slowest store to fill.</p></dd>
+
+
+<dt id="arg-baseflow-fraction">baseflow_fraction<a class="anchor" aria-label="anchor" href="#arg-baseflow-fraction"></a></dt>
+<dd><p>With <code>start = "flow"</code>, the share of the first flow that is baseflow.</p></dd>
+
+
+<dt id="arg-start-flow">start_flow<a class="anchor" aria-label="anchor" href="#arg-start-flow"></a></dt>
+<dd><p>With <code>start = "flow"</code>, the flow to start from, m3/s. By default the first
+observed value of <code>observed</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -306,8 +328,8 @@ fitted value, which always lies within lower and upper.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $config$fc</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> fc </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  1 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  fc </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1.2 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $config$td</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0</span>
@@ -342,7 +364,7 @@ fitted value, which always lies within lower and upper.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  .. @ rtol  : num 1e-08</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  .. @ atol  : num 1e-10</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  @ be          : num 1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ fc          : Named num 1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  @ fc          : Named num 1.2</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  .. - attr(*, "names")= chr "fc"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  @ td          : num 0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  @ qc          : num 0</span>
@@ -350,11 +372,11 @@ fitted value, which always lies within lower and upper.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  @ dt          : num 1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $parameters</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> fc </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  1 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  fc </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1.2 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $objective</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.03046412</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $objective_name</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "rmse"</span>
@@ -363,41 +385,41 @@ fitted value, which always lies within lower and upper.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "lbfgsb"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $convergence</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 52</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $message</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "ERROR: ABNORMAL_TERMINATION_IN_LNSRCH"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "CONVERGENCE: NORM OF PROJECTED GRADIENT &lt;= PGTOL"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $optim</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $optim$par</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.5</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $optim$value</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.03046412</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $optim$counts</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> function gradient </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>       21       21 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>        7        7 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $optim$convergence</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 52</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $optim$message</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "ERROR: ABNORMAL_TERMINATION_IN_LNSRCH"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] "CONVERGENCE: NORM OF PROJECTED GRADIENT &lt;= PGTOL"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $start_results</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    start objective convergence evaluations   best    fc</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    &lt;int&gt;     &lt;num&gt;       &lt;int&gt;       &lt;int&gt; &lt;lgcl&gt; &lt;num&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1:     1         0          52          63   TRUE     1</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    start  objective convergence evaluations   best    fc</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    &lt;int&gt;      &lt;num&gt;       &lt;int&gt;       &lt;int&gt; &lt;lgcl&gt; &lt;num&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1:     1 0.03046412           0          21   TRUE   1.2</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span><span class="fu">calibrate_pdm</span><span class="op">(</span><span class="va">config</span>, <span class="va">f</span>, <span class="va">q</span>, lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>fc <span class="op">=</span> <span class="fl">0.8</span><span class="op">)</span>, upper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>fc <span class="op">=</span> <span class="fl">1.2</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>  control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>maxit <span class="op">=</span> <span class="fl">2</span><span class="op">)</span>, starts <span class="op">=</span> <span class="fl">3L</span>, seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">$</span><span class="va">start_results</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    start    objective convergence evaluations   best        fc</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    &lt;int&gt;        &lt;num&gt;       &lt;int&gt;       &lt;int&gt; &lt;lgcl&gt;     &lt;num&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1:     1 0.000000e+00          52          63   TRUE 1.0000000</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2:     2 3.400469e-06           1          36  FALSE 0.9999177</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3:     3 5.011836e-06           1          36  FALSE 1.0001213</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    start  objective convergence evaluations   best    fc</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    &lt;int&gt;      &lt;num&gt;       &lt;int&gt;       &lt;int&gt; &lt;lgcl&gt; &lt;num&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1:     1 0.03046412           0          21   TRUE   1.2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2:     2 0.03046412           0          21  FALSE   1.2</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3:     3 0.03046412           0          21  FALSE   1.2</span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

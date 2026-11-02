@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         sim_pack
-# Description:  Simulate snow alone or coupled to PDM
+# Description:  PACK simulation alone and coupled to the PDM
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-05
@@ -18,6 +18,8 @@
 #' @param state NULL for an empty pack, or a complete FlodePackState.
 #' @return data.table with snow fluxes, final_state and water_balance attributes.
 #' @export
+# Runs PACK over a series. The compiled engine is used unless options(pdmS7.engine = "r") asks for
+# the R loop, which exists as the reference implementation.
 sim_pack <- function(precipitation_mm, temperature_c, params = pack_presets(),
                      timestep_min = 60L, state = NULL) {
   .nonnegative(precipitation_mm, "precipitation_mm")
@@ -66,6 +68,9 @@ sim_pack <- function(precipitation_mm, temperature_c, params = pack_presets(),
 #' @return data.table with PDM and snow fluxes, a combined balance residual, and
 #' final_state list containing pdm and snow states. Rain-only sim_pdm is unchanged.
 #' @export
+# PACK feeding the PDM: PACK's effective rain (drainage plus bypass) becomes the PDM's rain. The
+# combined balance adds the two models' residuals. pdm_correction_mm records the PDM's fc applied on
+# top of PACK's precipitation_factor, so a double correction is visible.
 sim_snow_pdm <- function(precipitation_mm, temperature_c, pet_mm,
                          params = list(pdm = pdm_presets("standard"), snow = pack_presets()),
                          timestep_min = 60L, state = NULL, datetime = NULL, warmup_steps = 0L) {

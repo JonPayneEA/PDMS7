@@ -11,9 +11,17 @@
 # Dependencies: shiny (suggested)
 # ============================================================ #
 
+# The server: shared reactive state, one helper per tab, and act(), which runs a log action and
+# reports success or the error on screen. Every action goes through the exported calibration log
+# functions, so the app can do nothing that R code could not.
 .app_server <- function(project) {
   force(project)
   function(input, output, session) {
+    # The identity bar sets the pdmS7.user and pdmS7.role options; put back whatever they were
+    # when the session ends, so later code in this R session is not written under the app's
+    # identity.
+    saved <- options("pdmS7.user", "pdmS7.role")
+    shiny::onStop(function() options(saved), session = session)
     rv <- shiny::reactiveValues(project = project, version = 0L, preview = NULL,
                                 report = NULL, zoom = NULL, validation = NULL)
     refresh <- function() rv$version <- rv$version + 1L
@@ -27,6 +35,7 @@
         shiny::showNotification(conditionMessage(e), type = "error", duration = NULL)
       })
     }
+    # The identity typed in the bar is the identity every entry is written under.
     shiny::observe({
       options(pdmS7.user = input$user, pdmS7.role = input$role)
     })
@@ -46,6 +55,8 @@
   }
 }
 
+# Reactive views of the open project, recomputed whenever an action bumps rv$version: its
+# entries, path, model entries (structures, trials, calibrations), registration and headline.
 .app_state <- function(input, rv) {
   entries <- shiny::reactive({
     rv$version
@@ -74,6 +85,7 @@
   .run_registered(state$path(), .project_info(entries), registration, node$configuration)
 }
 
+# The one-line project summary under the identity bar.
 .app_status <- function(output, state) {
   output$status <- shiny::renderUI({
     entries <- tryCatch(state$entries(), error = function(e) NULL)
@@ -85,6 +97,7 @@
   })
 }
 
+# Setup tab: start a project, register data, select a structure.
 .app_setup <- function(input, rv, act, session) {
   shiny::observeEvent(input$start, act(function() {
     start_calibration_project(input$new_path, input$catchment, input$gauge, input$purpose,
@@ -120,6 +133,8 @@
   }, "Structure selected"))
 }
 
+# Trial tab: pick a parent run, edit parameters, preview the result without logging it, then
+# log it with a verdict and reasoning; or run an automatic calibration from the same parent.
 .app_trial <- function(input, output, session, rv, act, state) {
   shiny::observe({
     choices <- .node_choices(state$nodes(), state$headline())
@@ -211,6 +226,8 @@
   }, "Calibration logged"))
 }
 
+# History tab: every run with its scores, hydrographs of selected runs, notes, and proposing,
+# validating and testing a candidate.
 .app_history <- function(input, output, session, rv, act, state) {
   shiny::observe({
     choices <- .node_choices(state$nodes(), state$headline())
@@ -271,6 +288,7 @@
   }, digits = 4)
 }
 
+# Report tab: builds the report and shows it in the page.
 .app_report <- function(input, output, rv, act, state) {
   shiny::observeEvent(input$build, act(function() {
     rv$report <- build_report(state$path(), rerun = input$report_rerun,
@@ -287,6 +305,8 @@
   output$integrity <- shiny::renderTable(as.data.frame(checks()))
 }
 
+# Sign-off tab: shows the candidate, its validation and test, and signs off or reopens. The
+# checklist boxes map to the four items sign_off_project() requires.
 .app_signoff <- function(input, output, rv, act, state) {
   output$signoff_summary <- shiny::renderUI({
     entries <- state$entries()
@@ -320,6 +340,7 @@
   }, "Project reopened"))
 }
 
+# The line describing the final test for the sign-off tab.
 .test_line <- function(entries, candidate, headline) {
   registration <- .latest(entries, "data_registered")
   if (is.null(registration$scorecard$test)) return(NULL)
@@ -329,6 +350,7 @@
           .num_or_na(test$test_scores[[headline]]))
 }
 
+# Structures tab: runs compare_structures() and shows its ranking.
 .app_structures <- function(input, output, rv, act, state) {
   shiny::observeEvent(input$compare, act(function() {
     .check(length(input$structures) > 0, "Choose at least one structure")

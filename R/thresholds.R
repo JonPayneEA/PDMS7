@@ -11,6 +11,9 @@
 # Dependencies: data.table; stats
 # ============================================================ #
 
+# Scores computed for every threshold. Event scores count episodes above the threshold; step
+# scores count individual time steps. .threshold_headlines lists those that may rank runs, with
+# the direction in which each is better.
 .event_metrics <- c(
   "pod", "far", "csi", "bias", "observed_events", "simulated_events", "hits", "misses",
   "false_alarms", "crossing_error_h", "abs_crossing_error_h", "peak_timing_error_h",
@@ -80,6 +83,7 @@ pdm_threshold_scores <- function(simulated, observed, thresholds, dt_hours = 1,
   for (v in list(tolerance_h, gap_h, min_duration_h)) {
     .check(.scalar(v, 0), "Event settings must be nonnegative hours")
   }
+  # Event settings are given in hours and converted once to time steps.
   settings <- list(dt = dt_hours, tolerance = tolerance_h / dt_hours, gap = gap_h / dt_hours,
                    min_duration = min_duration_h / dt_hours)
   rows <- lapply(names(thresholds), function(name) {
@@ -90,13 +94,17 @@ pdm_threshold_scores <- function(simulated, observed, thresholds, dt_hours = 1,
   data.table::rbindlist(rows)
 }
 
+# Thresholds are a named vector of positive flows, names unique and non-empty.
 .valid_thresholds <- function(x) {
   if (!is.numeric(x) || !length(x) || is.null(names(x))) return(FALSE)
   all(nzchar(names(x)), !duplicated(names(x)), is.finite(x), x > 0)
 }
 
+# A ratio that is NA, not NaN or Inf, when its denominator is zero (no events of that kind).
 .ratio <- function(a, b) if (b > 0) a / b else NA_real_
 
+# All scores for one threshold. Missing observations count as below the threshold for events
+# (so a gap never invents a flood), and are left out of the step scores.
 .threshold_row <- function(sim, obs, flow, s) {
   obs_above <- !is.na(obs) & obs > flow
   sim_above <- sim > flow
@@ -121,6 +129,9 @@ pdm_threshold_scores <- function(simulated, observed, thresholds, dt_hours = 1,
 .find_events <- function(above, gap, min_duration) {
   empty <- data.frame(start = integer(0), end = integer(0))
   if (!any(above)) return(empty)
+  # Runs of consecutive steps above the threshold, then a pass that merges each run into the
+  # previous event when the dry spell between them is shorter than the gap. Finally, events
+  # shorter than the minimum duration are dropped.
   runs <- rle(above)
   ends <- cumsum(runs$lengths)
   starts <- ends - runs$lengths + 1L
@@ -141,6 +152,9 @@ pdm_threshold_scores <- function(simulated, observed, thresholds, dt_hours = 1,
 .match_events <- function(obs_events, sim_events, tolerance) {
   pairs <- data.frame(obs = integer(0), sim = integer(0))
   if (!nrow(obs_events) || !nrow(sim_events)) return(pairs)
+  # Every observed-simulated pair within the tolerance, sorted by how far apart their crossings
+  # are; then a greedy pass takes each pair if neither event is already matched. Ties go to the
+  # earlier observed event.
   grid <- expand.grid(obs = seq_len(nrow(obs_events)), sim = seq_len(nrow(sim_events)))
   grid$gap <- abs(sim_events$start[grid$sim] - obs_events$start[grid$obs])
   grid <- grid[grid$gap <= tolerance, , drop = FALSE]
@@ -156,6 +170,9 @@ pdm_threshold_scores <- function(simulated, observed, thresholds, dt_hours = 1,
   data.frame(obs = used_obs, sim = used_sim)
 }
 
+# Errors averaged over the matched events (hits), in hours or as relative errors: when the
+# crossing came, when the peak came, how big the peak was, how long the event lasted, and the
+# volume above the threshold. Positive timing errors mean the model was late. NA with no hits.
 .hit_errors <- function(pairs, obs_events, sim_events, sim, obs, flow, dt) {
   none <- c(crossing_error_h = NA_real_, abs_crossing_error_h = NA_real_,
             peak_timing_error_h = NA_real_, peak_error = NA_real_, duration_error_h = NA_real_,
@@ -184,6 +201,9 @@ pdm_threshold_scores <- function(simulated, observed, thresholds, dt_hours = 1,
     volume_error = .ratio(excess(sim, s), excess(obs, o)) - 1)
 }
 
+# The 2 x 2 contingency table over time steps: a hits, b false alarms, c misses, d correct
+# negatives. 'random' is the hits expected by chance, used by the equitable threat score (ETS).
+# PSS (Peirce skill score) is POD minus the probability of false detection.
 .step_scores <- function(sim_above, obs_above) {
   a <- sum(sim_above & obs_above)
   b <- sum(sim_above & !obs_above)
@@ -223,6 +243,7 @@ pdm_threshold_scores <- function(simulated, observed, thresholds, dt_hours = 1,
   })
 }
 
+# Reads and checks a rating table: stage and flow both strictly rising, flows positive.
 .as_rating <- function(rating) {
   if (is.character(rating)) {
     .check(length(rating) == 1L && file.exists(rating), "rating file not found")
@@ -264,6 +285,8 @@ pdm_threshold_scores <- function(simulated, observed, thresholds, dt_hours = 1,
   out
 }
 
+# A headline is a continuous score such as nse, or a threshold score written "metric:name" for a
+# registered threshold. .headline_direction() says whether higher or lower is better.
 .valid_headline <- function(headline, thresholds) {
   if (headline %in% names(.headline_scores())) return(TRUE)
   parts <- strsplit(headline, ":", fixed = TRUE)[[1L]]

@@ -1,6 +1,33 @@
 # Changelog
 
-## pdmS7 (development version)
+## pdmS7 0.4.1
+
+- **Calibration starts from the first observed flow.** Every trial of
+  [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md),
+  and every run in a calibration project, starts in steady state at the
+  first observed flow, so a slow groundwater store is full when scoring
+  begins and cannot bias its own parameters.
+  [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md)
+  gains `start` (`"flow"`, the default, or `"soil"` for the earlier
+  start), `baseflow_fraction` and `start_flow`.
+  [`register_data()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
+  records the rule; projects registered earlier keep the soil start, so
+  their recorded runs still reproduce. Calibrations will differ from
+  those of 0.4.0 where the warm-up was short.
+
+- Locks on the calibration log and on shared CSV files recover from a
+  dead session’s lock without the race that could delete a fresh one.
+
+- The run log and batch status refuse to append rows under a header with
+  different columns.
+
+- [`validate_candidate()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
+  re-checks the candidate under the lock.
+
+- [`calibration_app()`](https://jonpayneea.github.io/PDMS7/reference/calibration_app.md)
+  restores the identity options when it closes.
+
+- The C++ binding unpacks parameters in one place.
 
 - Six new pages on the website: “Where to start” (reading paths by
   role), “Preparing your data” (from EA sources through reach.io to
@@ -8,7 +35,15 @@
   guide”, a glossary, troubleshooting, and further reading. The home
   page states the package’s purpose, “Get started” opens the reading
   paths, and the roadmap is rewritten.
+
 - The benchmark protocol is at version 0.2, with its decisions closed.
+
+- Every source file is commented: the R package, the compiled core, the
+  golden checker and the tests (each test states what it guards). A code
+  review accompanies it, in `code-review.md` and under Guides on the
+  website: no errors in the hydrology; two medium and seventeen low
+  findings, ranked, with remedies for decision.
+
 - [`pdm_hindcast()`](https://jonpayneea.github.io/PDMS7/reference/pdm_hindcast.md)
   reports “No forecast origins fit in the window” for a window too
   narrow for any origin, instead of an internal error.

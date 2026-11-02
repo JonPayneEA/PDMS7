@@ -107,6 +107,7 @@ calibrate_batch <- function(basins, output, structure = NULL, overrides = NULL, 
   invisible(batch_status(output))
 }
 
+# Basin identifiers: subfolders holding a basin.yml, sorted, optionally restricted to `only`.
 .batch_ids <- function(basins, only) {
   dirs <- list.dirs(basins, full.names = FALSE, recursive = FALSE)
   ids <- sort(dirs[file.exists(file.path(basins, dirs, "basin.yml"))])
@@ -118,6 +119,7 @@ calibrate_batch <- function(basins, output, structure = NULL, overrides = NULL, 
   ids
 }
 
+# Appends one row to batch-status.csv: a basin queued, running, done or failed, and where.
 .batch_record <- function(path, basin, state, step, seconds, message) {
   .append_csv(path, data.table::data.table(
     basin = basin, state = state, step = step, time = .timestamp(), seconds = seconds,
@@ -125,6 +127,8 @@ calibrate_batch <- function(basins, output, structure = NULL, overrides = NULL, 
   ), "Batch status")
 }
 
+# A seed per basin from the batch seed and the basin's name, so a basin gets the same random
+# starts whether it runs alone or with others, and adding a basin changes no other result.
 .basin_seed <- function(id, seed) {
   (strtoi(substr(.md5_text(id), 1L, 7L), 16L) + as.integer(seed)) %% 2147483647L
 }
@@ -146,6 +150,7 @@ calibrate_batch <- function(basins, output, structure = NULL, overrides = NULL, 
   invisible(outcome$state)
 }
 
+# A basin's basin.yml, with its required fields checked.
 .basin_meta <- function(id, spec) {
   folder <- file.path(spec$basins, id)
   meta <- .read_yaml_file(file.path(folder, "basin.yml"))
@@ -155,6 +160,7 @@ calibrate_batch <- function(basins, output, structure = NULL, overrides = NULL, 
   meta
 }
 
+# The basin's configuration (its own file, or the batch default) with the basin's area applied.
 .basin_config <- function(meta, spec) {
   config <- if (is.null(meta$config)) spec$default else
     read_pdm_config(file.path(meta$folder, meta$config))
@@ -162,6 +168,7 @@ calibrate_batch <- function(basins, output, structure = NULL, overrides = NULL, 
   config
 }
 
+# Thresholds from basin.yml as the data frame register_data() expects.
 .basin_thresholds <- function(meta) {
   if (is.null(meta$thresholds)) return(NULL)
   data.frame(name = vapply(meta$thresholds, function(t) as.character(t$name), ""),
@@ -169,6 +176,7 @@ calibrate_batch <- function(basins, output, structure = NULL, overrides = NULL, 
              unit = vapply(meta$thresholds, function(t) as.character(t$unit), ""))
 }
 
+# Runs one step for one basin, with everything the step functions need in one context list.
 .batch_step <- function(step, id, spec) {
   ctx <- list(id = id, spec = spec, project = file.path(spec$output, id),
               meta = .basin_meta(id, spec),
@@ -177,6 +185,8 @@ calibrate_batch <- function(basins, output, structure = NULL, overrides = NULL, 
   invisible(TRUE)
 }
 
+# TRUE if the basin's project exists and already holds an entry of this type, so the step is
+# skipped. This is what makes the batch resumable.
 .batch_has <- function(project, type) {
   file.exists(file.path(project, .marker)) &&
     any(vapply(.read_entries(.project_path(project)), function(e) e$type == type, logical(1)))
@@ -192,6 +202,7 @@ calibrate_batch <- function(basins, output, structure = NULL, overrides = NULL, 
                             owner = ctx$spec$owner, steward = ctx$spec$steward, id = ctx$id)
 }
 
+# Registers the basin's forcing and flow, through PACK first for a snow basin.
 .batch_register <- function(ctx) {
   if (.batch_has(ctx$project, "data_registered")) return(invisible())
   m <- ctx$meta
@@ -221,8 +232,7 @@ calibrate_batch <- function(basins, output, structure = NULL, overrides = NULL, 
   step <- as.numeric(difftime(times[2], times[1], units = "mins"))
   snow <- sim_pack(raw$rain, raw$temperature, config, timestep_min = as.integer(round(step)))
   out <- tempfile("forcing-", fileext = ".csv")
-  data.table::fwrite(data.frame(time = raw$time, rain = snow$effective_rain_mm, pet = raw$pet),
-                     out)
+  data.table::fwrite(data.frame(time = raw$time, rain = snow$effective_rain_mm, pet = raw$pet), out)
   entries <- .read_entries(.project_path(ctx$project))
   noted <- any(vapply(entries, function(e) e$type == "note" && startsWith(e$text, "Snow:"),
                       logical(1)))
@@ -237,6 +247,8 @@ calibrate_batch <- function(basins, output, structure = NULL, overrides = NULL, 
   out
 }
 
+# The PACK parameters for a snow basin: the default preset for `snow: true`, a preset named by
+# `snow`, or a PACK YAML file in the basin folder.
 .basin_pack <- function(m) {
   if (isTRUE(m$snow)) return(pack_presets())
   .check(is.character(m$snow) && length(m$snow) == 1L,
@@ -245,11 +257,14 @@ calibrate_batch <- function(basins, output, structure = NULL, overrides = NULL, 
   if (file.exists(file)) .read_yaml_file(file) else pack_presets(m$snow)
 }
 
+# Selects the basin's structure.
 .batch_structure <- function(ctx) {
   if (.batch_has(ctx$project, "structure_selected")) return(invisible())
   select_structure(ctx$project, .basin_config(ctx$meta, ctx$spec), ctx$reasoning)
 }
 
+# Calibrates, either in one search or in stages. A basin that already has a calibration keeps
+# the kind it has: switching the protocol never recalibrates a finished basin.
 .batch_fit <- function(ctx) {
   entries <- .read_entries(.project_path(ctx$project))
   fits <- Filter(function(e) e$type == "auto_calibration", entries)
@@ -264,6 +279,8 @@ calibrate_batch <- function(basins, output, structure = NULL, overrides = NULL, 
   .batch_calibrate(ctx$project, ctx$id, ctx$spec, ctx$reasoning)
 }
 
+# Runs the stages not yet in the log, each starting from the stage before. Finished stages are
+# recognised by their recorded label, so an interrupted basin resumes mid-way.
 .batch_staged <- function(ctx, entries, done) {
   structure <- .latest(entries, "structure_selected")
   config <- structure$configuration
@@ -284,12 +301,14 @@ calibrate_batch <- function(basins, output, structure = NULL, overrides = NULL, 
   invisible()
 }
 
+# Proposes the latest automatic calibration (the last stage, if staged) as the candidate.
 .batch_candidate <- function(ctx) {
   if (.batch_has(ctx$project, "candidate")) return(invisible())
   fit <- .latest(.read_entries(.project_path(ctx$project)), "auto_calibration")
   propose_candidate(ctx$project, fit$id, paste(ctx$reasoning, "Best of the automatic starts."))
 }
 
+# Validates the candidate, if the basin has a validation window.
 .batch_validate <- function(ctx) {
   if (.batch_has(ctx$project, "validation") || is.null(ctx$meta$validation)) {
     return(invisible())
@@ -297,6 +316,7 @@ calibrate_batch <- function(basins, output, structure = NULL, overrides = NULL, 
   validate_candidate(ctx$project, ctx$reasoning)
 }
 
+# Scores the test window once, only when the batch asks for it and the basin has one.
 .batch_test <- function(ctx) {
   if (!ctx$spec$test || .batch_has(ctx$project, "test") || is.null(ctx$meta$test)) {
     return(invisible())
@@ -314,6 +334,7 @@ calibrate_batch <- function(basins, output, structure = NULL, overrides = NULL, 
   test = .batch_test
 )
 
+# One automatic calibration of every parameter in the bounds table, with the batch settings.
 .batch_calibrate <- function(project, id, spec, reasoning) {
   entries <- .read_entries(.project_path(project))
   structure <- .latest(entries, "structure_selected")

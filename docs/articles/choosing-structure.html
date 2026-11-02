@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -83,6 +83,7 @@
     <li><a class="dropdown-item" href="../benchmark-protocol.html">Benchmark protocol</a></li>
     <li><a class="dropdown-item" href="../calibration-log-design.html">Calibration log design</a></li>
     <li><a class="dropdown-item" href="../validation.html">Validation</a></li>
+    <li><a class="dropdown-item" href="../code-review.html">Code review</a></li>
     <li><a class="dropdown-item" href="../multi-objective.html">Multi-objective calibration</a></li>
     <li><a class="dropdown-item" href="../snow-model.html">Snow model notes</a></li>
     <li><a class="dropdown-item" href="../source-notes.html">Source notes</a></li>
@@ -151,7 +152,10 @@ not told.</p>
 <span><span class="va">truth</span><span class="op">$</span><span class="va">recharge</span><span class="op">$</span><span class="va">kg</span> <span class="op">&lt;-</span> <span class="fl">120</span></span>
 <span><span class="va">truth</span><span class="op">$</span><span class="va">surface</span><span class="op">$</span><span class="va">k1</span> <span class="op">&lt;-</span> <span class="fl">3</span></span>
 <span><span class="va">truth</span><span class="op">$</span><span class="va">surface</span><span class="op">$</span><span class="va">k2</span> <span class="op">&lt;-</span> <span class="fl">10</span></span>
-<span><span class="va">observed</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_pdm.html">run_pdm</a></span><span class="op">(</span><span class="fu"><a href="../reference/pdm_from_config.html">pdm_from_config</a></span><span class="op">(</span><span class="va">truth</span><span class="op">)</span>, <span class="va">forcing</span><span class="op">)</span><span class="op">$</span><span class="va">output</span><span class="op">$</span><span class="va">q_m3s</span> <span class="op">*</span></span>
+<span><span class="co"># The river is already flowing when the record starts: steady state, not empty stores.</span></span>
+<span><span class="va">truth_model</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pdm_from_config.html">pdm_from_config</a></span><span class="op">(</span><span class="va">truth</span><span class="op">)</span></span>
+<span><span class="va">observed</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_pdm.html">run_pdm</a></span><span class="op">(</span><span class="va">truth_model</span>, <span class="va">forcing</span>,</span>
+<span>                    <span class="fu"><a href="../reference/initial_state_from_flow.html">initial_state_from_flow</a></span><span class="op">(</span><span class="va">truth_model</span>, <span class="fl">1</span>, <span class="fl">0.7</span><span class="op">)</span><span class="op">)</span><span class="op">$</span><span class="va">output</span><span class="op">$</span><span class="va">q_m3s</span> <span class="op">*</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n</span>, <span class="fl">0</span>, <span class="fl">0.04</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p>The project registers three windows: calibration, validation, and a
 final <strong>test</strong> window. Ranking structures on the validation
@@ -223,26 +227,26 @@ they run in turn.</p>
 <span>                                reasoning <span class="op">=</span> <span class="st">"Which structure suits this catchment?"</span><span class="op">)</span></span>
 <span><span class="op">)</span><span class="op">[[</span><span class="st">"elapsed"</span><span class="op">]</span><span class="op">]</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">elapsed</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 49</span></span>
+<span><span class="co">#&gt; [1] 53</span></span>
 <span><span class="va">ranking</span><span class="op">[</span>, <span class="fu">.</span><span class="op">(</span><span class="va">rank</span>, <span class="va">structure</span>, <span class="va">parameters</span>, calibration <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">calibration</span>, <span class="fl">4</span><span class="op">)</span>,</span>
 <span>            validation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">validation</span>, <span class="fl">4</span><span class="op">)</span>, change <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">change</span>, <span class="fl">4</span><span class="op">)</span>, <span class="va">starts_agree</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="co">#&gt;     rank               structure parameters calibration validation  change</span></span>
 <span><span class="co">#&gt;    &lt;int&gt;                  &lt;char&gt;      &lt;int&gt;       &lt;num&gt;      &lt;num&gt;   &lt;num&gt;</span></span>
-<span><span class="co">#&gt; 1:     1               lognormal          7      0.9867     0.9337 -0.0531</span></span>
-<span><span class="co">#&gt; 2:     2              triangular          6      0.9867     0.9335 -0.0532</span></span>
-<span><span class="co">#&gt; 3:     3                standard          7      0.9866     0.9334 -0.0533</span></span>
-<span><span class="co">#&gt; 4:     4             rectangular          6      0.9865     0.9327 -0.0538</span></span>
-<span><span class="co">#&gt; 5:     5 exponential_groundwater          8      0.9866     0.9326 -0.0541</span></span>
-<span><span class="co">#&gt; 6:     6             exponential          6      0.9856     0.9324 -0.0532</span></span>
-<span><span class="co">#&gt; 7:     7                  demand          9      0.9781     0.8453 -0.1328</span></span>
-<span><span class="co">#&gt; 8:     8                   split          7      0.5969     0.7813  0.1844</span></span>
+<span><span class="co">#&gt; 1:     1              triangular          6      0.9903     0.9335 -0.0568</span></span>
+<span><span class="co">#&gt; 2:     2                standard          7      0.9903     0.9333 -0.0570</span></span>
+<span><span class="co">#&gt; 3:     3               lognormal          7      0.9902     0.9329 -0.0573</span></span>
+<span><span class="co">#&gt; 4:     4             rectangular          6      0.9902     0.9329 -0.0574</span></span>
+<span><span class="co">#&gt; 5:     5 exponential_groundwater          8      0.9900     0.9328 -0.0572</span></span>
+<span><span class="co">#&gt; 6:     6             exponential          6      0.9902     0.9325 -0.0577</span></span>
+<span><span class="co">#&gt; 7:     7                  demand          9      0.9825     0.8811 -0.1014</span></span>
+<span><span class="co">#&gt; 8:     8                   split          7      0.9693     0.8290 -0.1404</span></span>
 <span><span class="co">#&gt;    starts_agree</span></span>
 <span><span class="co">#&gt;          &lt;lgcl&gt;</span></span>
 <span><span class="co">#&gt; 1:         TRUE</span></span>
 <span><span class="co">#&gt; 2:         TRUE</span></span>
-<span><span class="co">#&gt; 3:         TRUE</span></span>
+<span><span class="co">#&gt; 3:        FALSE</span></span>
 <span><span class="co">#&gt; 4:         TRUE</span></span>
-<span><span class="co">#&gt; 5:        FALSE</span></span>
+<span><span class="co">#&gt; 5:         TRUE</span></span>
 <span><span class="co">#&gt; 6:        FALSE</span></span>
 <span><span class="co">#&gt; 7:        FALSE</span></span>
 <span><span class="co">#&gt; 8:         TRUE</span></span></code></pre></div>
@@ -265,11 +269,12 @@ on validation at the top.
 <div class="section level2">
 <h2 id="reading-the-ranking">Reading the ranking<a class="anchor" aria-label="anchor" href="#reading-the-ranking"></a>
 </h2>
-<p>The true structure, <code>lognormal</code>, ranks first. But it would
-be wrong to conclude much from that: 6 structures lie within 0.005 NSE
-of it on validation, a spread of 0.0013. Over six weeks of autumn data
-the soil stores never fill or empty far enough to tell their shapes
-apart. A difference that small is a tie, not a result.</p>
+<p>The true structure, <code>lognormal</code>, ranks 3rd of 8, 0.0006
+NSE behind the top. Either way it would be wrong to conclude much from
+that: 6 structures lie within 0.005 NSE of it on validation, a spread of
+0.001. Over six weeks of autumn data the soil stores never fill or empty
+far enough to tell their shapes apart. A difference that small is a tie,
+not a result.</p>
 <p>The recharge rule is another matter. <code>demand</code> and
 <code>split</code> recharge lose clearly, on both windows: they move
 water to groundwater in ways this catchment does not. That is a
@@ -286,9 +291,9 @@ structure that gains in calibration and loses in validation is fitting
 noise with its extra parameters.</li>
 <li>
 <strong>Whether the starts agreed.</strong> Where they did not, as
-for exponential_groundwater, exponential, demand, the structure may have
-been under-calibrated; give it more starts or iterations before ruling
-it out.</li>
+for lognormal, exponential, demand, the structure may have been
+under-calibrated; give it more starts or iterations before ruling it
+out.</li>
 </ul>
 <p>Faced with a tie, prefer the simplest structure, the one with fewest
 parameters, among those within a stated margin of the best. Stating the
@@ -317,7 +322,7 @@ has looked at.</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>calibration <span class="op">=</span> <span class="va">final</span><span class="op">$</span><span class="va">calibration_scores</span><span class="op">$</span><span class="va">nse</span>,</span>
 <span>        validation <span class="op">=</span> <span class="va">final</span><span class="op">$</span><span class="va">validation_scores</span><span class="op">$</span><span class="va">nse</span>, test <span class="op">=</span> <span class="va">final</span><span class="op">$</span><span class="va">test_scores</span><span class="op">$</span><span class="va">nse</span><span class="op">)</span>, <span class="fl">4</span><span class="op">)</span></span>
 <span><span class="co">#&gt; calibration  validation        test </span></span>
-<span><span class="co">#&gt;      0.9867      0.9335      0.9209</span></span></code></pre></div>
+<span><span class="co">#&gt;      0.9903      0.9335      0.9197</span></span></code></pre></div>
 <p>The test score is the honest estimate of how the chosen model will do
 on new data, because nothing was chosen with it. A Steward cannot sign
 off a project with a test window until the test has been run, and sees

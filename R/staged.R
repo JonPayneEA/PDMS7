@@ -49,6 +49,8 @@
 #' @export
 pdm_stages <- function(config, overrides = NULL, exclude = NULL, polish = TRUE,
                        volume_weight = 1, band = 0.25) {
+  # Sort the structure's parameters by the part of the hydrograph they control. The store shape b
+  # appears in both stages: it affects the water balance and how sharply runoff responds.
   paths <- calibration_bounds(config, overrides, exclude)$path
   slow <- paths[paths == "fc" | grepl("^(distribution|recharge|groundwater)\\.", paths)]
   fast <- paths[grepl("^surface\\.", paths) | paths == "distribution.b"]
@@ -62,6 +64,7 @@ pdm_stages <- function(config, overrides = NULL, exclude = NULL, polish = TRUE,
     stages[[3]] <- list(name = "polish", parameters = paths, objective = "nse",
                         volume_weight = 0, band = band)
   }
+  # A structure may leave a stage with nothing to fit (everything excluded); drop it.
   stages[vapply(stages, function(s) length(s$parameters) > 0, logical(1))]
 }
 
@@ -76,6 +79,9 @@ pdm_stages <- function(config, overrides = NULL, exclude = NULL, polish = TRUE,
   lower <- stats::setNames(b$lower, b$path)
   upper <- stats::setNames(b$upper, b$path)
   logged <- b$path[b$scale == "log"]
+  # Narrowing: map the current value onto [0, 1] across its bounds (in logs for log-scaled
+  # parameters), take band either side, clip to [0, 1] and map back. The current value is always
+  # kept inside, even if rounding puts it a hair outside the band.
   if (!is.null(stage$band)) {
     .check(.scalar(stage$band, 0, 0.5, strict = TRUE), "band must lie in (0, 0.5]")
     value <- vapply(b$path, function(p) .path_get(config, p), numeric(1))
@@ -93,6 +99,8 @@ pdm_stages <- function(config, overrides = NULL, exclude = NULL, polish = TRUE,
   list(lower = lower, upper = upper, log_scale = logged)
 }
 
+# The label recorded with a logged stage, such as "2 of 3: fast response". A resumed batch finds
+# finished stages by this label.
 .stage_label <- function(i, stages) {
   paste0(i, " of ", length(stages), ": ", stages[[i]]$name)
 }
@@ -141,6 +149,7 @@ calibrate_staged <- function(config, forcing, observed, stages = pdm_stages(conf
   .check(is.list(stages) && length(stages) > 0, "stages must be a non-empty list")
   results <- vector("list", length(stages))
   current <- config
+  # Each stage starts from the configuration the previous stage left.
   for (i in seq_along(stages)) {
     b <- .stage_bounds(stages[[i]], bounds, current)
     fit <- calibrate_pdm(
@@ -183,6 +192,8 @@ log_staged_calibration <- function(project, parent, reasoning, stages = NULL, bo
   invisible(written)
 }
 
+# Runs stage i as one automatic calibration entry in a project, starting from the parent entry's
+# configuration. Shared by log_staged_calibration() and the batch's resumable staged step.
 .log_stage <- function(project, parent, stages, i, bounds, reasoning, starts, seed, control,
                        method) {
   node <- .model_node(.read_entries(.project_path(project)), parent)

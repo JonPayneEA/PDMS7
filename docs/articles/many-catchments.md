@@ -52,7 +52,10 @@ for (i in 1:8) {
   truth$surface$k1 <- k[1]
   truth$surface$k2 <- k[2]
   truths[[id]] <- truth
-  flow <- run_pdm(pdm_from_config(truth), forcing[, c("rain", "pet")])$output$q_m3s *
+  # The river is already flowing when the record starts: steady state, not empty stores.
+  model <- pdm_from_config(truth)
+  flow <- run_pdm(model, forcing[, c("rain", "pet")],
+                  initial_state_from_flow(model, truth$area_km2 / 50, 0.7))$output$q_m3s *
     exp(stats::rnorm(n, 0, 0.04))
   if (id == "B06") forcing$pet[100:110] <- -0.05
   data.table::fwrite(forcing, file.path(folder, "forcing.csv"))
@@ -119,7 +122,7 @@ one_run <- system.time(
 c(seconds_per_run = signif(one_run, 2),
   estimated_minutes_for_8 = round(8 * 1500 * one_run / 60, 1))
 #>         seconds_per_run estimated_minutes_for_8 
-#>                  0.0084                  1.7000
+#>                  0.0061                  1.2000
 ```
 
 For a real batch, measure on a few catchments first; see the pilot
@@ -143,9 +146,9 @@ part <- do.call(calibrate_batch, c(list(basins, results, only = c("B01", "B02", 
 part
 #>     basin  state     step seconds message
 #>    <char> <char>   <char>   <num>  <char>
-#> 1:    B01   done complete     5.8        
-#> 2:    B02   done complete     5.1        
-#> 3:    B03   done complete     6.0
+#> 1:    B01   done complete     6.2        
+#> 2:    B02   done complete     6.1        
+#> 3:    B03   done complete     6.1
 ```
 
 Suppose the computer was switched off at this point, after three
@@ -163,11 +166,11 @@ status
 #> 1:    B01   done complete     0.0                                            
 #> 2:    B02   done complete     0.0                                            
 #> 3:    B03   done complete     0.0                                            
-#> 4:    B04   done complete     5.9                                            
-#> 5:    B05   done complete     6.1                                            
+#> 4:    B04   done complete     6.8                                            
+#> 5:    B05   done complete     6.7                                            
 #> 6:    B06 failed register     0.0 pet must contain finite nonnegative numbers
-#> 7:    B07   done complete     5.0                                            
-#> 8:    B08   done complete     7.5
+#> 7:    B07   done complete     6.0                                            
+#> 8:    B08   done complete     7.3
 ```
 
 The three finished catchments took a moment each: the batch read their
@@ -213,11 +216,11 @@ status
 #> 1:    B01   done complete     0.0        
 #> 2:    B02   done complete     0.0        
 #> 3:    B03   done complete     0.0        
-#> 4:    B04   done complete     5.9        
-#> 5:    B05   done complete     6.1        
-#> 6:    B06   done complete     6.1        
-#> 7:    B07   done complete     5.0        
-#> 8:    B08   done complete     7.5
+#> 4:    B04   done complete     6.8        
+#> 5:    B05   done complete     6.7        
+#> 6:    B06   done complete     7.7        
+#> 7:    B07   done complete     6.0        
+#> 8:    B08   done complete     7.3
 ```
 
 The failed attempt is still on record in B06’s project, followed by the
@@ -277,11 +280,11 @@ table[, .(project, state, calibration = round(candidate_score, 3),
 #>    project  state calibration validation
 #>     <char> <char>       <num>      <num>
 #> 1:     B01   done       0.982      0.980
-#> 2:     B02   done       0.989      0.995
-#> 3:     B03   done       0.971      0.968
+#> 2:     B02   done       0.990      0.995
+#> 3:     B03   done       0.968      0.968
 #> 4:     B04   done       0.981      0.995
-#> 5:     B05   done       0.982      0.921
-#> 6:     B06   done       0.977      0.979
+#> 5:     B05   done       0.973      0.924
+#> 6:     B06   done       0.978      0.979
 #> 7:     B07   done       0.992      0.994
 #> 8:     B08   done       0.989      0.993
 ```
@@ -328,15 +331,15 @@ agreement <- do.call(rbind, lapply(table$project, function(id) {
 }))
 agreement$agree <- (agreement$worst - agreement$best) < 1e-3
 agreement
-#>   basin    best  worst finished agree
-#> 1   B01 0.01760 0.0176        0  TRUE
-#> 2   B02 0.01060 0.1920        1 FALSE
-#> 3   B03 0.02910 0.0302        0 FALSE
-#> 4   B04 0.01910 0.0633        0 FALSE
-#> 5   B05 0.01790 0.0181        1  TRUE
-#> 6   B06 0.02260 0.3070        0 FALSE
-#> 7   B07 0.00814 0.0260        1 FALSE
-#> 8   B08 0.01140 0.0149        1 FALSE
+#>   basin    best   worst finished agree
+#> 1   B01 0.01770 0.01810        1  TRUE
+#> 2   B02 0.01040 0.09760        2 FALSE
+#> 3   B03 0.03240 0.03240        0  TRUE
+#> 4   B04 0.01850 0.03730        0 FALSE
+#> 5   B05 0.02740 0.02750        2  TRUE
+#> 6   B06 0.02150 0.35900        0 FALSE
+#> 7   B07 0.00813 0.00816        1  TRUE
+#> 8   B08 0.01050 0.01070        1  TRUE
 ```
 
 `finished` counts the starts that ended because they could improve no
@@ -386,11 +389,11 @@ typical <- aggregate(cbind(typical_error = error) ~ parameter, data = pairs,
                      FUN = function(x) round(stats::median(x), 3))
 typical
 #>   parameter typical_error
-#> 1      cmax         0.015
+#> 1      cmax         0.036
 #> 2        fc         0.002
-#> 3    k_fast         0.142
-#> 4    k_slow         0.131
-#> 5        kg         0.004
+#> 3    k_fast         0.102
+#> 4    k_slow         0.063
+#> 5        kg         0.010
 best <- typical$parameter[order(typical$typical_error)]
 ```
 
@@ -398,7 +401,7 @@ The typical error is the middle value across catchments, as a fraction:
 0.01 means 1 per cent out. Here fc and kg come back almost exactly: they
 control how much water there is and how the river recedes, which every
 week of record shows. k_fast and k_slow are the furthest out, typically
-about 14 per cent, partly because this example stops each search after
+about 10 per cent, partly because this example stops each search after
 25 steps, before most of them had finished. In other cases a parameter
 is badly off even when the fit is excellent, because the data hold
 little information about it: the size of a soil store that two autumn

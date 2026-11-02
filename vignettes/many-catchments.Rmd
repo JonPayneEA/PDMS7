@@ -66,7 +66,10 @@ for (i in 1:8) {
   truth$surface$k1 <- k[1]
   truth$surface$k2 <- k[2]
   truths[[id]] <- truth
-  flow <- run_pdm(pdm_from_config(truth), forcing[, c("rain", "pet")])$output$q_m3s *
+  # The river is already flowing when the record starts: steady state, not empty stores.
+  model <- pdm_from_config(truth)
+  flow <- run_pdm(model, forcing[, c("rain", "pet")],
+                  initial_state_from_flow(model, truth$area_km2 / 50, 0.7))$output$q_m3s *
     exp(stats::rnorm(n, 0, 0.04))
   if (id == "B06") forcing$pet[100:110] <- -0.05
   data.table::fwrite(forcing, file.path(folder, "forcing.csv"))

@@ -35,7 +35,10 @@ truth$distribution$sdlog <- 0.5
 truth$recharge$kg <- 120
 truth$surface$k1 <- 3
 truth$surface$k2 <- 10
-observed <- run_pdm(pdm_from_config(truth), forcing)$output$q_m3s *
+# The river is already flowing when the record starts: steady state, not empty stores.
+truth_model <- pdm_from_config(truth)
+observed <- run_pdm(truth_model, forcing,
+                    initial_state_from_flow(truth_model, 1, 0.7))$output$q_m3s *
   exp(stats::rnorm(n, 0, 0.04))
 ```
 
@@ -115,26 +118,26 @@ elapsed <- system.time(
                                 reasoning = "Which structure suits this catchment?")
 )[["elapsed"]]
 round(elapsed)
-#> [1] 49
+#> [1] 53
 ranking[, .(rank, structure, parameters, calibration = round(calibration, 4),
             validation = round(validation, 4), change = round(change, 4), starts_agree)]
 #>     rank               structure parameters calibration validation  change
 #>    <int>                  <char>      <int>       <num>      <num>   <num>
-#> 1:     1               lognormal          7      0.9867     0.9337 -0.0531
-#> 2:     2              triangular          6      0.9867     0.9335 -0.0532
-#> 3:     3                standard          7      0.9866     0.9334 -0.0533
-#> 4:     4             rectangular          6      0.9865     0.9327 -0.0538
-#> 5:     5 exponential_groundwater          8      0.9866     0.9326 -0.0541
-#> 6:     6             exponential          6      0.9856     0.9324 -0.0532
-#> 7:     7                  demand          9      0.9781     0.8453 -0.1328
-#> 8:     8                   split          7      0.5969     0.7813  0.1844
+#> 1:     1              triangular          6      0.9903     0.9335 -0.0568
+#> 2:     2                standard          7      0.9903     0.9333 -0.0570
+#> 3:     3               lognormal          7      0.9902     0.9329 -0.0573
+#> 4:     4             rectangular          6      0.9902     0.9329 -0.0574
+#> 5:     5 exponential_groundwater          8      0.9900     0.9328 -0.0572
+#> 6:     6             exponential          6      0.9902     0.9325 -0.0577
+#> 7:     7                  demand          9      0.9825     0.8811 -0.1014
+#> 8:     8                   split          7      0.9693     0.8290 -0.1404
 #>    starts_agree
 #>          <lgcl>
 #> 1:         TRUE
 #> 2:         TRUE
-#> 3:         TRUE
+#> 3:        FALSE
 #> 4:         TRUE
-#> 5:        FALSE
+#> 5:         TRUE
 #> 6:        FALSE
 #> 7:        FALSE
 #> 8:         TRUE
@@ -160,11 +163,12 @@ on validation at the top.
 
 ## Reading the ranking
 
-The true structure, `lognormal`, ranks first. But it would be wrong to
-conclude much from that: 6 structures lie within 0.005 NSE of it on
-validation, a spread of 0.0013. Over six weeks of autumn data the soil
-stores never fill or empty far enough to tell their shapes apart. A
-difference that small is a tie, not a result.
+The true structure, `lognormal`, ranks 3rd of 8, 0.0006 NSE behind the
+top. Either way it would be wrong to conclude much from that: 6
+structures lie within 0.005 NSE of it on validation, a spread of 0.001.
+Over six weeks of autumn data the soil stores never fill or empty far
+enough to tell their shapes apart. A difference that small is a tie, not
+a result.
 
 The recharge rule is another matter. `demand` and `split` recharge lose
 clearly, on both windows: they move water to groundwater in ways this
@@ -178,10 +182,9 @@ Three things to read in any comparison:
 - **The change from calibration to validation.** A structure that gains
   in calibration and loses in validation is fitting noise with its extra
   parameters.
-- **Whether the starts agreed.** Where they did not, as for
-  exponential_groundwater, exponential, demand, the structure may have
-  been under-calibrated; give it more starts or iterations before ruling
-  it out.
+- **Whether the starts agreed.** Where they did not, as for lognormal,
+  exponential, demand, the structure may have been under-calibrated;
+  give it more starts or iterations before ruling it out.
 
 Faced with a tie, prefer the simplest structure, the one with fewest
 parameters, among those within a stated margin of the best. Stating the
@@ -212,7 +215,7 @@ final <- test_candidate(project, "Final check on held-back data.")
 round(c(calibration = final$calibration_scores$nse,
         validation = final$validation_scores$nse, test = final$test_scores$nse), 4)
 #> calibration  validation        test 
-#>      0.9867      0.9335      0.9209
+#>      0.9903      0.9335      0.9197
 ```
 
 The test score is the honest estimate of how the chosen model will do on

@@ -25,6 +25,7 @@ app_files <- function(env = parent.frame()) {
 
 entry_types <- function(project) read_project(project)$entries$type
 
+# Guards: every tab drives the real log functions end to end, so the app and the R API cannot drift
 test_that("the app runs a calibration from setup to sign-off", {
   skip_if_not_installed("shiny")
   f <- app_files()
@@ -93,6 +94,7 @@ test_that("the app runs a calibration from setup to sign-off", {
   })
 })
 
+# Guards: a bad form submission shows an error and writes nothing to the log
 test_that("the app refuses empty changes and bad input without writing", {
   skip_if_not_installed("shiny")
   p <- new_project() # nolint: object_usage_linter.
@@ -112,6 +114,7 @@ test_that("the app refuses empty changes and bad input without writing", {
   expect_length(entry_types(p$folder), 3L)
 })
 
+# Guards: opening an existing project and building the app object both work
 test_that("the app opens a project and the launcher builds an app", {
   skip_if_not_installed("shiny")
   p <- new_project() # nolint: object_usage_linter.
@@ -129,6 +132,7 @@ test_that("the app opens a project and the launcher builds an app", {
   expect_false("area_km2" %in% .editable_paths(pdm_presets("standard")))
 })
 
+# Guards: thresholds typed as text reach register_data() and the threshold objective
 test_that("the app registers thresholds and runs a threshold calibration", {
   skip_if_not_installed("shiny")
   f <- app_files()
@@ -169,6 +173,7 @@ test_that("the app registers thresholds and runs a threshold calibration", {
   expect_error(.parse_thresholds("A, 1"), "name, value")
 })
 
+# Guards: the Structures tab runs compare_structures() and renders its table
 test_that("the app compares structures and shows the ranking", {
   skip_if_not_installed("shiny")
   p <- new_project() # nolint: object_usage_linter.
@@ -183,4 +188,17 @@ test_that("the app compares structures and shows the ranking", {
     session$setInputs(compare = 2)
   })
   expect_equal(nrow(structure_comparison(p$folder)), 2L)
+})
+
+# Guards: closing the app restores the identity options the session had before
+test_that("the app restores the identity options when it closes", {
+  skip_if_not_installed("shiny")
+  old <- options(pdmS7.user = "Before", pdmS7.role = "steward")
+  on.exit(options(old), add = TRUE)
+  shiny::testServer(.app_server(NULL), {
+    session$setInputs(user = "In The App", role = "custodian")
+    expect_equal(getOption("pdmS7.user"), "In The App")
+  })
+  expect_equal(getOption("pdmS7.user"), "Before")
+  expect_equal(getOption("pdmS7.role"), "steward")
 })

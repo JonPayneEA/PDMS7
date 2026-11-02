@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -83,6 +83,7 @@
     <li><a class="dropdown-item" href="../benchmark-protocol.html">Benchmark protocol</a></li>
     <li><a class="dropdown-item" href="../calibration-log-design.html">Calibration log design</a></li>
     <li><a class="dropdown-item" href="../validation.html">Validation</a></li>
+    <li><a class="dropdown-item" href="../code-review.html">Code review</a></li>
     <li><a class="dropdown-item" href="../multi-objective.html">Multi-objective calibration</a></li>
     <li><a class="dropdown-item" href="../snow-model.html">Snow model notes</a></li>
     <li><a class="dropdown-item" href="../source-notes.html">Source notes</a></li>
@@ -170,7 +171,10 @@ flow of a “true” catchment with gauging noise and a three-day gap.</p>
 <span><span class="va">truth</span><span class="op">$</span><span class="va">recharge</span><span class="op">$</span><span class="va">kg</span> <span class="op">&lt;-</span> <span class="fl">60</span></span>
 <span><span class="va">truth</span><span class="op">$</span><span class="va">surface</span><span class="op">$</span><span class="va">k1</span> <span class="op">&lt;-</span> <span class="fl">3</span></span>
 <span><span class="va">truth</span><span class="op">$</span><span class="va">surface</span><span class="op">$</span><span class="va">k2</span> <span class="op">&lt;-</span> <span class="fl">8</span></span>
-<span><span class="va">observed</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_pdm.html">run_pdm</a></span><span class="op">(</span><span class="fu"><a href="../reference/pdm_from_config.html">pdm_from_config</a></span><span class="op">(</span><span class="va">truth</span><span class="op">)</span>, <span class="va">forcing</span><span class="op">)</span><span class="op">$</span><span class="va">output</span><span class="op">$</span><span class="va">q_m3s</span> <span class="op">*</span></span>
+<span><span class="co"># The river is already flowing when the record starts: steady state, not empty stores.</span></span>
+<span><span class="va">truth_model</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pdm_from_config.html">pdm_from_config</a></span><span class="op">(</span><span class="va">truth</span><span class="op">)</span></span>
+<span><span class="va">observed</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_pdm.html">run_pdm</a></span><span class="op">(</span><span class="va">truth_model</span>, <span class="va">forcing</span>,</span>
+<span>                    <span class="fu"><a href="../reference/initial_state_from_flow.html">initial_state_from_flow</a></span><span class="op">(</span><span class="va">truth_model</span>, <span class="fl">1</span>, <span class="fl">0.7</span><span class="op">)</span><span class="op">)</span><span class="op">$</span><span class="va">output</span><span class="op">$</span><span class="va">q_m3s</span> <span class="op">*</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n</span>, <span class="fl">0</span>, <span class="fl">0.04</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">observed</span><span class="op">[</span><span class="fl">1500</span><span class="op">:</span><span class="fl">1572</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="cn">NA</span></span></code></pre></div>
 </div>
@@ -224,7 +228,9 @@ can look before you commit.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">preview</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calibration_log.html">preview_trial</a></span><span class="op">(</span><span class="va">project</span>, parent <span class="op">=</span> <span class="fl">3</span>, changes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>fc <span class="op">=</span> <span class="fl">1.15</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">rows</span> <span class="op">&lt;-</span> <span class="va">preview</span><span class="op">$</span><span class="va">rows</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="op">(</span><span class="fl">24</span> <span class="op">*</span> <span class="fl">30</span><span class="op">)</span><span class="op">]</span></span>
-<span><span class="va">parent</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_pdm.html">run_pdm</a></span><span class="op">(</span><span class="fu"><a href="../reference/pdm_from_config.html">pdm_from_config</a></span><span class="op">(</span><span class="va">start</span><span class="op">)</span>, <span class="va">forcing</span><span class="op">)</span><span class="op">$</span><span class="va">output</span><span class="op">$</span><span class="va">q_m3s</span></span>
+<span><span class="va">parent_model</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pdm_from_config.html">pdm_from_config</a></span><span class="op">(</span><span class="va">start</span><span class="op">)</span></span>
+<span><span class="va">parent</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_pdm.html">run_pdm</a></span><span class="op">(</span><span class="va">parent_model</span>, <span class="va">forcing</span>,</span>
+<span>                  <span class="fu"><a href="../reference/initial_state_from_flow.html">initial_state_from_flow</a></span><span class="op">(</span><span class="va">parent_model</span>, <span class="va">observed</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>, <span class="fl">0.7</span><span class="op">)</span><span class="op">)</span><span class="op">$</span><span class="va">output</span><span class="op">$</span><span class="va">q_m3s</span></span>
 <span><span class="va">top</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">observed</span><span class="op">[</span><span class="va">rows</span><span class="op">]</span>, <span class="va">parent</span><span class="op">[</span><span class="va">rows</span><span class="op">]</span>, <span class="va">preview</span><span class="op">$</span><span class="va">simulated</span><span class="op">[</span><span class="va">rows</span><span class="op">]</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">*</span> <span class="fl">1.25</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span>mar <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">4.2</span>, <span class="fl">0.6</span>, <span class="fl">0.6</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">time</span><span class="op">[</span><span class="va">rows</span><span class="op">]</span>, <span class="va">observed</span><span class="op">[</span><span class="va">rows</span><span class="op">]</span>, pch <span class="op">=</span> <span class="fl">16</span>, cex <span class="op">=</span> <span class="fl">0.3</span>, col <span class="op">=</span> <span class="va">pal</span><span class="op">[</span><span class="fl">5</span><span class="op">]</span>, xlab <span class="op">=</span> <span class="st">""</span>,</span>
@@ -242,8 +248,8 @@ The preview against its parent over part of the calibration window.
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span>parent <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/unlist.html" class="external-link">unlist</a></span><span class="op">(</span><span class="fu"><a href="../reference/read_project.html">project_trials</a></span><span class="op">(</span><span class="va">project</span><span class="op">)</span><span class="op">[</span><span class="fl">1</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nse"</span>, <span class="st">"volume_error"</span>, <span class="st">"kge_alpha"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span>,</span>
 <span>            preview <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/unlist.html" class="external-link">unlist</a></span><span class="op">(</span><span class="va">preview</span><span class="op">$</span><span class="va">scores</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nse"</span>, <span class="st">"volume_error"</span>, <span class="st">"kge_alpha"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt;           nse volume_error kge_alpha</span></span>
-<span><span class="co">#&gt; parent  0.794       -0.118     1.070</span></span>
-<span><span class="co">#&gt; preview 0.779        0.014     1.256</span></span></code></pre></div>
+<span><span class="co">#&gt; parent  0.794       -0.117     1.071</span></span>
+<span><span class="co">#&gt; preview 0.778        0.014     1.257</span></span></code></pre></div>
 <p>The volume error has gone from 12 per cent too dry to near zero, but
 the NSE has fallen slightly: the variability ratio shows the peaks are
 now too large. The trial is still an improvement, because the water
@@ -289,9 +295,9 @@ like a trial, with its bounds, seed and the table of every start.</p>
 <span><span class="co">#&gt; 6:   0008   auto_calibration   0007                                     </span></span>
 <span><span class="co">#&gt;    verdict   nse volume_error</span></span>
 <span><span class="co">#&gt;     &lt;char&gt; &lt;num&gt;        &lt;num&gt;</span></span>
-<span><span class="co">#&gt; 1:    &lt;NA&gt; 0.794       -0.118</span></span>
-<span><span class="co">#&gt; 2:  better 0.779        0.014</span></span>
-<span><span class="co">#&gt; 3:   worse 0.196        0.020</span></span>
+<span><span class="co">#&gt; 1:    &lt;NA&gt; 0.794       -0.117</span></span>
+<span><span class="co">#&gt; 2:  better 0.778        0.014</span></span>
+<span><span class="co">#&gt; 3:   worse 0.194        0.021</span></span>
 <span><span class="co">#&gt; 4:  better 0.982        0.001</span></span>
 <span><span class="co">#&gt; 5:  better 0.987        0.001</span></span>
 <span><span class="co">#&gt; 6:    &lt;NA&gt; 0.987        0.001</span></span>
@@ -355,8 +361,8 @@ one event.</p>
 <span><span class="co">#&gt; 3   Flood Alert  validation               3    1      2            1 0.33 0.5</span></span>
 <span><span class="co">#&gt; 4 Flood Warning  validation               1    0      1            0 0.00  NA</span></span>
 <span><span class="co">#&gt;    csi crossing_error_h csi_step</span></span>
-<span><span class="co">#&gt; 1 0.75             0.67     0.97</span></span>
-<span><span class="co">#&gt; 2 0.67             1.50     0.92</span></span>
+<span><span class="co">#&gt; 1 0.75             0.67     0.96</span></span>
+<span><span class="co">#&gt; 2 0.67             1.75     0.92</span></span>
 <span><span class="co">#&gt; 3 0.25             0.00     0.76</span></span>
 <span><span class="co">#&gt; 4 0.00               NA     0.00</span></span></code></pre></div>
 <p>Two lessons. First, a high NSE does not guarantee warning skill: the
@@ -475,7 +481,7 @@ answers it. It is off by default.</p>
 <span>                   <span class="va">project</span>, <span class="va">sign_off</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="co">#&gt;                          tag fingerprint  rows status   approval</span></span>
 <span><span class="co">#&gt;                       &lt;char&gt;      &lt;char&gt; &lt;int&gt; &lt;char&gt;     &lt;char&gt;</span></span>
-<span><span class="co">#&gt; 1: forecast 2024-02-01 06:00    b826a8a0   181     ok   approved</span></span>
+<span><span class="co">#&gt; 1: forecast 2024-02-01 06:00    ba4afeec   181     ok   approved</span></span>
 <span><span class="co">#&gt; 2: forecast 2024-02-01 06:00    ec8dc73e   181     ok unapproved</span></span>
 <span><span class="co">#&gt;              project sign_off</span></span>
 <span><span class="co">#&gt;               &lt;char&gt;   &lt;char&gt;</span></span>

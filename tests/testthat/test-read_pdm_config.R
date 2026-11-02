@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         test-read_pdm_config
-# Description:  Configurable PDM framework: test-read_pdm_config
+# Description:  Tests for reading and writing YAML configurations
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
@@ -11,6 +11,7 @@
 # Dependencies: S7; data.table; yaml; logger (structured logging; no fastverse equivalent)
 # ============================================================ #
 
+# Guards: a configuration file and the same list build identical models
 test_that(
   "YAML builds the same model as the list configuration",
   {
@@ -33,6 +34,7 @@ test_that(
   }
 )
 
+# Guards: misspelled keys and !expr code in YAML are refused
 test_that(
   "YAML rejects unknown fields and executable expressions",
   {
@@ -51,6 +53,7 @@ test_that(
   }
 )
 
+# Guards: writing then reading a configuration loses no precision
 test_that("write_pdm_config round-trips every number exactly", {
   path <- tempfile(fileext = ".yml")
   on.exit(unlink(path))

@@ -11,6 +11,10 @@
 # Dependencies: grDevices
 # ============================================================ #
 
+# The report is built as a list of blocks (heading, paragraph, list, code, alert, table, figure)
+# and rendered twice: as one self-contained HTML file and as Markdown. Keeping the content
+# separate from the format means both outputs always say the same thing. Base R only.
+
 # ---- Blocks ------------------------------------------------------------------------------
 
 .blk_h <- function(text, level = 2L) list(kind = "heading", text = text, level = level)
@@ -21,6 +25,7 @@
 .blk_table <- function(table, caption = NULL) {
   list(kind = "table", table = as.data.frame(table), caption = caption)
 }
+# A figure block holds a function that draws it, called once when the report is rendered.
 .blk_fig <- function(name, draw, caption, width = 9, height = 4.5) {
   list(kind = "figure", name = name, draw = draw, caption = caption, width = width,
        height = height)
@@ -28,6 +33,8 @@
 
 # ---- Figures -----------------------------------------------------------------------------
 
+# Draws a figure to a PNG file, with the cairo device where available for clean text, and
+# restores the graphics settings afterwards.
 .draw_png <- function(file, draw, width, height) {
   type <- if (isTRUE(capabilities("cairo"))) "cairo" else NULL
   args <- list(filename = file, width = width, height = height, units = "in", res = 110)
@@ -40,6 +47,8 @@
   invisible(file)
 }
 
+# Base64 encoding, so figures can be embedded in the HTML and the report is one file that can be
+# emailed or archived. Three bytes become four characters; the tail is padded with '='.
 .base64 <- function(bytes) {
   chars <- c(LETTERS, letters, 0:9, "+", "/")
   n <- length(bytes)
@@ -55,6 +64,8 @@
 
 # ---- Formatting --------------------------------------------------------------------------
 
+# Every piece of text written into HTML is escaped, including user-written reasoning, so a note
+# cannot break or inject markup.
 .html_escape <- function(x) {
   x <- gsub("&", "&amp;", as.character(x), fixed = TRUE)
   x <- gsub("<", "&lt;", x, fixed = TRUE)
@@ -62,6 +73,7 @@
   gsub("\"", "&quot;", x, fixed = TRUE)
 }
 
+# Table cell text: numbers to four significant figures, missing values blank.
 .cell_text <- function(x) {
   if (is.numeric(x)) {
     out <- ifelse(is.na(x), "", formatC(x, digits = 4, format = "g", flag = "-"))
@@ -72,6 +84,7 @@
   out
 }
 
+# A Markdown table cell may not contain a pipe or a line break.
 .md_cell <- function(x) gsub("|", "\\|", gsub("\n", " ", x, fixed = TRUE), fixed = TRUE)
 
 # ---- HTML --------------------------------------------------------------------------------
@@ -173,6 +186,8 @@ pre { background: var(--code); padding: 12px; overflow-x: auto; font-size: 0.85e
 
 # ---- Writing -----------------------------------------------------------------------------
 
+# Draws the figures, then writes report.html (figures embedded) and report.md (figures linked
+# from the figures folder). Returns the HTML path.
 .render_report <- function(blocks, output, title) {
   figure_dir <- file.path(output, "figures")
   dir.create(figure_dir, recursive = TRUE, showWarnings = FALSE)

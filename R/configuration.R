@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         configuration
-# Description:  Configurable PDM framework: configuration
+# Description:  Building models from configuration lists; presets; parameter paths
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
@@ -11,13 +11,15 @@
 # Dependencies: S7; data.table; yaml; logger (structured logging; no fastverse equivalent)
 # ============================================================ #
 
+# Configuration is a plain nested list, as read from YAML: each component is a list with a
+# 'type' and its parameters, for example list(type = "pareto", cmax = 140, b = 0.4).
 # Strict list configuration: misspelled/unused parameter names are errors.
+# .component() looks the type up in a registry of constructors and calls it with the remaining
+# entries, so an unknown parameter name fails as an unused argument.
 .component <- function(spec, registry) {
   .check(
-    is.list(spec) &&
-      !is.null(spec$type) &&
-      length(spec$type) ==
-        1L && spec$type %in% names(registry),
+    is.list(spec) && !is.null(spec$type) && length(spec$type) == 1L &&
+      spec$type %in% names(registry),
     paste(
       "type must be one of", paste(
         names(registry),
@@ -26,15 +28,14 @@
     )
   )
   .check(
-    !is.null(names(spec)) &&
-      !anyDuplicated(names(spec)) &&
-      all(nzchar(names(spec))),
+    !is.null(names(spec)) && !anyDuplicated(names(spec)) && all(nzchar(names(spec))),
     "Component configuration must have unique names"
   )
   type <- spec$type
   spec$type <- NULL
   do.call(registry[[type]], spec)
 }
+# Registries: the component types a configuration may name, with their default parameters.
 .dist_registry <- function() {
   list(
     pareto = function(cmin = 0, cmax = 140, b = 0.4) {
@@ -44,8 +45,7 @@
     rectangular = function(cmin = 0, cmax = 200) FlodeRectangularCapacity(cmin = cmin, cmax = cmax),
     triangular = function(cmin = 0, cmax = 200) FlodeTriangularCapacity(cmin = cmin, cmax = cmax),
     exponential = function(mean = 100) FlodeExponentialCapacity(mean = mean),
-    lognormal = function(meanlog = log(100) -
-                           0.5, sdlog = 1) {
+    lognormal = function(meanlog = log(100) - 0.5, sdlog = 1) {
       FlodeLognormalCapacity(meanlog = meanlog, sdlog = sdlog)
     }
   )
@@ -84,19 +84,16 @@
 #'
 #' @references Moore (2007), doi:10.5194/hess-11-483-2007.
 #' @export
+# Builds a model from a configuration list. Top-level keys must be known; each component is built
+# through its registry; anything omitted takes pdm_model()'s default.
 pdm_from_config <- function(config) {
   allowed <- c(
     "distribution", "recharge", "surface", "groundwater", "be", "fc", "td", "qc", "area_km2",
     "dt"
   )
   .check(
-    is.list(config) &&
-      !is.null(names(config)) &&
-      !anyDuplicated(names(config)) &&
-      all(
-        names(config) %in%
-          allowed
-      ),
+    is.list(config) && !is.null(names(config)) && !anyDuplicated(names(config)) &&
+      all(names(config) %in% allowed),
     "Config contains unknown/duplicate/unnamed keys"
   )
   if (!is.null(config$distribution)) {
@@ -126,6 +123,8 @@ pdm_from_config <- function(config) {
 #'
 #' @references Moore (2007), doi:10.5194/hess-11-483-2007.
 #' @export
+# Named starting configurations shipped in inst/config/presets.yml. Without a name, lists them.
+# eval.expr = FALSE stops YAML from running R code.
 pdm_presets <- function(name = NULL) {
   path <- system.file("config", "presets.yml", package = "pdmS7")
   presets <- yaml::read_yaml(path, eval.expr = FALSE)
@@ -133,10 +132,7 @@ pdm_presets <- function(name = NULL) {
     return(names(presets))
   }
   .check(
-    is.character(name) &&
-      length(name) ==
-        1L && !is.na(name) &&
-      name %in% names(presets),
+    is.character(name) && length(name) == 1L && !is.na(name) && name %in% names(presets),
     "Unknown preset; call pdm_presets() for names"
   )
   presets[[name]]
@@ -154,18 +150,21 @@ pdm_presets <- function(name = NULL) {
 #'
 #' @references Moore (2007), doi:10.5194/hess-11-483-2007.
 #' @export
+# Every parameter with its units and meaning, from inst/parameter-catalog.csv.
 parameter_catalog <- function() {
   data.table::fread(
     system.file("parameter-catalog.csv", package = "pdmS7"),
     data.table = FALSE
   )
 }
+# Parameters are addressed by dotted paths into the configuration, such as "surface.k1" or "fc".
+# .path_get() reads one, failing on a path that does not exist; .path_set() returns a copy of the
+# configuration with one value replaced (configurations are never modified in place).
 .path_get <- function(config, path) {
   keys <- strsplit(path, ".", fixed = TRUE)[[1]]
   for (key in keys) {
     .check(
-      is.list(config) &&
-        key %in% names(config),
+      is.list(config) && key %in% names(config),
       paste("Unknown parameter path", path)
     )
     config <- config[[key]]
@@ -175,8 +174,7 @@ parameter_catalog <- function() {
 .path_set <- function(config, path, value) {
   keys <- strsplit(path, ".", fixed = TRUE)[[1]]
   descend <- function(obj, keys) {
-    if (length(keys) ==
-          1L) {
+    if (length(keys) == 1L) {
       obj[[keys[1L]]] <- value
     } else {
       obj[[keys[1L]]] <- descend(obj[[keys[1L]]], keys[-1L])

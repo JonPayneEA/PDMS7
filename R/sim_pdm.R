@@ -1,6 +1,6 @@
 # ============================================================ #
 # Tool:         sim_pdm
-# Description:  Configurable PDM framework: sim_pdm
+# Description:  sim_pdm(): vector interface to run_pdm() with warm-up flags
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
@@ -37,16 +37,18 @@
 #'
 #' @references Moore (2007), doi:10.5194/hess-11-483-2007.
 #' @export
+# A vector-in, table-out interface to run_pdm() for callers that think in minutes and plain
+# vectors: it builds the forcing table, sets dt from timestep_min, runs, renames the main outputs
+# (qsim_cms, qsim_end_cms, soil_moisture_mm), flags warm-up rows, and attaches the final state,
+# the model and the water balance as attributes.
 sim_pdm <- function(
   rainfall_mm, pet_mm, params, timestep_min, warmup_steps = 0L, datetime = NULL, state = NULL
 ) {
   .check(
-    length(rainfall_mm) >
-      0L, "rainfall_mm must be non-empty"
+    length(rainfall_mm) > 0L, "rainfall_mm must be non-empty"
   )
   .check(
-    length(rainfall_mm) ==
-      length(pet_mm),
+    length(rainfall_mm) == length(pet_mm),
     "rainfall_mm and pet_mm must have equal length"
   )
   .nonnegative(rainfall_mm, "rainfall_mm")
@@ -57,12 +59,12 @@ sim_pdm <- function(
     "timestep_min must be a positive integer number of minutes"
   )
   .check(
-    .scalar(warmup_steps, 0) &&
-      warmup_steps == floor(warmup_steps) &&
+    .scalar(warmup_steps, 0) && warmup_steps == floor(warmup_steps) &&
       warmup_steps < length(rainfall_mm),
     "warmup_steps must be an integer less than input length"
   )
   timestep_min <- as.integer(timestep_min)
+  # A built model must already have the right step; a configuration list is given it.
   if (S7::S7_inherits(params, FlodePdmModel)) {
     model <- params
     .check(
@@ -80,9 +82,7 @@ sim_pdm <- function(
   forcing_dt <- data.table::data.table(rain = rainfall_mm, pet = pet_mm)
   if (!is.null(datetime)) {
     .check(
-      inherits(datetime, "POSIXct") &&
-        length(datetime) ==
-          length(rainfall_mm) &&
+      inherits(datetime, "POSIXct") && length(datetime) == length(rainfall_mm) &&
         all(is.finite(as.numeric(datetime))),
       "datetime must be complete POSIXct with input length"
     )
@@ -115,8 +115,7 @@ sim_pdm <- function(
   }
   data.table::set(
     output_dt,
-    j = "is_warmup", value = seq_len(nrow(output_dt)) <=
-      warmup_steps
+    j = "is_warmup", value = seq_len(nrow(output_dt)) <= warmup_steps
   )
   data.table::setattr(output_dt, "final_state", result$state)
   data.table::setattr(output_dt, "model", model)

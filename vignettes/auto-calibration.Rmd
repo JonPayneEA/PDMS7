@@ -51,11 +51,12 @@ truth <- pdm_presets("standard")
 truth$area_km2 <- 50
 truth$recharge$kg <- 300
 truth$distribution$cmax <- 120
-run <- function(config) {
+# Runs start in steady state at a given flow, as calibrate_pdm() does at the first observed flow.
+run <- function(config, start_flow = observed[1]) {
   model <- pdm_from_config(config)
-  run_pdm(model, forcing, initial_state(model, 0.5))$output$q_m3s
+  run_pdm(model, forcing, initial_state_from_flow(model, start_flow, 0.7))$output$q_m3s
 }
-observed <- run(truth) * exp(stats::rnorm(n, 0, 0.03))
+observed <- run(truth, start_flow = 0.6) * exp(stats::rnorm(n, 0, 0.03))
 warning_flow <- c(`Flood Warning` = 3.7)
 scored <- 241:n # the first ten days are warm-up
 ```
@@ -237,12 +238,18 @@ rbind(nse_only = summarise(nse_only), with_threshold = summarise(with_threshold)
 with_threshold$objective_name
 ```
 
-Asking for the Flood Warning as well made the search find parameters that catch the one
-Flood Warning event the first calibration missed: CSI went from 0.89 to a perfect 1. The
-overall fit hardly changed (NSE fell in the fourth decimal place, too little to see on a
-hydrograph). The price was computer time: about twice as many model runs. That is the usual
-bargain: a small, deliberate nudge to the parameters for the sake of the warnings, not a
-different model.
+```{r threshold-numbers, include=FALSE}
+compare <- rbind(summarise(nse_only), summarise(with_threshold))
+csi_text <- sprintf("%.2f", compare[, "csi"])
+runs_ratio <- compare[2, "model_runs"] / compare[1, "model_runs"]
+nse_change <- compare[2, "nse"] - compare[1, "nse"]
+```
+
+`r if (compare[2, "csi"] > compare[1, "csi"]) paste0("Asking for the Flood Warning as well made the search find parameters that catch it better: CSI went from ", csi_text[1], " to ", csi_text[2], ".") else paste0("Here both searches already catch the Flood Warning equally well (CSI ", csi_text[1], "), so the threshold term had nothing to add.")`
+The overall fit `r if (abs(nse_change) < 0.001) "hardly changed: NSE moved by less than 0.001, too little to see on a hydrograph" else sprintf("changed by %+.3f in NSE", nse_change)`.
+The threshold search took `r sprintf("%.1f", runs_ratio)` times as many model runs. The usual
+bargain, when the threshold term does help, is a small, deliberate nudge to the parameters for
+the sake of the warnings, not a different model.
 
 Some guidance:
 

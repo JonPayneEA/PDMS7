@@ -40,6 +40,7 @@
 #'   calibration_app()
 #' }
 #' @export
+# Launches the app. shiny is only suggested, so it is checked for here rather than imported.
 calibration_app <- function(project = NULL) {
   .check(requireNamespace("shiny", quietly = TRUE),
          "The calibration app needs the shiny package: install.packages(\"shiny\")")
@@ -50,10 +51,10 @@ calibration_app <- function(project = NULL) {
 
 # Every numeric parameter a calibrator may adjust, zeros included.
 .editable <- function(key, v) {
-  is.numeric(v) && length(v) == 1L && !key %in% c("area_km2", "dt") &&
-    !grepl("(rtol|atol)$", key)
+  is.numeric(v) && length(v) == 1L && !key %in% c("area_km2", "dt") && !grepl("(rtol|atol)$", key)
 }
 
+# Dotted paths of every editable parameter in a configuration, for the trial form.
 .editable_paths <- function(config, prefix = NULL) {
   out <- character(0)
   for (n in names(config)) {
@@ -66,8 +67,10 @@ calibration_app <- function(project = NULL) {
   out
 }
 
+# Shiny input ids cannot contain dots, so surface.k1 becomes p_surface__k1.
 .input_id <- function(path) paste0("p_", gsub(".", "__", path, fixed = TRUE))
 
+# Labels for the parent-run menu: id, type and headline score.
 .node_choices <- function(nodes, headline) {
   if (!length(nodes)) return(character(0))
   labels <- vapply(nodes, function(e) {
@@ -102,6 +105,7 @@ calibration_app <- function(project = NULL) {
   names[keep]
 }
 
+# Parent and trial scores side by side, with the change, for the trial preview.
 .score_table <- function(parent, trial) {
   names <- .shown_scores(names(trial))
   p <- vapply(names, function(n) .num_or_na(parent[[n]]), numeric(1))
@@ -110,6 +114,7 @@ calibration_app <- function(project = NULL) {
              change = signif(t - p, 3), row.names = NULL)
 }
 
+# Observed flow (points) and several runs (lines) on one plot, optionally zoomed.
 .plot_compare <- function(time, observed, runs, xlim = NULL) {
   graphics::par(mar = c(3, 4.2, 0.6, 0.6))
   cols <- c(.pal[["blue"]], .pal[["orange"]])[seq_along(runs)]
@@ -127,10 +132,12 @@ calibration_app <- function(project = NULL) {
 
 # ---- UI ----------------------------------------------------------------------------------
 
+# A full-width text box for reasoning and notes.
 .text_area <- function(id, label, placeholder = "") {
   shiny::textAreaInput(id, label, rows = 3, width = "100%", placeholder = placeholder)
 }
 
+# The page: an identity bar (name, role, project folder) above one tab per stage of the work.
 .app_ui <- function(project) {
   roles <- c(Custodian = "custodian", Steward = "steward",
              "Delegated Steward" = "delegated_steward")
@@ -155,6 +162,7 @@ calibration_app <- function(project = NULL) {
   )
 }
 
+# The layout of each tab follows. Inputs are named to match the server code in app_server.R.
 .ui_setup <- function() {
   start <- shiny::column(
     4,

@@ -39,11 +39,14 @@
 
 /* ---- Utilities ----------------------------------------------------------------------------- */
 
+/* The first error raised during a call: its PDM_ERR_* code and a message for the caller. */
 typedef struct {
   int32_t code;
   char text[256];
 } pdm_error;
 
+/* Records an error unless one is already recorded: the first failure is the informative one,
+   and later failures are usually its consequences. */
 static void set_error(pdm_error* e, int32_t code, const char* text) {
   if (e->code != PDM_OK) return;
   e->code = code;
@@ -60,6 +63,9 @@ static int check(pdm_error* e, int ok, const char* text) {
 static double dmin(double a, double b) { return b < a ? b : a; }
 static double dmax(double a, double b) { return a < b ? b : a; }
 
+/* x^y as R computes it (R_pow in R's arithmetic.c): squaring by multiplication, and exact
+   results for the special cases, before falling back to pow(). Needed for bit-identical results
+   with the R engine. */
 static double rpow(double x, double y) {
   if (y == 2.0) return x * x;
   if (x == 1.0 || y == 0.0) return 1.0;
@@ -71,6 +77,9 @@ static double rpow(double x, double y) {
   return pow(x, y);
 }
 
+/* R's sum() of a numeric vector: accumulated in long double, rounded to double once at the end.
+   rsum2() is the same for two scalars. Using plain double addition here would change the last
+   bits of the water balance and break bit-identity with the R engine. */
 static double rsum(const double* x, size_t n) {
   long double s = 0.0L;
   size_t i;
@@ -89,6 +98,7 @@ static double rsum2(double a, double b) {
 
 /* The rectangular distribution is computed as Pareto with b = 1, as in R (.as_uniform), and its
    capacity mean comes from the same Pareto formula. */
+/* One capacity distribution, with its Smax computed once. type is a PDM_DIST_* code. */
 typedef struct {
   int type;
   double cmin, cmax, b, mean, meanlog, sdlog;
@@ -101,6 +111,8 @@ static const double k_pi = 3.141592653589793;
 static double pnorm_lower(double x) { return 0.5 * erfc(-x / sqrt(2.0)); }
 static double pnorm_upper(double x) { return 0.5 * erfc(x / sqrt(2.0)); }
 
+/* Copies the distribution fields out of the parameters and computes Smax (Eq. 5): the mean
+   capacity, which is the most water the soil store can hold. */
 static dist_t make_dist(const pdm_params* in) {
   dist_t d;
   d.type = in->distribution;
@@ -227,6 +239,8 @@ static double storage_from_cap(const dist_t* d, double c) {
   return c < d->cmin ? c : out;
 }
 
+/* Capacity CDF F(c): the share of the catchment whose stores are no larger than c. At the
+   critical capacity it is the saturated fraction reported in the flux table. */
 static double cap_cdf(const dist_t* d, double c) {
   double z;
   if (d->type == PDM_DIST_EXPONENTIAL) return -expm1(-c / d->mean);
@@ -246,6 +260,8 @@ static double cap_cdf(const dist_t* d, double c) {
 
 /* ---- Routing ------------------------------------------------------------------------------- */
 
+/* A cascade has two stores; every other route has one. The state array always reserves two
+   slots per route, the second zero for a single store. */
 static int store_count(const pdm_route* r) {
   return r->type == PDM_ROUTE_CASCADE ? 2 : 1;
 }
@@ -255,6 +271,8 @@ static double store_sum(const pdm_route* r, const double* s) {
   return store_count(r) == 2 ? rsum2(s[0], s[1]) : s[0];
 }
 
+/* Result of one routing step: the volume released over the step (mm) and the flow at its end
+   (mm/h). The storage itself is updated in place. */
 typedef struct {
   double outflow, q_end;
 } route_out;
@@ -405,6 +423,7 @@ static route_out exponential_step(const pdm_route* p, double* store, double u, d
   return r;
 }
 
+/* Dispatches one routing step to the method for the route's type. */
 static route_out route_step(const pdm_route* p, double* store, double u, double dt,
                             pdm_error* e) {
   switch (p->type) {
@@ -422,6 +441,8 @@ static double storage_for_flow(const pdm_route* p, double q) {
 
 /* ---- Validation ---------------------------------------------------------------------------- */
 
+/* Collects the names of every invalid parameter, so one message lists them all, as the S7
+   validators do. Names that do not fit are dropped rather than overflow the buffer. */
 typedef struct {
   char text[256];
   int any;
@@ -549,10 +570,13 @@ static int validate(const pdm_params* in, pdm_error* e) {
   return 1;
 }
 
+/* Slots in each delay queue: enough whole steps to hold water for td hours, plus one. */
 static int64_t pending_length(const pdm_params* in) {
   return (int64_t)floor(in->td / in->dt) + 1;
 }
 
+/* Checks one route's two state slots: finite, nonnegative (an exponential store's coordinate
+   may be negative), and the unused second slot of a single store exactly zero. */
 static int validate_route_state(const pdm_route* r, const double* s, pdm_error* e) {
   int signed_ok = r->type == PDM_ROUTE_EXPONENTIAL;
   if (!(isfinite(s[0]) && (signed_ok || s[0] >= 0))) {
@@ -607,6 +631,9 @@ static int validate_state(const pdm_params* in, const double* state, int64_t sta
 /* ---- Time loop ----------------------------------------------------------------------------- */
 
 /* model.R, .delay. */
+/* Pushes this step's value into a delay queue of len slots and returns the value due now. A
+   delay of ratio steps is split between the two neighbouring whole steps in proportion, so volume
+   is conserved. work is scratch space of len + 1 doubles. */
 static double delay(double* pending, double* work, size_t len, double value, double ratio) {
   double n = floor(ratio);
   double fraction = ratio - n;
@@ -655,6 +682,8 @@ static double recharge_depth(const pdm_params* in, double soil, double smax, dou
   }
 }
 
+/* All water held in the model, mm: soil, both routes and the two volume delay queues (the
+   endpoint queues hold flows, not volumes). Added in the same order as R's sum(). */
 static double total_storage(double soil, const pdm_route* srf, const double* surface,
                             const pdm_route* gwr, const double* ground, const double* ds,
                             const double* dg, size_t n_pending) {
@@ -671,6 +700,8 @@ static double total_storage(double soil, const pdm_route* srf, const double* sur
 static void run(const pdm_params* in, const double* rain, const double* pet, int64_t n_steps,
                 double* state, double* q, double* q_end, double* fluxes, double* buffer,
                 pdm_error* e) {
+  /* Unpack the state array into locals. buffer holds the four delay queues, each n_pending long,
+     then the scratch queue used by delay(). */
   const dist_t dist = make_dist(in);
   const pdm_route* srf = &in->surface;
   const pdm_route* gwr = &in->groundwater;
@@ -699,6 +730,7 @@ static void run(const pdm_params* in, const double* rain, const double* pet, int
     dge[i] = state[6 + 3 * n_pending + i];
   }
 
+/* Flux table cell for column j, step k: the table is stored column by column. */
 #define COL(j, k) fluxes[(int64_t)(j) * n_steps + (k)]
   for (t = 0; t < n_steps; ++t) {
     double r = rain[t], ev = pet[t], old, pr, et_requested, dr_requested, et, dr, net;
@@ -711,6 +743,8 @@ static void run(const pdm_params* in, const double* rain, const double* pet, int
     if (!check(e, soil >= 0 && soil <= smax, "Soil storage exceeds capacity_mean(distribution)")) {
       return;
     }
+    /* Same order as pdm_step(): correct the rain, request evaporation (Eq. 8) and recharge from
+       the storage at the start of the step, then limit both to the water available. */
     old = total_storage(soil, srf, surface, gwr, ground, ds, dg, n_pending);
     pr = r * in->fc;
     et_requested = ev * (-expm1(in->be * log1p(-soil / smax)));
@@ -718,6 +752,8 @@ static void run(const pdm_params* in, const double* rain, const double* pet, int
     if (e->code != PDM_OK) return;
     et = dmin(et_requested, soil + pr);
     dr = dmin(dr_requested, dmax(0.0, soil + pr - et));
+    /* Soil store (soil_step() in R): a net loss lowers storage directly; a net gain raises the
+       critical capacity, and whatever the store cannot keep runs off. */
     net = pr - et - dr;
     if (net <= 0) {
       soil_next = dmax(0.0, soil + net);
@@ -750,6 +786,8 @@ static void run(const pdm_params* in, const double* rain, const double* pet, int
                "Invalid parameter(s): non-finite model state")) {
       return;
     }
+    /* Flow at the outlet: delayed volumes as a mean rate, converted to m3/s (1 mm/h over 1 km2
+       is 1/3.6 m3/s), plus the constant flow. */
     natural = d1 + d2;
     q[t] = natural / dt * factor + in->qc;
     q_end[t] = (e1 + e2) * factor + in->qc;
@@ -786,6 +824,7 @@ static void run(const pdm_params* in, const double* rain, const double* pet, int
   }
 #undef COL
 
+  /* Write the final state back in the documented layout. */
   state[0] = soil;
   state[1] = surface[0];
   state[2] = surface[1];
@@ -800,6 +839,8 @@ static void run(const pdm_params* in, const double* rain, const double* pet, int
   }
 }
 
+/* Copies the error text, truncated to fit, into the caller's message buffer if one was given,
+   and returns the error code. Every public function ends here. */
 static int32_t finish(pdm_error* e, char* message, int64_t message_length) {
   if (message != NULL && message_length > 0) {
     size_t room = (size_t)(message_length - 1);

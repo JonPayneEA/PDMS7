@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -83,6 +83,7 @@
     <li><a class="dropdown-item" href="../benchmark-protocol.html">Benchmark protocol</a></li>
     <li><a class="dropdown-item" href="../calibration-log-design.html">Calibration log design</a></li>
     <li><a class="dropdown-item" href="../validation.html">Validation</a></li>
+    <li><a class="dropdown-item" href="../code-review.html">Code review</a></li>
     <li><a class="dropdown-item" href="../multi-objective.html">Multi-objective calibration</a></li>
     <li><a class="dropdown-item" href="../snow-model.html">Snow model notes</a></li>
     <li><a class="dropdown-item" href="../source-notes.html">Source notes</a></li>
@@ -364,7 +365,7 @@ back to check.</p>
 <span>                     control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>maxit <span class="op">=</span> <span class="fl">60</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="va">parameters</span>, <span class="fl">2</span><span class="op">)</span></span>
 <span><span class="co">#&gt;          fc recharge.kg  surface.k1  surface.k2 </span></span>
-<span><span class="co">#&gt;        1.06      294.64       11.13        2.03</span></span>
+<span><span class="co">#&gt;        1.10      254.15        2.69        8.50</span></span>
 <span><span class="va">better</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_pdm.html">run_pdm</a></span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="va">model</span>, <span class="va">forcing</span>, <span class="fu"><a href="../reference/initial_state_from_flow.html">initial_state_from_flow</a></span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="va">model</span>, <span class="va">observed</span><span class="op">$</span><span class="va">q_m3s</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>, <span class="fl">0.7</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">check</span> <span class="op">&lt;-</span> <span class="op">(</span><span class="fl">24</span> <span class="op">*</span> <span class="fl">45</span> <span class="op">+</span> <span class="fl">1</span><span class="op">)</span><span class="op">:</span><span class="va">n</span></span>
 <span><span class="va">keep</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nse"</span>, <span class="st">"kge"</span>, <span class="st">"volume_error"</span>, <span class="st">"peak_error"</span><span class="op">)</span></span>
@@ -374,7 +375,7 @@ back to check.</p>
 <span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt;               nse    kge volume_error peak_error</span></span>
 <span><span class="co">#&gt; standard   -4.396 -0.983        0.022      0.870</span></span>
-<span><span class="co">#&gt; calibrated  0.919  0.839       -0.042     -0.106</span></span></code></pre></div>
+<span><span class="co">#&gt; calibrated  0.973  0.974        0.001     -0.024</span></span></code></pre></div>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">plot_flow</span><span class="op">(</span><span class="va">better</span><span class="op">$</span><span class="va">output</span><span class="op">$</span><span class="va">q_m3s</span>, <span class="st">"calibrated"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/abline.html" class="external-link">abline</a></span><span class="op">(</span>v <span class="op">=</span> <span class="va">forcing</span><span class="op">$</span><span class="va">time</span><span class="op">[</span><span class="fl">24</span> <span class="op">*</span> <span class="fl">45</span><span class="op">]</span>, lty <span class="op">=</span> <span class="fl">2</span>, col <span class="op">=</span> <span class="va">pal</span><span class="op">[</span><span class="fl">7</span><span class="op">]</span><span class="op">)</span></span></code></pre></div>
