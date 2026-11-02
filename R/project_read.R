@@ -11,6 +11,7 @@
 # Dependencies: data.table; tools (MD5)
 # ============================================================ #
 
+# Safe readers for optional entry fields: NA when the field is absent.
 .text_or_na <- function(x) if (is.null(x) || !length(x)) NA_character_ else as.character(x)[1L]
 .num_or_na <- function(x) if (is.null(x) || !length(x)) NA_real_ else as.numeric(x)[1L]
 
@@ -49,6 +50,7 @@ read_project <- function(project) {
        scorecard = registration$scorecard, entries = table)
 }
 
+# A one-line description of an entry for the project's entry table.
 .entry_summary <- function(e) {
   text <- switch(e$type,
     project_start = paste(e$project$catchment, "-", e$project$purpose),
@@ -67,6 +69,7 @@ read_project <- function(project) {
   .text_or_na(text)
 }
 
+# "fc 1 -> 1.1; surface.k1 2 -> 3" from a trial's recorded changes.
 .changes_text <- function(changes) {
   if (!length(changes)) return("")
   paste(vapply(names(changes), function(n) {
@@ -94,6 +97,7 @@ project_trials <- function(project) {
   data.table::rbindlist(rows, fill = TRUE)
 }
 
+# The headline validation score of a candidate, if the latest validation is of that candidate.
 .validation_score <- function(entries, candidate, headline) {
   validation <- .latest(entries, "validation")
   if (is.null(candidate) || is.null(validation) || is.na(headline) ||
@@ -159,6 +163,9 @@ read_projects <- function(projects) {
 #' @return A data.table with one row per check: `check`, `entry`, `ok` and `detail`.
 #' @seealso [calibration_log], [read_project()]
 #' @export
+# Integrity checks, one row per check: numbering and file names, the checksum chain, registered
+# data files, saved series and, with rerun = TRUE, that every run still reproduces its recorded
+# output. A failing row says what failed and, for reruns, what software has changed since.
 verify_project <- function(project, rerun = FALSE) {
   path <- .project_path(project)
   entries <- .read_entries(path)
@@ -169,10 +176,14 @@ verify_project <- function(project, rerun = FALSE) {
   data.table::rbindlist(rows)
 }
 
+# One row of the verification table, wrapped in a list so rows can be concatenated with c().
 .check_row <- function(check, entry, ok, detail = "") {
   list(data.table::data.table(check = check, entry = entry, ok = isTRUE(ok), detail = detail))
 }
 
+# Entries must be numbered 0001, 0002, ... with no gaps, each file named after its id and type,
+# and nothing else in the entries folder except the lock. A leftover .tmp file from an
+# interrupted write shows up here as unexpected.
 .verify_numbering <- function(path, entries) {
   files <- list.files(file.path(path, "entries"), all.files = TRUE, no.. = TRUE)
   stray <- setdiff(files, c(.entry_files(path), ".lock"))
@@ -191,6 +202,8 @@ verify_project <- function(project, rerun = FALSE) {
   out
 }
 
+# Each entry must name the MD5 of the file before it. Editing, deleting or inserting an entry
+# changes that checksum, so the break shows at the following entry.
 .verify_chain <- function(entries) {
   out <- NULL
   previous <- "none"
@@ -203,6 +216,7 @@ verify_project <- function(project, rerun = FALSE) {
   out
 }
 
+# Every registered data file must still exist and match the checksum taken at registration.
 .verify_data <- function(path, entries) {
   out <- NULL
   for (e in Filter(function(x) x$type == "data_registered", entries)) {
@@ -222,6 +236,7 @@ verify_project <- function(project, rerun = FALSE) {
   out
 }
 
+# Every saved series (candidate, validation, test) must exist and match its checksum.
 .verify_series <- function(path, entries) {
   out <- NULL
   for (e in Filter(function(x) !is.null(x$series), entries)) {
@@ -233,6 +248,7 @@ verify_project <- function(project, rerun = FALSE) {
   out
 }
 
+# Names what differs between the software recorded in an entry and the software running now.
 .software_changes <- function(then) {
   now <- .software()
   changed <- names(now)[!vapply(names(now), function(n) identical(then[[n]], now[[n]]),
@@ -242,6 +258,9 @@ verify_project <- function(project, rerun = FALSE) {
         collapse = ", ")
 }
 
+# Reruns every model entry, validation and test from its recorded configuration and compares the
+# output checksum (rounded to 10 significant figures, so last-digit differences between R
+# versions do not count). An error becomes a failing row rather than stopping the check.
 .verify_reruns <- function(path, entries) {
   info <- .project_info(entries)
   out <- NULL

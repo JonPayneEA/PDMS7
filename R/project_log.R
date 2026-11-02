@@ -11,6 +11,9 @@
 # Dependencies: yaml; tools (MD5); data.table
 # ============================================================ #
 
+# Constants of the log format. .log_format is written into every entry so that a future format
+# can read old projects. .model_entry_types are the entries that carry a configuration and can be
+# a parent for a trial or a candidate.
 .log_format <- 1L
 .entry_types <- c(
   "project_start", "data_registered", "structure_selected", "trial", "auto_calibration",
@@ -22,6 +25,8 @@
 # ---- Numbers -----------------------------------------------------------------------------
 
 # Shortest decimal that reproduces the double exactly, in YAML float syntax.
+# 15 significant digits suffice for most numbers; 17 always do. The text is checked by reading it
+# back, so a configuration read from the log is bit-for-bit the one that was run.
 .yaml_number <- function(x) {
   if (is.na(x)) return(".na.real")
   if (is.infinite(x)) return(if (x > 0) ".inf" else "-.inf")
@@ -38,6 +43,8 @@
 }
 
 # Prepares a value for yaml::as.yaml: doubles become exact verbatim text.
+# Walks lists recursively; data frames become plain lists of columns. A named numeric vector of
+# length > 1 becomes a named list, so each value keeps its name in the YAML.
 .yaml_ready <- function(x) {
   if (is.list(x)) {
     out <- lapply(x, .yaml_ready)
@@ -70,6 +77,7 @@
   unname(tools::md5sum(temp))
 }
 
+# MD5 of text written as UTF-8 with LF line endings, via a temporary file.
 .md5_text <- function(text) {
   path <- tempfile()
   on.exit(unlink(path))
@@ -82,12 +90,16 @@
 
 # ---- Identity and software ---------------------------------------------------------------
 
+# A setting from an R option, falling back to an environment variable.
 .setting <- function(option, variable) {
   value <- getOption(option)
   if (is.null(value) || !nzchar(value)) value <- Sys.getenv(variable)
   trimws(as.character(value)[1L])
 }
 
+# Who is writing: the declared name and role, checked against the roles allowed for the entry,
+# plus the operating-system login. Declared identity is an honour system; the login is recorded
+# beside it so a mismatch is visible.
 .identity <- function(allowed = .roles) {
   name <- .setting("pdmS7.user", "PDMS7_USER")
   role <- tolower(.setting("pdmS7.role", "PDMS7_ROLE"))
@@ -104,6 +116,7 @@
 
 .login <- function() unname(Sys.info()[["user"]])
 
+# The software that wrote an entry, so a later rerun that differs can say what changed.
 .software <- function() {
   list(
     pdmS7 = as.character(utils::packageVersion("pdmS7")),
@@ -121,6 +134,7 @@
 
 .marker <- "pdms7-project.yml"
 
+# A project folder is recognised by its marker file. Returns the normalised path.
 .project_path <- function(project) {
   .check(is.character(project) && length(project) == 1L && !is.na(project),
          "project must be the path of a calibration project folder")
@@ -129,11 +143,13 @@
   normalizePath(project, winslash = "/", mustWork = TRUE)
 }
 
+# Entry files are named NNNN-type.yml; sorting the names sorts the entries by id.
 .entry_files <- function(path) {
   files <- list.files(file.path(path, "entries"), pattern = "^[0-9]{4}-[a-z_]+\\.yml$")
   sort(files)
 }
 
+# Reads a YAML file without letting it run R code (!expr is refused outright).
 .read_yaml_file <- function(file) {
   text <- readLines(file, warn = FALSE, encoding = "UTF-8")
   .check(!any(grepl("!expr", text, fixed = TRUE)), paste("Refusing YAML with !expr:", file))
@@ -152,6 +168,7 @@
   })
 }
 
+# One entry by id, given as a number (4) or the padded text ("0004").
 .find_entry <- function(entries, id) {
   id <- .entry_id(id)
   hit <- Filter(function(e) identical(e$id, id), entries)
@@ -165,11 +182,13 @@
   sprintf("%04d", as.integer(id))
 }
 
+# The most recent entry of the given types, or NULL.
 .latest <- function(entries, types) {
   hits <- Filter(function(e) e$type %in% types, entries)
   if (length(hits)) hits[[length(hits)]] else NULL
 }
 
+# open, signed_off or reopened, from the latest sign-off or reopen entry.
 .project_status <- function(entries) {
   last <- .latest(entries, c("sign_off", "reopen"))
   if (is.null(last)) "open" else if (last$type == "sign_off") "signed_off" else "reopened"
@@ -177,6 +196,10 @@
 
 # ---- Locking and writing -----------------------------------------------------------------
 
+# Runs code while holding the project's lock, so two sessions cannot write entries at once.
+# dir.create() is atomic on local and network file systems: exactly one caller succeeds. Others
+# wait up to 'wait' seconds. A lock older than 'stale' seconds is assumed to belong to a session
+# that died, and is removed. The lock is always released on exit, even after an error.
 .with_lock <- function(path, code, wait = 30, stale = 600) {
   lock <- file.path(path, "entries", ".lock")
   waited <- 0
@@ -213,11 +236,14 @@
       author = author, software = .software(),
       previous = if (length(entries)) entries[[length(entries)]]$.md5 else "none"
     )
+    # The header every entry carries; 'previous' is the MD5 of the entry before, which chains the
+    # entries so that editing, removing or inserting one breaks the chain at the next.
     entry <- c(header, build(id, entries))
     text <- paste0(
       "# pdmS7 calibration log entry. Written once; never edit. verify_project() checks it.\n",
       yaml::as.yaml(.yaml_ready(entry), indent.mapping.sequence = TRUE)
     )
+    # Write to a temporary file in the same folder, then rename: a reader never sees half an entry.
     file <- file.path(path, "entries", paste0(id, "-", type, ".yml"))
     temp <- tempfile(tmpdir = file.path(path, "entries"), fileext = ".tmp")
     writeBin(charToRaw(enc2utf8(text)), temp)

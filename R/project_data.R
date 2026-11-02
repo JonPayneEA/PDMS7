@@ -12,6 +12,8 @@
 # ============================================================ #
 
 # Accepts ISO 8601 date-times (T or space separated, optional seconds and Z) or dates, in UTC.
+# Each value is matched against the three accepted shapes; anything that matches none, or names
+# a time that does not exist, stops with a message giving an example.
 .parse_time <- function(x) {
   if (inherits(x, "POSIXt")) return(as.POSIXct(x, tz = "UTC"))
   text <- sub("Z$", "", sub("T", " ", trimws(as.character(x)), fixed = TRUE))
@@ -30,6 +32,7 @@
   out
 }
 
+# The one format times are written in, in entries and stored files.
 .format_time <- function(x) format(x, "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
 
 # Reads forcing from a path or data frame into a data.table with rain, pet, optional time.
@@ -66,12 +69,15 @@
   q
 }
 
+# Length of the longest run of missing values, in steps.
 .longest_gap <- function(missing) {
   if (!any(missing)) return(0L)
   runs <- rle(missing)
   as.integer(max(runs$lengths[runs$values]))
 }
 
+# The summary recorded when data are registered: size, period, step, totals and missing flow.
+# A reviewer can judge the data from this without opening the files.
 .data_summary <- function(forcing, observed) {
   out <- list(rows = nrow(forcing))
   if ("time" %in% names(forcing)) {
@@ -114,9 +120,12 @@
   out
 }
 
+# The row numbers a registered window covers.
 .window_rows <- function(window) seq.int(window$first_row, window$last_row)
 
 # Stores a series: copies a file, writes a data frame, or references a path.
+# Either way the MD5 is recorded, so any later change to the stored file is detected. With
+# copy = FALSE the original path is referenced, and the project depends on it staying put.
 .store_series <- function(source, value, path, id, name, copy, writer) {
   folder <- file.path("data", id)
   if (is.character(source) && !copy) {
@@ -136,6 +145,7 @@
   list(source = from, stored = relative, copied = TRUE, md5 = .md5_file(target))
 }
 
+# Writers for data supplied as R objects rather than files.
 .write_forcing <- function(forcing, target) {
   out <- data.table::copy(forcing)
   if ("time" %in% names(out)) data.table::set(out, j = "time", value = .format_time(out$time))
@@ -144,6 +154,7 @@
 
 .write_observed <- function(q, target) data.table::fwrite(data.table::data.table(q_m3s = q), target)
 
+# Where a registered file lives: inside the project if copied, at its original path if not.
 .stored_file <- function(path, item) {
   if (isTRUE(item$copied)) file.path(path, item$stored) else item$stored
 }
@@ -163,6 +174,9 @@
 }
 
 # Runs a configuration over the whole registered record and scores the requested window.
+# Every run in a project starts the same way, from the registered soil fraction with empty
+# routing stores, and simulates from the first row, so earlier rows act as warm-up. The run's
+# output checksum is recorded so a later rerun can prove it reproduces.
 .run_registered <- function(path, project, registration, config, window = "calibration",
                             data = NULL) {
   if (is.null(data)) data <- .load_registration(path, registration)

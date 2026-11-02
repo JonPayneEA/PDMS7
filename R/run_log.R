@@ -11,6 +11,8 @@
 # Dependencies: data.table; yaml; tools (MD5)
 # ============================================================ #
 
+# Session state of the run log: how deeply runs are currently suppressed (calls to .quietly()
+# nest), the cached approval register, and whether a write failure has already been reported.
 .run_log_state <- new.env(parent = emptyenv())
 .run_log_state$suppress <- 0L
 .run_log_state$register <- NULL
@@ -24,6 +26,7 @@
   force(expr)
 }
 
+# The run log CSV, from options(pdmS7.run_log) or PDMS7_RUN_LOG; NULL when logging is off.
 .run_log_path <- function() {
   path <- .setting("pdmS7.run_log", "PDMS7_RUN_LOG")
   if (is.na(path) || !nzchar(path)) NULL else path
@@ -33,6 +36,9 @@
 
 # ---- Fingerprints ------------------------------------------------------------------------
 
+# A model reduced to plain values: each S7 component becomes its class name (without the package
+# prefix) and its properties, and every number a plain double. Two models with the same
+# components and parameters give the same canonical form, however they were built.
 .canonical <- function(x) {
   if (inherits(x, "S7_object")) {
     props <- S7::props(x)
@@ -56,6 +62,8 @@
 #' identical(pdm_fingerprint(pdm_presets("standard")),
 #'           pdm_fingerprint(pdm_from_config(pdm_presets("standard"))))
 #' @export
+# MD5 of the canonical model written as exact YAML. A model built in code and one read from a
+# signed-off configuration file therefore have the same fingerprint when they are the same model.
 pdm_fingerprint <- function(x) {
   .check(S7::S7_inherits(x, FlodePdmModel) || is.list(x),
          "x must be a model or a configuration list")
@@ -63,6 +71,8 @@ pdm_fingerprint <- function(x) {
   .md5_text(yaml::as.yaml(.yaml_ready(.canonical(model))))
 }
 
+# A checksum of a run's inputs (rain, PET and times as binary doubles), so two runs on the same
+# data can be recognised without storing the data.
 .data_md5 <- function(forcing) {
   values <- c(as.numeric(forcing$rain), as.numeric(forcing$pet))
   if ("time" %in% names(forcing)) values <- c(values, as.numeric(forcing$time))
@@ -74,6 +84,8 @@ pdm_fingerprint <- function(x) {
 
 # ---- Approval register -------------------------------------------------------------------
 
+# The register is either a YAML file with a 'projects:' list of folders (relative paths are
+# relative to the file) or the folders themselves.
 .register_projects <- function(register) {
   if (length(register) == 1L && grepl("\\.ya?ml$", register, ignore.case = TRUE)) {
     .check(file.exists(register), paste("Register file not found:", register))
@@ -126,6 +138,8 @@ approved_configurations <- function(register = .setting("pdmS7.register", "PDMS7
   out
 }
 
+# One row per sign-off in a project, with the signed-off configuration's fingerprint. Only the
+# latest sign-off, if no reopen follows it, is current; earlier ones are superseded.
 .project_approvals <- function(folder) {
   path <- .project_path(folder)
   entries <- .read_entries(path)
@@ -158,6 +172,8 @@ approved_configurations <- function(register = .setting("pdmS7.register", "PDMS7
   table
 }
 
+# Looks a run's fingerprint up in the register: approved (matches a current sign-off), superseded
+# (matches only an earlier one), unapproved (matches none), or NA when no register is set.
 .approval <- function(fingerprint) {
   register <- .setting("pdmS7.register", "PDMS7_REGISTER")
   if (is.na(register) || !nzchar(register)) {
@@ -177,10 +193,13 @@ approved_configurations <- function(register = .setting("pdmS7.register", "PDMS7
 
 # ---- Writing -----------------------------------------------------------------------------
 
+# The time of row i as text, or NA when the forcing has no times.
 .time_text <- function(forcing, i) {
   if ("time" %in% names(forcing) && nrow(forcing)) .format_time(forcing$time[i]) else NA_character_
 }
 
+# One row of the run log. Every field is computed defensively: a value that cannot be found
+# becomes NA rather than an error, because logging must not stop a model run.
 .run_record <- function(model, forcing, seconds, error) {
   fingerprint <- tryCatch(pdm_fingerprint(model), error = function(e) NA_character_)
   approval <- .approval(fingerprint)
@@ -206,6 +225,8 @@ approved_configurations <- function(register = .setting("pdmS7.register", "PDMS7
 .write_run <- function(record) .append_csv(.run_log_path(), record, "Run log")
 
 # Appends rows to a CSV shared by several sessions, under a lock beside it.
+# The lock is a directory, created atomically; a lock older than a minute is taken to be left
+# by a dead session. The first write creates the file with its header.
 .append_csv <- function(path, record, label = "File") {
   folder <- dirname(path)
   .check(dir.exists(folder) || suppressWarnings(dir.create(folder, recursive = TRUE)),

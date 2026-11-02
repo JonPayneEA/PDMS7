@@ -45,6 +45,9 @@
 #' @export
 build_report <- function(project, output = file.path(project, "report"), rerun = TRUE,
                          sensitivity = NULL, sensitivity_range = 0.5, sensitivity_steps = 9L) {
+  # The report follows the order of the work: integrity, data, structure, comparison, the
+  # calibration path, the candidate with its validation and test, optional sensitivity, the
+  # sign-off and an appendix of every entry. Integrity is checked first, with reruns by default.
   path <- .project_path(project)
   .check(.scalar(sensitivity_range, 0, 0.95, strict = TRUE),
          "sensitivity_range must lie between 0 and 0.95")
@@ -81,6 +84,7 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
 
 # ---- Sections ----------------------------------------------------------------------------
 
+# Title, project details, status, and who did what: the people and roles that appear in the log.
 .rpt_header <- function(info, entries) {
   status <- .project_status(entries)
   custodians <- unique(unlist(lapply(entries, function(e) {
@@ -102,8 +106,10 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
     list(.blk_table(table)))
 }
 
+# a unless it is NULL, then b. Used throughout the package for optional fields and defaults.
 `%||%` <- function(a, b) if (is.null(a)) b else a
 
+# Green or red: whether every integrity check passed, with the failing rows if not.
 .rpt_integrity <- function(checks, rerun) {
   failed <- checks[!checks$ok]
   message <- if (nrow(failed)) {
@@ -123,6 +129,8 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
     ))))
 }
 
+# Each data registration: files and checksums, the data summary, the windows, and a plot of the
+# whole record with the windows shaded.
 .rpt_data <- function(path, entries) {
   regs <- Filter(function(e) e$type == "data_registered", entries)
   out <- list(.blk_h("Data"))
@@ -179,6 +187,7 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
   out
 }
 
+# The latest structure comparison, if one was run: its ranking table and a chart.
 .rpt_comparison <- function(path, entries) {
   has <- any(vapply(entries, function(e) !is.null(e$comparison), logical(1)))
   if (!has) return(NULL)
@@ -199,6 +208,7 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
   )
 }
 
+# Calibration against validation headline score for each compared structure.
 .plot_structures <- function(table, headline) {
   n <- nrow(table)
   graphics::par(mar = c(4, 11, 0.6, 0.6))
@@ -211,11 +221,13 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
   graphics::points(table$validation, n:1, pch = 16, col = .pal[["blue"]], cex = 1.3)
 }
 
+# "rows 121 to 700 (2021-01-06 to 2021-01-30)" for a window.
 .window_text <- function(w, times) {
   if (is.null(w)) return("not set")
   if (times) paste(w$start %||% "", "to", w$end %||% "") else paste0(w$first_row, "-", w$last_row)
 }
 
+# Every structure selection, with its configuration and reasoning.
 .rpt_structure <- function(entries) {
   structures <- Filter(function(e) e$type == "structure_selected", entries)
   out <- list(.blk_h("Model structure"))
@@ -235,6 +247,9 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
   out
 }
 
+# The calibration path: every structure, trial and automatic calibration with its parent, its
+# changes or bounds, its headline score and its verdict, as a chart and a table, then the start
+# results of each automatic calibration and the notes.
 .rpt_path <- function(entries, candidate) {
   nodes <- Filter(function(e) e$type %in% .model_entry_types, entries)
   if (!length(nodes)) return(list(.blk_h("Calibration path"), .blk_p("No runs logged yet.")))
@@ -275,12 +290,15 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
   out
 }
 
+# "fc in [0.6, 1.6]; surface.k1 in [0.5, 72]" for an automatic calibration entry.
 .bounds_text <- function(e) {
   paste(vapply(names(e$bounds$lower), function(n) {
     sprintf("%s in [%s, %s]", n, format(e$bounds$lower[[n]]), format(e$bounds$upper[[n]]))
   }, character(1)), collapse = "; ")
 }
 
+# The candidate: its scores on every window side by side, hydrographs and flow-duration curves
+# for each window scored, and the threshold section if thresholds are registered.
 .rpt_candidate <- function(path, entries, candidate, validation, validated) {
   out <- list(.blk_h("Candidate"))
   if (is.null(candidate)) return(c(out, list(.blk_p("No candidate proposed yet."))))
@@ -338,6 +356,7 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
   out
 }
 
+# The registered thresholds and event settings, as a table.
 .threshold_definitions <- function(card) {
   data.frame(
     threshold = vapply(card$thresholds, function(t) t$name, character(1)),
@@ -360,6 +379,7 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
   do.call(rbind, rows)
 }
 
+# Threshold scores for the candidate on each window, with the performance diagram.
 .rpt_thresholds <- function(card, calibration, validation, test = NULL) {
   table <- rbind(.threshold_table(card, calibration, "calibration"),
                  if (!is.null(validation)) .threshold_table(card, validation, "validation"),
@@ -382,6 +402,9 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
   )
 }
 
+# One-at-a-time sensitivity: each tunable parameter scaled from 1 - range to 1 + range times its
+# value, the others held, and the headline scored on the calibration window. Costs one model run
+# per parameter per step, so it is on by default only once a candidate is validated.
 .rpt_sensitivity <- function(path, entries, candidate, range, steps) {
   registration <- .find_entry(entries, candidate$registration)
   data <- .load_registration(path, registration)
@@ -419,6 +442,7 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
     !grepl("(rtol|atol)$", key)
 }
 
+# Every tunable numeric parameter of a configuration, as dotted paths.
 .numeric_paths <- function(config, prefix = NULL) {
   out <- character(0)
   for (n in names(config)) {
@@ -433,6 +457,7 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
   out
 }
 
+# Every sign-off and reopen, with the checklist, statement or reason.
 .rpt_signoff <- function(entries) {
   decisions <- Filter(function(e) e$type %in% c("sign_off", "reopen"), entries)
   out <- list(.blk_h("Sign-off"))
@@ -449,6 +474,7 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
   c(out, list(.blk_table(table)))
 }
 
+# The signed-off (or candidate) configuration as YAML, and a table of every entry.
 .rpt_appendix <- function(entries, candidate) {
   final <- .latest(entries, "sign_off")
   config <- if (!is.null(final)) final$configuration else candidate$configuration
@@ -471,6 +497,8 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
 # ---- Plots -------------------------------------------------------------------------------
 
 # Keeps peaks visible when a long record is drawn: block maxima of about 4000 points.
+# Plotting every 15-minute value of a decade would be slow and would hide nothing a block
+# maximum does not show; a block mean would flatten the floods a reviewer is looking for.
 .thin <- function(x, y) {
   n <- length(y)
   if (n <= 8000L) return(list(x = x, y = y))
@@ -482,6 +510,8 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
   list(x = x[keep], y = y[keep])
 }
 
+# The whole observed record, thinned for plotting, with calibration, validation and test windows
+# shaded in different colours.
 .plot_record <- function(data, card) {
   graphics::par(mar = c(3, 4.2, 0.6, 0.6))
   t <- if ("time" %in% names(data$forcing)) data$forcing$time else seq_along(data$observed)
@@ -504,6 +534,8 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
          .pal[["light"]])
 }
 
+# Each run plotted by its order in the log against its headline score, joined to its parent;
+# colour shows the verdict and a ring marks the candidate.
 .plot_path <- function(nodes, headline, candidate) {
   ids <- vapply(nodes, function(e) e$id, character(1))
   y <- vapply(nodes, function(e) .num_or_na(e$scores[[headline]]), numeric(1))
@@ -540,6 +572,7 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
                            .pal[["blue"]], .pal[["purple"]]), bty = "n", cex = 0.75)
 }
 
+# Observed (points) and simulated (line) flow over one window.
 .plot_hydrograph <- function(time, obs, sim) {
   graphics::par(mfrow = c(2, 1), mar = c(2.5, 4.2, 0.6, 0.6))
   o <- .thin(time, obs)
@@ -556,6 +589,8 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
   graphics::lines(time, pmax(sim, low), col = .pal[["blue"]])
 }
 
+# Left: flow-duration curves, observed and simulated, with the 2, 20 and 70 per cent exceedance
+# marks used by the signatures. Right: simulated against observed on log axes.
 .plot_fdc_scatter <- function(obs, sim) {
   keep <- is.finite(obs)
   obs <- obs[keep]
@@ -575,9 +610,8 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
   graphics::abline(0, 1, col = .pal[["grey"]])
 }
 
-# One shared vertical scale, so a parameter that barely moves the score looks flat. Points
-# below the floor (the 20th percentile of all values) are drawn at the floor as triangles.
-# Roebber (2009) performance diagram.
+# Roebber (2009) performance diagram: success ratio (1 - FAR) across, POD up, with curved lines
+# of equal CSI and dashed lines of equal bias. One colour per threshold, one symbol per window.
 .plot_performance <- function(table) {
   graphics::par(mar = c(4, 4, 0.6, 0.6))
   graphics::plot(NA, xlim = c(0, 1), ylim = c(0, 1), xaxs = "i", yaxs = "i",
@@ -612,6 +646,9 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
                    bty = "n", cex = 0.8)
 }
 
+# One small panel per parameter. One shared vertical scale, so a parameter that barely moves the
+# score looks flat. Points below the floor (the 20th percentile of all values) are drawn at the
+# floor as triangles.
 .plot_sensitivity <- function(curves, factors, headline) {
   n <- length(curves)
   values <- unlist(curves)
