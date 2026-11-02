@@ -87,6 +87,14 @@ initial_state_from_flow <- function(model, observed_m3s, baseflow_fraction, soil
   )
 }
 
+# The starting state of a calibration or logged run. "flow": steady state at a given flow.
+# "soil": the soil store a fraction full and the routing stores empty.
+.start_state <- function(model, start, flow, baseflow_fraction, soil_fraction) {
+  if (identical(start, "soil")) return(initial_state(model, soil_fraction))
+  .check(.scalar(flow, 0), "start = \"flow\" needs a finite, nonnegative first observed flow")
+  initial_state_from_flow(model, flow, baseflow_fraction, soil_fraction)
+}
+
 # Storage giving flow q (mm/h) in equilibrium; a cascade gets both stores.
 .steady_storage <- function(routing, q, route) {
   .check(

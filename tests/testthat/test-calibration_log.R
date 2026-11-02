@@ -285,3 +285,28 @@ test_that("the lock serialises writers and clears when stale", {
   expect_equal(.with_lock(folder, function() 1), 1)
   expect_false(dir.exists(lock))
 })
+
+# Guards: new projects record the flow start; projects registered earlier still reproduce
+test_that("the start rule is registered and older projects keep the soil start", {
+  p <- new_project()
+  card <- read_project(p$folder)$scorecard
+  expect_equal(card$start, "flow")
+  expect_equal(card$baseflow_fraction, 0.7)
+  expect_true(all(verify_project(p$folder, rerun = TRUE)$ok))
+  # A registration written before the start rule existed has neither field; its runs must be
+  # rerun from the soil start they were made with.
+  entries <- pdmS7:::.read_entries(pdmS7:::.project_path(p$folder))
+  registration <- pdmS7:::.registration(entries)
+  legacy <- registration
+  legacy$scorecard$start <- NULL
+  legacy$scorecard$baseflow_fraction <- NULL
+  info <- pdmS7:::.project_info(entries)
+  config <- read_entry(p$folder, "0003")$configuration
+  soil <- pdmS7:::.run_registered(p$folder, info, legacy, config)
+  model <- pdm_from_config(config)
+  data <- pdmS7:::.load_registration(p$folder, registration)
+  direct <- run_pdm(model, data$forcing, initial_state(model, 0.5))$output$q_m3s
+  expect_equal(soil$simulated, direct)
+  flow <- pdmS7:::.run_registered(p$folder, info, registration, config)
+  expect_false(isTRUE(all.equal(flow$simulated, direct)))
+})

@@ -187,7 +187,7 @@ test_that(
       fit <- calibrate_pdm(
         config, forcing, observed, c(fc = 0.9),
         c(fc = 1.1),
-        objective = objective, control = list(maxit = 2)
+        objective = objective, control = list(maxit = 2), start = "soil"
       )
       expect_lt(fit$objective, 1e-07)
     }

@@ -136,7 +136,9 @@ compare_structures <- function(project, structures = NULL, overrides = NULL, exc
       config, data$forcing[seq_len(w$last_row)], observed[seq_len(w$last_row)],
       lower = lower, upper = upper, warmup = w$first_row - 1L, objective = settings$objective,
       log_offset = card$log_offset, control = settings$control,
-      soil_fraction = card$soil_fraction, starts = settings$starts, seed = settings$seed,
+      soil_fraction = card$soil_fraction, start = card$start %||% "soil",
+      baseflow_fraction = card$baseflow_fraction %||% 0.7,
+      start_flow = .first_observed(data$observed), starts = settings$starts, seed = settings$seed,
       method = settings$method, log_scale = log_scale
     )
   }

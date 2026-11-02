@@ -180,20 +180,24 @@ calibration_case <- function() {
        thresholds = c(alert = unname(stats::quantile(observed, 0.95))))
 }
 
+# These calibration tests simulate their "observed" flow from the soil start, so they calibrate
+# from the same start; the flow start is tested in test-staged.R and the calibration log tests.
+calibrate_soil <- function(...) calibrate_pdm(..., start = "soil")
+
 # Guards: the derivative-free search respects bounds and finds a known value
 test_that("Nelder-Mead stays in bounds and recovers a parameter", {
   k <- calibration_case()
-  fit <- calibrate_pdm(k$start, k$forcing, k$observed, c(fc = 0.8), c(fc = 1.5), warmup = 200,
-                       objective = "nse", method = "nelder_mead", control = list(maxit = 80))
+  fit <- calibrate_soil(k$start, k$forcing, k$observed, c(fc = 0.8), c(fc = 1.5), warmup = 200,
+                        objective = "nse", method = "nelder_mead", control = list(maxit = 80))
   expect_equal(fit$method, "nelder_mead")
   expect_lt(abs(fit$parameters[["fc"]] - 1.15), 0.01)
   low_start <- k$start
   low_start$fc <- 0.7
-  edge <- calibrate_pdm(low_start, k$forcing, k$observed, c(fc = 0.6), c(fc = 0.9), warmup = 200,
-                        objective = "nse", method = "nelder_mead", control = list(maxit = 80))
+  edge <- calibrate_soil(low_start, k$forcing, k$observed, c(fc = 0.6), c(fc = 0.9), warmup = 200,
+                         objective = "nse", method = "nelder_mead", control = list(maxit = 80))
   expect_true(edge$parameters[["fc"]] <= 0.9 && edge$parameters[["fc"]] > 0.85)
-  default <- calibrate_pdm(k$start, k$forcing, k$observed, c(fc = 0.8), c(fc = 1.5),
-                           warmup = 200, objective = "nse")
+  default <- calibrate_soil(k$start, k$forcing, k$observed, c(fc = 0.8), c(fc = 1.5),
+                            warmup = 200, objective = "nse")
   expect_equal(default$method, "lbfgsb")
   expect_equal(default$objective_name, "1-NSE")
 })
@@ -201,19 +205,19 @@ test_that("Nelder-Mead stays in bounds and recovers a parameter", {
 # Guards: the composite objective equals its formula
 test_that("the threshold objective is 1 - NSE plus the threshold loss at the optimum", {
   k <- calibration_case()
-  fit <- calibrate_pdm(k$start, k$forcing, k$observed, c(fc = 0.8), c(fc = 1.5), warmup = 200,
-                       objective = "nse", method = "nelder_mead", thresholds = k$thresholds,
-                       threshold_weight = 0.5, control = list(maxit = 60))
+  fit <- calibrate_soil(k$start, k$forcing, k$observed, c(fc = 0.8), c(fc = 1.5), warmup = 200,
+                        objective = "nse", method = "nelder_mead", thresholds = k$thresholds,
+                        threshold_weight = 0.5, control = list(maxit = 60))
   sim <- run_pdm(fit$model, k$forcing, initial_state(fit$model, 0.5))$output$q_m3s
   rows <- 201:length(sim)
   nse <- pdm_scorecard(sim[rows], k$observed[rows])[["nse"]]
   csi <- pdm_threshold_scores(sim[rows], k$observed[rows], k$thresholds)$csi
   expect_equal(fit$objective, (1 - nse) + 0.5 * (1 - csi))
   expect_match(fit$objective_name, "1-NSE \\+ 0.5 x mean threshold loss \\(csi at alert\\)")
-  only <- calibrate_pdm(k$start, k$forcing, k$observed, c(fc = 0.8), c(fc = 1.5),
-                        warmup = 200, objective = "threshold", method = "nelder_mead",
-                        thresholds = k$thresholds, threshold_score = "far",
-                        control = list(maxit = 30))
+  only <- calibrate_soil(k$start, k$forcing, k$observed, c(fc = 0.8), c(fc = 1.5),
+                         warmup = 200, objective = "threshold", method = "nelder_mead",
+                         thresholds = k$thresholds, threshold_score = "far",
+                         control = list(maxit = 30))
   expect_true(only$objective >= 0 && only$objective <= 1)
 })
 
@@ -222,8 +226,8 @@ test_that("threshold objectives are refused where they cannot work", {
   k <- calibration_case()
   args <- list(k$start, k$forcing, k$observed, c(fc = 0.8), c(fc = 1.5), objective = "nse")
   expect_error(do.call(calibrate_pdm, c(args, list(thresholds = k$thresholds))), "nelder_mead")
-  expect_error(calibrate_pdm(k$start, k$forcing, k$observed, c(fc = 0.8), c(fc = 1.5),
-                             objective = "threshold", method = "nelder_mead"), "needs thresholds")
+  expect_error(calibrate_soil(k$start, k$forcing, k$observed, c(fc = 0.8), c(fc = 1.5),
+                              objective = "threshold", method = "nelder_mead"), "needs thresholds")
   expect_error(do.call(calibrate_pdm, c(args, list(method = "nelder_mead",
                                                    thresholds = c(huge = 1e6)))), "never exceeds")
   expect_error(do.call(calibrate_pdm, c(args, list(method = "nelder_mead",

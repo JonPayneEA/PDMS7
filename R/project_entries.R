@@ -37,10 +37,12 @@
 #' operating-system login. A Steward cannot sign off a project in which they wrote a trial,
 #' automatic calibration, candidate or validation.
 #'
-#' Every run simulates the whole registered record from `initial_state(model,
-#' soil_fraction)`. Trials and automatic calibrations are scored on the calibration window
-#' only; the validation window is scored once, by `validate_candidate()`, and an optional
-#' test window once more, by `test_candidate()`, after every choice is made. See
+#' Every run simulates the whole registered record, starting in steady state at the first
+#' observed flow (`start = "flow"`, the default), or from `initial_state(model, soil_fraction)`
+#' with `start = "soil"`. Projects registered before version 0.4.1 keep the soil start.
+#' Trials and automatic calibrations are scored on the calibration window only; the
+#' validation window is scored once, by `validate_candidate()`, and an optional test window
+#' once more, by `test_candidate()`, after every choice is made. See
 #' [pdm_scorecard()] for the scores and [verify_project()] for the integrity checks.
 #'
 #' @param project Path of the project folder.
@@ -72,7 +74,9 @@
 #' @param event_tolerance_h,event_gap_h,event_min_duration_h Event matching settings in
 #'   hours; see [pdm_threshold_scores()].
 #' @param log_offset Offset added before logarithms, m3/s.
-#' @param soil_fraction Initial soil store as a fraction of capacity for every run.
+#' @param soil_fraction Initial soil store as a fraction of capacity, used with
+#'   `start = "soil"` and with split recharge.
+#' @param start,baseflow_fraction How every run in the project starts; see [calibrate_pdm()].
 #' @param copy If `TRUE`, files are copied into the project; if `FALSE` they are referenced
 #'   by path and MD5. Data frames and vectors are always written into the project.
 #' @param reasoning,statement,reason,text Free text explaining the entry.
@@ -218,6 +222,7 @@ start_calibration_project <- function(path, catchment, gauge, purpose, area_km2,
 #' @export
 register_data <- function(project, forcing, observed, calibration, validation = NULL,
                           headline = "nse", log_offset = 0.01, soil_fraction = 0.5,
+                          start = c("flow", "soil"), baseflow_fraction = 0.7,
                           copy = TRUE, reasoning = "", thresholds = NULL, rating = NULL,
                           event_tolerance_h = 6, event_gap_h = 24, event_min_duration_h = 0,
                           test = NULL) {
@@ -237,6 +242,8 @@ register_data <- function(project, forcing, observed, calibration, validation = 
   ))
   .check(.scalar(log_offset, 0, strict = TRUE), "log_offset must be positive")
   .check(.scalar(soil_fraction, 0, 1), "soil_fraction must lie between 0 and 1")
+  start <- match.arg(start)
+  .check(.scalar(baseflow_fraction, 0, 1), "baseflow_fraction must lie between 0 and 1")
   .check(isTRUE(copy) || isFALSE(copy), "copy must be TRUE or FALSE")
   # Windows may be given as rows or times; they must not overlap, and each needs observed flow.
   cal <- .resolve_window(calibration, forcing_data, "calibration")
@@ -268,7 +275,8 @@ register_data <- function(project, forcing, observed, calibration, validation = 
       scorecard = list(
         warmup_rows = cal$first_row - 1L, calibration = cal, validation = val, test = tst,
         metrics = names(pdm_scorecard(c(1, 2), c(1, 2))), headline = headline,
-        log_offset = log_offset, soil_fraction = soil_fraction, thresholds = levels,
+        log_offset = log_offset, soil_fraction = soil_fraction, start = start,
+        baseflow_fraction = baseflow_fraction, thresholds = levels,
         events = list(tolerance_h = event_tolerance_h, gap_h = event_gap_h,
                       min_duration_h = event_min_duration_h)
       ),
@@ -352,7 +360,9 @@ log_auto_calibration <- function(project, parent, lower, upper,
     node$configuration, data$forcing[seq_len(last)], data$observed[seq_len(last)],
     lower = lower, upper = upper, warmup = card$calibration$first_row - 1L,
     objective = objective, log_offset = card$log_offset, control = control,
-    soil_fraction = card$soil_fraction, starts = starts, seed = seed, method = method,
+    soil_fraction = card$soil_fraction, start = card$start %||% "soil",
+    baseflow_fraction = card$baseflow_fraction %||% 0.7,
+    start_flow = .first_observed(data$observed), starts = starts, seed = seed, method = method,
     thresholds = flows, threshold_weight = threshold_weight, threshold_score = threshold_score,
     event_settings = card$events, log_scale = log_scale, volume_weight = volume_weight
   )

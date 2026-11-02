@@ -63,7 +63,7 @@ test_that("log-scale search finds wide-ranging parameters in fewer runs", {
   start <- pdm_presets("standard")
   start$recharge$kg <- 1000
   args <- list(start, forcing, observed, c(recharge.kg = 1), c(recharge.kg = 5000),
-               warmup = 200, objective = "nse", control = list(maxit = 50))
+               warmup = 200, objective = "nse", control = list(maxit = 50), start = "soil")
   linear <- do.call(calibrate_pdm, args)
   logged <- do.call(calibrate_pdm, c(args, list(log_scale = "recharge.kg")))
   expect_lt(abs(logged$parameters[["recharge.kg"]] - 40), 0.01)

@@ -185,7 +185,10 @@
     "Configuration area_km2", model@area_km2, "differs from the project's", project$area_km2
   ))
   card <- registration$scorecard
-  state <- initial_state(model, card$soil_fraction)
+  # Projects registered before version 0.4.1 record no start rule; they started from the soil
+  # fraction with empty routing stores, and must keep doing so to reproduce their entries.
+  state <- .start_state(model, card$start %||% "soil", .first_observed(data$observed),
+                        card$baseflow_fraction %||% 0.7, card$soil_fraction)
   sim <- .quietly(run_pdm(model, data$forcing, state))$output$q_m3s
   rows <- .window_rows(card[[window]])
   list(
@@ -196,6 +199,9 @@
     output_md5 = .series_md5(sim)
   )
 }
+
+# The first observed flow of a registered record, where flow-started runs begin.
+.first_observed <- function(observed) observed[is.finite(observed)][1L]
 
 # Keeps the full series for decision entries.
 .save_series <- function(path, id, run) {

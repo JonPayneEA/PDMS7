@@ -60,7 +60,8 @@ test_that("log NSE and the volume penalty score as documented", {
   one <- function(objective, weight = 0) {
     # Bounds so tight that the fit cannot move from the configured value.
     calibrate_pdm(config, f, obs, lower = c(fc = 1 - 1e-12), upper = c(fc = 1 + 1e-12),
-                  objective = objective, control = list(maxit = 1), volume_weight = weight)
+                  objective = objective, control = list(maxit = 1), volume_weight = weight,
+                  start = "soil")
   }
   lo <- log(obs + 0.01)
   expect_equal(one("log_nse")$objective,

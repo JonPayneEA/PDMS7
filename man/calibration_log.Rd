@@ -37,6 +37,8 @@ register_data(
   headline = "nse",
   log_offset = 0.01,
   soil_fraction = 0.5,
+  start = c("flow", "soil"),
+  baseflow_fraction = 0.7,
   copy = TRUE,
   reasoning = "",
   thresholds = NULL,
@@ -124,7 +126,10 @@ else; the three windows must not overlap.}
 
 \item{log_offset}{Offset added before logarithms, m3/s.}
 
-\item{soil_fraction}{Initial soil store as a fraction of capacity for every run.}
+\item{soil_fraction}{Initial soil store as a fraction of capacity, used with
+\code{start = "soil"} and with split recharge.}
+
+\item{start, baseflow_fraction}{How every run in the project starts; see \code{\link[=calibrate_pdm]{calibrate_pdm()}}.}
 
 \item{copy}{If \code{TRUE}, files are copied into the project; if \code{FALSE} they are referenced
 by path and MD5. Data frames and vectors are always written into the project.}
@@ -202,9 +207,12 @@ variables \code{PDMS7_USER} and \code{PDMS7_ROLE}. Every entry records the name,
 operating-system login. A Steward cannot sign off a project in which they wrote a trial,
 automatic calibration, candidate or validation.
 
-Every run simulates the whole registered record from \code{initial_state(model, soil_fraction)}. Trials and automatic calibrations are scored on the calibration window
-only; the validation window is scored once, by \code{validate_candidate()}, and an optional
-test window once more, by \code{test_candidate()}, after every choice is made. See
+Every run simulates the whole registered record, starting in steady state at the first
+observed flow (\code{start = "flow"}, the default), or from \code{initial_state(model, soil_fraction)}
+with \code{start = "soil"}. Projects registered before version 0.4.1 keep the soil start.
+Trials and automatic calibrations are scored on the calibration window only; the
+validation window is scored once, by \code{validate_candidate()}, and an optional test window
+once more, by \code{test_candidate()}, after every choice is made. See
 \code{\link[=pdm_scorecard]{pdm_scorecard()}} for the scores and \code{\link[=verify_project]{verify_project()}} for the integrity checks.
 }
 \examples{
