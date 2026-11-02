@@ -254,8 +254,7 @@ capacity_from_storage <- S7::new_generic("capacity_from_storage", "x")
 
 S7::method(capacity_cdf, FlodeParetoCapacity) <- function(x, c) {
   .capacity_x(c)
-  if (length(c) ==
-        0L) {
+  if (length(c) == 0L) {
     return(numeric())
   }
   if (x@b == 0) {
@@ -266,8 +265,7 @@ S7::method(capacity_cdf, FlodeParetoCapacity) <- function(x, c) {
 }
 S7::method(capacity_pdf, FlodeParetoCapacity) <- function(x, c) {
   .capacity_x(c)
-  if (length(c) ==
-        0L) {
+  if (length(c) == 0L) {
     return(numeric())
   }
   .check(x@b > 0, "b=0 is a point mass at cmax; it has no ordinary density")
@@ -277,17 +275,14 @@ S7::method(capacity_pdf, FlodeParetoCapacity) <- function(x, c) {
   ans
 }
 S7::method(capacity_mean, FlodeParetoCapacity) <- function(x) {
-  x@cmin +
-    (x@cmax - x@cmin) / (x@b + 1)
+  x@cmin + (x@cmax - x@cmin) / (x@b + 1)
 }
 S7::method(storage_from_capacity, FlodeParetoCapacity) <- function(x, c) {
   .capacity_x(c)
-  if (length(c) ==
-        0L) {
+  if (length(c) == 0L) {
     return(numeric())
   }
   z <- pmin(1, pmax(0, (c - x@cmin) / (x@cmax - x@cmin)))
-  out <- x@cmin + (capacity_mean(x) -
-                     x@cmin) * (-expm1((x@b + 1) * log1p(-z)))
+  out <- x@cmin + (capacity_mean(x) - x@cmin) * (-expm1((x@b + 1) * log1p(-z)))
   ifelse(c < x@cmin, c, out)
 }

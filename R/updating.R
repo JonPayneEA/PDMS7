@@ -51,8 +51,7 @@ FlodeStateUpdater <- S7::new_class(
         gg = .scalar(self@gg, 0),
         beta1 = .scalar(self@beta1, 0, strict = TRUE),
         beta2 = .scalar(self@beta2, 1),
-        soil_proportional = length(self@soil_proportional) ==
-          1 && !is.na(self@soil_proportional)
+        soil_proportional = length(self@soil_proportional) == 1 && !is.na(self@soil_proportional)
       )
     )
   }
@@ -169,8 +168,7 @@ correct_state <- function(model, state, observed_m3s, updater = state_updater())
     max(0, state@soil + weight * updater@gg * epsilon)
   )
   list(
-    state = state, correction_mm = .total_storage(state) -
-      old,
+    state = state, correction_mm = .total_storage(state) - old,
     q_corrected_m3s = (newb + news) * model@area_km2 / 3.6 + model@qc,
     innovation_mmh = epsilon,
 
@@ -207,8 +205,7 @@ FlodeErrorUpdater <- S7::new_class(
       self, list(
         ar = all(is.finite(self@ar)),
         ma = all(is.finite(self@ma)),
-        scale = length(self@scale) ==
-          1 && self@scale %in% c("additive", "log"),
+        scale = length(self@scale) == 1 && self@scale %in% c("additive", "log"),
         offset = .scalar(self@offset, 0)
       )
     )
@@ -238,19 +235,16 @@ error_updater <- function(
 }
 .errors <- function(observed, simulated, scale, offset) {
   .check(
-    .finite_vector(observed) && .finite_vector(simulated) &&
-      length(observed) == length(simulated),
+    .finite_vector(observed) && .finite_vector(simulated) && length(observed) == length(simulated),
     "Error history needs equal-length, complete finite numeric vectors"
   )
   if (scale == "additive") {
     observed - simulated
   } else {
     .check(
-      all(observed + offset > 0) &&
-        all(simulated + offset > 0),
+      all(observed + offset > 0) && all(simulated + offset > 0),
       "Log updating requires positive flows plus offset"
     )
-    log(observed + offset) -
-      log(simulated + offset)
+    log(observed + offset) - log(simulated + offset)
   }
 }

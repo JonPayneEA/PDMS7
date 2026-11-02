@@ -50,8 +50,7 @@ calibration_app <- function(project = NULL) {
 
 # Every numeric parameter a calibrator may adjust, zeros included.
 .editable <- function(key, v) {
-  is.numeric(v) && length(v) == 1L && !key %in% c("area_km2", "dt") &&
-    !grepl("(rtol|atol)$", key)
+  is.numeric(v) && length(v) == 1L && !key %in% c("area_km2", "dt") && !grepl("(rtol|atol)$", key)
 }
 
 .editable_paths <- function(config, prefix = NULL) {

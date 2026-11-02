@@ -68,8 +68,7 @@ FlodePdmModel <- S7::new_class(
       if (S7::S7_inherits(self@groundwater, FlodeCascadeRouting)) {
         return("Demand recharge requires a single groundwater store")
       }
-      if (storage_for_flow(self@groundwater, self@recharge@qsat) <=
-            0) {
+      if (storage_for_flow(self@groundwater, self@recharge@qsat) <= 0) {
         return("Demand recharge requires Sgmax > 0")
       }
       if (self@recharge@qsat * self@dt > capacity_mean(self@distribution)) {
@@ -219,8 +218,7 @@ initial_state <- function(model, soil_fraction = 0.5, surface = NULL, groundwate
   .route_check(model@surface, surface, 0, model@dt)
   .route_check(model@groundwater, groundwater, 0, model@dt)
   pending <- rep(
-    0, floor(model@td / model@dt) +
-      1L
+    0, floor(model@td / model@dt) + 1L
   )
   FlodePdmState(
     soil = soil_fraction * capacity_mean(model@distribution),
@@ -239,15 +237,12 @@ initial_state <- function(model, soil_fraction = 0.5, surface = NULL, groundwate
   )
   .scheck(model@distribution, state@soil)
   .check(
-    length(state@soil) ==
-      1L && .scalar(state@step, 0) &&
-      state@step == floor(state@step),
+    length(state@soil) == 1L && .scalar(state@step, 0) && state@step == floor(state@step),
     "Invalid state dimensions"
   )
   .route_check(model@surface, state@surface, 0, model@dt)
   .route_check(model@groundwater, state@groundwater, 0, model@dt)
-  n <- floor(model@td / model@dt) +
-    1L
+  n <- floor(model@td / model@dt) + 1L
   for (name in c("delay_surface",
                  "delay_groundwater",
                  "delay_surface_end",
@@ -255,8 +250,7 @@ initial_state <- function(model, soil_fraction = 0.5, surface = NULL, groundwate
     v <- S7::prop(state, name)
     .nonnegative(v, name)
     .check(
-      length(v) ==
-        n, "Delay state incompatible with td/dt; reinitialise after changing time step"
+      length(v) == n, "Delay state incompatible with td/dt; reinitialise after changing time step"
     )
   }
   invisible(TRUE)

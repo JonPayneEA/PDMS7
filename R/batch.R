@@ -221,8 +221,7 @@ calibrate_batch <- function(basins, output, structure = NULL, overrides = NULL, 
   step <- as.numeric(difftime(times[2], times[1], units = "mins"))
   snow <- sim_pack(raw$rain, raw$temperature, config, timestep_min = as.integer(round(step)))
   out <- tempfile("forcing-", fileext = ".csv")
-  data.table::fwrite(data.frame(time = raw$time, rain = snow$effective_rain_mm, pet = raw$pet),
-                     out)
+  data.table::fwrite(data.frame(time = raw$time, rain = snow$effective_rain_mm, pet = raw$pet), out)
   entries <- .read_entries(.project_path(ctx$project))
   noted <- any(vapply(entries, function(e) e$type == "note" && startsWith(e$text, "Snow:"),
                       logical(1)))

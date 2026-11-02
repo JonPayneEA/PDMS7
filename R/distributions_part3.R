@@ -14,13 +14,11 @@ S7::method(capacity_from_storage, FlodeParetoCapacity) <- function(x, s) {
   .scheck(x, s)
   z <- pmin(
     1, pmax(
-      0, (s - x@cmin) / (capacity_mean(x) -
-                           x@cmin)
+      0, (s - x@cmin) / (capacity_mean(x) - x@cmin)
     )
   )
   out <- x@cmin + (x@cmax - x@cmin) * (-expm1(
-    log1p(-z) / (x@b +
-                   1)
+    log1p(-z) / (x@b + 1)
   ))
   ifelse(s < x@cmin, s, out)
 }
@@ -58,16 +56,14 @@ S7::method(capacity_from_storage, FlodeRectangularCapacity) <- function(x, s) {
 
 S7::method(capacity_cdf, FlodeExponentialCapacity) <- function(x, c) {
   .capacity_x(c)
-  if (length(c) ==
-        0L) {
+  if (length(c) == 0L) {
     return(numeric())
   }
   -expm1(-c / x@mean)
 }
 S7::method(capacity_pdf, FlodeExponentialCapacity) <- function(x, c) {
   .capacity_x(c)
-  if (length(c) ==
-        0L) {
+  if (length(c) == 0L) {
     return(numeric())
   }
   exp(-c / x@mean) / x@mean
@@ -75,8 +71,7 @@ S7::method(capacity_pdf, FlodeExponentialCapacity) <- function(x, c) {
 S7::method(capacity_mean, FlodeExponentialCapacity) <- function(x) x@mean
 S7::method(storage_from_capacity, FlodeExponentialCapacity) <- function(x, c) {
   .capacity_x(c)
-  if (length(c) ==
-        0L) {
+  if (length(c) == 0L) {
     return(numeric())
   }
   x@mean * (-expm1(-c / x@mean))
@@ -86,13 +81,11 @@ S7::method(capacity_from_storage, FlodeExponentialCapacity) <- function(x, s) {
   -x@mean * log1p(-s / x@mean)
 }
 S7::method(capacity_mean, FlodeTriangularCapacity) <- function(x) {
-  (x@cmin +
-     x@cmax) / 2
+  (x@cmin + x@cmax) / 2
 }
 S7::method(capacity_cdf, FlodeTriangularCapacity) <- function(x, c) {
   .capacity_x(c)
-  if (length(c) ==
-        0L) {
+  if (length(c) == 0L) {
     return(numeric())
   }
   z <- pmin(1, pmax(0, (c - x@cmin) / (x@cmax - x@cmin)))

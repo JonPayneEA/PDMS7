@@ -11,14 +11,9 @@
 # Dependencies: S7; data.table; yaml; logger (structured logging; no fastverse equivalent)
 # ============================================================ #
 .route_result <- function(x, old, new, u, dt) {
-  v <- sum(old) +
-    u * dt - sum(new)
+  v <- sum(old) + u * dt - sum(new)
   .check(
-    is.finite(v) &&
-      v >= -1e-07 * max(
-        1, sum(abs(old)),
-        u * dt
-      ),
+    is.finite(v) && v >= -1e-07 * max(1, sum(abs(old)), u * dt),
     "FlodeRouting solver produced invalid volume"
   )
   # Tiny cancellation errors must not become negative pending delay water.
@@ -35,16 +30,14 @@ S7::method(route_step, FlodeCascadeRouting) <- function(x, storage, inflow, dt) 
   e2 <- exp(-dt / x@k2)
   # Stable divided difference, including the repeated-root case.
   z <- dt * (1 / x@k2 - 1 / x@k1)
-  cross <- if (abs(z) <
-                 1e-06) {
+  cross <- if (abs(z) < 1e-06) {
     e2 * dt / x@k1 * (1 + z / 2 + z^2 / 6 + z^3 / 24)
   } else {
     x@k2 / (x@k1 - x@k2) * (e1 - e2)
   }
   new <- c(
     storage[1] * e1 + inflow * x@k1 * (-expm1(-dt / x@k1)),
-    storage[2] * e2 + inflow * x@k2 * (-expm1(-dt / x@k2)) +
-      (storage[1] - inflow * x@k1) * cross
+    storage[2] * e2 + inflow * x@k2 * (-expm1(-dt / x@k2)) + (storage[1] - inflow * x@k1) * cross
   )
   new <- pmax(0, new)
   .route_result(x, storage, new, inflow, dt)

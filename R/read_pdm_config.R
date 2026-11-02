@@ -26,10 +26,7 @@
 #' @export
 read_pdm_config <- function(path) {
   .check(
-    is.character(path) &&
-      length(path) ==
-        1L && !is.na(path) &&
-      file.exists(path),
+    is.character(path) && length(path) == 1L && !is.na(path) && file.exists(path),
     "path must identify an existing YAML file"
   )
   text <- readLines(path, warn = FALSE)

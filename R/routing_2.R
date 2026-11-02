@@ -17,21 +17,17 @@ S7::method(route_step, FlodeExponentialRouting) <- function(x, storage, inflow, 
   .route_check(x, storage, inflow, dt)
   logq <- x@gamma + x@a * storage
   .check(
-    is.finite(exp(logq)) &&
-      exp(logq) >
-        0, "Exponential flow overflow/underflow"
+    is.finite(exp(logq)) && exp(logq) > 0, "Exponential flow overflow/underflow"
   )
   if (inflow == 0) {
     lognext <- logq - log1p(
-      x@a * exp(logq) *
-        dt
+      x@a * exp(logq) * dt
     )
   } else {
     h <- x@a * inflow * dt
     # 1/q_next = exp(-h)/q + (1-exp(-h))/u, using log-sum-exp.
     terms <- c(
-      -h - logq, log(-expm1(-h)) -
-        log(inflow)
+      -h - logq, log(-expm1(-h)) - log(inflow)
     )
     mx <- max(terms)
     lognext <- -(mx + log(sum(exp(terms - mx))))

@@ -31,8 +31,7 @@
 soil_step <- function(distribution, storage, net_depth) {
   .scheck(distribution, storage)
   .check(
-    length(storage) ==
-      1L && .scalar(net_depth),
+    length(storage) == 1L && .scalar(net_depth),
     "soil_step needs scalar inputs"
   )
   if (net_depth <= 0) {

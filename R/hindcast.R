@@ -105,8 +105,7 @@ pdm_hindcast <- function(model, forcing, observed, state = NULL, window = NULL, 
   methods <- list(none = sim_at, persistence = matrix(observed[origins], length(origins), horizon))
   errors <- observed - sim
   for (name in names(ar)) {
-    methods[[name]] <- pmax(sim_at + .ar_project(ar[[name]], errors, origins, horizon),
-                            lower_limit)
+    methods[[name]] <- pmax(sim_at + .ar_project(ar[[name]], errors, origins, horizon), lower_limit)
   }
   if (!is.null(state_correction)) {
     methods$state <- .state_forecasts(model, forcing, observed, open$states, origins, horizon,

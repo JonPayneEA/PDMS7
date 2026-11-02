@@ -147,8 +147,7 @@ compare_structures <- function(project, structures = NULL, overrides = NULL, exc
        validation_scores = validated$scores, reverse_scores = reverse)
 }
 
-.write_structure_fit <- function(path, author, registration, f, comparison, settings,
-                                 reasoning) {
+.write_structure_fit <- function(path, author, registration, f, comparison, settings, reasoning) {
   structure <- .append_entry(path, "structure_selected", author, function(id, entries) {
     list(registration = registration$id, configuration = f$config, scores = f$initial$scores,
          output_md5 = f$initial$output_md5, comparison = comparison, structure_name = f$name,

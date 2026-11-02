@@ -56,8 +56,7 @@ FlodePowerRouting <- S7::new_class(
       self, list(
         k = .scalar(self@k, 0, strict = TRUE),
         m = .scalar(self@m, 0, strict = TRUE),
-        solver = length(self@solver) ==
-          1 && self@solver %in% c("adaptive", "smith"),
+        solver = length(self@solver) == 1 && self@solver %in% c("adaptive", "smith"),
         smith_cubic = self@solver != "smith" || self@m == 3,
         rtol = .scalar(self@rtol,
                        0,
@@ -244,8 +243,7 @@ routing_flow <- S7::new_generic("routing_flow", "x")
 #' @export
 storage_for_flow <- S7::new_generic("storage_for_flow", "x")
 S7::method(routing_flow, FlodePowerRouting) <- function(x, storage) {
-  x@k *
-    storage^x@m
+  x@k * storage^x@m
 }
 S7::method(storage_for_flow, FlodePowerRouting) <- function(x, q) {
   .nonnegative(q, "q")
@@ -264,22 +262,18 @@ S7::method(routing_flow, FlodeExponentialRouting) <- function(x, storage) {
 }
 S7::method(storage_for_flow, FlodeExponentialRouting) <- function(x, q) {
   .check(
-    all(is.finite(q)) &&
-      all(q > 0),
+    all(is.finite(q)) && all(q > 0),
     "Exponential routing needs positive q"
   )
-  (log(q) -
-     x@gamma) / x@a
+  (log(q) - x@gamma) / x@a
 }
 .route_check <- function(x, storage, inflow, dt) {
   .check(
-    .scalar(inflow, 0) &&
-      .scalar(dt, 0, strict = TRUE),
+    .scalar(inflow, 0) && .scalar(dt, 0, strict = TRUE),
     "inflow >= 0 and dt > 0 required"
   )
   .check(
-    is.numeric(storage) &&
-      all(is.finite(storage)),
+    is.numeric(storage) && all(is.finite(storage)),
     "FlodeRouting storage must be finite"
   )
   n <- if (S7::S7_inherits(x, FlodeCascadeRouting)) {
@@ -288,8 +282,7 @@ S7::method(storage_for_flow, FlodeExponentialRouting) <- function(x, q) {
     1L
   }
   .check(
-    length(storage) ==
-      n, paste("FlodeRouting state requires", n, "storage values")
+    length(storage) == n, paste("FlodeRouting state requires", n, "storage values")
   )
   if (!S7::S7_inherits(x, FlodeExponentialRouting)) {
     .nonnegative(storage, "FlodeRouting storage")

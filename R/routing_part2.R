@@ -40,14 +40,12 @@ transfer_coefficients <- function(k1, k2, dt = 1) {
     1, dt
   )$q_end
   c(
-    delta1 = -(e1 + e2), delta2 = e1 * e2, omega0 = w0, omega1 = (1 - e1) * (1 - e2) -
-      w0
+    delta1 = -(e1 + e2), delta2 = e1 * e2, omega0 = w0, omega1 = (1 - e1) * (1 - e2) - w0
   )
 }
 .rk4 <- function(s, h, u, k, m) {
   f <- function(z) {
-    u -
-      k * max(0, z)^m
+    u - k * max(0, z)^m
   }
   a <- f(s)
   b <- f(s + h * a / 2)

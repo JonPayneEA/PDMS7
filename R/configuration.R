@@ -14,10 +14,8 @@
 # Strict list configuration: misspelled/unused parameter names are errors.
 .component <- function(spec, registry) {
   .check(
-    is.list(spec) &&
-      !is.null(spec$type) &&
-      length(spec$type) ==
-        1L && spec$type %in% names(registry),
+    is.list(spec) && !is.null(spec$type) && length(spec$type) == 1L &&
+      spec$type %in% names(registry),
     paste(
       "type must be one of", paste(
         names(registry),
@@ -26,9 +24,7 @@
     )
   )
   .check(
-    !is.null(names(spec)) &&
-      !anyDuplicated(names(spec)) &&
-      all(nzchar(names(spec))),
+    !is.null(names(spec)) && !anyDuplicated(names(spec)) && all(nzchar(names(spec))),
     "Component configuration must have unique names"
   )
   type <- spec$type
@@ -44,8 +40,7 @@
     rectangular = function(cmin = 0, cmax = 200) FlodeRectangularCapacity(cmin = cmin, cmax = cmax),
     triangular = function(cmin = 0, cmax = 200) FlodeTriangularCapacity(cmin = cmin, cmax = cmax),
     exponential = function(mean = 100) FlodeExponentialCapacity(mean = mean),
-    lognormal = function(meanlog = log(100) -
-                           0.5, sdlog = 1) {
+    lognormal = function(meanlog = log(100) - 0.5, sdlog = 1) {
       FlodeLognormalCapacity(meanlog = meanlog, sdlog = sdlog)
     }
   )
@@ -90,13 +85,8 @@ pdm_from_config <- function(config) {
     "dt"
   )
   .check(
-    is.list(config) &&
-      !is.null(names(config)) &&
-      !anyDuplicated(names(config)) &&
-      all(
-        names(config) %in%
-          allowed
-      ),
+    is.list(config) && !is.null(names(config)) && !anyDuplicated(names(config)) &&
+      all(names(config) %in% allowed),
     "Config contains unknown/duplicate/unnamed keys"
   )
   if (!is.null(config$distribution)) {
@@ -133,10 +123,7 @@ pdm_presets <- function(name = NULL) {
     return(names(presets))
   }
   .check(
-    is.character(name) &&
-      length(name) ==
-        1L && !is.na(name) &&
-      name %in% names(presets),
+    is.character(name) && length(name) == 1L && !is.na(name) && name %in% names(presets),
     "Unknown preset; call pdm_presets() for names"
   )
   presets[[name]]
@@ -164,8 +151,7 @@ parameter_catalog <- function() {
   keys <- strsplit(path, ".", fixed = TRUE)[[1]]
   for (key in keys) {
     .check(
-      is.list(config) &&
-        key %in% names(config),
+      is.list(config) && key %in% names(config),
       paste("Unknown parameter path", path)
     )
     config <- config[[key]]
@@ -175,8 +161,7 @@ parameter_catalog <- function() {
 .path_set <- function(config, path, value) {
   keys <- strsplit(path, ".", fixed = TRUE)[[1]]
   descend <- function(obj, keys) {
-    if (length(keys) ==
-          1L) {
+    if (length(keys) == 1L) {
       obj[[keys[1L]]] <- value
     } else {
       obj[[keys[1L]]] <- descend(obj[[keys[1L]]], keys[-1L])

@@ -30,9 +30,7 @@
 #' @export
 update_forecast <- function(updater, observed_history, simulated_history, forecast) {
   .check(
-    is.numeric(forecast) &&
-      length(forecast) >
-        0 && all(is.finite(forecast)),
+    is.numeric(forecast) && length(forecast) > 0 && all(is.finite(forecast)),
     "forecast must be finite"
   )
   eta <- .errors(observed_history, simulated_history, updater@scale, updater@offset)
@@ -51,8 +49,7 @@ update_forecast <- function(updater, observed_history, simulated_history, foreca
       all(forecast + updater@offset > 0),
       "Log forecast must be positive plus offset"
     )
-    (forecast + updater@offset) * exp(correction) -
-      updater@offset
+    (forecast + updater@offset) * exp(correction) - updater@offset
   }
   list(forecast = updated, error_forecast = correction, innovations = innovations[seq_len(n)])
 }
@@ -99,15 +96,11 @@ fit_error_updater <- function(
   scale = "additive", offset = 0
 ) {
   .check(
-    length(order) ==
-      2 && all(is.finite(order)) &&
-      all(order >= 0) &&
-      all(order == floor(order)),
+    length(order) == 2 && all(is.finite(order)) && all(order >= 0) && all(order == floor(order)),
     "order must be c(p,q) of nonnegative integers"
   )
   .check(
-    scale %in% c("additive", "log") &&
-      .scalar(offset, 0),
+    scale %in% c("additive", "log") && .scalar(offset, 0),
     "Invalid error scale/offset"
   )
   eta <- .errors(observed, simulated, scale, offset)

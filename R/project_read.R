@@ -245,8 +245,7 @@ verify_project <- function(project, rerun = FALSE) {
 .verify_reruns <- function(path, entries) {
   info <- .project_info(entries)
   out <- NULL
-  targets <- Filter(function(e) e$type %in% c(.model_entry_types, "validation", "test"),
-                    entries)
+  targets <- Filter(function(e) e$type %in% c(.model_entry_types, "validation", "test"), entries)
   for (e in targets) {
     registration <- .find_entry(entries, e$registration)
     result <- tryCatch({

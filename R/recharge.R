@@ -129,18 +129,15 @@ S7::method(recharge_depth,
                                               soil,
                                               smax,
                                               groundwater,
-                                              routing,
-                                              dt) {
-  max(0, soil - x@st)^x@bg / x@kg *
-    dt
+                                              routing, dt) {
+  max(0, soil - x@st)^x@bg / x@kg * dt
 }
 S7::method(recharge_depth,
            FlodeSplitRecharge) <- function(x,
                                            soil,
                                            smax,
                                            groundwater,
-                                           routing,
-                                           dt) {
+                                           routing, dt) {
   0
 }
 S7::method(recharge_depth,
@@ -148,8 +145,7 @@ S7::method(recharge_depth,
                                             soil,
                                             smax,
                                             groundwater,
-                                            routing,
-                                            dt) {
+                                            routing, dt) {
   .check(
     !S7::S7_inherits(routing, FlodeCascadeRouting),
     "Demand recharge requires a single groundwater store"

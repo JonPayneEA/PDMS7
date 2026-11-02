@@ -30,8 +30,7 @@
 pdm_step <- function(model, state, rain, pet) {
   .validate_state(model, state)
   .check(
-    .scalar(rain, 0) &&
-      .scalar(pet, 0),
+    .scalar(rain, 0) && .scalar(pet, 0),
     "rain and pet must be finite nonnegative depths"
   )
   dt <- model@dt
@@ -44,8 +43,7 @@ pdm_step <- function(model, state, rain, pet) {
                                  state@soil,
                                  smax,
                                  state@groundwater,
-                                 model@groundwater,
-                                 dt)
+                                 model@groundwater, dt)
   # Explicit water-limited boundary policy: evaporation first, then recharge.  This only
   # changes requests that would otherwise overdraw the soil store.
   et <- min(et_requested, state@soil + p)

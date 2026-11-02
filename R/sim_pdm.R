@@ -41,12 +41,10 @@ sim_pdm <- function(
   rainfall_mm, pet_mm, params, timestep_min, warmup_steps = 0L, datetime = NULL, state = NULL
 ) {
   .check(
-    length(rainfall_mm) >
-      0L, "rainfall_mm must be non-empty"
+    length(rainfall_mm) > 0L, "rainfall_mm must be non-empty"
   )
   .check(
-    length(rainfall_mm) ==
-      length(pet_mm),
+    length(rainfall_mm) == length(pet_mm),
     "rainfall_mm and pet_mm must have equal length"
   )
   .nonnegative(rainfall_mm, "rainfall_mm")
@@ -57,8 +55,7 @@ sim_pdm <- function(
     "timestep_min must be a positive integer number of minutes"
   )
   .check(
-    .scalar(warmup_steps, 0) &&
-      warmup_steps == floor(warmup_steps) &&
+    .scalar(warmup_steps, 0) && warmup_steps == floor(warmup_steps) &&
       warmup_steps < length(rainfall_mm),
     "warmup_steps must be an integer less than input length"
   )
@@ -80,9 +77,7 @@ sim_pdm <- function(
   forcing_dt <- data.table::data.table(rain = rainfall_mm, pet = pet_mm)
   if (!is.null(datetime)) {
     .check(
-      inherits(datetime, "POSIXct") &&
-        length(datetime) ==
-          length(rainfall_mm) &&
+      inherits(datetime, "POSIXct") && length(datetime) == length(rainfall_mm) &&
         all(is.finite(as.numeric(datetime))),
       "datetime must be complete POSIXct with input length"
     )
@@ -115,8 +110,7 @@ sim_pdm <- function(
   }
   data.table::set(
     output_dt,
-    j = "is_warmup", value = seq_len(nrow(output_dt)) <=
-      warmup_steps
+    j = "is_warmup", value = seq_len(nrow(output_dt)) <= warmup_steps
   )
   data.table::setattr(output_dt, "final_state", result$state)
   data.table::setattr(output_dt, "model", model)

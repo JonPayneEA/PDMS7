@@ -318,8 +318,7 @@ log_trial <- function(project, parent, changes, verdict, reasoning) {
 #' @rdname calibration_log
 #' @export
 log_auto_calibration <- function(project, parent, lower, upper,
-                                 objective = c("nse", "rmse", "log_rmse", "log_nse",
-                                               "threshold"),
+                                 objective = c("nse", "rmse", "log_rmse", "log_nse", "threshold"),
                                  starts = 1L, seed = NULL, control = list(maxit = 200),
                                  reasoning, method = c("lbfgsb", "nelder_mead"),
                                  threshold_objective = NULL, threshold_weight = 1,

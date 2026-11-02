@@ -162,8 +162,7 @@ NULL
   uses_smith <- function(route) {
     class(route)[1L] == "pdmS7::FlodePowerRouting" && route@solver == "smith"
   }
-  if (model@dt > .smith_max_dt &&
-        (uses_smith(model@surface) || uses_smith(model@groundwater)) &&
+  if (model@dt > .smith_max_dt && (uses_smith(model@surface) || uses_smith(model@groundwater)) &&
         !isTRUE(.engine_flags$smith_warned)) {
     .engine_flags$smith_warned <- TRUE
     warning(

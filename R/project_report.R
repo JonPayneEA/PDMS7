@@ -351,8 +351,7 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
 # One row per threshold and window, from flattened "metric:name" scores.
 .threshold_table <- function(card, scores, window) {
   metrics <- c("observed_events", "hits", "misses", "false_alarms", "pod", "far", "csi",
-               "bias", "crossing_error_h", "peak_error", "duration_error_h", "csi_step",
-               "ets_step")
+               "bias", "crossing_error_h", "peak_error", "duration_error_h", "csi_step", "ets_step")
   rows <- lapply(card$thresholds, function(t) {
     values <- lapply(metrics, function(m) .num_or_na(scores[[paste0(m, ":", t$name)]]))
     data.frame(threshold = t$name, window = window, stats::setNames(values, metrics),

@@ -90,8 +90,7 @@ run_pdm <- function(model, forcing, state = initial_state(model)) {
 #' @export
 spin_up <- function(model, forcing, cycles = 5, state = initial_state(model)) {
   .check(
-    .scalar(cycles, 1) &&
-      cycles == floor(cycles),
+    .scalar(cycles, 1) && cycles == floor(cycles),
     "cycles must be a positive integer"
   )
   .quietly(for (i in seq_len(cycles)) state <- run_pdm(model, forcing, state)$state)
