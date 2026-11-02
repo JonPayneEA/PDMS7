@@ -63,7 +63,7 @@
 }
 .recharge_registry <- function() {
   list(
-    standard = function(kg = 1000, bg = 1, st = 100) {
+    standard = function(kg = 4000, bg = 1, st = 0) {
       FlodeStandardRecharge(kg = kg, bg = bg, st = st)
     },
     demand = function(alpha = 0.5, beta = 1, qsat = 1) {

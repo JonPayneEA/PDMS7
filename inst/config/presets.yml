@@ -1,8 +1,8 @@
 # Illustrative templates; calibrate before use. No catchment calibration implied.
 standard:
-  # A lowland water balance: the soil drains to groundwater only above 100 mm, and slowly, so
-  # it stays moist and evaporates about half its potential; baseflow index near 0.6, and up to
-  # 2.7 mm a day of sustained recharge. Before 0.5.0 this preset had cmax 140, kg 24 and st 0,
+  # A lowland water balance: the soil drains slowly to groundwater (kg 4000 h), so it stays
+  # moist and evaporates about half its potential; baseflow index near 0.6. With no threshold
+  # it suits every capacity distribution. Before 0.5.0 this preset had cmax 140 and kg 24,
   # which emptied the soil within a day.
   distribution:
     type: pareto
@@ -11,9 +11,9 @@ standard:
     b: 0.4
   recharge:
     type: standard
-    kg: 1000.0
+    kg: 4000.0
     bg: 1.0
-    st: 100.0
+    st: 0.0
   surface:
     type: cascade
     k1: 2.0
