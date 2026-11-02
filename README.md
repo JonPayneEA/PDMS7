@@ -71,6 +71,9 @@ Calibration:
   flow-duration signatures, and POD, FAR and CSI at warning thresholds
 - [Choosing a model structure](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.html):
   calibrate the alternatives alike, rank on validation, and keep a final test window
+- [Larger floods: extrapolation and the rating](https://jonpayneea.github.io/PDMS7/articles/extrapolation.html):
+  the wettest years held back, the spread of equally good fits, and flows above the highest
+  gauging
 - [Calibrating many catchments](https://jonpayneea.github.io/PDMS7/articles/many-catchments.html):
   a step-by-step guide to `calibrate_batch()`: preparing folders, running, resuming after an
   interruption, fixing failures, and reading the results

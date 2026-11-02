@@ -99,14 +99,14 @@ Then, by type:
 | Type | Further fields |
 |---|---|
 | `project_start` | `project`: identifier, catchment, gauge, purpose, area_km2, owner, steward, description |
-| `data_registered` | Each series' source path, stored path, MD5 and summary (rows, period, step, missing values, longest gap); `scorecard`: warm-up, calibration and validation windows, metrics, headline, log offset, soil fraction |
+| `data_registered` | Each series' source path, stored path, MD5 and summary (rows, period, step, missing values, longest gap); `scorecard`: warm-up, calibration, validation and test windows, metrics, headline, log offset, soil fraction, start rule, held-back wettest years, highest gauged flow, tie tolerance; `rating_check`: flows above the highest gauged flow, window by window |
 | `structure_selected` | Full configuration; reasoning |
 | `trial` | Parent entry; changes from the parent; full configuration; calibration scores; output MD5; verdict (better, worse, inconclusive); reasoning |
-| `auto_calibration` | Parent; bounds; objective; starts; seed; control; the start table; resulting configuration; calibration scores; output MD5; reasoning |
+| `auto_calibration` | Parent; bounds; objective; starts; seed; control; the start table; resulting configuration; calibration scores; output MD5; equally good parameter sets (when years are held back); reasoning |
 | `note` | Text; optional entry it refers to |
 | `candidate` | The trial or calibration entry proposed; reasoning; calibration scores; series file and its MD5 |
 | `validation` | The candidate; validation scores, alongside calibration scores; series file and MD5; reasoning |
-| `test` | The validated candidate; test scores beside the calibration and validation scores; series file and MD5; reasoning |
+| `test` | The validated candidate; test scores beside the calibration and validation scores; the held-back years' scores and, for each year, observed and simulated peaks, the range across the equally good sets and the rating flag; series file and MD5; reasoning |
 | `sign_off` | The candidate and validation; final configuration; capacity (steward or delegated steward); review checklist; statement |
 | `reopen` | Reason |
 
@@ -173,6 +173,22 @@ Each compared structure is logged as ordinary `structure_selected` and `auto_cal
 entries sharing a comparison id, so no further entry type is needed and the ranking can be
 rebuilt from the log. Structures are fitted in parallel workers that write nothing; the
 entries are written afterwards, in order, by the session that started the comparison.
+
+## Extrapolation
+
+Agreed 2026-11-02.
+
+| # | Question | Decision |
+|---|---|---|
+| 21 | Flows above the rating | Flagged only. `register_data(highest_gauged_m3s =)` records the highest check gauging, stated by the Custodian; registration counts the flows above it in each window, and the test marks each held-back peak above it. The fit is unchanged |
+| 22 | Testing larger floods | A differential split-sample test (Klemeš 1986): the wettest water years (October to September), ranked by annual maximum within the calibration and validation windows, are held back |
+| 23 | Relation to the test window | A second hidden set, removed from calibration and validation scoring and revealed by `test_candidate()` under the same once-only rule; the date-based test window keeps its role |
+| 24 | How many years | Stated at registration, default 2; refused if fewer than three counted years would remain. A year counts if half of it is observed |
+| 25 | Equally good sets | Every parameter set an automatic calibration tried whose calibration headline lies within a stated tolerance of the best (default 0.02), thinned to at most 50 spread-out sets; the test reports the range of their peaks in each held year |
+| 26 | Benchmark | Reported on the PDM side only, as supporting evidence outside the head-to-head comparison |
+
+Projects registered before version 0.5.0 record no held years, and every run in them scores
+as before.
 
 ## Run log and register
 

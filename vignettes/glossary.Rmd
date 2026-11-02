@@ -73,11 +73,20 @@ stores first, then the fast stores, then a joint polish. `calibrate_staged()`.
 the first, checked on the second, and scored once on the third after every choice is made. A
 **split-sample test** in Klemeš's (1986) terms.
 
+**Wettest years held back.** The two water years (October to September) with the highest
+flows, left out of calibration and validation and scored once with the test: a
+**differential split-sample test**, which checks the model on floods larger than those it was
+fitted to. [Larger floods](extrapolation.html).
+
+**Highest gauged flow.** The largest flow ever measured directly at a station. Above it the
+rating curve is extrapolated, so recorded flows there are uncertain in size.
+
 **Structure.** The choice of components: capacity distribution, recharge rule and routing.
 [Choosing a model structure](choosing-structure.html).
 
 **Equifinality.** Different parameter sets giving almost equally good fits. It means the data do
-not pin those parameters down.
+not pin those parameters down. A calibration project keeps up to 50 such **equally good sets**
+and runs them through the held-back years.
 
 **Batch calibration.** Applying one calibration protocol to many catchments.
 [Calibrating many catchments](many-catchments.html).

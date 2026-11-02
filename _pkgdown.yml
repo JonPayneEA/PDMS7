@@ -64,6 +64,7 @@ articles:
   - auto-calibration
   - scoring
   - choosing-structure
+  - extrapolation
   - many-catchments
 - title: Records and review
   navbar: Records and review
@@ -198,6 +199,7 @@ reference:
   desc: An append-only, tamper-evident record of manual and automatic calibration.
   contents:
   - calibration_log
+  - wettest_years
   - read_project
   - verify_project
   - build_report

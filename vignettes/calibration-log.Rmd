@@ -95,7 +95,8 @@ reg <- register_data(
   calibration = c("2023-10-15", "2023-12-31"),
   validation = c("2024-01-01", "2024-01-28"),
   headline = "nse", thresholds = thresholds, rating = rating,
-  reasoning = "Gauge record checked against the station log."
+  reasoning = "Gauge record checked against the station log.",
+  wettest_years = 0
 )
 str(reg$summary[c("rows", "start", "end", "observed_missing", "observed_longest_gap")])
 ```

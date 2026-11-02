@@ -1,3 +1,29 @@
+# pdmS7 0.5.0
+
+- **Extrapolation checks in calibration projects.** Calibrations are fitted to the floods in the
+  record and used for larger ones; this release makes that visible before sign-off.
+  - `register_data()` holds back the two wettest water years (October to September) in the
+    calibration and validation windows by default. No calibration, trial or validation scores
+    them; `test_candidate()` reveals them once, with the test window, under the same rules. Set
+    `wettest_years` to change the number, or 0 to hold none back. Holding years back needs a
+    `time` column and enough record to leave three years, so short records now need
+    `wettest_years = 0`.
+  - Each automatic calibration keeps the parameter sets it tried that score within
+    `tie_tolerance` (default 0.02) of its best headline, up to 50 spread-out sets. The test
+    reports, for each held year, the observed peak, the candidate's peak and the range across
+    those sets.
+  - `register_data(highest_gauged_m3s =)` records the highest check gauging. Flows above it,
+    where the rating is extrapolated, are counted window by window at registration and flagged
+    in the test. The fit is unchanged.
+  - The report, the app and `calibrate_batch()` (through `basin.yml`) carry all three. Sign-off
+    needs the test when years are held back, even without a test window.
+  - Projects registered before 0.5.0 hold nothing back and reproduce as before.
+- `wettest_years()` ranks the water years of any record by peak flow.
+- `calibrate_pdm(archive =)` keeps every trial's parameters and a score of your choosing.
+- New article: "Larger floods: extrapolation and the rating".
+- The benchmark protocol is at version 0.3: a PDM-only extrapolation check on the wettest
+  years, outside the head-to-head comparison, which holds no years back.
+
 # pdmS7 0.4.1
 
 - **Calibration starts from the first observed flow.** Every trial of `calibrate_pdm()`, and
