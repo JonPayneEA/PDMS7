@@ -164,6 +164,22 @@ The PACK snow model, alone or feeding the PDM.
 - [`sim_snow_pdm()`](https://jonpayneea.github.io/PDMS7/reference/sim_snow_pdm.md)
   : Simulate coupled PACK and PDM
 
+## Synthetic rivers
+
+Stochastic rain and known-answer catchments, for demonstrations and
+method tests.
+
+- [`synthetic_catchment()`](https://jonpayneea.github.io/PDMS7/reference/synthetic_catchment.md)
+  : Synthetic catchment
+- [`synthetic_rain()`](https://jonpayneea.github.io/PDMS7/reference/synthetic_rain.md)
+  : Synthetic rainfall
+- [`fit_rain()`](https://jonpayneea.github.io/PDMS7/reference/fit_rain.md)
+  : Fit a rainfall generator to a record
+- [`rain_parameters()`](https://jonpayneea.github.io/PDMS7/reference/rain_parameters.md)
+  : Rainfall generator parameters
+- [`rain_statistics()`](https://jonpayneea.github.io/PDMS7/reference/rain_statistics.md)
+  : Rainfall statistics
+
 ## Calibration
 
 - [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md)

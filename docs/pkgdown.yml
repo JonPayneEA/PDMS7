@@ -25,8 +25,9 @@ articles:
   snowpack-explained: snowpack-explained.html
   starting-states: starting-states.html
   steward-guide: steward-guide.html
+  synthetic-rivers: synthetic-rivers.html
   troubleshooting: troubleshooting.html
-last_built: 2026-11-02T19:27Z
+last_built: 2026-11-02T20:30Z
 urls:
   reference: https://jonpayneea.github.io/PDMS7/reference
   article: https://jonpayneea.github.io/PDMS7/articles

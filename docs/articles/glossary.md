@@ -95,6 +95,16 @@ floods](https://jonpayneea.github.io/PDMS7/articles/extrapolation.md).
 station. Above it the rating curve is extrapolated, so recorded flows
 there are uncertain in size.
 
+**Synthetic river.** A calibration problem with a known answer:
+generated rain, a model with chosen parameters, and a simulated gauge.
+[Synthetic
+rivers](https://jonpayneea.github.io/PDMS7/articles/synthetic-rivers.md).
+
+**Rainfall generator.** A random process that produces rain with
+realistic statistics: rectangular-pulse models (Neyman-Scott,
+Bartlett-Lewis), a Markov chain with gamma amounts, or resampling of a
+real record.
+
 **Structure.** The choice of components: capacity distribution, recharge
 rule and routing. [Choosing a model
 structure](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.md).

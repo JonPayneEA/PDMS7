@@ -23,6 +23,7 @@
     <li><a class="dropdown-item" href="articles/reading-paths.html">Where to start</a></li>
     <li><a class="dropdown-item" href="articles/data-preparation.html">Preparing your data</a></li>
     <li><a class="dropdown-item" href="articles/example-workflow.html">Your first model run</a></li>
+    <li><a class="dropdown-item" href="articles/synthetic-rivers.html">Synthetic rivers: try everything on a known answer</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>How the model works</h6></li>
     <li><a class="dropdown-item" href="articles/pdm-explained.html">How the PDM works</a></li>
@@ -223,6 +224,9 @@
 </tr><tr class="even"><td>25</td>
 <td><code><a href="reference/initial_state_from_flow.html">initial_state_from_flow()</a></code></td>
 <td>The steady state ignores evaporation. Fine as documented.</td>
+</tr><tr class="odd"><td>26</td>
+<td><code>pdm_presets("standard")</code></td>
+<td>Found after the review, while building synthetic rivers: the preset drains its soil within a day (<code>kg</code> = 24 h, <code>st</code> = 0), so the soil stays nearly empty and actual evaporation is about 1 per cent of potential. Harmless for exercising code; unrealistic as a river. <code><a href="reference/synthetic_catchment.html">synthetic_catchment()</a></code> uses its own lowland water balance. Changing the preset would change the golden files and every test fixture, so it is left for decision.</td>
 </tr></tbody></table></div>
 </div>
 <div class="section level2">

@@ -18,7 +18,9 @@ explains any term along the way.
     from EA sources to model files, with a checklist.
 3.  [Your first model
     run](https://jonpayneea.github.io/PDMS7/articles/example-workflow.md):
-    data to a calibrated, saved model.
+    data to a calibrated, saved model. Or, with no data to hand,
+    [Synthetic
+    rivers](https://jonpayneea.github.io/PDMS7/articles/synthetic-rivers.md).
 4.  [Starting a
     run](https://jonpayneea.github.io/PDMS7/articles/starting-states.md)
     and [Choosing model

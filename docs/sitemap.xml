@@ -25,6 +25,7 @@
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/snowpack-explained.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/starting-states.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/steward-guide.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/articles/synthetic-rivers.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/troubleshooting.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/authors.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/benchmark-protocol.html</loc></url>
@@ -91,6 +92,7 @@
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/cubic_routing.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/error_updater.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/fit_error_updater.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/fit_rain.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/hindcast_scores.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/index.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/initial_state.html</loc></url>
@@ -116,6 +118,8 @@
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/plot_hindcast.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/power_routing.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/quadratic_routing.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/rain_parameters.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/rain_statistics.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/read_pdm_config.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/read_project.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/read_run_log.html</loc></url>
@@ -132,6 +136,8 @@
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/storage_for_flow.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/storage_from_capacity.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/structure_set.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/synthetic_catchment.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/synthetic_rain.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/transfer_coefficients.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/update_forecast.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/verify_project.html</loc></url>

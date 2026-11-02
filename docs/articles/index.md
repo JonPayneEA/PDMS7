@@ -8,6 +8,8 @@
   data](https://jonpayneea.github.io/PDMS7/articles/data-preparation.md):
 - [Your first model
   run](https://jonpayneea.github.io/PDMS7/articles/example-workflow.md):
+- [Synthetic rivers: try everything on a known
+  answer](https://jonpayneea.github.io/PDMS7/articles/synthetic-rivers.md):
 
 ### How the model works
 
