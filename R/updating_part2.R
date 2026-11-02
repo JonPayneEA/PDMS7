@@ -76,28 +76,6 @@ update_forecast <- function(updater, observed_history, simulated_history, foreca
   list(errors = errors, innovations = innovations)
 }
 
-#' Fit error updater
-#'
-#' Component of the configurable Moore (2007) rainfall-runoff framework.
-#'
-#' @param observed Observed discharges in cubic metres per second, aligned to forcing or
-#' simulation.
-#' @param simulated Complete simulated discharges aligned with observed, cubic metres per second.
-#' @param order Integer vector c(p,q) of nonnegative AR and MA orders.
-#' @param scale Error scale: additive or log.
-#' @param offset Nonnegative offset in cubic metres per second for log error updating.
-#'
-#' @return A list with an S7 updater and fitted stats::arima object. The fit is by exact
-#' maximum likelihood; if that optimisation fails, as it can on long or awkward error series,
-#' conditional sum of squares then maximum likelihood is tried, then conditional sum of squares
-#' alone. The method used is the arima object's `method` element, and a message names any
-#' fallback.
-#'
-#' @examples
-#' fit_error_updater(c(1, 2, 1, 3, 2, 1, 2, 4), rep(1, 8), order = c(0, 0))
-#'
-#' @references Moore (2007), doi:10.5194/hess-11-483-2007.
-#' @export
 # stats::arima(), named so tests can stand in a failing fit.
 .arima <- function(...) stats::arima(...)
 
@@ -120,6 +98,28 @@ update_forecast <- function(updater, observed_history, simulated_history, foreca
   stop("The ARMA fit failed by every method: ", conditionMessage(fit), call. = FALSE)
 }
 
+#' Fit error updater
+#'
+#' Component of the configurable Moore (2007) rainfall-runoff framework.
+#'
+#' @param observed Observed discharges in cubic metres per second, aligned to forcing or
+#' simulation.
+#' @param simulated Complete simulated discharges aligned with observed, cubic metres per second.
+#' @param order Integer vector c(p,q) of nonnegative AR and MA orders.
+#' @param scale Error scale: additive or log.
+#' @param offset Nonnegative offset in cubic metres per second for log error updating.
+#'
+#' @return A list with an S7 updater and fitted stats::arima object. The fit is by exact
+#' maximum likelihood; if that optimisation fails, as it can on long or awkward error series,
+#' conditional sum of squares then maximum likelihood is tried, then conditional sum of squares
+#' alone. The method used is the arima object's `method` element, and a message names any
+#' fallback.
+#'
+#' @examples
+#' fit_error_updater(c(1, 2, 1, 3, 2, 1, 2, 4), rep(1, 8), order = c(0, 0))
+#'
+#' @references Moore (2007), doi:10.5194/hess-11-483-2007.
+#' @export
 # Fits ARMA(p, q) coefficients to a model's errors by maximum likelihood (stats::arima), with no
 # mean term: a calibrated model's errors should average close to zero. Returns the updater and the
 # arima fit, whose standard errors show how well the coefficients are determined.

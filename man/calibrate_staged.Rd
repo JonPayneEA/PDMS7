@@ -17,7 +17,9 @@ calibrate_staged(
   control = list(maxit = 200),
   method = c("lbfgsb", "nelder_mead"),
   soil_fraction = 0.5,
-  log_offset = 0.01
+  log_offset = 0.01,
+  start = c("flow", "soil"),
+  baseflow_fraction = 0.7
 )
 
 log_staged_calibration(
@@ -35,7 +37,8 @@ log_staged_calibration(
 \arguments{
 \item{config}{A configuration list, the starting point.}
 
-\item{forcing, observed, warmup, soil_fraction, log_offset}{Passed to \code{\link[=calibrate_pdm]{calibrate_pdm()}}.}
+\item{forcing, observed, warmup, soil_fraction, log_offset, start, baseflow_fraction}{Passed to
+\code{\link[=calibrate_pdm]{calibrate_pdm()}}: how the data are scored and how every trial starts.}
 
 \item{stages}{Stages from \code{\link[=pdm_stages]{pdm_stages()}}, or your own.}
 

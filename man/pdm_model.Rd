@@ -5,8 +5,8 @@
 \title{Pdm model}
 \usage{
 pdm_model(
-  distribution = FlodeParetoCapacity(cmin = 0, cmax = 140, b = 0.4),
-  recharge = FlodeStandardRecharge(kg = 24, bg = 1, st = 0),
+  distribution = FlodeParetoCapacity(cmin = 0, cmax = 300, b = 0.4),
+  recharge = FlodeStandardRecharge(kg = 4000, bg = 1, st = 0),
   surface = FlodeCascadeRouting(k1 = 2, k2 = 4),
   groundwater = cubic_routing(),
   be = 1,

@@ -39,7 +39,7 @@ equilibrium, using \code{\link[=storage_for_flow]{storage_for_flow()}};
 S = st + (kg * qb)^(1 / bg); with demand recharge it is the soil storage at which the
 demand formula gives qb. With split recharge the soil store does not drain to groundwater,
 so the steady state does not determine it and \code{soil_fraction} of capacity is used. The
-soil store is capped at capacity;
+soil store is capped at capacity, with a warning: the run then starts out of balance;
 \item the outlet delay queues hold the water already in transit at that flow.
 }
 
