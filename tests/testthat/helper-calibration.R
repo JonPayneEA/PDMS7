@@ -50,7 +50,7 @@ new_project <- function(env = parent.frame()) {
   start_calibration_project(folder, "Test Brook", "99999", "Testing", 20, "A Director",
                             "Sam Steward")
   register_data(folder, d$forcing, d$observed, calibration = c(121, 700),
-                validation = c("2021-01-31", "2021-02-09 23:00"))
+                validation = c("2021-01-31", "2021-02-09 23:00"), wettest_years = 0)
   start <- d$truth
   start$fc <- 0.85
   select_structure(folder, start, "Standard structure")

@@ -211,6 +211,10 @@ calibration_app <- function(project = NULL) {
       shiny::numericInput("log_offset", "Log offset (m3/s)", 0.01),
       shiny::numericInput("soil_fraction", "Initial soil fraction", 0.5)
     ),
+    shiny::splitLayout(
+      shiny::numericInput("highest_gauged", "Highest gauged flow (m3/s, optional)", NA, 0),
+      shiny::numericInput("wettest_years", "Wettest years held back", 2, 0, step = 1)
+    ),
     shiny::checkboxInput("copy", "Copy data into the project", TRUE),
     .text_area("register_reasoning", "Notes on the data"),
     shiny::actionButton("register", "Register data", class = "btn-primary")

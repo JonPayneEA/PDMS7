@@ -215,7 +215,10 @@ calibrate_batch <- function(basins, output, structure = NULL, overrides = NULL, 
                 file.path(m$folder, "flow.csv"), calibration = unlist(m$calibration),
                 validation = unlist(m$validation), test = unlist(m$test),
                 headline = m$headline %||% "nse", thresholds = .basin_thresholds(m),
-                rating = if (!is.null(m$rating)) file.path(m$folder, m$rating))
+                rating = if (!is.null(m$rating)) file.path(m$folder, m$rating),
+                highest_gauged_m3s = m$highest_gauged_m3s,
+                wettest_years = m$wettest_years %||% 2,
+                tie_tolerance = m$tie_tolerance %||% 0.02)
 }
 
 # Snow basins: PACK, at fixed parameters, turns precipitation and temperature into the rain
@@ -316,11 +319,12 @@ calibrate_batch <- function(basins, output, structure = NULL, overrides = NULL, 
   validate_candidate(ctx$project, ctx$reasoning)
 }
 
-# Scores the test window once, only when the batch asks for it and the basin has one.
+# Scores the test window and held-back years once, only when the batch asks for it and the
+# basin has either.
 .batch_test <- function(ctx) {
-  if (!ctx$spec$test || .batch_has(ctx$project, "test") || is.null(ctx$meta$test)) {
-    return(invisible())
-  }
+  if (!ctx$spec$test || .batch_has(ctx$project, "test")) return(invisible())
+  card <- .registration(.read_entries(.project_path(ctx$project)))$scorecard
+  if (!.has_test(card)) return(invisible())
   test_candidate(ctx$project, ctx$reasoning)
 }
 

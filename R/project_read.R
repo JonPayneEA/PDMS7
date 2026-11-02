@@ -272,7 +272,9 @@ verify_project <- function(project, rerun = FALSE) {
     result <- tryCatch({
       if (e$type %in% c("validation", "test")) {
         config <- .find_entry(entries, e$candidate)$configuration
+        # A test with no test window scored only the held-back years.
         window <- e$type
+        if (window == "test" && is.null(registration$scorecard$test)) window <- "wettest"
       } else {
         config <- e$configuration
         window <- "calibration"

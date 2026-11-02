@@ -167,6 +167,7 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
                                  ". The soil store starts at ", card$soil_fraction,
                                  " of capacity."))
     ))
+    out <- c(out, .rpt_held(r))
     if (length(card$thresholds)) {
       out <- c(out, list(.blk_table(.threshold_definitions(card), paste0(
         "Thresholds. Events matched within ", card$events$tolerance_h, " h; exceedances less ",
@@ -179,7 +180,8 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
   if (!is.null(latest)) {
     data <- tryCatch(.load_registration(path, latest), error = function(e) NULL)
     if (!is.null(data)) {
-      caption <- "Observed flow, with the calibration (blue) and validation (orange) windows"
+      caption <- paste("Observed flow, with the calibration (blue) and validation (orange)",
+                       "windows; held-back wettest years in grey")
       draw <- function() .plot_record(data, latest$scorecard)
       out <- c(out, list(.blk_fig("observed", draw, caption, height = 3.2)))
     }
@@ -321,18 +323,19 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
   }
   test <- .candidate_test(entries, candidate)
   if (!is.null(test)) {
-    scores$test <- vapply(test$test_scores[core], .num_or_na, numeric(1))
+    scores <- .test_columns(scores, test)
     out <- c(out, list(.blk_p(paste0(
-      "Tested once on the final window in entry ", test$id, " (", test$author$name, "): ",
-      test$reasoning
+      "Tested once, after every choice was made, in entry ", test$id, " (", test$author$name,
+      "): ", test$reasoning
     ))))
-  } else if (!is.null(card$test)) {
+  } else if (.has_test(card)) {
     out <- c(out, list(.blk_p(paste(
-      "A test window is registered but has not been scored. It is scored once, by",
-      "test_candidate(), after the structure and parameters are final."
+      "A test window or held-back years are registered but have not been scored. They are",
+      "scored once, by test_candidate(), after the structure and parameters are final."
     ))))
   }
   out <- c(out, list(.blk_table(scores, "Scorecard")))
+  if (!is.null(test$wettest)) out <- c(out, .rpt_wettest(test$wettest, card))
   if (length(card$thresholds)) {
     out <- c(out, .rpt_thresholds(card, candidate$scores,
                                   if (validated) validation$validation_scores,
@@ -354,6 +357,78 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
     ))
   }
   out
+}
+
+# Adds the test window's and the held-back years' scores to the scorecard table, where scored.
+.test_columns <- function(scores, test) {
+  if (!is.null(test$test_scores)) {
+    scores$test <- vapply(test$test_scores[scores$score], .num_or_na, numeric(1))
+  }
+  if (!is.null(test$wettest)) {
+    scores$wettest_years <- vapply(test$wettest$scores[scores$score], .num_or_na, numeric(1))
+  }
+  scores
+}
+
+# A registration's held-back years and, when the highest gauged flow is given, how much of each
+# window lies above it.
+.rpt_held <- function(r) {
+  card <- r$scorecard
+  out <- list()
+  years <- .held_years(card)
+  if (length(years)) {
+    table <- data.frame(
+      water_year = vapply(years, function(y) y$water_year, ""),
+      period = vapply(years, function(y) paste(y$start, "to", y$end), ""),
+      peak_m3s = vapply(years, function(y) y$peak_m3s, 0)
+    )
+    out <- c(out, list(.blk_table(table, paste(
+      "Held-back wettest years. No calibration, trial or validation scores them; the test",
+      "scores them once, as a check on floods larger than those the model was fitted to."
+    ))))
+  }
+  check <- r$rating_check
+  if (!is.null(check)) {
+    windows <- check$windows
+    table <- data.frame(
+      window = names(windows),
+      steps_above = vapply(windows, function(w) w$steps_above, 0),
+      share_above = sprintf("%.2f%%", 100 * vapply(windows, function(w) w$share_above, 0)),
+      highest_m3s = vapply(windows, function(w) w$highest_m3s, 0), row.names = NULL
+    )
+    out <- c(out, list(.blk_table(table, sprintf(paste(
+      "Observed flow above the highest gauged flow, %.4g m3/s. Above it the rating is",
+      "extrapolated, so those flows are uncertain in size, though not in order."
+    ), check$highest_gauged_m3s))))
+  }
+  out
+}
+
+# The test's held-back years: observed peak, the candidate's peak, and the range across the
+# equally good parameter sets.
+.rpt_wettest <- function(w, card) {
+  years <- w$years
+  table <- data.frame(
+    water_year = vapply(years, function(y) y$water_year, ""),
+    observed_peak = vapply(years, function(y) y$observed_peak_m3s, 0),
+    candidate_peak = vapply(years, function(y) y$simulated_peak_m3s, 0),
+    equally_good_low = vapply(years, function(y) y$spread_low_m3s, 0),
+    equally_good_high = vapply(years, function(y) y$spread_high_m3s, 0)
+  )
+  if (!is.null(card$highest_gauged_m3s)) {
+    table$observed_above_gauged <- vapply(years, function(y) isTRUE(y$above_gauged), TRUE)
+  }
+  spread <- if (w$sets > 0) {
+    sprintf(paste("The range covers the candidate and %d parameter sets that scored within",
+                  "%.3g of the best calibration %s."), w$sets, w$tolerance, card$headline)
+  } else {
+    paste("No equally good sets were recorded with the candidate's calibration (a manual",
+          "trial or a structure comparison keeps none), so the range is the candidate alone.")
+  }
+  list(.blk_table(table, paste(
+    "Peaks in the held-back wettest years, m3/s.", spread,
+    "A wide range means the calibration cannot pin down floods of this size."
+  )))
 }
 
 # The registered thresholds and event settings, as a table.
@@ -524,7 +599,11 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
   }
   shade(card$calibration, grDevices::adjustcolor(.pal[["blue"]], 0.15))
   shade(card$validation, grDevices::adjustcolor(.pal[["orange"]], 0.2))
+  for (y in .held_years(card)) shade(y, grDevices::adjustcolor(.pal[["grey"]], 0.35))
   graphics::lines(th$x, th$y, col = .pal[["grey"]], lwd = 0.8)
+  if (!is.null(card$highest_gauged_m3s)) {
+    graphics::abline(h = card$highest_gauged_m3s, lty = 2, col = .pal[["grey"]])
+  }
 }
 
 .verdict_colour <- function(e) {

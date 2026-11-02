@@ -46,7 +46,10 @@ register_data(
   event_tolerance_h = 6,
   event_gap_h = 24,
   event_min_duration_h = 0,
-  test = NULL
+  test = NULL,
+  highest_gauged_m3s = NULL,
+  wettest_years = 2,
+  tie_tolerance = 0.02
 )
 
 select_structure(project, configuration, reasoning)
@@ -146,6 +149,15 @@ and \code{q_m3s}. Levels outside it are refused, not extrapolated. Stored like t
 \item{event_tolerance_h, event_gap_h, event_min_duration_h}{Event matching settings in
 hours; see \code{\link[=pdm_threshold_scores]{pdm_threshold_scores()}}.}
 
+\item{highest_gauged_m3s}{Optional highest flow ever gauged at the station, m3/s: the top
+of the reliable rating. Flows above it are flagged, not changed.}
+
+\item{wettest_years}{Number of the wettest water years to hold back, by default 2. Needs a
+\code{time} column in \code{forcing} and enough record to leave three years; 0 holds none back.}
+
+\item{tie_tolerance}{Parameter sets whose calibration headline score lies within this of
+the best count as equally good, in the headline's own units (0.02 for NSE).}
+
 \item{configuration}{A configuration list or the path of a YAML configuration file.}
 
 \item{parent}{Id of the structure, trial or automatic calibration entry to start from.}
@@ -214,6 +226,16 @@ Trials and automatic calibrations are scored on the calibration window only; the
 validation window is scored once, by \code{validate_candidate()}, and an optional test window
 once more, by \code{test_candidate()}, after every choice is made. See
 \code{\link[=pdm_scorecard]{pdm_scorecard()}} for the scores and \code{\link[=verify_project]{verify_project()}} for the integrity checks.
+
+\strong{Extrapolation.} By default the two wettest water years in the calibration and
+validation windows (see \code{\link[=wettest_years]{wettest_years()}}) are held back: no calibration, trial or
+validation scores them, and \code{test_candidate()} scores them once, with the test window,
+as a check on floods larger than those the model was fitted to. Each automatic calibration
+keeps the parameter sets it tried that score within \code{tie_tolerance} of its best, up to 50
+spread-out sets, and the test reports the range of their peaks in each held year. Where
+\code{highest_gauged_m3s} is given, flows above it are counted window by window at
+registration and flagged in the test: above that flow the rating is extrapolated, so the
+observed peak is uncertain. Projects registered before version 0.5.0 hold nothing back.
 }
 \examples{
 folder <- file.path(tempdir(), "example-project")
@@ -227,7 +249,7 @@ truth <- pdm_presets("standard")
 truth$area_km2 <- 50
 observed <- run_pdm(pdm_from_config(truth), forcing)$output$q_m3s
 register_data(folder, forcing, observed, calibration = c(101, 350),
-  validation = c(351, 500))
+  validation = c(351, 500), wettest_years = 0)
 select_structure(folder, truth, reasoning = "Standard structure as a starting point")
 log_trial(folder, parent = 3, changes = c(surface.k1 = 3), verdict = "worse",
   reasoning = "Testing a slower first store")

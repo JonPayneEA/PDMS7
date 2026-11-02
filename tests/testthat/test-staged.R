@@ -140,7 +140,8 @@ test_that("a staged batch resumes from its last finished stage", {
                      file.path(folder, "forcing.csv"))
   data.table::fwrite(data.frame(q_m3s = d$observed), file.path(folder, "flow.csv"))
   writeLines(c("area_km2: 1", "calibration: [2023-10-03, 2023-10-22]",
-               "validation: [2023-10-23, 2023-10-30]"), file.path(folder, "basin.yml"))
+               "validation: [2023-10-23, 2023-10-30]", "wettest_years: 0"),
+             file.path(folder, "basin.yml"))
   as_person("Ann Custodian", "custodian", "ann")
   quick <- list(control = list(maxit = 3), exclude = c("groundwater.kb", "distribution.cmax"))
   # Interrupt after stage 1 by failing stage 2.

@@ -118,7 +118,10 @@
                   rating = if (nzchar(trimws(input$rating_path %||% ""))) input$rating_path,
                   event_tolerance_h = input$event_tolerance %||% 6,
                   event_gap_h = input$event_gap %||% 24,
-                  event_min_duration_h = input$event_min %||% 0)
+                  event_min_duration_h = input$event_min %||% 0,
+                  highest_gauged_m3s = if (is.finite(input$highest_gauged %||% NA))
+                    input$highest_gauged,
+                  wettest_years = input$wettest_years %||% 2)
   }, "Data registered"))
   shiny::observeEvent(input$structure, act(function() {
     shiny::req(rv$project)
@@ -343,11 +346,18 @@
 # The line describing the final test for the sign-off tab.
 .test_line <- function(entries, candidate, headline) {
   registration <- .latest(entries, "data_registered")
-  if (is.null(registration$scorecard$test)) return(NULL)
+  if (!.has_test(registration$scorecard)) return(NULL)
   test <- .candidate_test(entries, candidate)
   if (is.null(test)) return("Final test: not yet run; required before sign-off.")
-  sprintf("Final test %s: %s %.4g.", test$id, headline,
-          .num_or_na(test$test_scores[[headline]]))
+  parts <- c(
+    if (!is.null(test$test_scores)) {
+      sprintf("test window %s %.4g", headline, .num_or_na(test$test_scores[[headline]]))
+    },
+    if (!is.null(test$wettest)) {
+      sprintf("wettest years %s %.4g", headline, .num_or_na(test$wettest$scores[[headline]]))
+    }
+  )
+  sprintf("Final test %s: %s.", test$id, paste(parts, collapse = "; "))
 }
 
 # Structures tab: runs compare_structures() and shows its ranking.

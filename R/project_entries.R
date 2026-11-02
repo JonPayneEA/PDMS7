@@ -45,6 +45,16 @@
 #' once more, by `test_candidate()`, after every choice is made. See
 #' [pdm_scorecard()] for the scores and [verify_project()] for the integrity checks.
 #'
+#' **Extrapolation.** By default the two wettest water years in the calibration and
+#' validation windows (see [wettest_years()]) are held back: no calibration, trial or
+#' validation scores them, and `test_candidate()` scores them once, with the test window,
+#' as a check on floods larger than those the model was fitted to. Each automatic calibration
+#' keeps the parameter sets it tried that score within `tie_tolerance` of its best, up to 50
+#' spread-out sets, and the test reports the range of their peaks in each held year. Where
+#' `highest_gauged_m3s` is given, flows above it are counted window by window at
+#' registration and flagged in the test: above that flow the rating is extrapolated, so the
+#' observed peak is uncertain. Projects registered before version 0.5.0 hold nothing back.
+#'
 #' @param project Path of the project folder.
 #' @param path Folder to create for a new project; it must not exist or must be empty.
 #' @param catchment,gauge,purpose Catchment name, gauge identifier (for example an NRFA
@@ -77,6 +87,12 @@
 #' @param soil_fraction Initial soil store as a fraction of capacity, used with
 #'   `start = "soil"` and with split recharge.
 #' @param start,baseflow_fraction How every run in the project starts; see [calibrate_pdm()].
+#' @param highest_gauged_m3s Optional highest flow ever gauged at the station, m3/s: the top
+#'   of the reliable rating. Flows above it are flagged, not changed.
+#' @param wettest_years Number of the wettest water years to hold back, by default 2. Needs a
+#'   `time` column in `forcing` and enough record to leave three years; 0 holds none back.
+#' @param tie_tolerance Parameter sets whose calibration headline score lies within this of
+#'   the best count as equally good, in the headline's own units (0.02 for NSE).
 #' @param copy If `TRUE`, files are copied into the project; if `FALSE` they are referenced
 #'   by path and MD5. Data frames and vectors are always written into the project.
 #' @param reasoning,statement,reason,text Free text explaining the entry.
@@ -112,7 +128,7 @@
 #' truth$area_km2 <- 50
 #' observed <- run_pdm(pdm_from_config(truth), forcing)$output$q_m3s
 #' register_data(folder, forcing, observed, calibration = c(101, 350),
-#'   validation = c(351, 500))
+#'   validation = c(351, 500), wettest_years = 0)
 #' select_structure(folder, truth, reasoning = "Standard structure as a starting point")
 #' log_trial(folder, parent = 3, changes = c(surface.k1 = 3), verdict = "worse",
 #'   reasoning = "Testing a slower first store")
@@ -225,7 +241,8 @@ register_data <- function(project, forcing, observed, calibration, validation = 
                           start = c("flow", "soil"), baseflow_fraction = 0.7,
                           copy = TRUE, reasoning = "", thresholds = NULL, rating = NULL,
                           event_tolerance_h = 6, event_gap_h = 24, event_min_duration_h = 0,
-                          test = NULL) {
+                          test = NULL, highest_gauged_m3s = NULL, wettest_years = 2,
+                          tie_tolerance = 0.02) {
   author <- .identity("custodian")
   path <- .project_path(project)
   forcing_data <- .as_forcing(forcing)
@@ -245,6 +262,12 @@ register_data <- function(project, forcing, observed, calibration, validation = 
   start <- match.arg(start)
   .check(.scalar(baseflow_fraction, 0, 1), "baseflow_fraction must lie between 0 and 1")
   .check(isTRUE(copy) || isFALSE(copy), "copy must be TRUE or FALSE")
+  .check(is.null(highest_gauged_m3s) || .scalar(highest_gauged_m3s, 0, strict = TRUE),
+         "highest_gauged_m3s must be a positive flow, or NULL")
+  .check(.scalar(wettest_years, 0) && wettest_years == floor(wettest_years),
+         "wettest_years must be a whole number, 0 or more")
+  .check(.scalar(tie_tolerance, 0), "tie_tolerance must be a nonnegative number")
+  if (!is.null(highest_gauged_m3s)) highest_gauged_m3s <- as.numeric(highest_gauged_m3s)
   # Windows may be given as rows or times; they must not overlap, and each needs observed flow.
   cal <- .resolve_window(calibration, forcing_data, "calibration")
   val <- .resolve_window(validation, forcing_data, "validation")
@@ -256,6 +279,9 @@ register_data <- function(project, forcing, observed, calibration, validation = 
              "Each window needs at least two observed values")
     }
   }
+  # The held years are chosen once, here, from the observed flow, and recorded; later runs
+  # read them from the scorecard rather than choosing again.
+  wettest <- .choose_wettest(wettest_years, forcing_data, observed_data, cal, val)
   summary <- .data_summary(forcing_data, observed_data)
   # Files are stored under the lock, in a folder named by the entry id, and the scorecard (windows,
   # headline, thresholds, event settings) is fixed here for every later run in the project.
@@ -278,8 +304,13 @@ register_data <- function(project, forcing, observed, calibration, validation = 
         log_offset = log_offset, soil_fraction = soil_fraction, start = start,
         baseflow_fraction = baseflow_fraction, thresholds = levels,
         events = list(tolerance_h = event_tolerance_h, gap_h = event_gap_h,
-                      min_duration_h = event_min_duration_h)
+                      min_duration_h = event_min_duration_h),
+        wettest = wettest, highest_gauged_m3s = highest_gauged_m3s,
+        tie_tolerance = tie_tolerance
       ),
+      rating_check = .rating_check(highest_gauged_m3s, observed_data,
+                                   list(calibration = cal, validation = val, test = tst,
+                                        wettest = wettest)),
       reasoning = as.character(reasoning)
     )
   })
@@ -356,16 +387,29 @@ log_auto_calibration <- function(project, parent, lower, upper,
   data <- .load_registration(path, registration)
   last <- card$calibration$last_row
   flows <- .registered_flows(card, threshold_objective)
+  # Held-back years are blanked, so the search never sees them. When years are held back, every
+  # trial's headline score is archived, and the equally good sets are drawn from that archive.
+  observed <- .scoring_observed(data$observed, card, "calibration")
+  rows <- .scored_rows(card, "calibration")
+  dt <- pdm_from_config(node$configuration)@dt
+  archive <- if (length(.held_years(card))) {
+    function(sim) .headline_score(sim[rows], data$observed[rows], card, dt)
+  }
   fit <- calibrate_pdm(
-    node$configuration, data$forcing[seq_len(last)], data$observed[seq_len(last)],
+    node$configuration, data$forcing[seq_len(last)], observed[seq_len(last)],
     lower = lower, upper = upper, warmup = card$calibration$first_row - 1L,
     objective = objective, log_offset = card$log_offset, control = control,
     soil_fraction = card$soil_fraction, start = card$start %||% "soil",
     baseflow_fraction = card$baseflow_fraction %||% 0.7,
     start_flow = .first_observed(data$observed), starts = starts, seed = seed, method = method,
     thresholds = flows, threshold_weight = threshold_weight, threshold_score = threshold_score,
-    event_settings = card$events, log_scale = log_scale, volume_weight = volume_weight
+    event_settings = card$events, log_scale = log_scale, volume_weight = volume_weight,
+    archive = archive
   )
+  good <- if (!is.null(archive)) {
+    .equally_good(fit$trials, attr(fit$trials, "unit"), .headline_direction(card$headline),
+                  card$tie_tolerance %||% 0.02)
+  }
   run <- .run_registered(path, .project_info(entries), registration, fit$config, data = data)
   entry <- .append_entry(path, "auto_calibration", author, function(id, entries) {
     list(registration = registration$id, parent = node$id,
@@ -380,7 +424,7 @@ log_auto_calibration <- function(project, parent, lower, upper,
          starts = as.integer(starts), seed = seed,
          control = control, start_results = as.list(fit$start_results),
          configuration = fit$config, scores = run$scores, output_md5 = run$output_md5,
-         reasoning = reasoning)
+         equally_good = good, reasoning = reasoning)
   })
   logger::log_info("Calibration {entry$id}: {.headline_text(registration, run$scores)}")
   invisible(entry)
@@ -461,24 +505,44 @@ test_candidate <- function(project, reasoning) {
            identical(validation$candidate, candidate$id),
          "Validate the latest candidate before testing it")
   registration <- .find_entry(entries, candidate$registration)
-  .check(!is.null(registration$scorecard$test),
-         "The registration has no test window; register data with one")
+  card <- registration$scorecard
+  .check(.has_test(card),
+         "The registration has no test window or held-back years; nothing to test")
   .check(is.null(.candidate_test(entries, candidate)),
          "This candidate has already been tested; the test window is scored once")
   # Checked again under the lock below, so two sessions cannot both score the test window.
-  run <- .run_registered(path, .project_info(entries), registration, candidate$configuration,
-                         "test")
+  # The held-back wettest years are revealed here too, with the spread of the equally good
+  # parameter sets across their peaks.
+  info <- .project_info(entries)
+  data <- .load_registration(path, registration)
+  run <- if (!is.null(card$test)) {
+    .run_registered(path, info, registration, candidate$configuration, "test", data)
+  }
+  wettest <- if (length(.held_years(card))) {
+    .score_wettest(info, registration, candidate, entries, data)
+  }
+  series_run <- run %||% wettest$run
   out <- .append_entry(path, "test", author, function(id, entries) {
     .check(is.null(.candidate_test(entries, candidate)),
            "This candidate has already been tested; the test window is scored once")
     list(candidate = candidate$id, validation = validation$id, registration = registration$id,
          test_scores = run$scores, validation_scores = validation$validation_scores,
-         calibration_scores = candidate$scores, output_md5 = run$output_md5,
-         series = .save_series(path, id, run), reasoning = reasoning)
+         calibration_scores = candidate$scores,
+         wettest = if (!is.null(wettest)) wettest[c("scores", "sets", "tolerance", "years")],
+         output_md5 = series_run$output_md5, series = .save_series(path, id, series_run),
+         reasoning = reasoning)
   })
-  logger::log_info("Test {out$id}: {.headline_text(registration, run$scores)}")
+  if (!is.null(run)) {
+    logger::log_info("Test {out$id}: {.headline_text(registration, run$scores)}")
+  }
+  if (!is.null(wettest)) {
+    logger::log_info("Wettest years {out$id}: {.headline_text(registration, wettest$scores)}")
+  }
   invisible(out)
 }
+
+# Whether a registration has anything for test_candidate() to score.
+.has_test <- function(card) !is.null(card$test) || length(.held_years(card)) > 0L
 
 # The test entry for a candidate, if it has been tested.
 .candidate_test <- function(entries, candidate) {
@@ -532,8 +596,10 @@ sign_off_project <- function(project, statement,
            "The latest candidate has not been validated")
     test <- .candidate_test(entries, candidate)
     registration <- .find_entry(entries, candidate$registration)
-    .check(is.null(registration$scorecard$test) || !is.null(test),
-           "A test window is registered; run test_candidate() before signing off")
+    .check(!.has_test(registration$scorecard) || !is.null(test), paste(
+      "A test window or held-back years are registered; run test_candidate() before signing",
+      "off"
+    ))
     worker_types <- c("trial", "auto_calibration", "candidate", "validation", "test")
     workers <- Filter(function(e) e$type %in% worker_types, entries)
     .check(!any(vapply(workers, function(e) .same_person(e$author, author), logical(1))),

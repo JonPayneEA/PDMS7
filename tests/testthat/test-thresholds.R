@@ -141,7 +141,7 @@ test_that("projects score thresholds on every run and can rank by them", {
                            unit = c("flow", "level"))
   reg <- register_data(folder, d$forcing, d$observed, c(121, 700), c(721, 960),
                        headline = "csi:Flood Alert", thresholds = thresholds, rating = rating,
-                       event_tolerance_h = 4, event_gap_h = 12)
+                       event_tolerance_h = 4, event_gap_h = 12, wettest_years = 0)
   expect_equal(reg$scorecard$thresholds[[2]]$flow_m3s, unname(high))
   expect_equal(reg$scorecard$events$tolerance_h, 4)
   expect_true(file.exists(file.path(folder, reg$data$rating$stored)))
@@ -156,11 +156,12 @@ test_that("projects score thresholds on every run and can rank by them", {
   expect_true("csi:Flood Alert" %in% names(trials))
   expect_true(all(verify_project(folder, rerun = TRUE)$ok))
   expect_error(register_data(folder, d$forcing, d$observed, c(121, 700),
-                             headline = "csi:Nope", thresholds = thresholds, rating = rating),
+                             headline = "csi:Nope", thresholds = thresholds, rating = rating,
+                             wettest_years = 0),
                "headline")
   expect_error(register_data(folder, d$forcing, d$observed, c(121, 700),
                              headline = "bias:Flood Alert", thresholds = thresholds,
-                             rating = rating), "headline")
+                             rating = rating, wettest_years = 0), "headline")
   file <- build_report(folder, sensitivity = FALSE, rerun = FALSE)
   expect_true(file.exists(file))
 })
@@ -247,7 +248,8 @@ test_that("a logged threshold calibration records what the optimiser was rewarde
   start_calibration_project(folder, "T", "1", "Warnings", 20, "O", "S")
   alert <- unname(stats::quantile(d$observed, 0.95, na.rm = TRUE))
   register_data(folder, d$forcing, d$observed, c(121, 700), c(721, 960),
-                thresholds = data.frame(name = "Flood Alert", value = alert, unit = "flow"))
+                thresholds = data.frame(name = "Flood Alert", value = alert, unit = "flow"),
+                wettest_years = 0)
   start <- d$truth
   start$fc <- 0.9
   select_structure(folder, start, "Start")
