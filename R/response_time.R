@@ -63,7 +63,9 @@ pdm_response_time <- function(model, flow, baseflow_fraction = 0.7, pulse_mm = 1
   .check(.scalar(max_hours, 0, strict = TRUE), "max_hours must be positive")
   dt <- model@dt
   n <- max(3L, ceiling(max_hours / dt))
-  start <- initial_state_from_flow(model, flow, baseflow_fraction)
+  # The response is the difference between two runs from this start, so a start that cannot
+  # balance (the soil capped, with a warning elsewhere) cancels out; the warning would only alarm.
+  start <- suppressWarnings(initial_state_from_flow(model, flow, baseflow_fraction))
   dry <- data.frame(rain = numeric(n), pet = numeric(n))
   wet <- dry
   wet$rain[1] <- pulse_mm

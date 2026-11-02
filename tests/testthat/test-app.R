@@ -54,7 +54,7 @@ test_that("the app runs a calibration from setup to sign-off", {
     expect_equal(rv$preview$changes$fc$to, 0.9)
     expect_length(entry_types(f$project), 3L)
     expect_match(output$scores, "fdc_high")
-    expect_match(output$scores, "0.9")
+    expect_match(output$scores, "<td> nse </td>")
     session$setInputs(verdict = "worse", trial_reasoning = "Too dry")
     session$setInputs(save_trial = 1)
     expect_equal(entry_types(f$project)[4], "trial")

@@ -178,7 +178,7 @@ calibration_case <- function() {
   observed <- run_pdm(pdm_from_config(truth), forcing)$output$q_m3s *
     exp(stats::rnorm(n, 0, 0.03))
   list(forcing = forcing, observed = observed, start = start,
-       thresholds = c(alert = unname(stats::quantile(observed, 0.95))))
+       thresholds = c(alert = unname(stats::quantile(observed[-(1:200)], 0.95))))
 }
 
 # These calibration tests simulate their "observed" flow from the soil start, so they calibrate
