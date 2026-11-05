@@ -167,10 +167,11 @@ model reproduces the record; it does not show that the parameters are right.
 
 # What decides whether a parameter can be recovered?
 
-A parameter can be recovered only if the record exercises it. The soil capacity matters when
-the soil fills or empties far enough for its size to show; in a wet climate where the soil
-seldom dries, many capacities fit the record equally well. A natural measure of how hard the
-climate works the soil is its dryness, potential evaporation over rain.
+A parameter can be recovered only if the record exercises it. A natural guess is that the soil
+capacity is pinned best where the climate works the soil hardest: in a dry climate the soil
+fills and empties far enough for its size to show, while in a wet one many capacities fit the
+record equally well. A simple measure of how hard the climate works the soil is its dryness,
+potential evaporation over rain. The sample can test the guess.
 
 ```{r dryness, fig.height=3.6, fig.cap="The error in each catchment's calibrated soil capacity against the dryness of its climate."}
 dryness <- sample$pet_mm / sample$rain_mm
@@ -245,13 +246,19 @@ floods it has not seen.
 
 # What the sample shows
 
-- **Scores are not evidence of correct parameters.** Every catchment scored well. Several
-  parameters were still recovered poorly, and only the known truth shows it.
-- **Some parameters are reliably recovered and some are not.** The volume and the slow
-  recession are well fixed by any long record; the fast stores and the soil store depend on
-  what the record happens to exercise.
+- **Scores are not evidence of correct parameters.** Every catchment scored an NSE of at
+  least `r f2(min(results$validation_score))` on validation. Some parameters were still
+  recovered poorly, and only the known truth shows it.
+- **Some parameters are reliably recovered and some are not.** Here `r order_by[1]` and
+  `r order_by[2]` were within 10 per cent in `r min(colSums(abs(log(fitted / truth)) < log(1.1))[order_by[1:2]])`
+  or more of the `r nrow(truth)` catchments; `r order_by[7]` was within 10 per cent in only
+  `r colSums(abs(log(fitted / truth)) < log(1.1))[[order_by[7]]]`. A study that reads meaning
+  into a parameter should first know which kind it is.
 - **A rating extrapolated above the highest gauging makes a good model look bad on the
   biggest floods.** Judge peak errors with the rating flag in mind.
+- **Simple explanations need testing.** The guess that dry climates pin the soil store better
+  was `r if (identical(direction, "drier")) "borne out" else "not borne out"` here; a large sample is
+  where such guesses are tested.
 - **Large samples answer questions single catchments cannot**: which parameters to trust,
   under which climates, and how much a calibration method can be relied on beyond its record.
 
