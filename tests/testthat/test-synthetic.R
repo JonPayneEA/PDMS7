@@ -161,3 +161,30 @@ test_that("a synthetic catchment adds storms, bends the rating and adds persiste
   expect_error(synthetic_catchment(base, storms = data.frame(time = "2030-01-01", depth_mm = 1,
                                                              duration_h = 1)), "within")
 })
+
+# Guards: a synthetic sample is written as batch-ready basins, reproducibly, inside the bounds
+test_that("synthetic_basins writes a reproducible sample the batch can calibrate", {
+  root <- tempfile("sample-")
+  output <- tempfile("batch-")
+  on.exit(unlink(c(root, output), recursive = TRUE), add = TRUE)
+  s <- synthetic_basins(root, n = 2, years = 3, seed = 4)
+  expect_equal(s$basin, c("S001", "S002"))
+  files <- c("forcing.csv", "flow.csv", "basin.yml", "truth.yml")
+  expect_true(all(file.exists(file.path(root, "S001", files))))
+  truth <- read_pdm_config(file.path(root, "S002", "truth.yml"))
+  expect_equal(truth$distribution$cmax, s$cmax[2])
+  bounds <- calibration_bounds(truth)
+  values <- vapply(bounds$path, function(p) pdmS7:::.path_get(truth, p), numeric(1))
+  expect_true(all(values >= bounds$lower & values <= bounds$upper))
+  meta <- yaml::read_yaml(file.path(root, "S001", "basin.yml"))
+  expect_equal(meta$wettest_years, 0)
+  expect_equal(meta$highest_gauged_m3s, s$highest_gauged_m3s[1])
+  again <- tempfile("sample-")
+  on.exit(unlink(again, recursive = TRUE), add = TRUE)
+  expect_equal(synthetic_basins(again, n = 2, years = 3, seed = 4), s)
+  expect_error(synthetic_basins(root, n = 2, years = 3), "already exist")
+  expect_error(synthetic_basins(tempfile(), n = 1, ranges = list(cmax = c(5, 1))), "range")
+  as_person("Ann Custodian", "custodian", "ann") # nolint: object_usage_linter.
+  status <- calibrate_batch(root, output, starts = 1, control = list(maxit = 3))
+  expect_equal(status$state, c("done", "done"))
+})

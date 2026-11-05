@@ -22,7 +22,8 @@
 #' parent, changes, scores, verdict and reasoning. `read_entry()` returns one entry in full,
 #' for example an automatic calibration's table of starts. `read_projects()` summarises
 #' several projects in one table, for example every basin of a large-sample calibration,
-#' with the candidate's headline score on the calibration and validation windows.
+#' with the candidate's headline score on the calibration and validation windows, and, once
+#' tested, on the test window (`test_score`) and the held-back wettest years (`wettest_score`).
 #'
 #' @param project Path of a calibration project folder.
 #' @param projects Paths of calibration project folders.
@@ -135,6 +136,8 @@ read_projects <- function(projects) {
       validation_score = .validation_score(entries, candidate, headline),
       test_score = if (is.na(headline)) NA_real_ else
         .num_or_na(.candidate_test(entries, candidate)$test_scores[[headline]]),
+      wettest_score = if (is.na(headline)) NA_real_ else
+        .num_or_na(.candidate_test(entries, candidate)$wettest$scores[[headline]]),
       signed_off_by = .text_or_na(sign_off$author$name),
       signed_off_at = .text_or_na(sign_off$timestamp), path = info$path
     )

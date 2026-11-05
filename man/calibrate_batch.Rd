@@ -36,7 +36,8 @@ batch_results(output)
 \item{output}{Folder for the projects and the status file; created if needed.}
 
 \item{structure}{Default configuration (a list or YAML path) for basins whose \code{basin.yml}
-names none; the standard PDM if \code{NULL}. The basin's area is always applied.}
+names none; the standard PDM if \code{NULL}. The basin's area is always applied, and so is the
+time step of its data, so one default serves hourly, daily and 15-minute basins alike.}
 
 \item{overrides, exclude}{Passed to \code{\link[=calibration_bounds]{calibration_bounds()}}.}
 

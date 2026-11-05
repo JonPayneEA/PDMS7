@@ -110,6 +110,10 @@ Calibration:
   [`calibrate_batch()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md):
   preparing folders, running, resuming after an interruption, fixing
   failures, and reading the results
+- [A large sample: what automatic calibration
+  recovers](https://jonpayneea.github.io/PDMS7/articles/large-sample.html):
+  30 synthetic catchments, each with its own climate and known truth,
+  calibrated as a batch
 
 Records and review:
 
@@ -596,6 +600,8 @@ method tests.
 
 - [`synthetic_catchment()`](https://jonpayneea.github.io/PDMS7/reference/synthetic_catchment.md)
   : Synthetic catchment
+- [`synthetic_basins()`](https://jonpayneea.github.io/PDMS7/reference/synthetic_basins.md)
+  : A large sample of synthetic catchments
 - [`synthetic_rain()`](https://jonpayneea.github.io/PDMS7/reference/synthetic_rain.md)
   : Synthetic rainfall
 - [`fit_rain()`](https://jonpayneea.github.io/PDMS7/reference/fit_rain.md)
@@ -774,6 +780,8 @@ State correction and ARMA error prediction (Moore 2007, Eq. 28-42).
   rating](https://jonpayneea.github.io/PDMS7/articles/extrapolation.md):
 - [Calibrating many
   catchments](https://jonpayneea.github.io/PDMS7/articles/many-catchments.md):
+- [A large sample: what automatic calibration
+  recovers](https://jonpayneea.github.io/PDMS7/articles/large-sample.md):
 
 ### Records and review
 

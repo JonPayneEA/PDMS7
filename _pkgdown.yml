@@ -67,6 +67,7 @@ articles:
   - choosing-structure
   - extrapolation
   - many-catchments
+  - large-sample
 - title: Records and review
   navbar: Records and review
   contents:
@@ -180,6 +181,7 @@ reference:
   desc: Stochastic rain and known-answer catchments, for demonstrations and method tests.
   contents:
   - synthetic_catchment
+  - synthetic_basins
   - synthetic_rain
   - fit_rain
   - rain_parameters

@@ -7,7 +7,8 @@ verdict and reasoning. `read_entry()` returns one entry in full, for
 example an automatic calibration's table of starts. `read_projects()`
 summarises several projects in one table, for example every basin of a
 large-sample calibration, with the candidate's headline score on the
-calibration and validation windows.
+calibration and validation windows, and, once tested, on the test window
+(`test_score`) and the held-back wettest years (`wettest_score`).
 
 ## Usage
 

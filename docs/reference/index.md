@@ -171,6 +171,8 @@ method tests.
 
 - [`synthetic_catchment()`](https://jonpayneea.github.io/PDMS7/reference/synthetic_catchment.md)
   : Synthetic catchment
+- [`synthetic_basins()`](https://jonpayneea.github.io/PDMS7/reference/synthetic_basins.md)
+  : A large sample of synthetic catchments
 - [`synthetic_rain()`](https://jonpayneea.github.io/PDMS7/reference/synthetic_rain.md)
   : Synthetic rainfall
 - [`fit_rain()`](https://jonpayneea.github.io/PDMS7/reference/fit_rain.md)
