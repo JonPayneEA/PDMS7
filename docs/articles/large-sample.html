@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.7.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.8.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -180,18 +180,18 @@ effects can be told apart.</p>
 <div class="section level2">
 <h2 id="calibrating-all-of-them">Calibrating all of them<a class="anchor" aria-label="anchor" href="#calibrating-all-of-them"></a>
 </h2>
-<p>One call calibrates the whole sample: staged automatic calibration
-from the standard preset, two starts per stage, in parallel workers.
-Each record’s two wettest years are held back and revealed at the end by
-the test, as every project does by default.</p>
+<p>One call calibrates the whole sample: automatic calibration of all
+seven parameters at once from the standard preset, with four starts, in
+parallel workers. Each record’s two wettest years are held back and
+revealed at the end by the test, as every project does by default.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># R CMD check allows two processes; elsewhere use up to four cores. The results do not depend</span></span>
 <span><span class="co"># on the number: each basin's random starts are seeded from its name.</span></span>
 <span><span class="va">limited</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/chartr.html" class="external-link">toupper</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"_R_CHECK_LIMIT_CORES_"</span><span class="op">)</span><span class="op">)</span>, <span class="st">"TRUE"</span><span class="op">)</span></span>
 <span><span class="va">cores</span> <span class="op">&lt;-</span> <span class="kw">if</span> <span class="op">(</span><span class="va">limited</span><span class="op">)</span> <span class="fl">2L</span> <span class="kw">else</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="fl">4L</span>, <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fu">parallel</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/parallel/detectCores.html" class="external-link">detectCores</a></span><span class="op">(</span><span class="op">)</span> <span class="op">-</span> <span class="fl">1L</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">elapsed</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="../reference/calibrate_batch.html">calibrate_batch</a></span><span class="op">(</span><span class="va">basins</span>, <span class="va">output</span>, staged <span class="op">=</span> <span class="cn">TRUE</span>, starts <span class="op">=</span> <span class="fl">2</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>maxit <span class="op">=</span> <span class="fl">40</span><span class="op">)</span>,</span>
-<span>                  cores <span class="op">=</span> <span class="va">cores</span>, test <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/calibrate_batch.html">calibrate_batch</a></span><span class="op">(</span><span class="va">basins</span>, <span class="va">output</span>, starts <span class="op">=</span> <span class="fl">4</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>maxit <span class="op">=</span> <span class="fl">40</span><span class="op">)</span>, cores <span class="op">=</span> <span class="va">cores</span>,</span>
+<span>                  test <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="op">)</span><span class="op">[[</span><span class="st">"elapsed"</span><span class="op">]</span><span class="op">]</span></span>
 <span><span class="va">status</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calibrate_batch.html">batch_status</a></span><span class="op">(</span><span class="va">output</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">status</span><span class="op">$</span><span class="va">state</span><span class="op">)</span></span>
@@ -199,7 +199,7 @@ the test, as every project does by default.</p>
 <span><span class="co">#&gt; done </span></span>
 <span><span class="co">#&gt;   30</span></span>
 <span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calibrate_batch.html">batch_results</a></span><span class="op">(</span><span class="va">output</span><span class="op">)</span></span></code></pre></div>
-<p>All 30 catchments finished, in 10 minutes on 3 cores. A sample of
+<p>All 30 catchments finished, in 5 minutes on 3 cores. A sample of
 hundreds takes the same call; <code><a href="../reference/calibrate_batch.html">calibrate_batch()</a></code> resumes
 where it stopped if interrupted. <a href="many-catchments.html">Calibrating many catchments</a> covers
 running it for real.</p>
@@ -225,13 +225,13 @@ the validation window and the held-back wettest years.
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">scores</span>, <span class="fu">stats</span><span class="fu">::</span><span class="va"><a href="https://rdrr.io/r/stats/quantile.html" class="external-link">quantile</a></span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.1</span>, <span class="fl">0.5</span>, <span class="fl">0.9</span><span class="op">)</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt;     calibration validation wettest years</span></span>
-<span><span class="co">#&gt; 10%       0.979      0.977         0.974</span></span>
-<span><span class="co">#&gt; 50%       0.991      0.988         0.982</span></span>
-<span><span class="co">#&gt; 90%       0.995      0.994         0.991</span></span></code></pre></div>
-<p>The median catchment scores 0.991 on calibration, 0.988 on validation
+<span><span class="co">#&gt; 10%       0.979      0.978         0.976</span></span>
+<span><span class="co">#&gt; 50%       0.992      0.990         0.982</span></span>
+<span><span class="co">#&gt; 90%       0.995      0.995         0.991</span></span></code></pre></div>
+<p>The median catchment scores 0.992 on calibration, 0.990 on validation
 and 0.982 on the held-back wettest years. By the usual standard every
-one of these is an excellent fit. The weakest on validation is S027, at
-0.906. If scores were the whole story, this would be the end of the
+one of these is an excellent fit. The weakest on validation is S001, at
+0.972. If scores were the whole story, this would be the end of the
 article.</p>
 </div>
 <div class="section level2">
@@ -261,13 +261,13 @@ compared as the faster and the slower of the pair.</p>
 <span>           within_10_percent <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">colSums</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">fitted</span> <span class="op">/</span> <span class="va">truth</span><span class="op">)</span><span class="op">)</span> <span class="op">&lt;</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="fl">1.1</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>           row.names <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
 <span><span class="co">#&gt;   parameter typical_error within_10_percent</span></span>
-<span><span class="co">#&gt; 1        fc         0.010                29</span></span>
-<span><span class="co">#&gt; 2      cmax         0.058                22</span></span>
-<span><span class="co">#&gt; 3         b         0.103                14</span></span>
-<span><span class="co">#&gt; 4        kg         0.029                27</span></span>
-<span><span class="co">#&gt; 5    k_fast         0.110                13</span></span>
-<span><span class="co">#&gt; 6    k_slow         0.077                20</span></span>
-<span><span class="co">#&gt; 7        kb         0.449                 6</span></span></code></pre></div>
+<span><span class="co">#&gt; 1        fc         0.009                30</span></span>
+<span><span class="co">#&gt; 2      cmax         0.060                23</span></span>
+<span><span class="co">#&gt; 3         b         0.100                15</span></span>
+<span><span class="co">#&gt; 4        kg         0.031                30</span></span>
+<span><span class="co">#&gt; 5    k_fast         0.114                12</span></span>
+<span><span class="co">#&gt; 6    k_slow         0.077                19</span></span>
+<span><span class="co">#&gt; 7        kb         0.393                 5</span></span></code></pre></div>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">logged</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"kg"</span>, <span class="st">"k_fast"</span>, <span class="st">"k_slow"</span>, <span class="st">"kb"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span>mfrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">4</span><span class="op">)</span>, mar <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">4</span>, <span class="fl">4</span>, <span class="fl">1.6</span>, <span class="fl">0.6</span><span class="op">)</span>, cex.main <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
@@ -284,17 +284,51 @@ line are exact. Log scales for the parameters that span orders of
 magnitude.
 </p>
 </div>
-<p>The points far from the line belong mostly to 3 catchments (S017,
-S021, S027) whose search ended with a parameter against a bound, a sign
-of a calibration that went astray rather than of a parameter that cannot
-be known. Nothing in the batch flags them yet, so check for them as this
-article does; in a real study they are the first catchments to look
-at.</p>
+<p>1 calibration (S017) ended with a parameter against a bound. That is
+worth checking in a real study: it can mean a search that went astray,
+or a true value close to the bound. Nothing in the batch flags it yet,
+so check for it as this article does.</p>
 <p>The ranking is clear. fc and kg come back closest, typically within 1
-and 3 per cent. kb and k_fast are the worst, typically 45 and 11 per
+and 3 per cent. kb and k_fast are the worst, typically 39 and 11 per
 cent out. Yet the calibrations that got them wrong still score an
 excellent NSE. A good score shows that the model reproduces the record;
 it does not show that the parameters are right.</p>
+</div>
+<div class="section level2">
+<h2 id="did-the-search-find-the-best-fit">Did the search find the best fit?<a class="anchor" aria-label="anchor" href="#did-the-search-find-the-best-fit"></a>
+</h2>
+<p>A parameter that comes back wrong has two possible causes. The search
+may have stopped short of the best fit, or the record may not be able to
+tell the true value from the wrong one. The truth settles which: score
+each catchment’s true parameters on the same calibration window, and set
+the calibration’s score against it.</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">true_score</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">sample</span><span class="op">$</span><span class="va">basin</span>, <span class="kw">function</span><span class="op">(</span><span class="va">id</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">project</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">output</span>, <span class="va">id</span><span class="op">)</span></span>
+<span>  <span class="va">entries</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_project.html">read_project</a></span><span class="op">(</span><span class="va">project</span><span class="op">)</span><span class="op">$</span><span class="va">entries</span></span>
+<span>  <span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu">utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">tail</a></span><span class="op">(</span><span class="va">entries</span><span class="op">$</span><span class="va">id</span><span class="op">[</span><span class="va">entries</span><span class="op">$</span><span class="va">type</span> <span class="op">==</span> <span class="st">"auto_calibration"</span><span class="op">]</span>, <span class="fl">1</span><span class="op">)</span></span>
+<span>  <span class="va">cfg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_pdm_config.html">read_pdm_config</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">basins</span>, <span class="va">id</span>, <span class="st">"truth.yml"</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="va">changes</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">b</span><span class="op">$</span><span class="va">path</span>, <span class="kw">function</span><span class="op">(</span><span class="va">p</span><span class="op">)</span> <span class="fu">pdmS7</span><span class="fu">:::</span><span class="fu">.path_get</span><span class="op">(</span><span class="va">cfg</span>, <span class="va">p</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/warning.html" class="external-link">suppressWarnings</a></span><span class="op">(</span><span class="fu"><a href="../reference/calibration_log.html">preview_trial</a></span><span class="op">(</span><span class="va">project</span>, <span class="va">fit</span>, <span class="va">changes</span><span class="op">)</span><span class="op">)</span><span class="op">$</span><span class="va">scores</span><span class="op">$</span><span class="va">nse</span></span>
+<span><span class="op">}</span>, <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">calibrated_score</span> <span class="op">&lt;-</span> <span class="va">results</span><span class="op">$</span><span class="va">candidate_score</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/match.html" class="external-link">match</a></span><span class="op">(</span><span class="va">sample</span><span class="op">$</span><span class="va">basin</span>, <span class="va">results</span><span class="op">$</span><span class="va">project</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="va">gap</span> <span class="op">&lt;-</span> <span class="va">calibrated_score</span> <span class="op">-</span> <span class="va">true_score</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>at_least_truth <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">gap</span> <span class="op">&gt;=</span> <span class="op">-</span><span class="fl">1e-6</span><span class="op">)</span>, short_by_over_0.001 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">gap</span> <span class="op">&lt;</span> <span class="op">-</span><span class="fl">0.001</span><span class="op">)</span>,</span>
+<span>        largest_shortfall <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fl">0</span>, <span class="op">-</span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="va">gap</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>, <span class="fl">4</span><span class="op">)</span></span>
+<span><span class="co">#&gt;      at_least_truth short_by_over_0.001   largest_shortfall </span></span>
+<span><span class="co">#&gt;             29.0000              0.0000              0.0004</span></span></code></pre></div>
+<p>In 29 of the 30 catchments the calibration scores at least as well as
+the true parameters, and in the other it falls short by no more than
+0.0004 in NSE. The search found the best fit each record allows. So when
+kb comes back 39 per cent out, the search is not to blame: parameter
+sets that far apart fit the record equally well, and the record, with
+its gauge error, cannot choose between them. More model runs, or a
+different search, would not recover it.</p>
+<p>Two other searches were tried on this sample. Calibrating in stages
+(the water balance first, then the fast response, then a joint polish)
+did no better, and dynamically dimensioned search, given the same number
+of model runs, did worse. <code>inst/benchmarks/search_methods.R</code>
+in the package runs that comparison.</p>
 </div>
 <div class="section level2">
 <h2 id="what-decides-whether-a-parameter-can-be-recovered">What decides whether a parameter can be recovered?<a class="anchor" aria-label="anchor" href="#what-decides-whether-a-parameter-can-be-recovered"></a>
@@ -306,7 +340,7 @@ enough for its size to show, while in a wet one many capacities fit the
 record equally well. A simple measure of how hard the climate works the
 soil is its dryness, potential evaporation over rain. The sample can
 test the guess.</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">dryness</span> <span class="op">&lt;-</span> <span class="va">sample</span><span class="op">$</span><span class="va">pet_mm</span> <span class="op">/</span> <span class="va">sample</span><span class="op">$</span><span class="va">rain_mm</span></span>
 <span><span class="va">cmax_error</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">fitted</span><span class="op">[</span>, <span class="st">"cmax"</span><span class="op">]</span> <span class="op">/</span> <span class="va">truth</span><span class="op">[</span>, <span class="st">"cmax"</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">dryness</span>, <span class="va">cmax_error</span>, pch <span class="op">=</span> <span class="fl">16</span>, col <span class="op">=</span> <span class="va">pal</span><span class="op">[</span><span class="fl">3</span><span class="op">]</span>, xlab <span class="op">=</span> <span class="st">"Dryness (PET / rain)"</span>,</span>
@@ -317,15 +351,15 @@ The error in each catchment’s calibrated soil capacity against the
 dryness of its climate.
 </p>
 </div>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">rho</span> <span class="op">&lt;-</span> <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor</a></span><span class="op">(</span><span class="va">dryness</span>, <span class="va">cmax_error</span>, method <span class="op">=</span> <span class="st">"spearman"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">rho</span>, <span class="fl">2</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] -0.03</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] 0.11</span></span></code></pre></div>
 <p>Across this sample, dryness alone does not explain how well the soil
-capacity is recovered (Spearman correlation -0.03): other things, such
-as how the parameters trade off against each other, matter as much. A
-real large-sample study can ask the same question of its own results,
-but cannot see the error itself; here it can.</p>
+capacity is recovered (Spearman correlation 0.11): other things, such as
+how the parameters trade off against each other, matter as much. A real
+large-sample study can ask the same question of its own results, but
+cannot see the error itself; here it can.</p>
 </div>
 <div class="section level2">
 <h2 id="the-largest-floods">The largest floods<a class="anchor" aria-label="anchor" href="#the-largest-floods"></a>
@@ -333,7 +367,7 @@ but cannot see the error itself; here it can.</p>
 <p>The test also revealed each record’s two wettest years. Their peaks
 are above the highest gauging, where the rating records them low, so the
 recorded peak is not the truth. Here the true peak is known.</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">peak_rows</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="va">sample</span><span class="op">$</span><span class="va">basin</span>, <span class="kw">function</span><span class="op">(</span><span class="va">id</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">project</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">output</span>, <span class="va">id</span><span class="op">)</span></span>
 <span>  <span class="va">entries</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_project.html">read_project</a></span><span class="op">(</span><span class="va">project</span><span class="op">)</span><span class="op">$</span><span class="va">entries</span></span>
@@ -359,10 +393,10 @@ recorded peak is not the truth. Here the true peak is known.</p>
 <span>        median_spread <span class="op">=</span> <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="op">(</span><span class="va">peaks</span><span class="op">$</span><span class="va">high</span> <span class="op">-</span> <span class="va">peaks</span><span class="op">$</span><span class="va">low</span><span class="op">)</span> <span class="op">/</span> <span class="va">peaks</span><span class="op">$</span><span class="va">true</span><span class="op">)</span>,</span>
 <span>        share_true_inside_spread <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">peaks</span><span class="op">$</span><span class="va">true</span> <span class="op">&gt;=</span> <span class="va">peaks</span><span class="op">$</span><span class="va">low</span> <span class="op">&amp;</span> <span class="va">peaks</span><span class="op">$</span><span class="va">true</span> <span class="op">&lt;=</span> <span class="va">peaks</span><span class="op">$</span><span class="va">high</span><span class="op">)</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt; median_error_vs_recorded     median_error_vs_true            median_spread </span></span>
-<span><span class="co">#&gt;                    0.088                   -0.014                    0.119 </span></span>
+<span><span class="co">#&gt;                    0.099                   -0.011                    0.148 </span></span>
 <span><span class="co">#&gt; share_true_inside_spread </span></span>
-<span><span class="co">#&gt;                    0.767</span></span></code></pre></div>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<span><span class="co">#&gt;                    0.883</span></span></code></pre></div>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/boxplot.html" class="external-link">boxplot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>`against recorded peak` <span class="op">=</span> <span class="fl">100</span> <span class="op">*</span> <span class="va">vs_recorded</span>, `against true peak` <span class="op">=</span> <span class="fl">100</span> <span class="op">*</span> <span class="va">vs_true</span><span class="op">)</span>,</span>
 <span>        horizontal <span class="op">=</span> <span class="cn">TRUE</span>, col <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/grDevices/adjustcolor.html" class="external-link">adjustcolor</a></span><span class="op">(</span><span class="va">pal</span><span class="op">[</span><span class="fl">2</span><span class="op">:</span><span class="fl">3</span><span class="op">]</span>, <span class="fl">0.4</span><span class="op">)</span>, xlab <span class="op">=</span> <span class="st">"Peak error (per cent)"</span>,</span>
 <span>        las <span class="op">=</span> <span class="fl">1</span>, cex.axis <span class="op">=</span> <span class="fl">0.85</span><span class="op">)</span></span>
@@ -373,10 +407,10 @@ Peak error in the held-back wettest years, judged against the recorded
 peak (which the rating understates) and against the true peak.
 </p>
 </div>
-<p>Judged against the recorded peaks, the calibrated models look 9 per
+<p>Judged against the recorded peaks, the calibrated models look 10 per
 cent high in the median year. Judged against the true peaks, they are 1
 per cent low. Across the 60 held-back years, the range of the equally
-good fits contains the true peak in 77 per cent of them. <a href="extrapolation.html">Larger floods</a> explains these checks for
+good fits contains the true peak in 88 per cent of them. <a href="extrapolation.html">Larger floods</a> explains these checks for
 one catchment; across a sample, they show how far a method can be
 trusted with floods it has not seen.</p>
 </div>
@@ -386,15 +420,18 @@ trusted with floods it has not seen.</p>
 <ul>
 <li>
 <strong>Scores are not evidence of correct parameters.</strong>
-Every catchment scored an NSE of at least 0.91 on validation. Some
+Every catchment scored an NSE of at least 0.97 on validation. Some
 parameters were still recovered poorly, and only the known truth shows
 it.</li>
 <li>
+<strong>The search is not the limit.</strong> In 29 of 30 catchments
+the calibration fitted at least as well as the truth. What the record
+cannot recover, no search will.</li>
+<li>
 <strong>Some parameters are reliably recovered and some are
-not.</strong> Here fc and kg were within 10 per cent in 27 or more of
-the 30 catchments; kb was within 10 per cent in only 6 of them. A study
-that reads meaning into a parameter should first know which kind it
-is.</li>
+not.</strong> Here fc and kg were within 10 per cent in all 30
+catchments; kb was within 10 per cent in only 5 of them. A study that
+reads meaning into a parameter should first know which kind it is.</li>
 <li>
 <strong>A rating extrapolated above the highest gauging makes a good
 model look bad on the biggest floods.</strong> Judge peak errors with

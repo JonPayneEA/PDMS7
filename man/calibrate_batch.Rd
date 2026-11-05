@@ -16,7 +16,7 @@ calibrate_batch(
   starts = 10L,
   seed = 1,
   control = list(maxit = 200),
-  method = c("lbfgsb", "nelder_mead"),
+  method = c("lbfgsb", "nelder_mead", "dds"),
   staged = FALSE,
   test = FALSE,
   cores = 1L,

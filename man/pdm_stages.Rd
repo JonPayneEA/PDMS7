@@ -10,7 +10,7 @@ pdm_stages(
   exclude = NULL,
   polish = TRUE,
   volume_weight = 1,
-  band = 0.25
+  band = NULL
 )
 }
 \arguments{
@@ -22,7 +22,8 @@ pdm_stages(
 
 \item{volume_weight}{Weight of the volume penalty in stage 1.}
 
-\item{band}{Half-width of the stage 3 search, as a fraction of each range.}
+\item{band}{\code{NULL} (the default) for a stage 3 search over the full bounds, or the
+half-width of a narrowed search, as a fraction of each range.}
 }
 \value{
 A list of stages.
@@ -30,22 +31,28 @@ A list of stages.
 \description{
 The stages of a staged calibration, following how a hydrologist calibrates by hand:
 settle the water balance and the slow response first, then the fast response, then a short
-joint polish.
+joint polish over everything.
 }
 \details{
 \tabular{lll}{
    Stage \tab Fits \tab Objective \cr
    1. Volume and baseflow \tab \code{fc}, soil store, recharge, groundwater \tab 1 - log NSE + volume error \cr
    2. Fast response \tab Surface stores and the store shape \code{b} \tab 1 - NSE \cr
-   3. Polish \tab Everything, within narrowed bounds \tab 1 - NSE \cr
+   3. Polish \tab Everything, over the full bounds \tab 1 - NSE \cr
 }
 
 
 Low flows and the total volume depend on the slow stores, and logs stop the floods
 dominating stage 1. Peak size and timing depend on the fast stores, fitted in stage 2 with
-stage 1's values fixed. Stage 3 starts from the stage 2 result and searches a band of a
-quarter of each parameter's range either side, on the search scale, to fix interactions the
-stages missed without drifting far.
+stage 1's values fixed. Stage 3 starts from the stage 2 result and searches every parameter
+over its full bounds, to fix interactions the stages missed.
+
+The polish must be free to move far. Stage 1 fits with the surface stores at their starting
+values; where the true stores are much slower, stage 1 compensates with the wrong slow
+stores, and a polish confined near that point cannot leave it. In a sample of 30 synthetic
+catchments, a polish confined to a quarter of each range either side (the default before
+version 0.8.0) left two catchments far below the score of their true parameters. Pass
+\code{band} to confine it all the same.
 
 Parameters come from \code{\link[=calibration_bounds]{calibration_bounds()}}, so every structure gets its own lists: a split
 recharge adds \code{recharge.alpha} to stage 1, an exponential store adds its two parameters.

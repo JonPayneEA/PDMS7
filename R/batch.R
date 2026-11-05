@@ -75,7 +75,7 @@
 #' @export
 calibrate_batch <- function(basins, output, structure = NULL, overrides = NULL, exclude = NULL,
                             objective = c("nse", "rmse", "log_rmse"), starts = 10L, seed = 1,
-                            control = list(maxit = 200), method = c("lbfgsb", "nelder_mead"),
+                            control = list(maxit = 200), method = c("lbfgsb", "nelder_mead", "dds"),
                             staged = FALSE, test = FALSE, cores = 1L, only = NULL,
                             owner = "Not recorded", steward = "Not recorded",
                             purpose = "Batch calibration") {

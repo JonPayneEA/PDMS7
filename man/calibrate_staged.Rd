@@ -15,7 +15,7 @@ calibrate_staged(
   starts = 1L,
   seed = NULL,
   control = list(maxit = 200),
-  method = c("lbfgsb", "nelder_mead"),
+  method = c("lbfgsb", "nelder_mead", "dds"),
   soil_fraction = 0.5,
   log_offset = 0.01,
   start = c("flow", "soil"),
@@ -31,7 +31,7 @@ log_staged_calibration(
   starts = 1L,
   seed = NULL,
   control = list(maxit = 200),
-  method = c("lbfgsb", "nelder_mead")
+  method = c("lbfgsb", "nelder_mead", "dds")
 )
 }
 \arguments{

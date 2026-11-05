@@ -56,7 +56,7 @@
 compare_structures <- function(project, structures = NULL, overrides = NULL, exclude = NULL,
                                objective = c("nse", "rmse", "log_rmse"), starts = 3L,
                                seed = 1, control = list(maxit = 200),
-                               method = c("lbfgsb", "nelder_mead"), cores = 1L,
+                               method = c("lbfgsb", "nelder_mead", "dds"), cores = 1L,
                                cross_validate = FALSE, reasoning) {
   author <- .identity("custodian")
   objective <- match.arg(objective)

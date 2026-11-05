@@ -1,3 +1,24 @@
+# pdmS7 0.8.0
+
+- **Staged calibration's polish searches the full bounds.** `pdm_stages()` used to confine
+  stage 3 to a quarter of each range either side of stage 2's values. Stage 1 fits with the
+  surface stores at their starting values, and where the true stores are much slower it can
+  settle on the wrong slow stores; the confined polish could not undo that. On 30 synthetic
+  catchments it left two far short of their true parameters' score (NSE 0.904 against 0.995
+  in one). With the full bounds, every catchment comes within 0.001 of the truth's score.
+  `band` still confines the polish when asked. Staged results change.
+- **DDS.** `calibrate_pdm(method = "dds")` adds dynamically dimensioned search (Tolson and
+  Shoemaker, 2007), a derivative-free global search; `control$maxit` is its budget of model
+  runs per start. It accepts threshold objectives, and `calibrate_batch()`,
+  `calibrate_staged()`, `compare_structures()`, `log_auto_calibration()` and the app offer it.
+  On the smooth NSE of the standard structure, L-BFGS-B remains the better choice: given the
+  same number of model runs, DDS fitted less well in 29 of 30 synthetic catchments.
+- **The large-sample article checks each calibration against the truth.** Calibrations reach
+  the true parameters' score in almost every catchment, so a parameter that still comes back
+  wrong (`kb` above all) cannot be recovered from the record, whatever the search. The article
+  now calibrates all parameters at once.
+- `inst/benchmarks/search_methods.R` compares the searches on the large synthetic sample.
+
 # pdmS7 0.7.0
 
 - **Large samples.** `synthetic_basins()` writes a sample of synthetic catchments, each with its

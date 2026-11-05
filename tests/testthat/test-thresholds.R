@@ -222,7 +222,7 @@ test_that("the threshold objective is 1 - NSE plus the threshold loss at the opt
   expect_true(only$objective >= 0 && only$objective <= 1)
 })
 
-# Guards: threshold objectives with L-BFGS-B or uncrossed thresholds are refused
+# Guards: threshold objectives with L-BFGS-B or uncrossed thresholds are refused; DDS accepts them
 test_that("threshold objectives are refused where they cannot work", {
   k <- calibration_case()
   args <- list(k$start, k$forcing, k$observed, c(fc = 0.8), c(fc = 1.5), objective = "nse")
@@ -237,6 +237,9 @@ test_that("threshold objectives are refused where they cannot work", {
   expect_error(do.call(calibrate_pdm, c(args, list(method = "nelder_mead",
                                                    thresholds = k$thresholds,
                                                    threshold_weight = -1))), "weight")
+  fit <- do.call(calibrate_pdm, c(args, list(method = "dds", thresholds = k$thresholds,
+                                             control = list(maxit = 20), seed = 1)))
+  expect_match(fit$objective_name, "threshold")
 })
 
 # Guards: the log records the composite objective in words
