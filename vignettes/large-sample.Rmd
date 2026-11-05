@@ -71,7 +71,10 @@ two starts per stage, in parallel workers. Each record's two wettest years are h
 revealed at the end by the test, as every project does by default.
 
 ```{r batch}
-cores <- min(4L, max(1L, parallel::detectCores() - 1L))
+# R CMD check allows two processes; elsewhere use up to four cores. The results do not depend
+# on the number: each basin's random starts are seeded from its name.
+limited <- identical(toupper(Sys.getenv("_R_CHECK_LIMIT_CORES_")), "TRUE")
+cores <- if (limited) 2L else min(4L, max(1L, parallel::detectCores() - 1L))
 elapsed <- system.time(
   calibrate_batch(basins, output, staged = TRUE, starts = 2, control = list(maxit = 40),
                   cores = cores, test = TRUE)
