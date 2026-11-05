@@ -68,9 +68,8 @@ synthetic_basins <- function(folder, n = 30, years = 10, dt = 24, start = "2010-
   .check(.scalar(n, 1) && n == floor(n), "n must be a whole number of at least 1")
   .check(.scalar(years, 1), "years must be at least 1")
   r <- utils::modifyList(.basin_ranges(), ranges)
-  .check(all(vapply(r, function(x) length(x) == 2L && all(is.finite(x)) && x[1] <= x[2] &&
-                      x[1] > 0, logical(1))),
-         "Each range must be c(low, high) with 0 < low <= high")
+  valid <- function(x) length(x) == 2L && all(is.finite(x)) && x[1] <= x[2] && x[1] > 0
+  .check(all(vapply(r, valid, logical(1))), "Each range must be c(low, high) with 0 < low <= high")
   dir.create(folder, recursive = TRUE, showWarnings = FALSE)
   ids <- sprintf("S%03d", seq_len(n))
   .check(!any(dir.exists(file.path(folder, ids))),

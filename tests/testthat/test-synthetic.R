@@ -169,8 +169,8 @@ test_that("synthetic_basins writes a reproducible sample the batch can calibrate
   on.exit(unlink(c(root, output), recursive = TRUE), add = TRUE)
   s <- synthetic_basins(root, n = 2, years = 3, seed = 4)
   expect_equal(s$basin, c("S001", "S002"))
-  expect_true(all(file.exists(file.path(root, "S001", c("forcing.csv", "flow.csv",
-                                                         "basin.yml", "truth.yml")))))
+  files <- c("forcing.csv", "flow.csv", "basin.yml", "truth.yml")
+  expect_true(all(file.exists(file.path(root, "S001", files))))
   truth <- read_pdm_config(file.path(root, "S002", "truth.yml"))
   expect_equal(truth$distribution$cmax, s$cmax[2])
   bounds <- calibration_bounds(truth)
