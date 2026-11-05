@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.7.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.8.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -112,7 +112,7 @@
 <span>  soil_fraction <span class="op">=</span> <span class="fl">0.5</span>,</span>
 <span>  starts <span class="op">=</span> <span class="fl">1L</span>,</span>
 <span>  seed <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"lbfgsb"</span>, <span class="st">"nelder_mead"</span><span class="op">)</span>,</span>
+<span>  method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"lbfgsb"</span>, <span class="st">"nelder_mead"</span>, <span class="st">"dds"</span><span class="op">)</span>,</span>
 <span>  thresholds <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  threshold_weight <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  threshold_score <span class="op">=</span> <span class="st">"csi"</span>,</span>
@@ -183,22 +183,32 @@ start with <code>start = "soil"</code>, and with split recharge, whose soil leve
 
 
 <dt id="arg-starts">starts<a class="anchor" aria-label="anchor" href="#arg-starts"></a></dt>
-<dd><p>Positive integer number of L-BFGS-B starts. The default, 1, runs a single
+<dd><p>Positive integer number of optimiser starts. The default, 1, runs a single
 start from the values in config, as earlier versions did. With more than one,
 the first start is still the values in config and the others are drawn uniformly inside
 lower and upper. Every start is optimised and the best objective is returned.</p></dd>
 
 
 <dt id="arg-seed">seed<a class="anchor" aria-label="anchor" href="#arg-seed"></a></dt>
-<dd><p>Optional finite number that seeds the random starting points. The caller's
-random number state is restored on exit. It has no effect when starts is 1.</p></dd>
+<dd><p>Optional finite number that seeds the random starting points and, with
+<code>method = "dds"</code>, the search itself. The caller's random number state is restored on exit.
+Without <code>dds</code>, it has no effect when starts is 1.</p></dd>
 
 
 <dt id="arg-method">method<a class="anchor" aria-label="anchor" href="#arg-method"></a></dt>
 <dd><p>Optimiser: <code>lbfgsb</code> (default), gradient-based and fast for smooth objectives,
 or <code>nelder_mead</code>, derivative-free, needed for threshold objectives because event counts
 change in steps. Nelder-Mead works on a logistic transform of the unit box, so every
-trial stays within lower and upper; it usually needs several times more model runs.</p></dd>
+trial stays within lower and upper; it usually needs several times more model runs. Or
+<code>dds</code>, dynamically dimensioned search (Tolson and Shoemaker, 2007), a derivative-free global
+search built for watershed models: it perturbs a random subset of parameters around the best
+point so far, starting with all of them and narrowing to one or two as the budget runs out.
+With <code>dds</code>, <code>control$maxit</code> is the number of model runs per start (200 if not given), and
+<code>control$r</code>, the perturbation size as a fraction of each range, defaults to 0.2. It also
+accepts threshold objectives. On the smooth NSE of the standard structure, L-BFGS-B is the
+better choice: on 30 synthetic catchments, given the same number of model runs (about 560
+per start), DDS fitted less well in 29 of them. DDS suits objectives with steps or many
+local optima, and budgets of thousands of runs per start.</p></dd>
 
 
 <dt id="arg-thresholds">thresholds<a class="anchor" aria-label="anchor" href="#arg-thresholds"></a></dt>
@@ -206,7 +216,8 @@ trial stays within lower and upper; it usually needs several times more model ru
 becomes the continuous objective plus <code>threshold_weight</code> times the mean over thresholds
 of the threshold loss (1 - score, or the score itself for false alarm ratios), from
 <code><a href="pdm_threshold_scores.html">pdm_threshold_scores()</a></code> over the scored rows. An undefined score counts as the worst.
-Requires <code>method = "nelder_mead"</code>, and at least one observed event at each threshold.</p></dd>
+Requires <code>method = "nelder_mead"</code> or <code>"dds"</code>, and at least one observed event at each
+threshold.</p></dd>
 
 
 <dt id="arg-threshold-weight">threshold_weight<a class="anchor" aria-label="anchor" href="#arg-threshold-weight"></a></dt>
@@ -277,6 +288,9 @@ in the unit search box as its <code>unit</code> attribute.</p>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
     <p>Moore (2007), doi:10.5194/hess-11-483-2007.</p>
+<p>Tolson, B. A. and Shoemaker, C. A. (2007). Dynamically dimensioned search algorithm for
+computationally efficient watershed model calibration. Water Resources Research, 43, W01413,
+doi:10.1029/2005WR004723.</p>
     </div>
 
     <div class="section level2">

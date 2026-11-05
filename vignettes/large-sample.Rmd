@@ -160,6 +160,12 @@ for (p in colnames(truth)) {
 ```{r ranking, include=FALSE}
 order_by <- names(sort(typical))
 pct <- function(p) f0(100 * (exp(typical[[p]]) - 1))
+best_two <- min(colSums(abs(log(fitted / truth)) < log(1.1))[order_by[1:2]])
+best_two_text <- if (best_two == nrow(truth)) {
+  paste("all", nrow(truth), "catchments")
+} else {
+  paste(best_two, "or more of the", nrow(truth), "catchments")
+}
 ```
 
 ```{r edges, include=FALSE}
@@ -213,7 +219,7 @@ n_short <- sum(gap < -0.001)
 ```
 
 In `r n_match` of the `r length(gap)` catchments the calibration scores at least as well as
-the true parameters`r if (n_short == 0) paste0(", and in the rest it falls short by no more than ", sprintf("%.4f", max(0, -min(gap))), " in NSE") else paste0("; in ", n_short, " it falls short by more than 0.001")`.
+the true parameters`r if (n_short == 0) paste0(if (n_match < length(gap)) paste0(", and in the other", if (length(gap) - n_match > 1) "s" else "", " it falls short by no more than ", sprintf("%.4f", max(0, -min(gap))), " in NSE") else "") else paste0("; in ", n_short, " it falls short by more than 0.001")`.
 `r if (n_short == 0) paste0("The search found the best fit each record allows. So when ", order_by[7], " comes back ", pct(order_by[7]), " per cent out, the search is not to blame: parameter sets that far apart fit the record equally well, and the record, with its gauge error, cannot choose between them. More model runs, or a different search, would not recover it.") else "Those catchments are search failures, and their parameters say nothing about what the record can recover."`
 
 Two other searches were tried on this sample. Calibrating in stages (the water balance first,
@@ -309,8 +315,7 @@ floods it has not seen.
   calibration fitted at least as well as the truth. What the record cannot recover, no search
   will.
 - **Some parameters are reliably recovered and some are not.** Here `r order_by[1]` and
-  `r order_by[2]` were within 10 per cent in `r min(colSums(abs(log(fitted / truth)) < log(1.1))[order_by[1:2]])`
-  or more of the `r nrow(truth)` catchments; `r order_by[7]` was within 10 per cent in
+  `r order_by[2]` were within 10 per cent in `r best_two_text`; `r order_by[7]` was within 10 per cent in
   only `r colSums(abs(log(fitted / truth)) < log(1.1))[[order_by[7]]]` of them. A study that
   reads meaning into a parameter should first know which kind it is.
 - **A rating extrapolated above the highest gauging makes a good model look bad on the

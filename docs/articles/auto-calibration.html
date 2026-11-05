@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.7.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.8.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -508,7 +508,7 @@ does the same:</p>
 </tr>
 <tr class="odd">
 <td>3. Polish</td>
-<td>Everything, within a quarter of each range either side of stage 2’s
+<td>Everything, over the full bounds, starting from stage 2’s
 values</td>
 <td>1 - NSE</td>
 </tr>
@@ -517,7 +517,10 @@ values</td>
 <p>Log flows in stage 1 stop the floods dominating, so the slow stores
 are fitted to the low flows and recessions they control. Stage 2 then
 fits peaks and timing with the slow stores held. Stage 3 fixes any
-interaction between the two without drifting far.
+interaction between the two, and is free to move far: stage 1 fits with
+the surface stores at their starting values, and where the true stores
+are much slower it can settle on the wrong slow stores to compensate. A
+polish kept close to that point could not undo it.
 <code><a href="../reference/pdm_stages.html">pdm_stages()</a></code> builds this list for any structure from the
 bounds table: a split recharge adds its share to stage 1, an exponential
 store its two parameters. Each stage is a plain list, so you can move
@@ -550,11 +553,11 @@ once, the other in stages:</p>
 <span><span class="co">#&gt; all_at_once  0.992   0.991        0.000       4395</span></span>
 <span><span class="co">#&gt; stage_1      0.967   0.976        0.000       1012</span></span>
 <span><span class="co">#&gt; stage_2      0.978   0.979        0.005        364</span></span>
-<span><span class="co">#&gt; staged       0.990   0.989        0.001       3626</span></span></code></pre></div>
+<span><span class="co">#&gt; staged       0.992   0.991        0.000       5246</span></span></code></pre></div>
 <p>In this example both reach the same answer: NSE 0.992 at once and
-0.990 in stages. Stage 1 alone reaches 0.967, which shows how much of
+0.992 in stages. Stage 1 alone reaches 0.967, which shows how much of
 the fit comes from the water balance and the slow stores. Staging took
-more model runs here, 3,626 against 4,395.</p>
+more model runs here, 5,246 against 4,395.</p>
 <p>So why stage? A made-up catchment with a known truth and clean data
 is the easy case. On real data, with rating errors at the top end and a
 long record of low flows, fitting everything to NSE at once can let the
@@ -563,6 +566,14 @@ good for the wrong reasons. Staging makes each group of parameters
 answer to the part of the hydrograph it controls. Each stage is also a
 separate, reviewable step: a Steward can see what the water balance did
 before the peaks were touched.</p>
+<p>Staging has to be free to undo its own first stage. On 30 synthetic
+catchments where the structure was exactly right, a polish kept within a
+quarter of each range (the default before version 0.8.0) left two
+catchments far short of their true parameters’ score. With the polish
+over the full bounds, staging and calibrating everything at once both
+came within 0.001 of the truth’s score in every catchment. <a href="large-sample.html">A large sample</a> describes the test. On
+synthetic data the two are equal, so the case for staging rests on real
+data, and on judgement.</p>
 <p>In a project, <code><a href="../reference/calibrate_staged.html">log_staged_calibration()</a></code> writes one
 <code>auto_calibration</code> entry per stage, each the parent of the
 next, with its stage recorded, and
