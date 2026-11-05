@@ -108,10 +108,15 @@ compare_structures <- function(project, structures = NULL, overrides = NULL, exc
   if (cores <= 1L || length(jobs) < 2L) return(lapply(jobs, fun, ...))
   cl <- parallel::makeCluster(min(cores, length(jobs)))
   on.exit(parallel::stopCluster(cl), add = TRUE)
-  parallel::clusterEvalQ(cl, {
+  # A fresh worker sees only the default libraries. Give it this session's, led by the one
+  # pdmS7 was loaded from, so a package installed elsewhere (by R CMD build, renv or a user
+  # library) is the one the workers run.
+  paths <- unique(c(dirname(system.file(package = "pdmS7")), .libPaths()))
+  parallel::clusterCall(cl, function(p) {
+    .libPaths(p)
     library(pdmS7)
     NULL
-  })
+  }, paths)
   parallel::parLapply(cl, jobs, fun, ...)
 }
 

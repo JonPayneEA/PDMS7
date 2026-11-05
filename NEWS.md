@@ -5,6 +5,10 @@
   truth saved beside it. New article: "A large sample: what automatic calibration recovers".
 - `calibrate_batch()`'s default structure takes each basin's time step from its data, so daily
   and 15-minute basins need no structure of their own.
+- Parallel workers in `calibrate_batch()` and `compare_structures()` now use the main session's
+  library paths, so a package installed outside the default library (by `R CMD build`, renv or
+  a user library) works with `cores > 1`; workers used to fail with "there is no package
+  called 'pdmS7'".
 - `read_projects()` and `batch_results()` report `wettest_score`, the headline over the
   held-back wettest years.
 
