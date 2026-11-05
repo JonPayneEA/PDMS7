@@ -22,7 +22,9 @@ test_that("default stages follow the structure", {
   expect_setequal(standard[[2]]$parameters, c("surface.k1", "surface.k2", "distribution.b"))
   expect_length(standard[[3]]$parameters, 7)
   expect_equal(c(standard[[1]]$objective, standard[[1]]$volume_weight), c("log_nse", "1"))
-  expect_equal(standard[[3]]$band, 0.25)
+  # The polish searches the full bounds unless a band is asked for.
+  expect_null(standard[[3]]$band)
+  expect_equal(pdm_stages(pdm_presets("standard"), band = 0.25)[[3]]$band, 0.25)
   split <- structure_set("split")$split
   expect_true("recharge.alpha" %in% pdm_stages(split)[[1]]$parameters)
   short <- pdm_stages(pdm_presets("standard"), polish = FALSE,

@@ -66,9 +66,9 @@ can be told apart.
 
 # Calibrating all of them
 
-One call calibrates the whole sample: staged automatic calibration from the standard preset,
-two starts per stage, in parallel workers. Each record's two wettest years are held back and
-revealed at the end by the test, as every project does by default.
+One call calibrates the whole sample: automatic calibration of all seven parameters at once
+from the standard preset, with four starts, in parallel workers. Each record's two wettest
+years are held back and revealed at the end by the test, as every project does by default.
 
 ```{r batch}
 # R CMD check allows two processes; elsewhere use up to four cores. The results do not depend
@@ -76,8 +76,8 @@ revealed at the end by the test, as every project does by default.
 limited <- identical(toupper(Sys.getenv("_R_CHECK_LIMIT_CORES_")), "TRUE")
 cores <- if (limited) 2L else min(4L, max(1L, parallel::detectCores() - 1L))
 elapsed <- system.time(
-  calibrate_batch(basins, output, staged = TRUE, starts = 2, control = list(maxit = 40),
-                  cores = cores, test = TRUE)
+  calibrate_batch(basins, output, starts = 4, control = list(maxit = 40), cores = cores,
+                  test = TRUE)
 )[["elapsed"]]
 status <- batch_status(output)
 table(status$state)
@@ -177,13 +177,49 @@ at_edge <- vapply(sample$basin, function(id) {
 edge_ids <- names(at_edge)[at_edge]
 ```
 
-`r if (length(edge_ids)) paste0("The points far from the line belong mostly to ", length(edge_ids), " catchment", if (length(edge_ids) > 1) "s" else "", " (", paste(edge_ids, collapse = ", "), ") whose search ended with a parameter against a bound, a sign of a calibration that went astray rather than of a parameter that cannot be known. Nothing in the batch flags them yet, so check for them as this article does; in a real study they are the first catchments to look at.") else "No calibration ended with a parameter against a bound."`
+`r if (length(edge_ids)) paste0(length(edge_ids), " calibration", if (length(edge_ids) > 1) "s" else "", " (", paste(edge_ids, collapse = ", "), ") ended with a parameter against a bound. That is worth checking in a real study: it can mean a search that went astray, or a true value close to the bound. Nothing in the batch flags it yet, so check for it as this article does.") else "No calibration ended with a parameter against a bound."`
 
 The ranking is clear. `r order_by[1]` and `r order_by[2]` come back closest, typically within
 `r pct(order_by[1])` and `r pct(order_by[2])` per cent. `r order_by[7]` and `r order_by[6]`
 are the worst, typically `r pct(order_by[7])` and `r pct(order_by[6])` per cent out. Yet the
 calibrations that got them wrong still score an excellent NSE. A good score shows that the
 model reproduces the record; it does not show that the parameters are right.
+
+# Did the search find the best fit?
+
+A parameter that comes back wrong has two possible causes. The search may have stopped short
+of the best fit, or the record may not be able to tell the true value from the wrong one.
+The truth settles which: score each catchment's true parameters on the same calibration
+window, and set the calibration's score against it.
+
+```{r against-truth}
+true_score <- vapply(sample$basin, function(id) {
+  project <- file.path(output, id)
+  entries <- read_project(project)$entries
+  fit <- utils::tail(entries$id[entries$type == "auto_calibration"], 1)
+  cfg <- read_pdm_config(file.path(basins, id, "truth.yml"))
+  changes <- vapply(b$path, function(p) pdmS7:::.path_get(cfg, p), numeric(1))
+  suppressWarnings(preview_trial(project, fit, changes))$scores$nse
+}, numeric(1))
+calibrated_score <- results$candidate_score[match(sample$basin, results$project)]
+gap <- calibrated_score - true_score
+round(c(at_least_truth = sum(gap >= -1e-6), short_by_over_0.001 = sum(gap < -0.001),
+        largest_shortfall = max(0, -min(gap))), 4)
+```
+
+```{r truth-numbers, include=FALSE}
+n_match <- sum(gap >= -1e-6)
+n_short <- sum(gap < -0.001)
+```
+
+In `r n_match` of the `r length(gap)` catchments the calibration scores at least as well as
+the true parameters`r if (n_short == 0) paste0(", and in the rest it falls short by no more than ", sprintf("%.4f", max(0, -min(gap))), " in NSE") else paste0("; in ", n_short, " it falls short by more than 0.001")`.
+`r if (n_short == 0) paste0("The search found the best fit each record allows. So when ", order_by[7], " comes back ", pct(order_by[7]), " per cent out, the search is not to blame: parameter sets that far apart fit the record equally well, and the record, with its gauge error, cannot choose between them. More model runs, or a different search, would not recover it.") else "Those catchments are search failures, and their parameters say nothing about what the record can recover."`
+
+Two other searches were tried on this sample. Calibrating in stages (the water balance first,
+then the fast response, then a joint polish) did no better, and dynamically dimensioned
+search, given the same number of model runs, did worse. `inst/benchmarks/search_methods.R` in
+the package runs that comparison.
 
 # What decides whether a parameter can be recovered?
 
@@ -269,6 +305,9 @@ floods it has not seen.
 - **Scores are not evidence of correct parameters.** Every catchment scored an NSE of at
   least `r f2(min(results$validation_score))` on validation. Some parameters were still
   recovered poorly, and only the known truth shows it.
+- **The search is not the limit.** In `r n_match` of `r length(gap)` catchments the
+  calibration fitted at least as well as the truth. What the record cannot recover, no search
+  will.
 - **Some parameters are reliably recovered and some are not.** Here `r order_by[1]` and
   `r order_by[2]` were within 10 per cent in `r min(colSums(abs(log(fitted / truth)) < log(1.1))[order_by[1:2]])`
   or more of the `r nrow(truth)` catchments; `r order_by[7]` was within 10 per cent in

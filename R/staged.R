@@ -1,11 +1,11 @@
 # ============================================================ #
 # Tool:         staged
 # Description:  Staged calibration: water balance and slow response, then fast response,
-#               then an optional joint polish within narrowed bounds
+#               then an optional joint polish over the full bounds
 # Flode Module: standalone; target reach.hydro
 # Author:       pdmS7 contributors
 # Created:      2026-11-01
-# Modified:     2026-11-01 - Add pdm_stages(), calibrate_staged(), log_staged_calibration()
+# Modified:     2026-11-05 - The polish searches the full bounds by default
 # Tier:         3
 # Inputs:       A configuration; forcing (mm per step); observed flow (m3/s)
 # Outputs:      The fitted configuration and one calibration result per stage
@@ -16,19 +16,25 @@
 #'
 #' The stages of a staged calibration, following how a hydrologist calibrates by hand:
 #' settle the water balance and the slow response first, then the fast response, then a short
-#' joint polish.
+#' joint polish over everything.
 #'
 #' | Stage | Fits | Objective |
 #' |---|---|---|
 #' | 1. Volume and baseflow | `fc`, soil store, recharge, groundwater | 1 - log NSE + volume error |
 #' | 2. Fast response | Surface stores and the store shape `b` | 1 - NSE |
-#' | 3. Polish | Everything, within narrowed bounds | 1 - NSE |
+#' | 3. Polish | Everything, over the full bounds | 1 - NSE |
 #'
 #' Low flows and the total volume depend on the slow stores, and logs stop the floods
 #' dominating stage 1. Peak size and timing depend on the fast stores, fitted in stage 2 with
-#' stage 1's values fixed. Stage 3 starts from the stage 2 result and searches a band of a
-#' quarter of each parameter's range either side, on the search scale, to fix interactions the
-#' stages missed without drifting far.
+#' stage 1's values fixed. Stage 3 starts from the stage 2 result and searches every parameter
+#' over its full bounds, to fix interactions the stages missed.
+#'
+#' The polish must be free to move far. Stage 1 fits with the surface stores at their starting
+#' values; where the true stores are much slower, stage 1 compensates with the wrong slow
+#' stores, and a polish confined near that point cannot leave it. In a sample of 30 synthetic
+#' catchments, a polish confined to a quarter of each range either side (the default before
+#' version 0.8.0) left two catchments far below the score of their true parameters. Pass
+#' `band` to confine it all the same.
 #'
 #' Parameters come from [calibration_bounds()], so every structure gets its own lists: a split
 #' recharge adds `recharge.alpha` to stage 1, an exponential store adds its two parameters.
@@ -40,7 +46,8 @@
 #' @param overrides,exclude Passed to [calibration_bounds()].
 #' @param polish Include stage 3.
 #' @param volume_weight Weight of the volume penalty in stage 1.
-#' @param band Half-width of the stage 3 search, as a fraction of each range.
+#' @param band `NULL` (the default) for a stage 3 search over the full bounds, or the
+#'   half-width of a narrowed search, as a fraction of each range.
 #'
 #' @return A list of stages.
 #' @examples
@@ -48,7 +55,7 @@
 #' @seealso [calibrate_staged()], [log_staged_calibration()]
 #' @export
 pdm_stages <- function(config, overrides = NULL, exclude = NULL, polish = TRUE,
-                       volume_weight = 1, band = 0.25) {
+                       volume_weight = 1, band = NULL) {
   # Sort the structure's parameters by the part of the hydrograph they control. The store shape b
   # appears in both stages: it affects the water balance and how sharply runoff responds.
   paths <- calibration_bounds(config, overrides, exclude)$path
