@@ -41,6 +41,8 @@
   rating](https://jonpayneea.github.io/PDMS7/articles/extrapolation.md):
 - [Calibrating many
   catchments](https://jonpayneea.github.io/PDMS7/articles/many-catchments.md):
+- [A large sample: what automatic calibration
+  recovers](https://jonpayneea.github.io/PDMS7/articles/large-sample.md):
 
 ### Records and review
 

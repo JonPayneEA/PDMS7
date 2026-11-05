@@ -110,6 +110,10 @@ Calibration:
   [`calibrate_batch()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md):
   preparing folders, running, resuming after an interruption, fixing
   failures, and reading the results
+- [A large sample: what automatic calibration
+  recovers](https://jonpayneea.github.io/PDMS7/articles/large-sample.html):
+  30 synthetic catchments, each with its own climate and known truth,
+  calibrated as a batch
 
 Records and review:
 

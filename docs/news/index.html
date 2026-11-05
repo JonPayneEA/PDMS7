@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.7.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -41,6 +41,7 @@
     <li><a class="dropdown-item" href="../articles/choosing-structure.html">Choosing a model structure</a></li>
     <li><a class="dropdown-item" href="../articles/extrapolation.html">Larger floods: extrapolation and the rating</a></li>
     <li><a class="dropdown-item" href="../articles/many-catchments.html">Calibrating many catchments</a></li>
+    <li><a class="dropdown-item" href="../articles/large-sample.html">A large sample: what automatic calibration recovers</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Records and review</h6></li>
     <li><a class="dropdown-item" href="../articles/calibration-log.html">Logging a manual calibration</a></li>
@@ -90,6 +91,15 @@
       <small>Source: <a href="https://github.com/JonPayneEA/PDMS7/blob/HEAD/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.7.0" id="pdms7-070">pdmS7 0.7.0<a class="anchor" aria-label="anchor" href="#pdms7-070"></a></h2>
+<ul><li>
+<strong>Large samples.</strong> <code><a href="../reference/synthetic_basins.html">synthetic_basins()</a></code> writes a sample of synthetic catchments, each with its own climate and true parameters, as basin folders ready for <code><a href="../reference/calibrate_batch.html">calibrate_batch()</a></code>, with each truth saved beside it. New article: “A large sample: what automatic calibration recovers”.</li>
+<li>
+<code><a href="../reference/calibrate_batch.html">calibrate_batch()</a></code>’s default structure takes each basin’s time step from its data, so daily and 15-minute basins need no structure of their own.</li>
+<li>
+<code><a href="../reference/read_project.html">read_projects()</a></code> and <code><a href="../reference/calibrate_batch.html">batch_results()</a></code> report <code>wettest_score</code>, the headline over the held-back wettest years.</li>
+</ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.6.0" id="pdms7-060">pdmS7 0.6.0<a class="anchor" aria-label="anchor" href="#pdms7-060"></a></h2>
 <ul><li>

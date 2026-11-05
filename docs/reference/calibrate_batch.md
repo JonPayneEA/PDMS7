@@ -53,7 +53,8 @@ batch_results(output)
 
   Default configuration (a list or YAML path) for basins whose
   `basin.yml` names none; the standard PDM if `NULL`. The basin's area
-  is always applied.
+  is always applied, and so is the time step of its data, so one default
+  serves hourly, daily and 15-minute basins alike.
 
 - overrides, exclude:
 

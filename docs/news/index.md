@@ -1,5 +1,22 @@
 # Changelog
 
+## pdmS7 0.7.0
+
+- **Large samples.**
+  [`synthetic_basins()`](https://jonpayneea.github.io/PDMS7/reference/synthetic_basins.md)
+  writes a sample of synthetic catchments, each with its own climate and
+  true parameters, as basin folders ready for
+  [`calibrate_batch()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md),
+  with each truth saved beside it. New article: “A large sample: what
+  automatic calibration recovers”.
+- [`calibrate_batch()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md)’s
+  default structure takes each basin’s time step from its data, so daily
+  and 15-minute basins need no structure of their own.
+- [`read_projects()`](https://jonpayneea.github.io/PDMS7/reference/read_project.md)
+  and
+  [`batch_results()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md)
+  report `wettest_score`, the headline over the held-back wettest years.
+
 ## pdmS7 0.6.0
 
 - **The standard preset has a realistic water balance.** It used to
