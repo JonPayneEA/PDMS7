@@ -1,3 +1,13 @@
+# pdmS7 0.7.0
+
+- **Large samples.** `synthetic_basins()` writes a sample of synthetic catchments, each with its
+  own climate and true parameters, as basin folders ready for `calibrate_batch()`, with each
+  truth saved beside it. New article: "A large sample: what automatic calibration recovers".
+- `calibrate_batch()`'s default structure takes each basin's time step from its data, so daily
+  and 15-minute basins need no structure of their own.
+- `read_projects()` and `batch_results()` report `wettest_score`, the headline over the
+  held-back wettest years.
+
 # pdmS7 0.6.0
 
 - **The standard preset has a realistic water balance.** It used to drain its soil to

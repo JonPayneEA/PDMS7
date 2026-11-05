@@ -34,7 +34,8 @@ read_projects(projects)
 parent, changes, scores, verdict and reasoning. \code{read_entry()} returns one entry in full,
 for example an automatic calibration's table of starts. \code{read_projects()} summarises
 several projects in one table, for example every basin of a large-sample calibration,
-with the candidate's headline score on the calibration and validation windows.
+with the candidate's headline score on the calibration and validation windows, and, once
+tested, on the test window (\code{test_score}) and the held-back wettest years (\code{wettest_score}).
 }
 \seealso{
 \link{calibration_log}, \code{\link[=verify_project]{verify_project()}}
