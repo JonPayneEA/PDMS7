@@ -41,21 +41,29 @@
 #' @param baseflow_fraction With `start = "flow"`, the share of the first flow that is baseflow.
 #' @param start_flow With `start = "flow"`, the flow to start from, m3/s. By default the first
 #' observed value of `observed`.
-#' @param starts Positive integer number of L-BFGS-B starts. The default, 1, runs a single
+#' @param starts Positive integer number of optimiser starts. The default, 1, runs a single
 #' start from the values in config, as earlier versions did. With more than one,
 #' the first start is still the values in config and the others are drawn uniformly inside
 #' lower and upper. Every start is optimised and the best objective is returned.
-#' @param seed Optional finite number that seeds the random starting points. The caller's
-#' random number state is restored on exit. It has no effect when starts is 1.
+#' @param seed Optional finite number that seeds the random starting points and, with
+#' `method = "dds"`, the search itself. The caller's random number state is restored on exit.
+#' Without `dds`, it has no effect when starts is 1.
 #' @param method Optimiser: `lbfgsb` (default), gradient-based and fast for smooth objectives,
 #' or `nelder_mead`, derivative-free, needed for threshold objectives because event counts
 #' change in steps. Nelder-Mead works on a logistic transform of the unit box, so every
-#' trial stays within lower and upper; it usually needs several times more model runs.
+#' trial stays within lower and upper; it usually needs several times more model runs. Or
+#' `dds`, dynamically dimensioned search (Tolson and Shoemaker, 2007), a derivative-free global
+#' search built for watershed models: it perturbs a random subset of parameters around the best
+#' point so far, starting with all of them and narrowing to one or two as the budget runs out.
+#' With `dds`, `control$maxit` is the number of model runs per start (200 if not given), and
+#' `control$r`, the perturbation size as a fraction of each range, defaults to 0.2. It also
+#' accepts threshold objectives.
 #' @param thresholds Optional named vector of threshold flows, m3/s. The objective then
 #' becomes the continuous objective plus `threshold_weight` times the mean over thresholds
 #' of the threshold loss (1 - score, or the score itself for false alarm ratios), from
 #' [pdm_threshold_scores()] over the scored rows. An undefined score counts as the worst.
-#' Requires `method = "nelder_mead"`, and at least one observed event at each threshold.
+#' Requires `method = "nelder_mead"` or `"dds"`, and at least one observed event at each
+#' threshold.
 #' @param threshold_weight Nonnegative weight of the threshold term.
 #' @param threshold_score Threshold score: `csi` (default), `pod`, `far`, `csi_step`,
 #' `pod_step`, `far_step`, `ets_step` or `pss_step`.
@@ -95,13 +103,17 @@
 #'   control = list(maxit = 2), starts = 3L, seed = 1)$start_results
 #'
 #' @references Moore (2007), doi:10.5194/hess-11-483-2007.
+#'
+#' Tolson, B. A. and Shoemaker, C. A. (2007). Dynamically dimensioned search algorithm for
+#' computationally efficient watershed model calibration. Water Resources Research, 43, W01413,
+#' doi:10.1029/2005WR004723.
 #' @export
 calibrate_pdm <- function(
   config, forcing, observed, lower, upper, warmup = 0,
   objective = c("rmse", "nse", "log_rmse", "log_nse", "threshold"),
   flow = c("q_m3s", "q_end_m3s"),
   log_offset = 0.01, control = list(maxit = 200),
-  soil_fraction = 0.5, starts = 1L, seed = NULL, method = c("lbfgsb", "nelder_mead"),
+  soil_fraction = 0.5, starts = 1L, seed = NULL, method = c("lbfgsb", "nelder_mead", "dds"),
   thresholds = NULL, threshold_weight = 1, threshold_score = "csi",
   event_settings = list(tolerance_h = 6, gap_h = 24, min_duration_h = 0),
   log_scale = character(0), volume_weight = 0, start = c("flow", "soil"),
@@ -185,16 +197,18 @@ calibrate_pdm <- function(
   }
   # Unit-box scaling helps parameters with very different physical units.
   z_start <- .start_points(box$to_unit(initial), as.integer(starts), seed)
-  # One optimisation per start. L-BFGS-B works on the unit box directly with bounds [0, 1];
-  # Nelder-Mead has no bounds, so it searches a logistic transform of the box instead.
-  runs <- lapply(z_start, function(z) {
+  # One optimisation per start. L-BFGS-B and DDS work on the unit box directly with bounds
+  # [0, 1]; Nelder-Mead has no bounds, so it searches a logistic transform of the box instead.
+  # Each DDS start draws from its own seed, so a start's search does not depend on the others.
+  runs <- lapply(seq_along(z_start), function(i) {
+    z <- z_start[[i]]
     counter$calls <- 0L
-    fit <- if (method == "lbfgsb") {
-      stats::optim(z, loss, method = "L-BFGS-B", lower = rep(0, length(lower)),
-                   upper = rep(1, length(upper)), control = control)
-    } else {
-      .nelder_mead_box(z, loss, control)
-    }
+    fit <- switch(method,
+      lbfgsb = stats::optim(z, loss, method = "L-BFGS-B", lower = rep(0, length(lower)),
+                            upper = rep(1, length(upper)), control = control),
+      nelder_mead = .nelder_mead_box(z, loss, control),
+      dds = .seeded(if (!is.null(seed)) seed + i, .dds_box(z, loss, control))
+    )
     list(fit = fit, calls = counter$calls)
   })
   out <- .calibration_result(runs, box, build, lower)
@@ -344,6 +358,42 @@ calibrate_pdm <- function(
   fit
 }
 
+# Dynamically dimensioned search (Tolson and Shoemaker, 2007) in the unit box. Each run perturbs
+# a random subset of coordinates of the best point so far by a normal step of sd r; a coordinate
+# is chosen with probability 1 - log(i) / log(budget), so the search starts global and ends local.
+# A step past a bound is reflected back inside; if the reflection overshoots the other bound, the
+# coordinate goes to the bound it crossed. A trial at least as good as the best replaces it. The
+# result is shaped like an stats::optim result, so the rest of calibrate_pdm() treats it alike.
+.dds_box <- function(z, loss, control) {
+  budget <- control$maxit %||% 200L
+  r <- control$r %||% 0.2
+  .check(.whole(budget, 1, Inf), "control$maxit must be a whole number of model runs for dds")
+  .check(.scalar(r, 0, strict = TRUE), "control$r must be a positive number")
+  n <- length(z)
+  best <- z
+  best_value <- loss(z)
+  for (i in seq_len(budget - 1L)) {
+    chosen <- stats::runif(n) < 1 - log(i) / log(budget)
+    if (!any(chosen)) chosen[sample.int(n, 1L)] <- TRUE
+    trial <- best
+    step <- trial[chosen] + r * stats::rnorm(sum(chosen))
+    low <- step < 0
+    step[low] <- -step[low]
+    step[low & step > 1] <- 0
+    high <- step > 1
+    step[high] <- 2 - step[high]
+    step[high & step < 0] <- 1
+    trial[chosen] <- step
+    value <- loss(trial)
+    if (value <= best_value) {
+      best <- trial
+      best_value <- value
+    }
+  }
+  list(par = best, value = best_value, counts = c(`function` = budget, gradient = NA),
+       convergence = 0L, message = paste("DDS:", budget, "model runs"))
+}
+
 # The threshold part of the objective: for each threshold, 1 - score (or the score itself for a
 # false alarm ratio, where lower is better), averaged. An undefined score, such as CSI with no
 # events in either series, counts as the worst value, so the search cannot exploit it.
@@ -357,18 +407,18 @@ calibrate_pdm <- function(
   mean(losses)
 }
 
-# A threshold term is only allowed with Nelder-Mead (event counts change in steps, so gradients
-# are zero almost everywhere), and only for thresholds the observed flow actually exceeds in the
-# scored period: a threshold never crossed gives the search nothing to learn from.
+# A threshold term is only allowed with a derivative-free search (event counts change in steps,
+# so gradients are zero almost everywhere), and only for thresholds the observed flow actually
+# exceeds in the scored period: a threshold never crossed gives the search nothing to learn from.
 .check_threshold_objective <- function(objective, method, thresholds, weight, score, events,
                                        observed, warmup) {
   if (is.null(thresholds)) {
     .check(objective != "threshold", "objective = \"threshold\" needs thresholds")
     return(invisible(TRUE))
   }
-  .check(method == "nelder_mead", paste(
+  .check(method %in% c("nelder_mead", "dds"), paste(
     "Threshold scores change in steps, which a gradient optimiser cannot follow;",
-    "use method = \"nelder_mead\""
+    "use method = \"nelder_mead\" or \"dds\""
   ))
   .check(is.numeric(thresholds) && length(thresholds) > 0 && !is.null(names(thresholds)) &&
            all(is.finite(thresholds) & thresholds > 0), "thresholds must be named positive flows")

@@ -106,8 +106,9 @@
 #' @param stage Optional label recorded with an automatic calibration, such as
 #'   `1 of 3: volume and baseflow`; [log_staged_calibration()] sets it.
 #' @param threshold_objective Optional names of registered thresholds to include in the
-#'   objective of an automatic calibration, with `method = "nelder_mead"`. Their flows and
-#'   the registered event settings are used, so the calibration and the scorecard agree.
+#'   objective of an automatic calibration, with `method = "nelder_mead"` or `"dds"`. Their
+#'   flows and the registered event settings are used, so the calibration and the scorecard
+#'   agree.
 #' @param threshold_weight,threshold_score Weight and score of the threshold term; see
 #'   [calibrate_pdm()].
 #' @param refers_to Optional id of the entry a note concerns.
@@ -371,7 +372,7 @@ log_trial <- function(project, parent, changes, verdict, reasoning) {
 log_auto_calibration <- function(project, parent, lower, upper,
                                  objective = c("nse", "rmse", "log_rmse", "log_nse", "threshold"),
                                  starts = 1L, seed = NULL, control = list(maxit = 200),
-                                 reasoning, method = c("lbfgsb", "nelder_mead"),
+                                 reasoning, method = c("lbfgsb", "nelder_mead", "dds"),
                                  threshold_objective = NULL, threshold_weight = 1,
                                  threshold_score = "csi", log_scale = character(0),
                                  volume_weight = 0, stage = NULL) {

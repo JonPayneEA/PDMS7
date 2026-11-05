@@ -14,7 +14,7 @@ compare_structures(
   starts = 3L,
   seed = 1,
   control = list(maxit = 200),
-  method = c("lbfgsb", "nelder_mead"),
+  method = c("lbfgsb", "nelder_mead", "dds"),
   cores = 1L,
   cross_validate = FALSE,
   reasoning

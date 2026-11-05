@@ -68,7 +68,7 @@ log_auto_calibration(
   seed = NULL,
   control = list(maxit = 200),
   reasoning,
-  method = c("lbfgsb", "nelder_mead"),
+  method = c("lbfgsb", "nelder_mead", "dds"),
   threshold_objective = NULL,
   threshold_weight = 1,
   threshold_score = "csi",
@@ -171,8 +171,9 @@ the best count as equally good, in the headline's own units (0.02 for NSE).}
 \code{\link[=calibrate_pdm]{calibrate_pdm()}}.}
 
 \item{threshold_objective}{Optional names of registered thresholds to include in the
-objective of an automatic calibration, with \code{method = "nelder_mead"}. Their flows and
-the registered event settings are used, so the calibration and the scorecard agree.}
+objective of an automatic calibration, with \code{method = "nelder_mead"} or \code{"dds"}. Their
+flows and the registered event settings are used, so the calibration and the scorecard
+agree.}
 
 \item{threshold_weight, threshold_score}{Weight and score of the threshold term; see
 \code{\link[=calibrate_pdm]{calibrate_pdm()}}.}

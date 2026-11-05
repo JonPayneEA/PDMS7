@@ -144,7 +144,7 @@ pdm_stages <- function(config, overrides = NULL, exclude = NULL, polish = TRUE,
 calibrate_staged <- function(config, forcing, observed, stages = pdm_stages(config),
                              bounds = calibration_bounds(config), warmup = 0, starts = 1L,
                              seed = NULL, control = list(maxit = 200),
-                             method = c("lbfgsb", "nelder_mead"), soil_fraction = 0.5,
+                             method = c("lbfgsb", "nelder_mead", "dds"), soil_fraction = 0.5,
                              log_offset = 0.01, start = c("flow", "soil"),
                              baseflow_fraction = 0.7) {
   method <- match.arg(method)
@@ -181,7 +181,7 @@ calibrate_staged <- function(config, forcing, observed, stages = pdm_stages(conf
 #' @export
 log_staged_calibration <- function(project, parent, reasoning, stages = NULL, bounds = NULL,
                                    starts = 1L, seed = NULL, control = list(maxit = 200),
-                                   method = c("lbfgsb", "nelder_mead")) {
+                                   method = c("lbfgsb", "nelder_mead", "dds")) {
   method <- match.arg(method)
   entries <- .read_entries(.project_path(project))
   node <- .model_node(entries, parent)

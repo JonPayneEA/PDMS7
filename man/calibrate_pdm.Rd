@@ -18,7 +18,7 @@ calibrate_pdm(
   soil_fraction = 0.5,
   starts = 1L,
   seed = NULL,
-  method = c("lbfgsb", "nelder_mead"),
+  method = c("lbfgsb", "nelder_mead", "dds"),
   thresholds = NULL,
   threshold_weight = 1,
   threshold_score = "csi",
@@ -62,24 +62,32 @@ metres per second.}
 \item{soil_fraction}{Initial fraction of basin capacity between zero and one: the soil store's
 start with \code{start = "soil"}, and with split recharge, whose soil level the flow does not set.}
 
-\item{starts}{Positive integer number of L-BFGS-B starts. The default, 1, runs a single
+\item{starts}{Positive integer number of optimiser starts. The default, 1, runs a single
 start from the values in config, as earlier versions did. With more than one,
 the first start is still the values in config and the others are drawn uniformly inside
 lower and upper. Every start is optimised and the best objective is returned.}
 
-\item{seed}{Optional finite number that seeds the random starting points. The caller's
-random number state is restored on exit. It has no effect when starts is 1.}
+\item{seed}{Optional finite number that seeds the random starting points and, with
+\code{method = "dds"}, the search itself. The caller's random number state is restored on exit.
+Without \code{dds}, it has no effect when starts is 1.}
 
 \item{method}{Optimiser: \code{lbfgsb} (default), gradient-based and fast for smooth objectives,
 or \code{nelder_mead}, derivative-free, needed for threshold objectives because event counts
 change in steps. Nelder-Mead works on a logistic transform of the unit box, so every
-trial stays within lower and upper; it usually needs several times more model runs.}
+trial stays within lower and upper; it usually needs several times more model runs. Or
+\code{dds}, dynamically dimensioned search (Tolson and Shoemaker, 2007), a derivative-free global
+search built for watershed models: it perturbs a random subset of parameters around the best
+point so far, starting with all of them and narrowing to one or two as the budget runs out.
+With \code{dds}, \code{control$maxit} is the number of model runs per start (200 if not given), and
+\code{control$r}, the perturbation size as a fraction of each range, defaults to 0.2. It also
+accepts threshold objectives.}
 
 \item{thresholds}{Optional named vector of threshold flows, m3/s. The objective then
 becomes the continuous objective plus \code{threshold_weight} times the mean over thresholds
 of the threshold loss (1 - score, or the score itself for false alarm ratios), from
 \code{\link[=pdm_threshold_scores]{pdm_threshold_scores()}} over the scored rows. An undefined score counts as the worst.
-Requires \code{method = "nelder_mead"}, and at least one observed event at each threshold.}
+Requires \code{method = "nelder_mead"} or \code{"dds"}, and at least one observed event at each
+threshold.}
 
 \item{threshold_weight}{Nonnegative weight of the threshold term.}
 
@@ -142,4 +150,8 @@ calibrate_pdm(config, f, q, lower = c(fc = 0.8), upper = c(fc = 1.2),
 }
 \references{
 Moore (2007), doi:10.5194/hess-11-483-2007.
+
+Tolson, B. A. and Shoemaker, C. A. (2007). Dynamically dimensioned search algorithm for
+computationally efficient watershed model calibration. Water Resources Research, 43, W01413,
+doi:10.1029/2005WR004723.
 }

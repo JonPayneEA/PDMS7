@@ -236,9 +236,10 @@ calibration_app <- function(project = NULL) {
     shiny::h4("Automatic calibration"),
     shiny::selectizeInput("calib_params", "Parameters", character(0), multiple = TRUE),
     shiny::radioButtons("calib_method", "Optimiser",
-                        c("Gradient (L-BFGS-B)" = "lbfgsb", "Nelder-Mead" = "nelder_mead"),
+                        c("Gradient (L-BFGS-B)" = "lbfgsb", "Nelder-Mead" = "nelder_mead",
+                          "DDS" = "dds"),
                         inline = TRUE),
-    shiny::selectizeInput("calib_thresholds", "Threshold objective (Nelder-Mead only)",
+    shiny::selectizeInput("calib_thresholds", "Threshold objective (Nelder-Mead or DDS)",
                           character(0), multiple = TRUE),
     shiny::splitLayout(
       shiny::numericInput("calib_weight", "Threshold weight", 1, 0),

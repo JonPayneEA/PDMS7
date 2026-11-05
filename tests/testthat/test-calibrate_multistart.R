@@ -4,7 +4,7 @@
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
-# Modified:     2026-10-31 - Add multi-start calibration tests
+# Modified:     2026-11-05 - Add DDS tests
 # Tier:         3
 # Inputs:       Typed S7 components; depths in mm; time in hours
 # Outputs:      Validated S7 objects or hydrological values with documented units
@@ -157,5 +157,53 @@ test_that(
     expect_equal(nrow(tab), 3L)
     expect_true(all(tab$fc >= 0.5 & tab$fc <= 2))
     expect_identical(fit$objective, min(tab$objective))
+  }
+)
+
+# Guards: DDS spends exactly its budget, stays in bounds, reproduces from a seed, leaves the
+# caller's random stream alone, and finds the truth on a smooth two-parameter problem
+test_that(
+  "dds searches within budget and bounds, reproducibly",
+  {
+    s <- ms_setup()
+    run <- function(seed, starts = 2L) {
+      calibrate_pdm(s$config, s$forcing, s$observed, s$lower, s$upper, method = "dds",
+                    control = list(maxit = 150), starts = starts, seed = seed)
+    }
+    set.seed(3)
+    before <- stats::runif(1)
+    set.seed(3)
+    fit <- run(5)
+    expect_equal(stats::runif(1), before)
+    expect_identical(fit$start_results, run(5)$start_results)
+    expect_false(identical(fit$start_results, run(6)$start_results))
+    expect_equal(fit$start_results$evaluations, c(150L, 150L))
+    expect_equal(fit$method, "dds")
+    expect_match(fit$message, "DDS: 150 model runs")
+    expect_true(all(fit$start_results$fc >= 0.5 & fit$start_results$fc <= 2))
+    expect_equal(unname(fit$parameters), c(1.3, 0.6), tolerance = 0.05)
+    expect_error(calibrate_pdm(s$config, s$forcing, s$observed, s$lower, s$upper,
+                               method = "dds", control = list(maxit = 0.5)), "model runs")
+    expect_error(calibrate_pdm(s$config, s$forcing, s$observed, s$lower, s$upper,
+                               method = "dds", control = list(r = -1)), "control\\$r")
+  }
+)
+
+# Guards: a DDS step past a bound is reflected inside, never left outside the unit box
+test_that(
+  "dds reflects steps at the bounds",
+  {
+    seen <- new.env()
+    seen$z <- list()
+    loss <- function(z) {
+      seen$z[[length(seen$z) + 1L]] <- z
+      sum((z - c(0, 1))^2)
+    }
+    set.seed(1)
+    fit <- pdmS7:::.dds_box(c(0.01, 0.99), loss, list(maxit = 300, r = 0.5))
+    trials <- do.call(rbind, seen$z)
+    expect_true(all(trials >= 0 & trials <= 1))
+    expect_equal(nrow(trials), 300L)
+    expect_lt(fit$value, 1e-3)
   }
 )
