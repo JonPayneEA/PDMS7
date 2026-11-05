@@ -268,9 +268,9 @@ floods it has not seen.
   recovered poorly, and only the known truth shows it.
 - **Some parameters are reliably recovered and some are not.** Here `r order_by[1]` and
   `r order_by[2]` were within 10 per cent in `r min(colSums(abs(log(fitted / truth)) < log(1.1))[order_by[1:2]])`
-  or more of the `r nrow(truth)` catchments; `r order_by[7]` was within 10 per cent in only
-  `r colSums(abs(log(fitted / truth)) < log(1.1))[[order_by[7]]]`. A study that reads meaning
-  into a parameter should first know which kind it is.
+  or more of the `r nrow(truth)` catchments; `r order_by[7]` was within 10 per cent in
+  only `r colSums(abs(log(fitted / truth)) < log(1.1))[[order_by[7]]]` of them. A study that
+  reads meaning into a parameter should first know which kind it is.
 - **A rating extrapolated above the highest gauging makes a good model look bad on the
   biggest floods.** Judge peak errors with the rating flag in mind.
 - **Simple explanations need testing.** The guess that dry climates pin the soil store better
