@@ -54,7 +54,8 @@
 #' @param basins Folder holding one subfolder per basin.
 #' @param output Folder for the projects and the status file; created if needed.
 #' @param structure Default configuration (a list or YAML path) for basins whose `basin.yml`
-#'   names none; the standard PDM if `NULL`. The basin's area is always applied.
+#'   names none; the standard PDM if `NULL`. The basin's area is always applied, and so is the
+#'   time step of its data, so one default serves hourly, daily and 15-minute basins alike.
 #' @param overrides,exclude Passed to [calibration_bounds()].
 #' @param objective,starts,seed,control,method Passed to [calibrate_pdm()]. Search scales
 #'   come from the bounds table.
@@ -263,7 +264,15 @@ calibrate_batch <- function(basins, output, structure = NULL, overrides = NULL, 
 # Selects the basin's structure.
 .batch_structure <- function(ctx) {
   if (.batch_has(ctx$project, "structure_selected")) return(invisible())
-  select_structure(ctx$project, .basin_config(ctx$meta, ctx$spec), ctx$reasoning)
+  config <- .basin_config(ctx$meta, ctx$spec)
+  # The batch's default structure takes the time step of the registered data, so a daily or
+  # 15-minute record needs no structure of its own. A basin's own configuration file keeps
+  # its step, and a mismatch there is reported as an error.
+  if (is.null(ctx$meta$config)) {
+    step <- .registration(.read_entries(.project_path(ctx$project)))$summary$step_hours
+    if (!is.null(step)) config$dt <- step
+  }
+  select_structure(ctx$project, config, ctx$reasoning)
 }
 
 # Calibrates, either in one search or in stages. A basin that already has a calibration keeps
