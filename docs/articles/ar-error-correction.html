@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -175,8 +175,8 @@ the error.
 </div>
 <p>The error moves slowly: it builds up during a flood and drains away
 afterwards. Measured over the whole record, the error now and the error
-15 minutes later have a correlation of 0.982; one hour apart, 0.978; six
-hours apart, still 0.83. That memory is what an AR model exploits.</p>
+15 minutes later have a correlation of 0.995; one hour apart, 0.959; six
+hours apart, still 0.30. That memory is what an AR model exploits.</p>
 </div>
 <div class="section level2">
 <h2 id="the-simplest-case-one-coefficient">The simplest case: one coefficient<a class="anchor" aria-label="anchor" href="#the-simplest-case-one-coefficient"></a>
@@ -383,18 +383,23 @@ errors by maximum likelihood, using <code><a href="https://rdrr.io/r/stats/arima
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">calibration</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">n</span> <span class="op">/</span> <span class="fl">2</span><span class="op">)</span></span>
 <span><span class="va">fitted</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/fit_error_updater.html">fit_error_updater</a></span><span class="op">(</span><span class="va">observed</span><span class="op">[</span><span class="va">calibration</span><span class="op">]</span>, <span class="va">simulated</span><span class="op">[</span><span class="va">calibration</span><span class="op">]</span>, order <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">0</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Maximum likelihood failed; the AR fit used method CSS-ML</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">fitted</span><span class="op">$</span><span class="va">updater</span><span class="op">@</span><span class="va">ar</span>, <span class="fl">4</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 0.4387 0.3085 0.2488</span></span>
+<span><span class="co">#&gt; [1]  1.2200  0.2375 -0.4676</span></span>
 <span><span class="fu">ar_roots</span><span class="op">(</span><span class="va">fitted</span><span class="op">$</span><span class="va">updater</span><span class="op">@</span><span class="va">ar</span><span class="op">)</span></span>
-<span><span class="co">#&gt;              root decay_steps decay_hours_at_15min</span></span>
-<span><span class="co">#&gt; 1 -0.2795+0.4138i        1.44                 0.36</span></span>
-<span><span class="co">#&gt; 2 -0.2795-0.4138i        1.44                 0.36</span></span>
-<span><span class="co">#&gt; 3  0.9978+0.0000i      445.51               111.38</span></span></code></pre></div>
+<span><span class="co">#&gt;         root decay_steps decay_hours_at_15min</span></span>
+<span><span class="co">#&gt; 1  0.8396+0i        5.72                 1.43</span></span>
+<span><span class="co">#&gt; 2 -0.5799+0i        1.84                 0.46</span></span>
+<span><span class="co">#&gt; 3  0.9602+0i       24.65                 6.16</span></span></code></pre></div>
+<p>Exact maximum likelihood failed on this series, so the fit fell back
+to method CSS-ML, as the message says; the coefficients are still a
+proper fit.</p>
 <p>The fitted set is quite unlike the default. Its slowest root decays
-over about 111 hours, against the default’s 24, and its two fast roots
-are a complex pair, which makes the projected error wobble from step to
-step. A long decay time is the fit’s way of saying this model’s error is
-mostly a persistent bias, the low rainfall factor, which is true here.
+over about 6 hours, against the default’s 24, and one root is clearly
+negative, which makes part of the projected error flip sign from step to
+step. A shorter decay than the default says this model’s errors fade
+faster than the default assumes; part of the reason is gauge noise,
+which pulls a fit towards fast decay (below).
 <code><a href="https://rdrr.io/pkg/reach.postproc/man/assess.html" class="external-link">reach.postproc::assess()</a></code> would test both the decay time and
 any oscillation against the review criteria.</p>
 <p>A fit reflects this model’s errors, in this catchment, over this
@@ -456,7 +461,7 @@ only if a hindcast shows it helps.</p>
 <code class="sourceCode R"><span><span class="va">arma</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/fit_error_updater.html">fit_error_updater</a></span><span class="op">(</span><span class="va">observed</span><span class="op">[</span><span class="va">calibration</span><span class="op">]</span>, <span class="va">simulated</span><span class="op">[</span><span class="va">calibration</span><span class="op">]</span>, order <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>ar <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">arma</span><span class="op">$</span><span class="va">updater</span><span class="op">@</span><span class="va">ar</span>, <span class="fl">3</span><span class="op">)</span>, ma <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">arma</span><span class="op">$</span><span class="va">updater</span><span class="op">@</span><span class="va">ma</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    ar1    ar2     ma </span></span>
-<span><span class="co">#&gt;  0.808  0.189 -0.361</span></span></code></pre></div>
+<span><span class="co">#&gt;  1.251 -0.256  0.138</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="additive-or-log-errors">Additive or log errors<a class="anchor" aria-label="anchor" href="#additive-or-log-errors"></a>

@@ -88,8 +88,9 @@ test_that("each stage moves only its own parameters and starts where the last en
   d <- staged_data()
   config <- pdm_presets("standard")
   stages <- pdm_stages(config, exclude = c("groundwater.kb", "recharge.kg", "distribution.cmax"))
+  # The data start from a half-full soil, so the calibration does too.
   fit <- calibrate_staged(config, d$forcing, d$observed, stages = stages, warmup = 48,
-                          control = list(maxit = 15))
+                          control = list(maxit = 15), start = "soil")
   expect_length(fit$stages, 3)
   expect_equal(fit$stages[[1]]$label, "1 of 3: volume and baseflow")
   first <- fit$stages[[1]]$config

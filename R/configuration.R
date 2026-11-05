@@ -12,7 +12,7 @@
 # ============================================================ #
 
 # Configuration is a plain nested list, as read from YAML: each component is a list with a
-# 'type' and its parameters, for example list(type = "pareto", cmax = 140, b = 0.4).
+# 'type' and its parameters, for example list(type = "pareto", cmax = 300, b = 0.4).
 # Strict list configuration: misspelled/unused parameter names are errors.
 # .component() looks the type up in a registry of constructors and calls it with the remaining
 # entries, so an unknown parameter name fails as an unused argument.
@@ -38,7 +38,7 @@
 # Registries: the component types a configuration may name, with their default parameters.
 .dist_registry <- function() {
   list(
-    pareto = function(cmin = 0, cmax = 140, b = 0.4) {
+    pareto = function(cmin = 0, cmax = 300, b = 0.4) {
       FlodeParetoCapacity(cmin = cmin, cmax = cmax, b = b)
     },
 
@@ -63,7 +63,9 @@
 }
 .recharge_registry <- function() {
   list(
-    standard = function(kg = 24, bg = 1, st = 0) FlodeStandardRecharge(kg = kg, bg = bg, st = st),
+    standard = function(kg = 4000, bg = 1, st = 0) {
+      FlodeStandardRecharge(kg = kg, bg = bg, st = st)
+    },
     demand = function(alpha = 0.5, beta = 1, qsat = 1) {
       FlodeDemandRecharge(alpha = alpha, beta = beta, qsat = qsat)
     },

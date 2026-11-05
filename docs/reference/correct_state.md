@@ -43,7 +43,7 @@ model <- pdm_model()
 correct_state(model, initial_state(model), observed_m3s = 0.1)
 #> $state
 #> <pdmS7::FlodePdmState>
-#>  @ soil                 : num 50
+#>  @ soil                 : num 107
 #>  @ surface              : num [1:2] 0 1.44
 #>  @ groundwater          : num 0
 #>  @ delay_surface        : num 0

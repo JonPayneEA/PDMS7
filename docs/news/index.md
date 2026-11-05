@@ -1,5 +1,24 @@
 # Changelog
 
+## pdmS7 0.6.0
+
+- **The standard preset has a realistic water balance.** It used to
+  drain its soil to groundwater within a day (`kg` = 24 h), so the soil
+  stayed nearly empty and evaporated about 2 per cent of potential. It
+  now has a soil capacity up to 300 mm (`cmax`) and `kg` = 4000 h:
+  evaporation about half of potential, baseflow index near 0.6.
+  [`pdm_model()`](https://jonpayneea.github.io/PDMS7/reference/pdm_model.md)’s
+  defaults and the parameter catalog match. Results from the preset or
+  default models change; calibrations of real data, which set their own
+  parameters, do not.
+- [`initial_state_from_flow()`](https://jonpayneea.github.io/PDMS7/reference/initial_state_from_flow.md)
+  warns when a steady start would need more soil storage than the store
+  holds; the soil is then capped and the run starts out of balance. This
+  used to happen silently.
+- [`calibrate_staged()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_staged.md)
+  takes `start` and `baseflow_fraction`, like
+  [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md).
+
 ## pdmS7 0.5.0
 
 - **Extrapolation checks in calibration projects.** Calibrations are

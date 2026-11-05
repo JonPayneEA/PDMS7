@@ -35,12 +35,12 @@ synthetic_catchment(
 
 - truth:
 
-  The true configuration. By default, the standard structure with a
-  lowland water balance: soil capacity up to 300 mm (`b` 0.4), recharge
-  `kg` 4000 h above a 50 mm threshold, surface stores of 12 h each, and
-  `dt` and `area_km2` set. Under the default rain it evaporates about
-  350 mm a year and has a baseflow index near 0.5. Every calibrated
-  parameter lies inside
+  The true configuration. By default, the standard preset (a lowland
+  water balance: soil capacity up to 300 mm, slow recharge with `kg`
+  4000 h) with surface stores of 12 h each, and `dt` and `area_km2` set.
+  Under the default rain it evaporates about 310 mm a year, turns about
+  60 per cent of the rain into flow, and has a baseflow index near 0.6.
+  Every calibrated parameter lies inside
   [`calibration_bounds()`](https://jonpayneea.github.io/PDMS7/reference/calibration_bounds.md).
   Its `dt` must match the forcing's step.
 
@@ -134,7 +134,7 @@ river <- synthetic_catchment(years = 3, seed = 1,
 river
 #> Synthetic catchment: 1095 steps of 24 h from 2010-10-01T00:00:00Z 
 #>   Rain: nsrp - 798 mm a year; 1 added storm 
-#>   True flow: mean 0.84 m3/s, peak 14.9 m3/s
+#>   True flow: mean 0.909 m3/s, peak 12.4 m3/s
 #>   Gauge error: sd 0.05 in logs, memory 72 h
 #>   Rating: exact to 20 m3/s, then 15 per cent low at twice that; 0 steps above
 range(river$observed / river$true_flow)

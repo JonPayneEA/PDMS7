@@ -117,7 +117,8 @@ pdm_stages <- function(config, overrides = NULL, exclude = NULL, polish = TRUE,
 #' the next, with its stage recorded, so a reviewer can see what each stage changed.
 #'
 #' @param config A configuration list, the starting point.
-#' @param forcing,observed,warmup,soil_fraction,log_offset Passed to [calibrate_pdm()].
+#' @param forcing,observed,warmup,soil_fraction,log_offset,start,baseflow_fraction Passed to
+#'   [calibrate_pdm()]: how the data are scored and how every trial starts.
 #' @param stages Stages from [pdm_stages()], or your own.
 #' @param bounds Bounds table from [calibration_bounds()].
 #' @param starts,seed,control,method Passed to [calibrate_pdm()] for every stage.
@@ -144,8 +145,10 @@ calibrate_staged <- function(config, forcing, observed, stages = pdm_stages(conf
                              bounds = calibration_bounds(config), warmup = 0, starts = 1L,
                              seed = NULL, control = list(maxit = 200),
                              method = c("lbfgsb", "nelder_mead"), soil_fraction = 0.5,
-                             log_offset = 0.01) {
+                             log_offset = 0.01, start = c("flow", "soil"),
+                             baseflow_fraction = 0.7) {
   method <- match.arg(method)
+  start <- match.arg(start)
   .check(is.list(stages) && length(stages) > 0, "stages must be a non-empty list")
   results <- vector("list", length(stages))
   current <- config
@@ -156,7 +159,8 @@ calibrate_staged <- function(config, forcing, observed, stages = pdm_stages(conf
       current, forcing, observed, lower = b$lower, upper = b$upper, warmup = warmup,
       objective = stages[[i]]$objective, control = control, soil_fraction = soil_fraction,
       starts = starts, seed = seed, method = method, log_scale = b$log_scale,
-      log_offset = log_offset, volume_weight = stages[[i]]$volume_weight %||% 0
+      log_offset = log_offset, volume_weight = stages[[i]]$volume_weight %||% 0,
+      start = start, baseflow_fraction = baseflow_fraction
     )
     fit$label <- .stage_label(i, stages)
     results[[i]] <- fit

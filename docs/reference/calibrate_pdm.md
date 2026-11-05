@@ -216,7 +216,7 @@ calibrate_pdm(config, f, q, lower = c(fc = 0.8), upper = c(fc = 1.2),
 #> [1] 0
 #> 
 #> $config$distribution$cmax
-#> [1] 140
+#> [1] 300
 #> 
 #> $config$distribution$b
 #> [1] 0.4
@@ -227,7 +227,7 @@ calibrate_pdm(config, f, q, lower = c(fc = 0.8), upper = c(fc = 1.2),
 #> [1] "standard"
 #> 
 #> $config$recharge$kg
-#> [1] 24
+#> [1] 4000
 #> 
 #> $config$recharge$bg
 #> [1] 1
@@ -282,10 +282,10 @@ calibrate_pdm(config, f, q, lower = c(fc = 0.8), upper = c(fc = 1.2),
 #> <pdmS7::FlodePdmModel>
 #>  @ distribution: <pdmS7::FlodeParetoCapacity>
 #>  .. @ cmin: num 0
-#>  .. @ cmax: num 140
+#>  .. @ cmax: num 300
 #>  .. @ b   : num 0.4
 #>  @ recharge    : <pdmS7::FlodeStandardRecharge>
-#>  .. @ kg: num 24
+#>  .. @ kg: num 4000
 #>  .. @ bg: num 1
 #>  .. @ st: num 0
 #>  @ surface     : <pdmS7::FlodeCascadeRouting>
@@ -310,7 +310,7 @@ calibrate_pdm(config, f, q, lower = c(fc = 0.8), upper = c(fc = 1.2),
 #> 1.2 
 #> 
 #> $objective
-#> [1] 0.03046412
+#> [1] 0.03924323
 #> 
 #> $objective_name
 #> [1] "rmse"
@@ -329,11 +329,11 @@ calibrate_pdm(config, f, q, lower = c(fc = 0.8), upper = c(fc = 1.2),
 #> [1] 1
 #> 
 #> $optim$value
-#> [1] 0.03046412
+#> [1] 0.03924323
 #> 
 #> $optim$counts
 #> function gradient 
-#>        7        7 
+#>        8        8 
 #> 
 #> $optim$convergence
 #> [1] 0
@@ -345,13 +345,13 @@ calibrate_pdm(config, f, q, lower = c(fc = 0.8), upper = c(fc = 1.2),
 #> $start_results
 #>    start  objective convergence evaluations   best    fc
 #>    <int>      <num>       <int>       <int> <lgcl> <num>
-#> 1:     1 0.03046412           0          21   TRUE   1.2
+#> 1:     1 0.03924323           0          24   TRUE   1.2
 #> 
 calibrate_pdm(config, f, q, lower = c(fc = 0.8), upper = c(fc = 1.2),
   control = list(maxit = 2), starts = 3L, seed = 1)$start_results
 #>    start  objective convergence evaluations   best    fc
 #>    <int>      <num>       <int>       <int> <lgcl> <num>
-#> 1:     1 0.03046412           0          21   TRUE   1.2
-#> 2:     2 0.03046412           0          21  FALSE   1.2
-#> 3:     3 0.03046412           0          21  FALSE   1.2
+#> 1:     1 0.03924323           0          24   TRUE   1.2
+#> 2:     2 0.03924323           0          24  FALSE   1.2
+#> 3:     3 0.03924323           0          24  FALSE   1.2
 ```

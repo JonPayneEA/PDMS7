@@ -112,7 +112,7 @@ its error says what is wrong.
 
 ``` r
 says(pdm_model(recharge = DemandRecharge(alpha = 0.5, beta = 1, qsat = 101)))
-#> [1] "<pdmS7::FlodePdmModel> object is invalid:\n- Demand recharge requires qsat*dt <= Smax"
+#> [1] "no error"
 says(correct_state(pdm_model(td = 2), initial_state(pdm_model(td = 2)), 1))
 #> [1] "State correction requires td=0; delayed observations need a lag-aware smoother"
 ```

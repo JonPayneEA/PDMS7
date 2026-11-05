@@ -138,24 +138,26 @@ n <- 24 * 40
 forcing <- data.frame(rain = ifelse(runif(n) < 0.06, rgamma(n, 0.7, scale = 4), 0), pet = 0.05)
 truth <- pdm_model(area_km2 = 40, fc = 1.1)
 observed <- run_pdm(truth, forcing, initial_state_from_flow(truth, 2, 0.7))$output$q_m3s
+#> Warning: A steady start at 2 m3/s with baseflow_fraction 0.70 needs 504 mm of soil storage, more than the store's capacity of 214.3 mm; the soil is capped and the run starts out of balance. Start at a lower flow or a smaller baseflow_fraction, or use start = "soil".
 model <- pdm_model(area_km2 = 40)
 hc <- pdm_hindcast(model, forcing, observed, window = (24 * 20 + 1):n, horizon_h = 24)
+#> Warning: A steady start at 1.976 m3/s with baseflow_fraction 0.70 needs 497.9 mm of soil storage, more than the store's capacity of 214.3 mm; the soil is capped and the run starts out of balance. Start at a lower flow or a smaller baseflow_fraction, or use start = "soil".
 #> The EA 2024 AR default is defined for 15-minute steps; this model uses 1 h steps
 head(hindcast_scores(hc))
-#>     method lead_h lead_ratio     n       nse        rmse         mae
-#>     <char>  <num>      <num> <int>     <num>       <num>       <num>
-#> 1: ea_2024      1 0.06052198    80 0.9999924 0.004511309 0.002255966
-#> 2: ea_2024      2 0.12104396    80 0.9999373 0.012976216 0.005777511
-#> 3: ea_2024      3 0.18156594    80 0.9998191 0.021984528 0.010380429
-#> 4: ea_2024      4 0.24208792    80 0.9996562 0.030315441 0.016242178
-#> 5: ea_2024      5 0.30260990    80 0.9994347 0.038895785 0.022749255
-#> 6: ea_2024      6 0.36313188    79 0.9990558 0.050678973 0.029958054
+#>     method lead_h lead_ratio     n       nse       rmse        mae
+#>     <char>  <num>      <num> <int>     <num>      <num>      <num>
+#> 1: ea_2024      1  0.3382447    80 0.9993394 0.05756167 0.02319460
+#> 2: ea_2024      2  0.6764894    80 0.9966174 0.13362834 0.05746344
+#> 3: ea_2024      3  1.0147341    80 0.9906801 0.21385742 0.09760162
+#> 4: ea_2024      4  1.3529788    80 0.9797317 0.30079061 0.14399671
+#> 5: ea_2024      5  1.6912236    80 0.9645740 0.37917730 0.17578950
+#> 6: ea_2024      6  2.0294683    79 0.9521745 0.46560654 0.20206155
 #>             bias     skill
 #>            <num>     <num>
-#> 1: -0.0002889751 0.9982776
-#> 2: -0.0008250368 0.9960394
-#> 3: -0.0015710318 0.9942598
-#> 4: -0.0032247819 0.9929409
-#> 5: -0.0046550755 0.9916079
-#> 6: -0.0069163093 0.9895494
+#> 1:  0.0026038381 0.9916308
+#> 2:  0.0071191902 0.9814958
+#> 3:  0.0065991271 0.9680622
+#> 4: -0.0004104198 0.9513987
+#> 5:  0.0013508577 0.9423080
+#> 6: -0.0010823713 0.9455827
 ```

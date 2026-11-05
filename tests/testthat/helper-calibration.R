@@ -36,7 +36,7 @@ log_data <- function(n = 24 * 40) {
   # The record starts in steady state, as a real river does, so runs that start from the first
   # observed flow (the default) begin where the truth did.
   model <- pdm_from_config(truth)
-  observed <- run_pdm(model, forcing, initial_state_from_flow(model, 0.5, 0.7))$output$q_m3s *
+  observed <- run_pdm(model, forcing, initial_state_from_flow(model, 0.2, 0.7))$output$q_m3s *
     exp(stats::rnorm(n, 0, 0.03))
   observed[200:210] <- NA
   list(forcing = forcing, observed = observed, truth = truth)

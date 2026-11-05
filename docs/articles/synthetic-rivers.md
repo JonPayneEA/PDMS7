@@ -144,7 +144,7 @@ river <- synthetic_catchment(
 river
 #> Synthetic catchment: 3650 steps of 24 h from 2010-10-01T00:00:00Z 
 #>   Rain: nsrp - 777 mm a year; 1 added storm 
-#>   True flow: mean 0.837 m3/s, peak 37.6 m3/s
+#>   True flow: mean 0.906 m3/s, peak 34.7 m3/s
 #>   Gauge error: sd 0.05 in logs, memory 72 h
 #>   Rating: exact to 10 m3/s, then 15 per cent low at twice that; 4 steps above
 ```
@@ -170,7 +170,7 @@ legend("topright", c("true flow", "recorded", "highest gauging"), col = pal[c(3,
 
 ![](synthetic-rivers_files/figure-html/river-plot-1.png)
 
-At the storm’s peak the gauge records 30 m3/s against a true 38: 19 per
+At the storm’s peak the gauge records 28 m3/s against a true 35: 18 per
 cent low, mostly from the rating.
 
 ## Calibrating to it
@@ -197,13 +197,13 @@ compare <- data.frame(
 )
 compare
 #>                     truth calibrated
-#> fc                    1.0   9.35e-01
-#> distribution.cmax   300.0   3.05e+02
-#> distribution.b        0.4   8.47e-01
-#> recharge.kg        4000.0   4.18e+03
-#> surface.k1           12.0   7.00e+00
-#> surface.k2           12.0   1.88e+01
-#> groundwater.kb    10000.0   1.49e+05
+#> fc                    1.0   9.66e-01
+#> distribution.cmax   300.0   3.29e+02
+#> distribution.b        0.4   6.30e-01
+#> recharge.kg        4000.0   3.61e+03
+#> surface.k1           12.0   7.28e+00
+#> surface.k2           12.0   1.83e+01
+#> groundwater.kb    10000.0   1.44e+05
 model <- pdm_from_config(fit$config)
 sim <- run_pdm(model, f[c("rain", "pet")],
                initial_state_from_flow(model, river$observed[1], 0.7))$output$q_m3s
@@ -211,12 +211,12 @@ later <- !cal
 c(nse_against_recorded = pdm_scorecard(sim[later], river$observed[later])[["nse"]],
   nse_against_truth = pdm_scorecard(sim[later], river$true_flow[later])[["nse"]])
 #> nse_against_recorded    nse_against_truth 
-#>            0.9871202            0.9904919
+#>            0.9900075            0.9965656
 ```
 
-The calibrated parameters are not the true ones: `kb` is 15 times too
+The calibrated parameters are not the true ones: `kb` is 14 times too
 large, and the two surface stores, both 12 hours in truth, come out at 7
-and 19 hours. Yet the fit scores 0.99 against the truth. Many parameter
+and 18 hours. Yet the fit scores 1.00 against the truth. Many parameter
 sets fit a record almost equally well; [Larger
 floods](https://jonpayneea.github.io/PDMS7/articles/extrapolation.md)
 shows where that matters.

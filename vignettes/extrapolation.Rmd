@@ -125,6 +125,12 @@ good <- fit$equally_good
 c(nse = fit$scores$nse, trials_within_tolerance = good$within, sets_kept = length(good$sets))
 ```
 
+The warning is the calibration's own: the record opens at
+`r f1(observed[1])` m3/s, `r f1(observed[1] / mean(observed, na.rm = TRUE))` times the average
+flow, and the calibrated model cannot hold
+70 per cent of that as steady baseflow, so its runs begin a little out of balance. The three
+months of warm-up before the calibration window are there for this.
+
 The calibration NSE is `r sprintf("%.3f", fit$scores$nse)`. Of the parameter sets the search
 tried, `r good$within` scored within 0.02 of the best; 50 spread-out ones are kept. How far
 apart are they?
@@ -190,7 +196,9 @@ Two lessons follow.
 - **The recorded peak is not the truth.** Judged against the recorded peaks, the candidate
   overestimates by `r f0(vs_obs[1])` and `r f0(vs_obs[2])` per cent. Against the true peaks it
   is within `r f0(max(abs(vs_true)))` per cent. Both peaks lie above the highest gauging, and
-  the extrapolated rating recorded them `r f0(min(low))` to `r f0(max(low))` per cent low: the
+  the extrapolated rating recorded them
+`r if (f0(min(low)) == f0(max(low))) paste("about", f0(min(low))) else paste(f0(min(low)), "to", f0(max(low)))`
+per cent low: the
   rating is wrong, not the model. On a real river the true peak is unknown, which is why the
   report flags such peaks rather than scoring them as fact. A modeller who "fixed" this
   apparent overestimate by recalibrating to the recorded peaks would make the model worse.
@@ -207,8 +215,9 @@ simulate <- function(parameters) {
   cfg <- fit$configuration
   for (p in names(parameters)) cfg <- pdmS7:::.path_set(cfg, p, parameters[[p]])
   m <- pdm_from_config(cfg)
-  run_pdm(m, forcing[c("rain", "pet")],
-          initial_state_from_flow(m, observed[1], 0.7))$output$q_m3s[rows]
+  # The same start as the calibration, and the same warning for every set, so it is hidden.
+  start <- suppressWarnings(initial_state_from_flow(m, observed[1], 0.7))
+  run_pdm(m, forcing[c("rain", "pet")], start)$output$q_m3s[rows]
 }
 ensemble <- sapply(good$sets, function(s) simulate(s$parameters))
 candidate <- simulate(list())

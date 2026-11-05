@@ -72,7 +72,7 @@ no action needed. None is high: nothing found gives a wrong answer in normal use
 | 23 | `.run_jobs()` | Parallel workers load the installed package, not a development copy. |
 | 24 | `read_pdm_config()` | Refuses any line containing `!expr`, even in a YAML comment. Deliberately strict. |
 | 25 | `initial_state_from_flow()` | The steady state ignores evaporation. Fine as documented. |
-| 26 | `pdm_presets("standard")` | Found after the review, while building synthetic rivers: the preset drains its soil within a day (`kg` = 24 h, `st` = 0), so the soil stays nearly empty and actual evaporation is about 1 per cent of potential. Harmless for exercising code; unrealistic as a river. `synthetic_catchment()` uses its own lowland water balance. Changing the preset would change the golden files and every test fixture, so it is left for decision. |
+| 26 | `pdm_presets("standard")` | Found after the review, while building synthetic rivers: the preset drains its soil within a day (`kg` = 24 h, `st` = 0), so the soil stays nearly empty and actual evaporation is about 1 per cent of potential. Harmless for exercising code; unrealistic as a river. `synthetic_catchment()` uses its own lowland water balance. Decided by the Owner: fixed in 0.6.0. The preset now has `cmax` 300 mm and `kg` 4000 h (no threshold, so every distribution stays valid): evaporation about half of potential, baseflow index near 0.6. `pdm_model()`'s defaults match. The golden files list their own parameters and are unchanged. `initial_state_from_flow()` now warns when a steady start would need more soil storage than the store holds (finding 8). |
 
 ## Fixed during the review
 

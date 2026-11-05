@@ -152,7 +152,7 @@ the thaw.
 Without the snow model, storms through December and January raise floods
 that could not have happened, because that precipitation fell as snow.
 With it, the cold spell is quiet, and the warm, wet day in the thaw
-brings by far the largest flood: about 16 m3/s, against 6 m3/s without
+brings by far the largest flood: about 8 m3/s, against 4 m3/s without
 the snow, because meltwater adds to the rain.
 
 When the two models are used together, keep the PDM’s rainfall factor

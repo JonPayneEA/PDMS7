@@ -40,9 +40,9 @@ Moore (2007), doi:10.5194/hess-11-483-2007.
 ``` r
 spin_up(pdm_model(), data.frame(rain = c(0, 10), pet = c(0.05, 0.05)), cycles = 2)
 #> <pdmS7::FlodePdmState>
-#>  @ soil                 : num 58.3
-#>  @ surface              : num [1:2] 1.69 1.04
-#>  @ groundwater          : num 8.46
+#>  @ soil                 : num 123
+#>  @ surface              : num [1:2] 2.16 1.33
+#>  @ groundwater          : num 0.111
 #>  @ delay_surface        : num 0
 #>  @ delay_groundwater    : num 0
 #>  @ delay_surface_end    : num 0

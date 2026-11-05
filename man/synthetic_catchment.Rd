@@ -23,11 +23,12 @@ synthetic_catchment(
 \item{rain}{Forcing from \code{\link[=synthetic_rain]{synthetic_rain()}} or your own data frame; by default
 \code{synthetic_rain(start, years, dt, method)}.}
 
-\item{truth}{The true configuration. By default, the standard structure with a lowland
-water balance: soil capacity up to 300 mm (\code{b} 0.4), recharge \code{kg} 4000 h above a 50 mm
-threshold, surface stores of 12 h each, and \code{dt} and \code{area_km2} set. Under the default
-rain it evaporates about 350 mm a year and has a baseflow index near 0.5. Every calibrated
-parameter lies inside \code{\link[=calibration_bounds]{calibration_bounds()}}. Its \code{dt} must match the forcing's step.}
+\item{truth}{The true configuration. By default, the standard preset (a lowland water
+balance: soil capacity up to 300 mm, slow recharge with \code{kg} 4000 h) with
+surface stores of 12 h each, and \code{dt} and \code{area_km2} set. Under the default rain it
+evaporates about 310 mm a year, turns about 60 per cent of the rain into flow, and has a
+baseflow index near 0.6. Every calibrated parameter lies inside \code{\link[=calibration_bounds]{calibration_bounds()}}.
+Its \code{dt} must match the forcing's step.}
 
 \item{start, years, dt, method}{Passed to \code{\link[=synthetic_rain]{synthetic_rain()}} when \code{rain} is not given.}
 

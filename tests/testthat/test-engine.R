@@ -52,38 +52,46 @@ expect_states_agree <- function(fast, ref, label = "") {
   )
 }
 
+# The models the engines are compared on, pinned to explicit soil-store and recharge
+# parameters (those of the standard preset before 0.6.0) wherever a case does not set its own,
+# so the comparison does not move when the package defaults change.
+fixed_model <- function(distribution = FlodeParetoCapacity(cmin = 0, cmax = 140, b = 0.4),
+                        recharge = FlodeStandardRecharge(kg = 24, bg = 1, st = 0), ...) {
+  pdm_model(distribution = distribution, recharge = recharge, ...)
+}
+
 engine_models <- function() {
   list(
-    default = pdm_model(),
-    smith = pdm_model(groundwater = cubic_routing(solver = "smith")),
-    quarter_hour_delay = pdm_model(dt = 0.25, td = 1.1, area_km2 = 44, qc = 0.3),
-    daily = pdm_model(dt = 24, area_km2 = 100),
-    varied = pdm_model(
+    default = fixed_model(),
+    smith = fixed_model(groundwater = cubic_routing(solver = "smith")),
+    quarter_hour_delay = fixed_model(dt = 0.25, td = 1.1, area_km2 = 44, qc = 0.3),
+    daily = fixed_model(dt = 24, area_km2 = 100),
+    varied = fixed_model(
       distribution = FlodeParetoCapacity(cmin = 20, cmax = 300, b = 0.9),
       recharge = FlodeStandardRecharge(kg = 9000, bg = 2.5, st = 30),
       surface = FlodeCascadeRouting(k1 = 3, k2 = 3.000001),
       groundwater = power_routing(k = 1 / 500, m = 2.5), be = 2, fc = 1.2
     ),
-    linear = pdm_model(groundwater = linear_routing(30)),
-    quadratic = pdm_model(groundwater = quadratic_routing(300)),
-    point_mass = pdm_model(distribution = FlodeParetoCapacity(cmin = 0, cmax = 140, b = 0)),
-    rectangular = pdm_model(distribution = FlodeRectangularCapacity(cmin = 0.4, cmax = 170.7)),
-    exponential_capacity = pdm_model(distribution = FlodeExponentialCapacity(mean = 110)),
-    split = pdm_model(recharge = FlodeSplitRecharge(alpha = 0.7)),
-    demand_power = pdm_model(recharge = FlodeDemandRecharge(alpha = 0.5, beta = 1.5, qsat = 0.5)),
-    demand_exponential = pdm_model(
+    linear = fixed_model(groundwater = linear_routing(30)),
+    quadratic = fixed_model(groundwater = quadratic_routing(300)),
+    point_mass = fixed_model(distribution = FlodeParetoCapacity(cmin = 0, cmax = 140, b = 0)),
+    rectangular = fixed_model(distribution = FlodeRectangularCapacity(cmin = 0.4, cmax = 170.7)),
+    exponential_capacity = fixed_model(distribution = FlodeExponentialCapacity(mean = 110)),
+    split = fixed_model(recharge = FlodeSplitRecharge(alpha = 0.7)),
+    demand_power = fixed_model(recharge = FlodeDemandRecharge(alpha = 0.5, beta = 1.5, qsat = 0.5)),
+    demand_exponential = fixed_model(
       recharge = FlodeDemandRecharge(alpha = 0.4, beta = 2, qsat = 0.3),
       groundwater = FlodeExponentialRouting(a = 0.02, gamma = -2)
     ),
-    exponential_routes = pdm_model(
+    exponential_routes = fixed_model(
       surface = FlodeExponentialRouting(a = 0.05, gamma = -5),
       groundwater = FlodeExponentialRouting(a = 0.02, gamma = -8)
     ),
-    power_surface = pdm_model(surface = power_routing(k = 0.01, m = 1.7)),
-    smith_surface = pdm_model(surface = power_routing(k = 1e-3, m = 3, solver = "smith")),
-    cascade_groundwater = pdm_model(groundwater = FlodeCascadeRouting(k1 = 30, k2 = 200)),
-    triangular = pdm_model(distribution = FlodeTriangularCapacity(cmin = 10, cmax = 190)),
-    lognormal = pdm_model(distribution = FlodeLognormalCapacity(meanlog = 4.1, sdlog = 1))
+    power_surface = fixed_model(surface = power_routing(k = 0.01, m = 1.7)),
+    smith_surface = fixed_model(surface = power_routing(k = 1e-3, m = 3, solver = "smith")),
+    cascade_groundwater = fixed_model(groundwater = FlodeCascadeRouting(k1 = 30, k2 = 200)),
+    triangular = fixed_model(distribution = FlodeTriangularCapacity(cmin = 10, cmax = 190)),
+    lognormal = fixed_model(distribution = FlodeLognormalCapacity(meanlog = 4.1, sdlog = 1))
   )
 }
 
@@ -165,7 +173,9 @@ test_that(
     # (cmin + cmax) / 2 and cmin + (cmax - cmin) / 2 differ in the last place for these
     # bounds; a full store used to fail with "Soil storage exceeds capacity_mean".
     distribution <- FlodeRectangularCapacity(cmin = 0.2, cmax = 1.0)
-    model <- pdm_model(distribution = distribution)
+    # A 0.6 mm store: the recharge threshold must lie within it.
+    model <- pdm_model(distribution = distribution,
+                       recharge = FlodeStandardRecharge(kg = 1000, bg = 1, st = 0))
     state <- initial_state(model, 1)
     forcing <- data.frame(rain = c(0, 5, 0), pet = 0.1)
     expect_engines_agree(
@@ -190,7 +200,7 @@ test_that(
     cfg <- pdm_presets("standard")
     observed <- full$q_m3s
     args <- list(
-      cfg, forcing, observed, c(fc = 0.6, recharge.kg = 10), c(fc = 1.5, recharge.kg = 40),
+      cfg, forcing, observed, c(fc = 0.6, recharge.kg = 500), c(fc = 1.5, recharge.kg = 4000),
       control = list(maxit = 3)
     )
     fast <- do.call(calibrate_pdm, args)

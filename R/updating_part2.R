@@ -76,6 +76,28 @@ update_forecast <- function(updater, observed_history, simulated_history, foreca
   list(errors = errors, innovations = innovations)
 }
 
+# stats::arima(), named so tests can stand in a failing fit.
+.arima <- function(...) stats::arima(...)
+
+# stats::arima() with no mean, by the first method that succeeds: exact maximum likelihood, then
+# conditional sum of squares followed by maximum likelihood, then conditional sum of squares.
+.fit_arima <- function(eta, order) {
+  methods <- c("ML", "CSS-ML", "CSS")
+  for (m in methods) {
+    fit <- tryCatch(
+      .arima(eta, order = c(order[1], 0, order[2]), include.mean = FALSE, method = m,
+             optim.control = list(maxit = 1000)),
+      error = function(e) e
+    )
+    if (!inherits(fit, "error")) {
+      fit$method <- m
+      if (m != "ML") message("Maximum likelihood failed; the AR fit used method ", m)
+      return(fit)
+    }
+  }
+  stop("The ARMA fit failed by every method: ", conditionMessage(fit), call. = FALSE)
+}
+
 #' Fit error updater
 #'
 #' Component of the configurable Moore (2007) rainfall-runoff framework.
@@ -87,7 +109,11 @@ update_forecast <- function(updater, observed_history, simulated_history, foreca
 #' @param scale Error scale: additive or log.
 #' @param offset Nonnegative offset in cubic metres per second for log error updating.
 #'
-#' @return A list with an S7 updater and fitted stats::arima object.
+#' @return A list with an S7 updater and fitted stats::arima object. The fit is by exact
+#' maximum likelihood; if that optimisation fails, as it can on long or awkward error series,
+#' conditional sum of squares then maximum likelihood is tried, then conditional sum of squares
+#' alone. The method used is the arima object's `method` element, and a message names any
+#' fallback.
 #'
 #' @examples
 #' fit_error_updater(c(1, 2, 1, 3, 2, 1, 2, 4), rep(1, 8), order = c(0, 0))
@@ -110,11 +136,7 @@ fit_error_updater <- function(
     "Invalid error scale/offset"
   )
   eta <- .errors(observed, simulated, scale, offset)
-  fit <- stats::arima(
-    eta,
-    order = c(order[1], 0, order[2]),
-    include.mean = FALSE, method = "ML"
-  )
+  fit <- .fit_arima(eta, order)
   ar <- unname(fit$coef[grepl("^ar", names(fit$coef))])
   ma <- unname(fit$coef[grepl("^ma", names(fit$coef))])
   list(

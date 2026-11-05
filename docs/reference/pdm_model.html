@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -98,8 +98,8 @@
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">pdm_model</span><span class="op">(</span></span>
-<span>  distribution <span class="op">=</span> <span class="fu"><a href="FlodeParetoCapacity.html">FlodeParetoCapacity</a></span><span class="op">(</span>cmin <span class="op">=</span> <span class="fl">0</span>, cmax <span class="op">=</span> <span class="fl">140</span>, b <span class="op">=</span> <span class="fl">0.4</span><span class="op">)</span>,</span>
-<span>  recharge <span class="op">=</span> <span class="fu"><a href="FlodeStandardRecharge.html">FlodeStandardRecharge</a></span><span class="op">(</span>kg <span class="op">=</span> <span class="fl">24</span>, bg <span class="op">=</span> <span class="fl">1</span>, st <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>,</span>
+<span>  distribution <span class="op">=</span> <span class="fu"><a href="FlodeParetoCapacity.html">FlodeParetoCapacity</a></span><span class="op">(</span>cmin <span class="op">=</span> <span class="fl">0</span>, cmax <span class="op">=</span> <span class="fl">300</span>, b <span class="op">=</span> <span class="fl">0.4</span><span class="op">)</span>,</span>
+<span>  recharge <span class="op">=</span> <span class="fu"><a href="FlodeStandardRecharge.html">FlodeStandardRecharge</a></span><span class="op">(</span>kg <span class="op">=</span> <span class="fl">4000</span>, bg <span class="op">=</span> <span class="fl">1</span>, st <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>,</span>
 <span>  surface <span class="op">=</span> <span class="fu"><a href="FlodeCascadeRouting.html">FlodeCascadeRouting</a></span><span class="op">(</span>k1 <span class="op">=</span> <span class="fl">2</span>, k2 <span class="op">=</span> <span class="fl">4</span><span class="op">)</span>,</span>
 <span>  groundwater <span class="op">=</span> <span class="fu"><a href="cubic_routing.html">cubic_routing</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  be <span class="op">=</span> <span class="fl">1</span>,</span>
@@ -179,10 +179,10 @@ Use solver = "adaptive" (the default) for longer steps.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pdmS7::FlodePdmModel&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  @ distribution: &lt;pdmS7::FlodeParetoCapacity&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  .. @ cmin: num 0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  .. @ cmax: num 140</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  .. @ cmax: num 300</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  .. @ b   : num 0.4</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  @ recharge    : &lt;pdmS7::FlodeStandardRecharge&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  .. @ kg: num 24</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  .. @ kg: num 4000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  .. @ bg: num 1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  .. @ st: num 0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  @ surface     : &lt;pdmS7::FlodeCascadeRouting&gt;</span>

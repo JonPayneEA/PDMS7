@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -289,8 +289,8 @@
 </h2>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">model</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/pdm_model.html">pdm_model</a></span><span class="op">(</span></span>
-<span>  distribution <span class="op">=</span> <span class="fu"><a href="reference/FlodeParetoCapacity.html">FlodeParetoCapacity</a></span><span class="op">(</span>cmin <span class="op">=</span> <span class="fl">0</span>, cmax <span class="op">=</span> <span class="fl">140</span>, b <span class="op">=</span> <span class="fl">0.4</span><span class="op">)</span>,</span>
-<span>  recharge <span class="op">=</span> <span class="fu"><a href="reference/FlodeStandardRecharge.html">FlodeStandardRecharge</a></span><span class="op">(</span>kg <span class="op">=</span> <span class="fl">24</span>, bg <span class="op">=</span> <span class="fl">1</span>, st <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>,</span>
+<span>  distribution <span class="op">=</span> <span class="fu"><a href="reference/FlodeParetoCapacity.html">FlodeParetoCapacity</a></span><span class="op">(</span>cmin <span class="op">=</span> <span class="fl">0</span>, cmax <span class="op">=</span> <span class="fl">300</span>, b <span class="op">=</span> <span class="fl">0.4</span><span class="op">)</span>,</span>
+<span>  recharge <span class="op">=</span> <span class="fu"><a href="reference/FlodeStandardRecharge.html">FlodeStandardRecharge</a></span><span class="op">(</span>kg <span class="op">=</span> <span class="fl">4000</span>, bg <span class="op">=</span> <span class="fl">1</span>, st <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>,</span>
 <span>  surface <span class="op">=</span> <span class="fu"><a href="reference/FlodeCascadeRouting.html">FlodeCascadeRouting</a></span><span class="op">(</span>k1 <span class="op">=</span> <span class="fl">2</span>, k2 <span class="op">=</span> <span class="fl">4</span><span class="op">)</span>,</span>
 <span>  groundwater <span class="op">=</span> <span class="fu"><a href="reference/cubic_routing.html">cubic_routing</a></span><span class="op">(</span>kb <span class="op">=</span> <span class="fl">10000</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>

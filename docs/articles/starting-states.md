@@ -43,7 +43,7 @@ true_state <- year$state
 observed_start <- year$output$q_end_m3s[nrow(history)]
 reference <- run_pdm(model, period, true_state)$output$q_m3s
 round(observed_start, 3)
-#> [1] 1.216
+#> [1] 0.58
 ```
 
 The steady-state start needs the share of the flow that is baseflow. In
@@ -97,34 +97,35 @@ data.frame(
   row.names = NULL
 )
 #>                         start mean_error_first_week_m3s
-#> 1              Cold, 50% soil                    3.0757
-#> 2              Cold, 90% soil                    6.2580
-#> 3 Warm, from flow (share 0.9)                    0.0348
-#> 4 Warm, from flow (share 0.5)                    0.1237
-#> 5               Warm, spin-up                    0.0645
+#> 1              Cold, 50% soil                    0.5617
+#> 2              Cold, 90% soil                    0.4423
+#> 3 Warm, from flow (share 0.9)                    0.0462
+#> 4 Warm, from flow (share 0.5)                    0.3052
+#> 5               Warm, spin-up                    0.1172
 #> 6         Hot, previous state                    0.0000
 ```
 
-## What the experiment shows
-
-- **A cold start manufactures a flood.** With empty routing stores and a
-  half-full or nearly full soil store, the soil drains rapidly into
-  groundwater and the model produces a peak many times the true flow, in
-  dry weather. The 90 per cent start is worse than the 50 per cent
-  start: guessing “wet” is not safer.
-- **The steady-state start removes most of that error.** It starts from
-  the observed flow, and the remaining error comes from the assumption
-  that the catchment is in equilibrium. Even the poor baseflow guess
-  beats a cold start by more than an order of magnitude.
-- **Spin-up does about as well as a good steady-state start** here, but
-  it needs forcing to repeat and it settles towards the forcing period’s
-  own average conditions, not the conditions on the start date.
+- **A cold start starves the river.** Its routing stores start empty,
+  and this catchment’s groundwater store is slow to fill. In the first
+  two days the 50 per cent cold start gives at most 0.003 m3/s against a
+  true 0.578. The 90 per cent start does better (mean error 0.442
+  against 0.562 m3/s in the first week), because wetter soil refills the
+  groundwater store sooner; but neither is close.
+- **The steady-state start removes most of that error, if the baseflow
+  share is right.** With the good guess the first-week error is 0.046
+  m3/s; with the poor one, 0.305. The share matters because it decides
+  how much water sits in the slow store, which the run then remembers
+  for weeks.
+- **Spin-up** (error 0.117) sits between the two steady-state guesses.
+  It needs forcing to repeat, and it settles towards the forcing
+  period’s own average conditions, not the conditions on the start date.
 - **A hot start is exact**, as it should be: restarts are exactly
   continuous.
 
-In this catchment every start converges within about three weeks. A
-catchment with a slower groundwater store remembers its start for
-longer, sometimes for months, which is when the choice matters most.
+Every other start is still more than 1 per cent of the mean flow away
+from the reference on day 60: the slow groundwater store remembers how
+it began for months. That is typical of a catchment with a high baseflow
+index, and it is why the warm-up below matters.
 
 ## Recommendations
 

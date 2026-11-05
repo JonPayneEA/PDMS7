@@ -27,7 +27,7 @@ A 32-character MD5 string.
 
 ``` r
 pdm_fingerprint(pdm_presets("standard"))
-#> [1] "63ffbc4eaec1be4bd83a1d7d6c2d3155"
+#> [1] "5edf9f4dd6c43fa6056569c2474a2767"
 identical(pdm_fingerprint(pdm_presets("standard")),
           pdm_fingerprint(pdm_from_config(pdm_presets("standard"))))
 #> [1] TRUE

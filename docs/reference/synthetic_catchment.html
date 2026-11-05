@@ -11,7 +11,7 @@ to the result shows what a method can and cannot recover, since the truth is kno
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -129,11 +129,12 @@ to the result shows what a method can and cannot recover, since the truth is kno
 
 
 <dt id="arg-truth">truth<a class="anchor" aria-label="anchor" href="#arg-truth"></a></dt>
-<dd><p>The true configuration. By default, the standard structure with a lowland
-water balance: soil capacity up to 300 mm (<code>b</code> 0.4), recharge <code>kg</code> 4000 h above a 50 mm
-threshold, surface stores of 12 h each, and <code>dt</code> and <code>area_km2</code> set. Under the default
-rain it evaporates about 350 mm a year and has a baseflow index near 0.5. Every calibrated
-parameter lies inside <code><a href="calibration_bounds.html">calibration_bounds()</a></code>. Its <code>dt</code> must match the forcing's step.</p></dd>
+<dd><p>The true configuration. By default, the standard preset (a lowland water
+balance: soil capacity up to 300 mm, slow recharge with <code>kg</code> 4000 h) with
+surface stores of 12 h each, and <code>dt</code> and <code>area_km2</code> set. Under the default rain it
+evaporates about 310 mm a year, turns about 60 per cent of the rain into flow, and has a
+baseflow index near 0.6. Every calibrated parameter lies inside <code><a href="calibration_bounds.html">calibration_bounds()</a></code>.
+Its <code>dt</code> must match the forcing's step.</p></dd>
 
 
 <dt id="arg-start-years-dt-method">start, years, dt, method<a class="anchor" aria-label="anchor" href="#arg-start-years-dt-method"></a></dt>
@@ -206,7 +207,7 @@ Calibrate a different structure from <code>truth</code> to see what structural e
 <span class="r-in"><span><span class="va">river</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Synthetic catchment: 1095 steps of 24 h from 2010-10-01T00:00:00Z </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   Rain: nsrp - 798 mm a year; 1 added storm </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   True flow: mean 0.84 m3/s, peak 14.9 m3/s</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   True flow: mean 0.909 m3/s, peak 12.4 m3/s</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   Gauge error: sd 0.05 in logs, memory 72 h</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   Rating: exact to 20 m3/s, then 15 per cent low at twice that; 0 steps above</span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/range.html" class="external-link">range</a></span><span class="op">(</span><span class="va">river</span><span class="op">$</span><span class="va">observed</span> <span class="op">/</span> <span class="va">river</span><span class="op">$</span><span class="va">true_flow</span><span class="op">)</span></span></span>

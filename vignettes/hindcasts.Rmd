@@ -80,16 +80,18 @@ abline(v = rt$time_to_peak_h, lty = 2, col = pal[7])
 ```
 
 At a high flow of `r round(high, 1)` m3/s, the model's flow peaks
-`r round(rt$time_to_peak_h, 1)` hours after the rain. The answer depends on the flow you
-choose. A wet catchment responds faster, because the groundwater store is nonlinear and more
-of the rain runs straight off. For forecasting, a typical high flow is the right choice.
+`r round(rt$time_to_peak_h, 1)` hours after the rain. The answer can depend on the flow you
+choose: where the fast response runs through a nonlinear store, a wet catchment responds
+faster. This model's fast stores are linear, so at the median flow the time to peak is
+`r round(pdm_response_time(model, stats::median(observed))$time_to_peak_h, 1)` hours, much
+the same. For forecasting, a typical high flow is the right choice.
 `pdm_hindcast()` uses the 90th percentile of observed flow unless you give another.
 
 **The FEH check.** If you have FEH catchment descriptors, `reach.postproc::feh_time_to_peak()`
 gives an independent time to peak. Here we suppose the descriptors give 9 hours. The ratio is
-`r round(rt$feh$ratio, 2)`, inside the factor of two either way that `pdm_response_time()`
-accepts. A ratio outside it raises a flag, `rt$feh$flag`, which is `r rt$feh$flag` here. A
-flag means the model's fast stores or the descriptors deserve a look. When the two disagree,
+`r round(rt$feh$ratio, 2)`, `r if (rt$feh$flag) "outside" else "inside"` the factor of two
+either way that `pdm_response_time()` accepts, so the flag, `rt$feh$flag`, is
+`r rt$feh$flag` here. A flag means the model's fast stores or the descriptors deserve a look. When the two disagree,
 trust the model's figure for that model: it is what the model will actually do.
 
 # Step 2: AR coefficients
@@ -189,10 +191,10 @@ What the table and chart show:
   `r cross("none")` hours. That is the gap updating fills.
 - **The fixed AR sets close most of the gap.** The EA 2024 default reaches skill
   `r round(s("ea_2024", 3), 2)` at 3 hours, against `r round(s("none", 3), 2)` without
-  updating. In the first hour it is no better than persistence, with skill
+  updating. In the first hour its skill is lower,
   `r round(s("ea_2024", 0.25), 2)` at 15 minutes and `r round(s("ea_2024", 1), 2)` at 1 hour:
-  the AR projects the latest error forward, and with
-  noisy observations part of that error is gauge noise. The response-time set behaves almost
+  the AR projects the latest error forward, and with noisy observations part of that error is
+  gauge noise. The response-time set behaves almost
   identically: the EA default is close to the family member for a 24-hour decay, and the
   family changes little between that and this model's `r round(rt$time_to_peak_h)` hours.
 - **AR fitted to this model's own errors does best at short lead times.** Its coefficients,

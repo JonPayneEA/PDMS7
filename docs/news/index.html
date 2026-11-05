@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -90,6 +90,15 @@
       <small>Source: <a href="https://github.com/JonPayneEA/PDMS7/blob/HEAD/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.6.0" id="pdms7-060">pdmS7 0.6.0<a class="anchor" aria-label="anchor" href="#pdms7-060"></a></h2>
+<ul><li>
+<strong>The standard preset has a realistic water balance.</strong> It used to drain its soil to groundwater within a day (<code>kg</code> = 24 h), so the soil stayed nearly empty and evaporated about 2 per cent of potential. It now has a soil capacity up to 300 mm (<code>cmax</code>) and <code>kg</code> = 4000 h: evaporation about half of potential, baseflow index near 0.6. <code><a href="../reference/pdm_model.html">pdm_model()</a></code>’s defaults and the parameter catalog match. Results from the preset or default models change; calibrations of real data, which set their own parameters, do not.</li>
+<li>
+<code><a href="../reference/initial_state_from_flow.html">initial_state_from_flow()</a></code> warns when a steady start would need more soil storage than the store holds; the soil is then capped and the run starts out of balance. This used to happen silently.</li>
+<li>
+<code><a href="../reference/calibrate_staged.html">calibrate_staged()</a></code> takes <code>start</code> and <code>baseflow_fraction</code>, like <code><a href="../reference/calibrate_pdm.html">calibrate_pdm()</a></code>.</li>
+</ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.5.0" id="pdms7-050">pdmS7 0.5.0<a class="anchor" aria-label="anchor" href="#pdms7-050"></a></h2>
 <ul><li>

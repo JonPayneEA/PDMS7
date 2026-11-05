@@ -21,7 +21,7 @@ the project and sign-off entry matched. Without one it is empty."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -147,31 +147,31 @@ once without stopping the run. A lock serialises writers, so a team can share on
 <span class="r-in"><span><span class="fu"><a href="run_pdm.html">run_pdm</a></span><span class="op">(</span><span class="fu"><a href="pdm_model.html">pdm_model</a></span><span class="op">(</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>rain <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">5</span>, <span class="fl">0</span><span class="op">)</span>, pet <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $output</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   step rain_mm rain_corrected_mm pet_mm     aet_mm aet_requested_mm recharge_mm</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1    1       0                 0    0.1 0.05000000       0.05000000    2.083333</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2    2       5                 5    0.1 0.04786667       0.04786667    1.994444</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3    3       0                 0    0.1 0.05030547       0.05030547    2.096061</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1    1       0                 0    0.1 0.05000000       0.05000000  0.02678571</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2    2       5                 5    0.1 0.04996417       0.04996417  0.02676652</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3    3       0                 0    0.1 0.05183909       0.05183909  0.02777094</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   recharge_requested_mm direct_runoff_mm surface_input_mm groundwater_input_mm</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1              2.083333        0.0000000        0.0000000             2.083333</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2              1.994444        0.5188884        0.5188884             1.994444</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3              2.096061        0.0000000        0.0000000             2.096061</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1            0.02678571        0.0000000        0.0000000           0.02678571</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2            0.02676652        0.9055708        0.9055708           0.02676652</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3            0.02777094        0.0000000        0.0000000           0.02777094</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   surface_out_mm baseflow_out_mm q_natural_m3s        q_m3s    q_end_m3s</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1     0.00000000    0.0002260148  6.278188e-05 6.278188e-05 0.0002510917</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2     0.00900009    0.0032247763  3.395796e-03 3.395796e-03 0.0089311606</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3     0.04244326    0.0139508984  1.566504e-02 1.566504e-02 0.0217440394</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1     0.00000000    4.804517e-10  1.334588e-10 1.334588e-10 5.338352e-10</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2     0.01570708    7.200921e-09  4.363078e-03 4.363078e-03 1.230799e-02</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3     0.07407252    3.196982e-08  2.057571e-02 2.057571e-02 2.663613e-02</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   qs_end_unlagged_mmh qb_end_unlagged_mmh  soil_mm surface_mm groundwater_mm</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1          0.00000000        0.0009039303 47.86667  0.0000000       2.083107</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2          0.02538874        0.0067634400 50.30547  0.5098883       4.074327</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3          0.05494459        0.0233339555 48.15910  0.4674450       6.156437</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1          0.00000000        1.921807e-09 107.0661  0.0000000     0.02678571</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2          0.04430876        1.535793e-08 111.0838  0.8898637     0.05355222</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3          0.09589001        5.378267e-08 111.0042  0.8157912     0.08132313</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   delay_mm saturated_fraction balance_error_mm</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1        0          0.1698131     7.105427e-15</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2        0          0.1810997     0.000000e+00</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3        0          0.1711463     0.000000e+00</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1        0          0.1794967     0.000000e+00</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 2        0          0.1884013     0.000000e+00</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 3        0          0.1882225     1.421085e-14</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $state</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pdmS7::FlodePdmState&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ soil                 : num 48.2</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ surface              : num [1:2] 0.248 0.22</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ groundwater          : num 6.16</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  @ soil                 : num 111</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  @ surface              : num [1:2] 0.432 0.384</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  @ groundwater          : num 0.0813</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  @ delay_surface        : num 0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  @ delay_groundwater    : num 0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  @ delay_surface_end    : num 0</span>
@@ -180,7 +180,7 @@ once without stopping the run. A lock serialises writers, so a team can share on
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $initial_state</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pdmS7::FlodePdmState&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  @ soil                 : num 50</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  @ soil                 : num 107</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  @ surface              : num [1:2] 0 0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  @ groundwater          : num 0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  @ delay_surface        : num 0</span>
@@ -193,10 +193,10 @@ once without stopping the run. A lock serialises writers, so a team can share on
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;pdmS7::FlodePdmModel&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  @ distribution: &lt;pdmS7::FlodeParetoCapacity&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  .. @ cmin: num 0</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  .. @ cmax: num 140</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  .. @ cmax: num 300</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  .. @ b   : num 0.4</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  @ recharge    : &lt;pdmS7::FlodeStandardRecharge&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  .. @ kg: num 24</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  .. @ kg: num 4000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  .. @ bg: num 1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  .. @ st: num 0</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  @ surface     : &lt;pdmS7::FlodeCascadeRouting&gt;</span>
@@ -217,19 +217,19 @@ once without stopping the run. A lock serialises writers, so a team can share on
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $water_balance</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     residual_mm max_abs_step_mm </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>    7.105427e-15    7.105427e-15 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>    1.421085e-14    1.421085e-14 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span><span class="va">old</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu">read_run_log</span><span class="op">(</span><span class="va">log</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>              timestamp   user  login     tag                      fingerprint</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                 &lt;POSc&gt; &lt;lgcl&gt; &lt;char&gt;  &lt;char&gt;                           &lt;char&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1: 2026-11-02 20:30:57     NA   root example 63ffbc4eaec1be4bd83a1d7d6c2d3155</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1: 2026-11-02 22:02:50     NA   root example 5edf9f4dd6c43fa6056569c2474a2767</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                            data_md5  rows  start    end dt_hours area_km2</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                              &lt;char&gt; &lt;int&gt; &lt;lgcl&gt; &lt;lgcl&gt;    &lt;int&gt;    &lt;int&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1: ff782f33dc69b2be7e40ab367ad701a6     3     NA     NA        1        1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    engine  pdmS7      r seconds status message approval project sign_off</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    &lt;char&gt; &lt;char&gt; &lt;char&gt;   &lt;num&gt; &lt;char&gt;  &lt;char&gt;   &lt;lgcl&gt;  &lt;char&gt;   &lt;char&gt;</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1:      c  0.5.0  4.3.3   0.007     ok               NA                 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> 1:      c  0.6.0  4.3.3   0.007     ok               NA                 </span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

@@ -126,7 +126,7 @@ one_run <- system.time(
 c(seconds_per_run = signif(one_run, 2),
   estimated_minutes_for_8 = round(8 * 1500 * one_run / 60, 1))
 #>         seconds_per_run estimated_minutes_for_8 
-#>                  0.0072                  1.4000
+#>                  0.0056                  1.1000
 ```
 
 For a real batch, measure on a few catchments first; see the pilot
@@ -150,9 +150,9 @@ part <- do.call(calibrate_batch, c(list(basins, results, only = c("B01", "B02", 
 part
 #>     basin  state     step seconds message
 #>    <char> <char>   <char>   <num>  <char>
-#> 1:    B01   done complete     6.0        
-#> 2:    B02   done complete     6.1        
-#> 3:    B03   done complete     6.2
+#> 1:    B01   done complete     6.8        
+#> 2:    B02   done complete     4.9        
+#> 3:    B03   done complete     6.5
 ```
 
 Suppose the computer was switched off at this point, after three
@@ -170,11 +170,11 @@ status
 #> 1:    B01   done complete     0.0                                            
 #> 2:    B02   done complete     0.0                                            
 #> 3:    B03   done complete     0.0                                            
-#> 4:    B04   done complete     7.1                                            
-#> 5:    B05   done complete     5.7                                            
+#> 4:    B04   done complete     7.4                                            
+#> 5:    B05   done complete     6.6                                            
 #> 6:    B06 failed register     0.0 pet must contain finite nonnegative numbers
-#> 7:    B07   done complete     6.4                                            
-#> 8:    B08   done complete     6.9
+#> 7:    B07   done complete     6.2                                            
+#> 8:    B08   done complete     6.4
 ```
 
 The three finished catchments took a moment each: the batch read their
@@ -220,11 +220,11 @@ status
 #> 1:    B01   done complete     0.0        
 #> 2:    B02   done complete     0.0        
 #> 3:    B03   done complete     0.0        
-#> 4:    B04   done complete     7.1        
-#> 5:    B05   done complete     5.7        
-#> 6:    B06   done complete     7.1        
-#> 7:    B07   done complete     6.4        
-#> 8:    B08   done complete     6.9
+#> 4:    B04   done complete     7.4        
+#> 5:    B05   done complete     6.6        
+#> 6:    B06   done complete     7.4        
+#> 7:    B07   done complete     6.2        
+#> 8:    B08   done complete     6.4
 ```
 
 The failed attempt is still on record in B06’s project, followed by the
@@ -288,7 +288,7 @@ table[, .(project, state, calibration = round(candidate_score, 3),
 #> 3:     B03   done       0.968      0.968
 #> 4:     B04   done       0.981      0.995
 #> 5:     B05   done       0.973      0.924
-#> 6:     B06   done       0.978      0.979
+#> 6:     B06   done       0.977      0.978
 #> 7:     B07   done       0.992      0.994
 #> 8:     B08   done       0.989      0.993
 ```
@@ -336,14 +336,14 @@ agreement <- do.call(rbind, lapply(table$project, function(id) {
 agreement$agree <- (agreement$worst - agreement$best) < 1e-3
 agreement
 #>   basin    best   worst finished agree
-#> 1   B01 0.01770 0.01810        1  TRUE
-#> 2   B02 0.01040 0.09760        2 FALSE
-#> 3   B03 0.03240 0.03240        0  TRUE
-#> 4   B04 0.01850 0.03730        0 FALSE
-#> 5   B05 0.02740 0.02750        2  TRUE
-#> 6   B06 0.02150 0.35900        0 FALSE
-#> 7   B07 0.00813 0.00816        1  TRUE
-#> 8   B08 0.01050 0.01070        1  TRUE
+#> 1   B01 0.01770 0.01850        0  TRUE
+#> 2   B02 0.01050 0.09760        3 FALSE
+#> 3   B03 0.03240 0.06460        0 FALSE
+#> 4   B04 0.01870 0.05760        0 FALSE
+#> 5   B05 0.02740 0.47600        2 FALSE
+#> 6   B06 0.02320 0.35900        0 FALSE
+#> 7   B07 0.00814 0.00878        1  TRUE
+#> 8   B08 0.01060 0.02460        1 FALSE
 ```
 
 `finished` counts the starts that ended because they could improve no
@@ -393,19 +393,19 @@ typical <- aggregate(cbind(typical_error = error) ~ parameter, data = pairs,
                      FUN = function(x) round(stats::median(x), 3))
 typical
 #>   parameter typical_error
-#> 1      cmax         0.036
-#> 2        fc         0.002
-#> 3    k_fast         0.102
-#> 4    k_slow         0.063
-#> 5        kg         0.010
+#> 1      cmax         0.076
+#> 2        fc         0.009
+#> 3    k_fast         0.208
+#> 4    k_slow         0.227
+#> 5        kg         0.029
 best <- typical$parameter[order(typical$typical_error)]
 ```
 
 The typical error is the middle value across catchments, as a fraction:
 0.01 means 1 per cent out. Here fc and kg come back almost exactly: they
 control how much water there is and how the river recedes, which every
-week of record shows. k_fast and k_slow are the furthest out, typically
-about 10 per cent, partly because this example stops each search after
+week of record shows. k_slow and k_fast are the furthest out, typically
+about 23 per cent, partly because this example stops each search after
 25 steps, before most of them had finished. In other cases a parameter
 is badly off even when the fit is excellent, because the data hold
 little information about it: the size of a soil store that two autumn

@@ -25,7 +25,11 @@ simulation.}
 \item{offset}{Nonnegative offset in cubic metres per second for log error updating.}
 }
 \value{
-A list with an S7 updater and fitted stats::arima object.
+A list with an S7 updater and fitted stats::arima object. The fit is by exact
+maximum likelihood; if that optimisation fails, as it can on long or awkward error series,
+conditional sum of squares then maximum likelihood is tried, then conditional sum of squares
+alone. The method used is the arima object's \code{method} element, and a message names any
+fallback.
 }
 \description{
 Component of the configurable Moore (2007) rainfall-runoff framework.

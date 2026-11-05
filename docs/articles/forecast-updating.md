@@ -69,7 +69,7 @@ correction <- correct_state(
 corrected <- run_pdm(model, future, correction$state)$output$q_m3s
 c(innovation_mmh = correction$innovation_mmh, added_mm = correction$correction_mm)
 #> innovation_mmh       added_mm 
-#>      0.1480093      1.7594328
+#>     0.01092492     0.46943864
 ```
 
 ### ARMA error prediction
@@ -86,7 +86,7 @@ forecast.
 fit <- fit_error_updater(observed[seq_len(n_history)], simulated, order = c(2, 0),
                          scale = "log", offset = 0.01)
 fit$updater@ar
-#> [1] 0.5474005 0.4347131
+#> [1] 0.5716838 0.3530202
 arma <- update_forecast(fit$updater, observed[seq_len(n_history)], simulated, plain)$forecast
 ```
 
@@ -121,7 +121,7 @@ rmse <- function(x) sqrt(mean((x - truth_ahead)^2))
 round(c(no_updating = rmse(plain), state_correction = rmse(corrected),
         arma = rmse(arma)), 3)
 #>      no_updating state_correction             arma 
-#>            1.027            0.604            0.475
+#>            0.735            0.694            0.605
 ```
 
 ## Choosing between them

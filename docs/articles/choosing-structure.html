@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -151,7 +151,7 @@ not told.</p>
 <span><span class="va">truth</span><span class="op">$</span><span class="va">fc</span> <span class="op">&lt;-</span> <span class="fl">1.1</span></span>
 <span><span class="va">truth</span><span class="op">$</span><span class="va">distribution</span><span class="op">$</span><span class="va">meanlog</span> <span class="op">&lt;-</span> <span class="fl">4.8</span></span>
 <span><span class="va">truth</span><span class="op">$</span><span class="va">distribution</span><span class="op">$</span><span class="va">sdlog</span> <span class="op">&lt;-</span> <span class="fl">0.5</span></span>
-<span><span class="va">truth</span><span class="op">$</span><span class="va">recharge</span><span class="op">$</span><span class="va">kg</span> <span class="op">&lt;-</span> <span class="fl">120</span></span>
+<span><span class="va">truth</span><span class="op">$</span><span class="va">recharge</span><span class="op">$</span><span class="va">kg</span> <span class="op">&lt;-</span> <span class="fl">2000</span></span>
 <span><span class="va">truth</span><span class="op">$</span><span class="va">surface</span><span class="op">$</span><span class="va">k1</span> <span class="op">&lt;-</span> <span class="fl">3</span></span>
 <span><span class="va">truth</span><span class="op">$</span><span class="va">surface</span><span class="op">$</span><span class="va">k2</span> <span class="op">&lt;-</span> <span class="fl">10</span></span>
 <span><span class="co"># The river is already flowing when the record starts: steady state, not empty stores.</span></span>
@@ -229,29 +229,29 @@ they run in turn.</p>
 <span>                                reasoning <span class="op">=</span> <span class="st">"Which structure suits this catchment?"</span><span class="op">)</span></span>
 <span><span class="op">)</span><span class="op">[[</span><span class="st">"elapsed"</span><span class="op">]</span><span class="op">]</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">elapsed</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 48</span></span>
+<span><span class="co">#&gt; [1] 49</span></span>
 <span><span class="va">ranking</span><span class="op">[</span>, <span class="fu">.</span><span class="op">(</span><span class="va">rank</span>, <span class="va">structure</span>, <span class="va">parameters</span>, calibration <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">calibration</span>, <span class="fl">4</span><span class="op">)</span>,</span>
 <span>            validation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">validation</span>, <span class="fl">4</span><span class="op">)</span>, change <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">change</span>, <span class="fl">4</span><span class="op">)</span>, <span class="va">starts_agree</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="co">#&gt;     rank               structure parameters calibration validation  change</span></span>
 <span><span class="co">#&gt;    &lt;int&gt;                  &lt;char&gt;      &lt;int&gt;       &lt;num&gt;      &lt;num&gt;   &lt;num&gt;</span></span>
-<span><span class="co">#&gt; 1:     1              triangular          6      0.9903     0.9335 -0.0568</span></span>
-<span><span class="co">#&gt; 2:     2                standard          7      0.9903     0.9333 -0.0570</span></span>
-<span><span class="co">#&gt; 3:     3               lognormal          7      0.9902     0.9329 -0.0573</span></span>
-<span><span class="co">#&gt; 4:     4             rectangular          6      0.9902     0.9329 -0.0574</span></span>
-<span><span class="co">#&gt; 5:     5 exponential_groundwater          8      0.9900     0.9328 -0.0572</span></span>
-<span><span class="co">#&gt; 6:     6             exponential          6      0.9902     0.9325 -0.0577</span></span>
-<span><span class="co">#&gt; 7:     7                  demand          9      0.9825     0.8811 -0.1014</span></span>
-<span><span class="co">#&gt; 8:     8                   split          7      0.9693     0.8290 -0.1404</span></span>
+<span><span class="co">#&gt; 1:     1               lognormal          7      0.9962     0.9952 -0.0010</span></span>
+<span><span class="co">#&gt; 2:     2                   split          7      0.9861     0.9943  0.0082</span></span>
+<span><span class="co">#&gt; 3:     3                standard          7      0.9958     0.9895 -0.0062</span></span>
+<span><span class="co">#&gt; 4:     4 exponential_groundwater          8      0.9957     0.9879 -0.0078</span></span>
+<span><span class="co">#&gt; 5:     5             rectangular          6      0.9950     0.9844 -0.0107</span></span>
+<span><span class="co">#&gt; 6:     6             exponential          6      0.9916     0.9795 -0.0121</span></span>
+<span><span class="co">#&gt; 7:     7                  demand          9      0.9453     0.9243 -0.0210</span></span>
+<span><span class="co">#&gt; 8:     8              triangular          6      0.9198     0.8929 -0.0270</span></span>
 <span><span class="co">#&gt;    starts_agree</span></span>
 <span><span class="co">#&gt;          &lt;lgcl&gt;</span></span>
-<span><span class="co">#&gt; 1:         TRUE</span></span>
+<span><span class="co">#&gt; 1:        FALSE</span></span>
 <span><span class="co">#&gt; 2:         TRUE</span></span>
-<span><span class="co">#&gt; 3:        FALSE</span></span>
-<span><span class="co">#&gt; 4:         TRUE</span></span>
-<span><span class="co">#&gt; 5:         TRUE</span></span>
+<span><span class="co">#&gt; 3:         TRUE</span></span>
+<span><span class="co">#&gt; 4:        FALSE</span></span>
+<span><span class="co">#&gt; 5:        FALSE</span></span>
 <span><span class="co">#&gt; 6:        FALSE</span></span>
 <span><span class="co">#&gt; 7:        FALSE</span></span>
-<span><span class="co">#&gt; 8:         TRUE</span></span></code></pre></div>
+<span><span class="co">#&gt; 8:        FALSE</span></span></code></pre></div>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">k</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">ranking</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span>mar <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">4</span>, <span class="fl">12</span>, <span class="fl">0.6</span>, <span class="fl">0.6</span><span class="op">)</span><span class="op">)</span></span>
@@ -271,16 +271,15 @@ on validation at the top.
 <div class="section level2">
 <h2 id="reading-the-ranking">Reading the ranking<a class="anchor" aria-label="anchor" href="#reading-the-ranking"></a>
 </h2>
-<p>The true structure, <code>lognormal</code>, ranks 3rd of 8, 0.0006
-NSE behind the top. Either way it would be wrong to conclude much from
-that: 6 structures lie within 0.005 NSE of it on validation, a spread of
-0.001. Over six weeks of autumn data the soil stores never fill or empty
-far enough to tell their shapes apart. A difference that small is a tie,
-not a result.</p>
-<p>The recharge rule is another matter. <code>demand</code> and
-<code>split</code> recharge lose clearly, on both windows: they move
-water to groundwater in ways this catchment does not. That is a
-conclusion the data do support.</p>
+<p>The true structure, <code>lognormal</code>, ranks first. It would be
+wrong to conclude much from that alone: 2 structures lie within 0.005
+NSE of the top on validation, a spread of 9.2^{-4}. A difference that
+small is a tie, not a result; another seed or another few weeks of data
+could reorder them.</p>
+<p>At the other end, <code>demand</code> and <code>triangular</code>
+trail the top by more than 0.05 NSE on validation. A gap that size is a
+conclusion the data do support: on this catchment, those structures
+should not be chosen.</p>
 <p>Three things to read in any comparison:</p>
 <ul>
 <li>
@@ -293,9 +292,9 @@ structure that gains in calibration and loses in validation is fitting
 noise with its extra parameters.</li>
 <li>
 <strong>Whether the starts agreed.</strong> Where they did not, as
-for lognormal, exponential, demand, the structure may have been
-under-calibrated; give it more starts or iterations before ruling it
-out.</li>
+for lognormal, exponential_groundwater, rectangular, exponential,
+demand, triangular, the structure may have been under-calibrated; give
+it more starts or iterations before ruling it out.</li>
 </ul>
 <p>Faced with a tie, prefer the simplest structure, the one with fewest
 parameters, among those within a stated margin of the best. Stating the
@@ -305,9 +304,9 @@ margin in advance keeps the choice honest.</p>
 <span><span class="va">tied</span> <span class="op">&lt;-</span> <span class="va">ranking</span><span class="op">[</span><span class="va">validation</span> <span class="op">&gt;=</span> <span class="va">ranking</span><span class="op">$</span><span class="va">validation</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">-</span> <span class="va">margin</span><span class="op">]</span></span>
 <span><span class="va">choice</span> <span class="op">&lt;-</span> <span class="va">tied</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="va">parameters</span>, <span class="va">rank</span><span class="op">)</span><span class="op">]</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span></span>
 <span><span class="va">choice</span><span class="op">[</span>, <span class="fu">.</span><span class="op">(</span><span class="va">structure</span>, <span class="va">parameters</span>, validation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">validation</span>, <span class="fl">4</span><span class="op">)</span>, <span class="va">calibration_entry</span><span class="op">)</span><span class="op">]</span></span>
-<span><span class="co">#&gt;     structure parameters validation calibration_entry</span></span>
-<span><span class="co">#&gt;        &lt;char&gt;      &lt;int&gt;      &lt;num&gt;            &lt;char&gt;</span></span>
-<span><span class="co">#&gt; 1: triangular          6     0.9335              0008</span></span></code></pre></div>
+<span><span class="co">#&gt;    structure parameters validation calibration_entry</span></span>
+<span><span class="co">#&gt;       &lt;char&gt;      &lt;int&gt;      &lt;num&gt;            &lt;char&gt;</span></span>
+<span><span class="co">#&gt; 1: lognormal          7     0.9952              0012</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="validation-and-the-final-test">Validation and the final test<a class="anchor" aria-label="anchor" href="#validation-and-the-final-test"></a>
@@ -324,7 +323,7 @@ has looked at.</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>calibration <span class="op">=</span> <span class="va">final</span><span class="op">$</span><span class="va">calibration_scores</span><span class="op">$</span><span class="va">nse</span>,</span>
 <span>        validation <span class="op">=</span> <span class="va">final</span><span class="op">$</span><span class="va">validation_scores</span><span class="op">$</span><span class="va">nse</span>, test <span class="op">=</span> <span class="va">final</span><span class="op">$</span><span class="va">test_scores</span><span class="op">$</span><span class="va">nse</span><span class="op">)</span>, <span class="fl">4</span><span class="op">)</span></span>
 <span><span class="co">#&gt; calibration  validation        test </span></span>
-<span><span class="co">#&gt;      0.9903      0.9335      0.9197</span></span></code></pre></div>
+<span><span class="co">#&gt;      0.9962      0.9952      0.9939</span></span></code></pre></div>
 <p>The test score is the honest estimate of how the chosen model will do
 on new data, because nothing was chosen with it. A Steward cannot sign
 off a project with a test window until the test has been run, and sees

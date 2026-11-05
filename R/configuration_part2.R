@@ -132,7 +132,9 @@ calibrate_pdm <- function(
   begin <- function(mod) {
     .start_state(mod, start, start_flow, baseflow_fraction, soil_fraction)
   }
-  begin(pdm_from_config(config))
+  # Only the configured start is checked here; whether it balances matters for the fitted model,
+  # checked at the end.
+  suppressWarnings(begin(pdm_from_config(config)))
   # A configuration with the trial parameter values written in at their paths.
   build <- function(par) {
     out <- config
@@ -157,7 +159,8 @@ calibrate_pdm <- function(
     tryCatch(
       {
         mod <- pdm_from_config(build(box$to_value(z)))
-        all_sim <- .quietly(.run_flow(mod, forcing, begin(mod), flow))
+        # A trial whose start caps the soil is still scored; the fitted model is checked at the end.
+        all_sim <- .quietly(.run_flow(mod, forcing, suppressWarnings(begin(mod)), flow))
         sim <- all_sim[keep]
         val <- score(sim)
         if (volume_weight > 0) {
@@ -195,6 +198,8 @@ calibrate_pdm <- function(
     list(fit = fit, calls = counter$calls)
   })
   out <- .calibration_result(runs, box, build, lower)
+  # One warning, for the calibrated model, if its steady start cannot balance at the first flow.
+  if (start == "flow") .start_state(out$model, start, start_flow, baseflow_fraction, soil_fraction)
   c(out[c("config", "model", "parameters", "objective")], list(
     objective_name = .objective_name(objective, thresholds, threshold_weight, threshold_score,
                                      volume_weight),

@@ -68,7 +68,7 @@ test_that(
     fails(run_pdm(model, data.frame(rain = NA_real_, pet = 1)))
     fails(pdm_from_config(list(misspelled = 1)))
     fails(pdm_from_config(list(distribution = list(type = "pareto", bb = 1))))
-    fails(pdm_model(recharge = DemandRecharge(alpha = 0.5, beta = 1, qsat = 101)))
+    fails(pdm_model(recharge = DemandRecharge(alpha = 0.5, beta = 1, qsat = 1000)))
   }
 )
 

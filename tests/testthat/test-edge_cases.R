@@ -220,3 +220,19 @@ test_that(
     expect_error(sim_pdm(1, 0, model, 15L))
   }
 )
+
+# Guards: a failed maximum-likelihood AR fit falls back rather than stopping
+test_that("fit_error_updater falls back when maximum likelihood fails", {
+  set.seed(3)
+  err <- as.numeric(stats::arima.sim(list(ar = 0.7), 300))
+  real <- pdmS7:::.arima
+  local_mocked_bindings(.arima = function(..., method) {
+    if (method == "ML") stop("non-finite finite-difference value")
+    real(..., method = method)
+  })
+  expect_message(fit <- fit_error_updater(err, rep(0, 300), order = c(1, 0)), "CSS-ML")
+  expect_equal(fit$fit$method, "CSS-ML")
+  expect_equal(fit$updater@ar, 0.7, tolerance = 0.15)
+  local_mocked_bindings(.arima = function(...) stop("always"))
+  expect_error(fit_error_updater(err, rep(0, 300), order = c(1, 0)), "every method")
+})

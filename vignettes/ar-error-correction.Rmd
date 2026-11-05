@@ -227,13 +227,17 @@ ar_roots(fitted$updater@ar)
 fit_roots <- polyroot(c(-rev(unname(fitted$updater@ar)), 1))
 slowest_h <- max(-1 / log(Mod(fit_roots))) / 4
 oscillates <- any(abs(Im(fit_roots)) > 1e-8)
+alternates <- any(Re(fit_roots) < -0.1 & abs(Im(fit_roots)) < 1e-8)
+fallback <- fitted$fit$method != "ML"
 ```
 
+`r if (fallback) paste0("Exact maximum likelihood failed on this series, so the fit fell back to method ", fitted$fit$method, ", as the message says; the coefficients are still a proper fit.")`
+
 The fitted set is quite unlike the default. Its slowest root decays over about
-`r round(slowest_h)` hours, against the default's 24`r if (oscillates) ", and its two fast roots are a complex pair, which makes the projected error wobble from step to step"`.
-A long decay time is the fit's way of saying this model's error is mostly a persistent bias,
-the low rainfall factor, which is true here. `reach.postproc::assess()` would test both the
-decay time and any oscillation against the review criteria.
+`r round(slowest_h)` hours, against the default's 24`r if (oscillates) ", and its two fast roots are a complex pair, which makes the projected error wobble from step to step" else if (alternates) ", and one root is clearly negative, which makes part of the projected error flip sign from step to step"`.
+`r if (slowest_h > 24) "A long decay time is the fit's way of saying this model's error is mostly a persistent bias, the low rainfall factor, which is true here." else "A shorter decay than the default says this model's errors fade faster than the default assumes; part of the reason is gauge noise, which pulls a fit towards fast decay (below)."`
+`reach.postproc::assess()` would test both the decay time and any oscillation against the
+review criteria.
 
 A fit reflects this model's errors, in this catchment, over this period. It changes whenever
 the model is recalibrated. A fit over a whole record is weighted towards quiet weather, because

@@ -13,7 +13,7 @@ them."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -118,7 +118,9 @@ them.</p>
 <span>  control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>maxit <span class="op">=</span> <span class="fl">200</span><span class="op">)</span>,</span>
 <span>  method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"lbfgsb"</span>, <span class="st">"nelder_mead"</span><span class="op">)</span>,</span>
 <span>  soil_fraction <span class="op">=</span> <span class="fl">0.5</span>,</span>
-<span>  log_offset <span class="op">=</span> <span class="fl">0.01</span></span>
+<span>  log_offset <span class="op">=</span> <span class="fl">0.01</span>,</span>
+<span>  start <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"flow"</span>, <span class="st">"soil"</span><span class="op">)</span>,</span>
+<span>  baseflow_fraction <span class="op">=</span> <span class="fl">0.7</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">log_staged_calibration</span><span class="op">(</span></span>
@@ -142,8 +144,9 @@ them.</p>
 <dd><p>A configuration list, the starting point.</p></dd>
 
 
-<dt id="arg-forcing-observed-warmup-soil-fraction-log-offset">forcing, observed, warmup, soil_fraction, log_offset<a class="anchor" aria-label="anchor" href="#arg-forcing-observed-warmup-soil-fraction-log-offset"></a></dt>
-<dd><p>Passed to <code><a href="calibrate_pdm.html">calibrate_pdm()</a></code>.</p></dd>
+<dt id="arg-forcing-observed-warmup-soil-fraction-log-offset-start-baseflow-fraction">forcing, observed, warmup, soil_fraction, log_offset, start, baseflow_fraction<a class="anchor" aria-label="anchor" href="#arg-forcing-observed-warmup-soil-fraction-log-offset-start-baseflow-fraction"></a></dt>
+<dd><p>Passed to
+<code><a href="calibrate_pdm.html">calibrate_pdm()</a></code>: how the data are scored and how every trial starts.</p></dd>
 
 
 <dt id="arg-stages">stages<a class="anchor" aria-label="anchor" href="#arg-stages"></a></dt>
@@ -202,9 +205,9 @@ the next, with its stage recorded, so a reviewer can see what each stage changed
 <span class="r-in"><span>                        control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>maxit <span class="op">=</span> <span class="fl">20</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="va">parameters</span>, <span class="fl">2</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                fc distribution.cmax    distribution.b       recharge.kg </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>              1.28            155.38              2.00             26.01 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>              0.90            148.10              1.17           1004.17 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>    groundwater.kb        surface.k1        surface.k2 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>            525.13             17.45             29.00 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>            344.98              3.87              3.87 </span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

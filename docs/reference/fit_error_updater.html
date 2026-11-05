@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.5.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.6.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -133,7 +133,11 @@ simulation.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A list with an S7 updater and fitted stats::arima object.</p>
+    <p>A list with an S7 updater and fitted stats::arima object. The fit is by exact
+maximum likelihood; if that optimisation fails, as it can on long or awkward error series,
+conditional sum of squares then maximum likelihood is tried, then conditional sum of squares
+alone. The method used is the arima object's <code>method</code> element, and a message names any
+fallback.</p>
     </div>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>
@@ -153,8 +157,7 @@ simulation.</p></dd>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $fit</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Call:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> stats::arima(x = eta, order = c(order[1], 0, order[2]), include.mean = FALSE, </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     method = "ML")</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> stats::arima(x = ..1, order = ..2, include.mean = FALSE, method = ..4, optim.control = ..5)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> sigma^2 estimated as 2:  log likelihood = -14.12,  aic = 30.25</span>
