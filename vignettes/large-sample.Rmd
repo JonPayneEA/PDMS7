@@ -159,6 +159,23 @@ order_by <- names(sort(typical))
 pct <- function(p) f0(100 * (exp(typical[[p]]) - 1))
 ```
 
+```{r edges, include=FALSE}
+# A calibrated value within 1 per cent of a bound (in logs for log-scaled parameters) means the
+# search ended against the fence rather than at an optimum inside it.
+b <- calibration_bounds(pdm_presets("standard"))
+at_edge <- vapply(sample$basin, function(id) {
+  cfg <- fitted_config(id)
+  v <- vapply(b$path, function(p) pdmS7:::.path_get(cfg, p), numeric(1))
+  lo <- ifelse(b$scale == "log", log(b$lower), b$lower)
+  hi <- ifelse(b$scale == "log", log(b$upper), b$upper)
+  x <- ifelse(b$scale == "log", log(v), v)
+  any(x - lo < 0.01 * (hi - lo) | hi - x < 0.01 * (hi - lo))
+}, logical(1))
+edge_ids <- names(at_edge)[at_edge]
+```
+
+`r if (length(edge_ids)) paste0("The points far from the line belong mostly to ", length(edge_ids), " catchment", if (length(edge_ids) > 1) "s" else "", " (", paste(edge_ids, collapse = ", "), ") whose search ended with a parameter against a bound, a sign of a calibration that went astray rather than of a parameter that cannot be known. Nothing in the batch flags them yet, so check for them as this article does; in a real study they are the first catchments to look at.") else "No calibration ended with a parameter against a bound."`
+
 The ranking is clear. `r order_by[1]` and `r order_by[2]` come back closest, typically within
 `r pct(order_by[1])` and `r pct(order_by[2])` per cent. `r order_by[7]` and `r order_by[6]`
 are the worst, typically `r pct(order_by[7])` and `r pct(order_by[6])` per cent out. Yet the
