@@ -97,14 +97,14 @@ unlink(project, recursive = TRUE)
 start_calibration_project(project, catchment = "Wet Brook", gauge = "00001",
                           purpose = "Flood forecasting", area_km2 = 60,
                           owner = "Area Manager", steward = "Sam Steward")
-#> INFO [2026-11-06 04:56:38] Started calibration project wet-brook in /tmp/RtmpQqa7Fp/wet-brook
+#> INFO [2026-11-06 07:38:49] Started calibration project wet-brook in /tmp/RtmphijWDj/wet-brook
 reg <- register_data(project, forcing, observed,
                      calibration = c("2011-01-01", "2016-09-30"),
                      validation = c("2016-10-01", "2019-09-30"),
                      test = c("2019-10-01", "2020-09-27"),
                      highest_gauged_m3s = river$highest_gauged_m3s,
                      reasoning = "Ten years; rating checked to 11 m3/s.")
-#> INFO [2026-11-06 04:56:38] Registered data 0002: 3650 rows
+#> INFO [2026-11-06 07:38:49] Registered data 0002: 3650 rows
 check <- reg$rating_check$windows
 data.frame(window = names(check), steps_above = sapply(check, `[[`, "steps_above"),
            highest_m3s = round(sapply(check, `[[`, "highest_m3s"), 1))
@@ -130,7 +130,7 @@ start <- pdm_presets("standard")
 start$dt <- 24
 start$area_km2 <- 60
 select_structure(project, start, "Standard structure.")
-#> INFO [2026-11-06 04:56:38] Structure 0003: nse 0.4081
+#> INFO [2026-11-06 07:38:49] Structure 0003: nse 0.4081
 b <- calibration_bounds(start)
 fit <- log_auto_calibration(
   project, parent = 3, lower = setNames(b$lower, b$path), upper = setNames(b$upper, b$path),
@@ -141,7 +141,7 @@ fit <- log_auto_calibration(
 #> mm of soil storage, more than the store's capacity of 203 mm; the soil is
 #> capped and the run starts out of balance. Start at a lower flow or a smaller
 #> baseflow_fraction, or use start = "soil".
-#> INFO [2026-11-06 04:56:54] Calibration 0004: nse 0.9927
+#> INFO [2026-11-06 07:39:05] Calibration 0004: nse 0.9927
 good <- fit$equally_good
 c(nse = fit$scores$nse, trials_within_tolerance = good$within, sets_kept = length(good$sets))
 #>                     nse trials_within_tolerance               sets_kept 
@@ -190,10 +190,10 @@ the held-back years.
 ``` r
 propose_candidate(project, fit$id, "Best automatic fit.")
 validation <- validate_candidate(project, "Validation holds up.")
-#> INFO [2026-11-06 04:56:54] Validation 0006: nse 0.992
+#> INFO [2026-11-06 07:39:05] Validation 0006: nse 0.992
 test <- test_candidate(project, "Final check, including the wettest years.")
-#> INFO [2026-11-06 04:56:55] Test 0007: nse 0.9926
-#> INFO [2026-11-06 04:56:55] Wettest years 0007: nse 0.9589
+#> INFO [2026-11-06 07:39:06] Test 0007: nse 0.9926
+#> INFO [2026-11-06 07:39:06] Wettest years 0007: nse 0.9589
 c(validation = validation$validation_scores$nse, test_window = test$test_scores$nse,
   wettest_years = test$wettest$scores$nse)
 #>    validation   test_window wettest_years 

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.8.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -43,6 +43,7 @@
     <li><a class="dropdown-item" href="../articles/many-catchments.html">Calibrating many catchments</a></li>
     <li><a class="dropdown-item" href="../articles/large-sample.html">A large sample: what automatic calibration recovers</a></li>
     <li><a class="dropdown-item" href="../articles/calibration-study.html">What limits automatic calibration: a study</a></li>
+    <li><a class="dropdown-item" href="../articles/events.html">Events in large samples: finding them and scoring models on them</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Records and review</h6></li>
     <li><a class="dropdown-item" href="../articles/calibration-log.html">Logging a manual calibration</a></li>
@@ -92,6 +93,20 @@
       <small>Source: <a href="https://github.com/JonPayneEA/PDMS7/blob/HEAD/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.9.0" id="pdms7-090">pdmS7 0.9.0<a class="anchor" aria-label="anchor" href="#pdms7-090"></a></h2>
+<ul><li>
+<strong>Events from the records.</strong> <code><a href="../reference/find_events.html">find_events()</a></code> finds rainfall-runoff events in continuous rain and flow records objectively, with the DMCA-based event separation routine of Giani et al. (2022): no baseflow separation, one setting (<code>rain_min</code>), any time step that resolves the delay between rain and flow. Each event has rain and flow windows, rain depth, peak, and with an area, quick flow and runoff ratio.</li>
+<li>
+<code><a href="../reference/response_time_dmca.html">response_time_dmca()</a></code> estimates a catchment’s response time from rain and flow alone (Giani et al., 2021). Ten years of 15-minute data take under a second, about twenty-five times faster than the R reference, which <code>options(pdmS7.engine = "r")</code> still selects.</li>
+<li>
+<strong>The event method is in the C core</strong>, beside the model: <code>pdm_dmca_rho()</code>, <code>pdm_find_events()</code>, <code>pdm_event_summary()</code> and <code>pdm_event_scores()</code> in <code>src/pdm_core.h</code>, so Python, Scala and other languages find the same events as R. It matches the R reference exactly in event positions and within 1e-14 in every number. Golden files for three records (hourly, daily, and hourly with gaps) are in <code>inst/golden/</code>, checked from R, from plain C (<code>tools/core/check_golden.c</code>) and from Python (<code>tools/core/events_example.py</code>).</li>
+<li>
+<code><a href="../reference/event_scores.html">event_scores()</a></code> scores a model event by event: peak error, peak timing, volume error and NSE over each flow window. <code><a href="../reference/batch_events.html">batch_events()</a></code> does it for every basin of a batch, labels each event with its window, and compares each basin’s observed and simulated response times.</li>
+<li>New article: “Events in large samples: finding them and scoring models on them”.</li>
+<li>
+<code><a href="../reference/synthetic_basins.html">synthetic_basins()</a></code> at a sub-daily step no longer writes overlapping calibration and validation windows, which registration refused.</li>
+</ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.8.1" id="pdms7-081">pdmS7 0.8.1<a class="anchor" aria-label="anchor" href="#pdms7-081"></a></h2>
 <ul><li>

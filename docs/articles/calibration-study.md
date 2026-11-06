@@ -48,9 +48,10 @@ result was set against its truth.
 | staged, DDS             | The staged search with DDS, given the same number of model runs as the first                                                                                    |
 
 The four batches take too long to repeat when this page is built, so
-their results are stored with the package.
-`inst/benchmarks/search_methods.R` reruns them; each basin’s searches
-are seeded, so a rerun gives the same numbers.
+their results are stored with the package. The minutes are for four
+cores, except the confined polish, which the benchmark has to run on
+one. `inst/benchmarks/search_methods.R` reruns them; each basin’s
+searches are seeded, so a rerun gives the same numbers.
 
 ``` r
 study <- utils::read.csv(system.file("extdata", "search_study.csv", package = "pdmS7"))
@@ -65,22 +66,22 @@ summary_table <- do.call(rbind, lapply(searches, function(s) {
 summary_table$largest_shortfall <- round(summary_table$largest_shortfall, 4)
 summary_table
 #>                    search model_runs minutes at_least_truth short_by_over_0.001
-#> 1 staged, confined polish     3323.5    5.48             26                   2
-#> 2                  staged     3431.0    5.47             27                   0
-#> 3             all at once     2985.0    4.36             29                   0
-#> 4             staged, DDS     3384.0    6.99              4                  15
+#> 1 staged, confined polish     3323.5   15.30             26                   2
+#> 2                  staged     3431.0    4.37             27                   0
+#> 3             all at once     2985.0    3.41             29                   0
+#> 4             staged, DDS     3384.0    5.35              2                  19
 #>   largest_shortfall
 #> 1            0.0914
 #> 2            0.0003
 #> 3            0.0004
-#> 4            0.0917
+#> 4            0.0155
 ```
 
 The search was not the problem. Calibrating everything at once with
 L-BFGS-B scored at least as well as the truth in 29 of 30 catchments and
-was never short by more than 0.0004 in NSE, in 4.4 minutes on four
+was never short by more than 0.0004 in NSE, in 3.4 minutes on four
 cores. DDS, with the same budget as the staged search, fell short by
-more than 0.001 in 15 catchments. DDS is designed for budgets of
+more than 0.001 in 19 catchments. DDS is designed for budgets of
 thousands of runs per search; here it had about 564 for each of its six
 searches per catchment, and on a smooth objective such as NSE the
 slope-following search makes better use of them.
@@ -140,7 +141,7 @@ round(recovery, 2)
 #> staged, confined polish 0.01 0.06 0.10 0.03   0.11   0.08 0.45
 #> staged                  0.01 0.06 0.09 0.03   0.15   0.10 0.47
 #> all at once             0.01 0.06 0.10 0.03   0.11   0.08 0.39
-#> staged, DDS             0.03 0.27 0.53 0.06   0.23   0.17 3.47
+#> staged, DDS             0.03 0.20 0.43 0.10   0.34   0.24 2.81
 ```
 
 Every search, good or bad, leaves `kb` the worst recovered. A search
@@ -302,11 +303,13 @@ drought <- do.call(rbind, lapply(profiles, function(p) {
                                                         baseflow_fraction = 0.7))
       run_pdm(model, s$forcing[c("rain", "pet")], state)$output$soil_mm
     }
-    data.frame(basin = p$id, scenario = name,
-      true_soil_at_end_mm = soil[max(which(s$window))], nse_spread = diff(range(
-      vapply(kb_sets, function(i) p$fits[[i]]$refit, numeric(1)))),
+    fit_scores <- vapply(kb_sets, function(i) p$fits[[i]]$refit, numeric(1))
+    data.frame(
+      basin = p$id, scenario = name, true_soil_at_end_mm = soil[max(which(s$window))],
+      nse_spread = diff(range(fit_scores)),
       low_flow_vs_truth_min = min(ratios), low_flow_vs_truth_max = max(ratios),
-      same_window_no_drought_min = min(usual), same_window_no_drought_max = max(usual))
+      same_window_no_drought_min = min(usual), same_window_no_drought_max = max(usual)
+    )
   }))
 }))
 drought[-(1:2)] <- round(drought[-(1:2)], 3)

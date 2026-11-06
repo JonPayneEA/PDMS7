@@ -1,5 +1,41 @@
 # Changelog
 
+## pdmS7 0.9.0
+
+- **Events from the records.**
+  [`find_events()`](https://jonpayneea.github.io/PDMS7/reference/find_events.md)
+  finds rainfall-runoff events in continuous rain and flow records
+  objectively, with the DMCA-based event separation routine of Giani et
+  al. (2022): no baseflow separation, one setting (`rain_min`), any time
+  step that resolves the delay between rain and flow. Each event has
+  rain and flow windows, rain depth, peak, and with an area, quick flow
+  and runoff ratio.
+- [`response_time_dmca()`](https://jonpayneea.github.io/PDMS7/reference/response_time_dmca.md)
+  estimates a catchment’s response time from rain and flow alone (Giani
+  et al., 2021). Ten years of 15-minute data take under a second, about
+  twenty-five times faster than the R reference, which
+  `options(pdmS7.engine = "r")` still selects.
+- **The event method is in the C core**, beside the model:
+  `pdm_dmca_rho()`, `pdm_find_events()`, `pdm_event_summary()` and
+  `pdm_event_scores()` in `src/pdm_core.h`, so Python, Scala and other
+  languages find the same events as R. It matches the R reference
+  exactly in event positions and within 1e-14 in every number. Golden
+  files for three records (hourly, daily, and hourly with gaps) are in
+  `inst/golden/`, checked from R, from plain C
+  (`tools/core/check_golden.c`) and from Python
+  (`tools/core/events_example.py`).
+- [`event_scores()`](https://jonpayneea.github.io/PDMS7/reference/event_scores.md)
+  scores a model event by event: peak error, peak timing, volume error
+  and NSE over each flow window.
+  [`batch_events()`](https://jonpayneea.github.io/PDMS7/reference/batch_events.md)
+  does it for every basin of a batch, labels each event with its window,
+  and compares each basin’s observed and simulated response times.
+- New article: “Events in large samples: finding them and scoring models
+  on them”.
+- [`synthetic_basins()`](https://jonpayneea.github.io/PDMS7/reference/synthetic_basins.md)
+  at a sub-daily step no longer writes overlapping calibration and
+  validation windows, which registration refused.
+
 ## pdmS7 0.8.1
 
 - **New article: “What limits automatic calibration: a study”.** On 30
@@ -13,6 +49,11 @@
 - The search results are stored as `inst/extdata/search_study.csv`;
   `inst/benchmarks/search_methods.R` regenerates them, including the
   staged search with the polish confined as before version 0.8.0.
+- With the free polish of version 0.8.0, staged DDS fits less well than
+  staged L-BFGS-B in all 30 synthetic catchments (29 with the old
+  confined polish);
+  [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md)’s
+  help says so.
 
 ## pdmS7 0.8.0
 

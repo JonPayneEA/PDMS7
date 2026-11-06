@@ -84,7 +84,7 @@ table(status$state)
 results <- batch_results(output)
 ```
 
-All 30 catchments finished, in 6 minutes on 3 cores. A sample of
+All 30 catchments finished, in 4 minutes on 3 cores. A sample of
 hundreds takes the same call;
 [`calibrate_batch()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md)
 resumes where it stopped if interrupted. [Calibrating many
