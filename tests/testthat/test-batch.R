@@ -47,7 +47,8 @@ test_that("a batch calibrates every basin, records failures and resumes", {
   bad <- file.path(b$root, "B02", "forcing.csv")
   good <- readLines(bad)
   broken <- good
-  broken[50] <- sub(",0.05,", ",-1,", broken[50], fixed = TRUE)
+  # A missing PE value (negative PE is allowed: it is condensation).
+  broken[50] <- sub(",0.05,", ",NaN,", broken[50], fixed = TRUE)
   writeLines(broken, bad)
   status <- do.call(calibrate_batch, c(list(b$root, b$output), quick))
   expect_equal(status$state, c("done", "failed", "done"))

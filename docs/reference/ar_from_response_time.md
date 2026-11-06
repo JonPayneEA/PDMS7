@@ -53,6 +53,12 @@ any set with
 [`reach.postproc::assess()`](https://rdrr.io/pkg/reach.postproc/man/assess.html)
 before operational use.
 
+The first coefficient is set for 15-minute steps. At longer steps, a
+short decay time makes the set unstable (a root of size 1 or more, so
+the projected error grows without limit), and `ar_from_response_time()`
+refuses it: the decay must be at least about 4.9 steps, which is 1.2
+hours at 15-minute steps but 4.9 hours at hourly steps.
+
 ## See also
 
 [`pdm_response_time()`](https://jonpayneea.github.io/PDMS7/reference/pdm_response_time.md),

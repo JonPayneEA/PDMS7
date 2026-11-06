@@ -28,8 +28,8 @@ sim_pdm(
 
 - pet_mm:
 
-  Finite nonnegative numeric PET depths in mm per interval, equal length
-  to rainfall_mm.
+  Finite numeric PET depths in mm per interval, equal length to
+  rainfall_mm; negative values are condensation.
 
 - params:
 

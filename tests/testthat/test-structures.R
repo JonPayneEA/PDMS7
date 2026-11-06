@@ -158,3 +158,21 @@ test_that("parallel comparison gives the same ranking as serial", {
   expect_equal(parallel_run$structure, serial$structure)
   expect_equal(parallel_run$validation, serial$validation)
 })
+
+# Guards: comparisons finishing within the same second keep separate names, so reading one back
+# never returns the other's structures
+test_that("comparisons in the same second get separate names", {
+  now <- as.POSIXct("2026-11-06 12:00:00", tz = "UTC")
+  expect_equal(pdmS7:::.new_comparison_id(list(), now), "comparison-20261106T120000")
+  taken <- list(list(comparison = "comparison-20261106T120000"), list(type = "note"),
+                list(comparison = "comparison-20261106T120000-2"))
+  expect_equal(pdmS7:::.new_comparison_id(taken, now), "comparison-20261106T120000-3")
+  folder <- comparison_project()
+  set <- structure_set(c("standard", "rectangular"))
+  ids <- vapply(1:3, function(i) {
+    attr(compare_structures(folder, set, starts = 1, control = list(maxit = 1),
+                            reasoning = "Quick"), "comparison")
+  }, character(1))
+  expect_false(anyDuplicated(ids) > 0)
+  for (id in ids) expect_equal(nrow(structure_comparison(folder, id)), 2L)
+})

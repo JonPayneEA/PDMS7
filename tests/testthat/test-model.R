@@ -122,3 +122,36 @@ test_that(
     expect_close(stiff$output$balance_error_mm, c(0, 0))
   }
 )
+
+# Guards: negative PE is condensation, adding its whole depth to the soil store in both engines
+test_that("negative PE adds its whole depth to the soil store, in both engines", {
+  model <- pdm_model(area_km2 = 10)
+  dry <- initial_state(model, soil_fraction = 0)
+  step <- pdm_step(model, dry, rain = 0, pet = -0.4)
+  expect_equal(step$flux$aet_mm, -0.4)
+  # The whole 0.4 mm arrives, however dry the soil: kept, run off or recharged, like rain.
+  arrived <- function(s, before) {
+    s$state@soil - before + s$flux$direct_runoff_mm + s$flux$recharge_mm
+  }
+  expect_equal(arrived(step, 0), 0.4, tolerance = 1e-12)
+  expect_gt(step$state@soil, 0.39)
+  # A store that is already full passes all of it on, as runoff and recharge.
+  wet <- initial_state(model, soil_fraction = 1)
+  full <- pdm_step(model, wet, rain = 0, pet = -0.4)
+  expect_equal(arrived(full, wet@soil), 0.4, tolerance = 1e-12)
+  expect_equal(full$state@soil, wet@soil)
+  set.seed(3)
+  forcing <- data.frame(rain = ifelse(stats::runif(500) < 0.1, stats::rexp(500, 0.4), 0),
+                        pet = 0.1 * sin(seq_len(500) / 10) + 0.02)
+  expect_true(any(forcing$pet < 0))
+  start <- initial_state(model, soil_fraction = 0.3)
+  compiled <- run_pdm(model, forcing, start)
+  old <- options(pdmS7.engine = "r")
+  on.exit(options(old), add = TRUE)
+  reference <- run_pdm(model, forcing, start)
+  expect_equal(compiled$output$q_m3s, reference$output$q_m3s, tolerance = 1e-10)
+  expect_equal(compiled$output$aet_mm, reference$output$aet_mm, tolerance = 1e-10)
+  expect_lt(max(abs(compiled$output$balance_error_mm)), 1e-9)
+  expect_error(run_pdm(model, transform(forcing, pet = NA)), "finite")
+  expect_error(pdm_step(model, start, rain = -1, pet = 0.1), "rain")
+})

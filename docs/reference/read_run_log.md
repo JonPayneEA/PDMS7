@@ -125,11 +125,11 @@ options(old)
 read_run_log(log)
 #>              timestamp   user  login     tag                      fingerprint
 #>                 <POSc> <lgcl> <char>  <char>                           <char>
-#> 1: 2026-11-06 07:30:49     NA   root example 5edf9f4dd6c43fa6056569c2474a2767
+#> 1: 2026-11-06 14:01:48     NA   root example 5edf9f4dd6c43fa6056569c2474a2767
 #>                            data_md5  rows  start    end dt_hours area_km2
 #>                              <char> <int> <lgcl> <lgcl>    <int>    <int>
 #> 1: ff782f33dc69b2be7e40ab367ad701a6     3     NA     NA        1        1
 #>    engine  pdmS7      r seconds status message approval project sign_off
 #>    <char> <char> <char>   <num> <char>  <char>   <lgcl>  <char>   <char>
-#> 1:      c  0.9.0  4.3.3   0.006     ok               NA                 
+#> 1:      c 0.10.0  4.3.3   0.006     ok               NA                 
 ```

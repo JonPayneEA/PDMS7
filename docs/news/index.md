@@ -1,5 +1,33 @@
 # Changelog
 
+## pdmS7 0.10.0
+
+- **Negative PE is allowed, as condensation.** Potential evaporation
+  products such as MOSES PE go slightly negative when condensation
+  exceeds evaporation. Both engines, R and C, now accept negative `pet`
+  (rain must still be nonnegative). A negative value is not scaled by
+  soil wetness (Eq. 8): its whole depth joins the soil store, however
+  dry the soil, since dew forms on surfaces whatever the soil moisture,
+  and a full store passes it on as runoff, like rain.
+  [`run_pdm()`](https://jonpayneea.github.io/PDMS7/reference/run_pdm.md),
+  [`register_data()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md),
+  [`sim_pdm()`](https://jonpayneea.github.io/PDMS7/reference/sim_pdm.md)
+  and the calibration functions all accept it; missing PE is still
+  refused. Results with nonnegative PE do not change.
+
+## pdmS7 0.9.1
+
+- [`find_events()`](https://jonpayneea.github.io/PDMS7/reference/find_events.md)
+  has been checked against the authors’ reference code for DMCA-ESR, run
+  in Octave, on three synthetic records (two hourly, one daily):
+  identical response times and all 663 event windows identical. The help
+  page and the events article record the check.
+- **Fix: comparisons finishing within the same second no longer merge.**
+  [`compare_structures()`](https://jonpayneea.github.io/PDMS7/reference/compare_structures.md)
+  named each comparison by its time to the second, so two on one project
+  in the same second shared a name, and reading either back returned
+  both. A suffix now keeps them apart.
+
 ## pdmS7 0.9.0
 
 - **Events from the records.**
@@ -35,6 +63,24 @@
 - [`synthetic_basins()`](https://jonpayneea.github.io/PDMS7/reference/synthetic_basins.md)
   at a sub-daily step no longer writes overlapping calibration and
   validation windows, which registration refused.
+- **Fix:
+  [`ar_from_response_time()`](https://jonpayneea.github.io/PDMS7/reference/ar_from_response_time.md)
+  refuses unstable AR sets.** The default family’s first coefficient is
+  set for 15-minute steps; at longer steps a decay of under about 4.9
+  steps gave a root of 1 or more, so the projected error grew without
+  limit. At hourly steps that is any catchment with a time to peak under
+  4.9 hours.
+  [`pdm_hindcast()`](https://jonpayneea.github.io/PDMS7/reference/pdm_hindcast.md)
+  used such sets by default without a word; it now leaves them out with
+  a warning. Hindcasts of fast catchments at steps longer than 15
+  minutes change.
+- The AR article compares the model’s time to peak with the records’
+  response time
+  ([`response_time_dmca()`](https://jonpayneea.github.io/PDMS7/reference/response_time_dmca.md))
+  as the family’s timescale. They forecast alike at 15 minutes; at
+  hourly steps the records’ shorter timescale gives an unstable set more
+  often and is no better where both work, so the time to peak stays the
+  recommendation.
 
 ## pdmS7 0.8.1
 

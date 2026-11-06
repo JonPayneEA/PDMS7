@@ -15,7 +15,7 @@ windows' ends gives each event's quick flow afterwards."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.10.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -185,6 +185,11 @@ before the flow's centre of mass and end after it; merge events that overlap.</p
 code. One detail differs: overlapping events merge into one spanning all of them, where the
 reference code takes the end of the last. Rain windows that would run off either end of the
 record are discarded.</p>
+<p>It was checked against the authors' reference code
+(<a href="https://github.com/giuliagiani/DMCA-ESR" class="external-link">https://github.com/giuliagiani/DMCA-ESR</a>), run in Octave, on three synthetic records:
+two years of hourly data from a fast and a slow catchment, and ten years of daily data. The
+response times and all 663 event windows were identical. None of those records had
+overlapping events, so the one deliberate difference above was not exercised.</p>
 <p>The work is done by the C core (<code>pdm_find_events()</code> and <code>pdm_event_summary()</code> in
 <code>src/pdm_core.h</code>), which other languages can call directly; <code>options(pdmS7.engine = "r")</code>
 runs the R reference implementation instead.</p>

@@ -141,7 +141,7 @@ found$basins[, c("basin", "response_observed_h", "response_simulated_h", "events
 #> 8                         0
 ```
 
-Finding and scoring 1460 events across 8 basins took 1.3 seconds. In
+Finding and scoring 1460 events across 8 basins took 1.4 seconds. In
 every basin the response time of the calibrated model matches the
 response time of the record: the models respond as fast as the
 catchments do.
@@ -250,13 +250,13 @@ c(steps = length(rain), windows = nrow(fast$curve), compiled_s = round(compiled,
   r_s = round(reference, 1), same_answer = fast$response_h == slow$response_h,
   find_events_s = round(all_events, 2), events = nrow(quarter_events))
 #>         steps       windows    compiled_s           r_s   same_answer 
-#>     350400.00        600.00          0.50         14.40          1.00 
+#>     350400.00        600.00          0.62         15.10          1.00 
 #> find_events_s        events 
-#>          0.57        842.00
+#>          0.63        842.00
 ```
 
-The compiled search took 0.50 seconds against 14.4 in R, with the same
-answer, and finding all 842 events took 0.57 seconds in all. A batch of
+The compiled search took 0.62 seconds against 15.1 in R, with the same
+answer, and finding all 842 events took 0.63 seconds in all. A batch of
 hundreds of basins at 15 minutes is a matter of minutes.
 
 ## Limits
@@ -279,7 +279,12 @@ hundreds of basins at 15 minutes is a matter of minutes.
 [`find_events()`](https://jonpayneea.github.io/PDMS7/reference/find_events.md)
 is an independent implementation of the published method, from the paper
 and the authors’ reference code. Its tests check it on records with
-known storms and responses.
+known storms and responses. It was also checked against the authors’
+MATLAB code, run in Octave, on three synthetic records: two years of
+hourly data from a fast and a slow catchment, and ten years of daily
+data. The response times and all 663 event windows were identical. That
+check cannot run when this page is built, so its result is stated here
+rather than computed.
 
 ## References
 

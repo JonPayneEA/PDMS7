@@ -37,6 +37,12 @@
   )
 }
 
+# Finite numbers of either sign: PE, whose negative values are condensation.
+.finite_depths <- function(x, name) {
+  .check(is.numeric(x) && !anyNA(x) && all(is.finite(x)),
+         paste(name, "must contain finite numbers"))
+}
+
 # Store capacities (mm) at which a distribution is evaluated. Inf is allowed, because the
 # unbounded distributions (exponential, lognormal) are integrated to infinity.
 .capacity_x <- function(x) {

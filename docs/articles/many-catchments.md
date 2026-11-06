@@ -126,7 +126,7 @@ one_run <- system.time(
 c(seconds_per_run = signif(one_run, 2),
   estimated_minutes_for_8 = round(8 * 1500 * one_run / 60, 1))
 #>         seconds_per_run estimated_minutes_for_8 
-#>                  0.0041                  0.8000
+#>                  0.0048                  1.0000
 ```
 
 For a real batch, measure on a few catchments first; see the pilot
@@ -150,9 +150,9 @@ part <- do.call(calibrate_batch, c(list(basins, results, only = c("B01", "B02", 
 part
 #>     basin  state     step seconds message
 #>    <char> <char>   <char>   <num>  <char>
-#> 1:    B01   done complete     4.8        
-#> 2:    B02   done complete     3.9        
-#> 3:    B03   done complete     4.7
+#> 1:    B01   done complete     5.0        
+#> 2:    B02   done complete     4.1        
+#> 3:    B03   done complete     5.4
 ```
 
 Suppose the computer was switched off at this point, after three
@@ -165,16 +165,16 @@ elapsed <- system.time(
   status <- do.call(calibrate_batch, c(list(basins, results), protocol))
 )[["elapsed"]]
 status
-#>     basin  state     step seconds                                     message
-#>    <char> <char>   <char>   <num>                                      <char>
-#> 1:    B01   done complete     0.0                                            
-#> 2:    B02   done complete     0.0                                            
-#> 3:    B03   done complete     0.0                                            
-#> 4:    B04   done complete     5.8                                            
-#> 5:    B05   done complete     5.3                                            
-#> 6:    B06 failed register     0.0 pet must contain finite nonnegative numbers
-#> 7:    B07   done complete     4.6                                            
-#> 8:    B08   done complete     5.1
+#>     basin  state     step seconds message
+#>    <char> <char>   <char>   <num>  <char>
+#> 1:    B01   done complete     0.0        
+#> 2:    B02   done complete     0.0        
+#> 3:    B03   done complete     0.0        
+#> 4:    B04   done complete     6.4        
+#> 5:    B05   done complete     5.6        
+#> 6:    B06   done complete     6.1        
+#> 7:    B07   done complete     4.9        
+#> 8:    B08   done complete     5.5
 ```
 
 The three finished catchments took a moment each: the batch read their
@@ -200,9 +200,7 @@ One catchment failed, and the batch carried on without it:
 
 ``` r
 status[state == "failed", .(basin, step, message)]
-#>     basin     step                                     message
-#>    <char>   <char>                                      <char>
-#> 1:    B06 register pet must contain finite nonnegative numbers
+#> Empty data.table (0 rows and 3 cols): basin,step,message
 ```
 
 The message says what is wrong and the step says where it stopped: the
@@ -220,11 +218,11 @@ status
 #> 1:    B01   done complete     0.0        
 #> 2:    B02   done complete     0.0        
 #> 3:    B03   done complete     0.0        
-#> 4:    B04   done complete     5.8        
-#> 5:    B05   done complete     5.3        
-#> 6:    B06   done complete     5.5        
-#> 7:    B07   done complete     4.6        
-#> 8:    B08   done complete     5.1
+#> 4:    B04   done complete     6.4        
+#> 5:    B05   done complete     5.6        
+#> 6:    B06   done complete     0.0        
+#> 7:    B07   done complete     4.9        
+#> 8:    B08   done complete     5.5
 ```
 
 The failed attempt is still on record in B06’s project, followed by the
@@ -287,7 +285,7 @@ table[, .(project, state, calibration = round(candidate_score, 3),
 #> 3:     B03   done       0.968      0.968
 #> 4:     B04   done       0.981      0.995
 #> 5:     B05   done       0.973      0.924
-#> 6:     B06   done       0.977      0.978
+#> 6:     B06   done       0.977      0.977
 #> 7:     B07   done       0.992      0.994
 #> 8:     B08   done       0.989      0.993
 ```
@@ -340,7 +338,7 @@ agreement
 #> 3   B03 0.03240 0.06460        0 FALSE
 #> 4   B04 0.01870 0.05760        0 FALSE
 #> 5   B05 0.02740 0.47600        2 FALSE
-#> 6   B06 0.02320 0.35900        0 FALSE
+#> 6   B06 0.02340 0.33700        0 FALSE
 #> 7   B07 0.00814 0.00878        1  TRUE
 #> 8   B08 0.01060 0.02460        1 FALSE
 ```
@@ -392,10 +390,10 @@ typical <- aggregate(cbind(typical_error = error) ~ parameter, data = pairs,
                      FUN = function(x) round(stats::median(x), 3))
 typical
 #>   parameter typical_error
-#> 1      cmax         0.076
-#> 2        fc         0.009
-#> 3    k_fast         0.208
-#> 4    k_slow         0.227
+#> 1      cmax         0.079
+#> 2        fc         0.011
+#> 3    k_fast         0.362
+#> 4    k_slow         0.381
 #> 5        kg         0.029
 best <- typical$parameter[order(typical$typical_error)]
 ```
@@ -404,7 +402,7 @@ The typical error is the middle value across catchments, as a fraction:
 0.01 means 1 per cent out. Here fc and kg come back almost exactly: they
 control how much water there is and how the river recedes, which every
 week of record shows. k_slow and k_fast are the furthest out, typically
-about 23 per cent, partly because this example stops each search after
+about 38 per cent, partly because this example stops each search after
 25 steps, before most of them had finished. In other cases a parameter
 is badly off even when the fit is excellent, because the data hold
 little information about it: the size of a soil store that two autumn

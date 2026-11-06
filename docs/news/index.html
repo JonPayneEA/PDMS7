@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.10.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -93,6 +93,18 @@
       <small>Source: <a href="https://github.com/JonPayneEA/PDMS7/blob/HEAD/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.10.0" id="pdms7-0100">pdmS7 0.10.0<a class="anchor" aria-label="anchor" href="#pdms7-0100"></a></h2>
+<ul><li>
+<strong>Negative PE is allowed, as condensation.</strong> Potential evaporation products such as MOSES PE go slightly negative when condensation exceeds evaporation. Both engines, R and C, now accept negative <code>pet</code> (rain must still be nonnegative). A negative value is not scaled by soil wetness (Eq. 8): its whole depth joins the soil store, however dry the soil, since dew forms on surfaces whatever the soil moisture, and a full store passes it on as runoff, like rain. <code><a href="../reference/run_pdm.html">run_pdm()</a></code>, <code><a href="../reference/calibration_log.html">register_data()</a></code>, <code><a href="../reference/sim_pdm.html">sim_pdm()</a></code> and the calibration functions all accept it; missing PE is still refused. Results with nonnegative PE do not change.</li>
+</ul></div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.9.1" id="pdms7-091">pdmS7 0.9.1<a class="anchor" aria-label="anchor" href="#pdms7-091"></a></h2>
+<ul><li>
+<code><a href="../reference/find_events.html">find_events()</a></code> has been checked against the authors’ reference code for DMCA-ESR, run in Octave, on three synthetic records (two hourly, one daily): identical response times and all 663 event windows identical. The help page and the events article record the check.</li>
+<li>
+<strong>Fix: comparisons finishing within the same second no longer merge.</strong> <code><a href="../reference/compare_structures.html">compare_structures()</a></code> named each comparison by its time to the second, so two on one project in the same second shared a name, and reading either back returned both. A suffix now keeps them apart.</li>
+</ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.9.0" id="pdms7-090">pdmS7 0.9.0<a class="anchor" aria-label="anchor" href="#pdms7-090"></a></h2>
 <ul><li>

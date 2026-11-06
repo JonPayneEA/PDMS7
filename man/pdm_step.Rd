@@ -13,7 +13,8 @@ pdm_step(model, state, rain, pet)
 
 \item{rain}{Nonnegative interval rainfall depth in mm.}
 
-\item{pet}{Nonnegative interval potential evaporation depth in mm.}
+\item{pet}{Interval potential evaporation depth in mm. Negative values are condensation
+and add their whole depth to the soil store.}
 }
 \value{
 A list with state and a one-row flux data.frame.

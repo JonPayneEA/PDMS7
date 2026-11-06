@@ -18,7 +18,7 @@ sim_snow_pdm(
 \arguments{
 \item{precipitation_mm, temperature_c}{Aligned, nonempty numeric forcing vectors.}
 
-\item{pet_mm}{Nonnegative aligned PET depths.}
+\item{pet_mm}{Aligned PET depths; negative values are condensation.}
 
 \item{params}{Named list with exactly pdm and snow configurations.}
 

@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.10.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -306,6 +306,13 @@ With soil storage
 at the start of the interval and potential evaporation
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>e</mi><mi>p</mi></msub><annotation encoding="application/x-tex">e_p</annotation></semantics></math>:</p>
 <p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>e</mi><mrow><mi mathvariant="normal">r</mi><mi mathvariant="normal">e</mi><mi mathvariant="normal">q</mi></mrow></msub><mo>=</mo><msub><mi>e</mi><mi>p</mi></msub><mrow><mo stretchy="true" form="prefix">[</mo><mn>1</mn><mo>−</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><mfrac><mi>s</mi><msub><mi>s</mi><mo>max</mo></msub></mfrac><mo stretchy="true" form="postfix">)</mo></mrow><msub><mi>b</mi><mi>e</mi></msub></msup><mo stretchy="true" form="postfix">]</mo></mrow><mi>.</mi><mspace width="2.0em"></mspace><mtext mathvariant="normal">(Eq. 8)</mtext></mrow><annotation encoding="application/x-tex">e_{\mathrm{req}}=e_p\left[1-\left(1-\frac{s}{s_{\max}}\right)^{b_e}\right].\qquad\text{(Eq. 8)}</annotation></semantics></math></p>
+<p>A negative
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>e</mi><mi>p</mi></msub><annotation encoding="application/x-tex">e_p</annotation></semantics></math>
+is condensation, as products such as MOSES PE give when the surface is
+colder than the air. It is not scaled:
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>e</mi><mrow><mi mathvariant="normal">r</mi><mi mathvariant="normal">e</mi><mi mathvariant="normal">q</mi></mrow></msub><mo>=</mo><msub><mi>e</mi><mi>p</mi></msub></mrow><annotation encoding="application/x-tex">e_{\mathrm{req}}=e_p</annotation></semantics></math>,
+so its whole depth joins the net depth below, however dry the soil, and
+a full store passes it on as runoff, like rain.</p>
 <p>Evaporation is allocated first and recharge second, so neither can
 overdraw the store:</p>
 <p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>e</mi><mo>=</mo><mo>min</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>e</mi><mrow><mi mathvariant="normal">r</mi><mi mathvariant="normal">e</mi><mi mathvariant="normal">q</mi></mrow></msub><mo>,</mo><mspace width="0.167em"></mspace><mi>s</mi><mo>+</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>,</mo><mspace width="2.0em"></mspace><mi>d</mi><mo>=</mo><mo>min</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>d</mi><mrow><mi mathvariant="normal">r</mi><mi mathvariant="normal">e</mi><mi mathvariant="normal">q</mi></mrow></msub><mo>,</mo><mspace width="0.167em"></mspace><mo>max</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><mspace width="0.167em"></mspace><mi>s</mi><mo>+</mo><mi>p</mi><mo>−</mo><mi>e</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">)</mo></mrow><mi>.</mi></mrow><annotation encoding="application/x-tex">e=\min(e_{\mathrm{req}},\,s+p),\qquad d=\min(d_{\mathrm{req}},\,\max(0,\,s+p-e)).</annotation></semantics></math></p>

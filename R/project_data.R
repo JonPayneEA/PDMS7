@@ -45,7 +45,7 @@
          "forcing needs rain and pet columns, mm per interval")
   out <- data.table::data.table(rain = as.numeric(forcing$rain), pet = as.numeric(forcing$pet))
   .nonnegative(out$rain, "rain")
-  .nonnegative(out$pet, "pet")
+  .finite_depths(out$pet, "pet")
   if ("time" %in% names(forcing)) {
     data.table::set(out, j = "time", value = .parse_time(forcing$time))
   }

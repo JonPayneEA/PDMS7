@@ -5,7 +5,7 @@
 # Flode Module: standalone; target reach.hydro
 # Author:       pdmS7 contributors
 # Created:      2026-11-06
-# Modified:     2026-11-06 - The C core does the work; R keeps the reference implementation
+# Modified:     2026-11-06 - Record the check against the authors' reference code
 # Tier:         3
 # Inputs:       Rain (mm per step) and flow (any units; m3/s with an area for volumes)
 # Outputs:      Response time; a table of events; per-event model scores
@@ -111,6 +111,12 @@ response_time_dmca <- function(rain, flow, dt = 1, max_response_h = 150) {
 #' code. One detail differs: overlapping events merge into one spanning all of them, where the
 #' reference code takes the end of the last. Rain windows that would run off either end of the
 #' record are discarded.
+#'
+#' It was checked against the authors' reference code
+#' (\url{https://github.com/giuliagiani/DMCA-ESR}), run in Octave, on three synthetic records:
+#' two years of hourly data from a fast and a slow catchment, and ten years of daily data. The
+#' response times and all 663 event windows were identical. None of those records had
+#' overlapping events, so the one deliberate difference above was not exercised.
 #'
 #' The work is done by the C core (`pdm_find_events()` and `pdm_event_summary()` in
 #' `src/pdm_core.h`), which other languages can call directly; `options(pdmS7.engine = "r")`
