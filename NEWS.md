@@ -9,6 +9,8 @@
 - The search results are stored as `inst/extdata/search_study.csv`;
   `inst/benchmarks/search_methods.R` regenerates them, including the staged search with the
   polish confined as before version 0.8.0.
+- With the free polish of version 0.8.0, staged DDS fits less well than staged L-BFGS-B in all
+  30 synthetic catchments (29 with the old confined polish); `calibrate_pdm()`'s help says so.
 
 # pdmS7 0.8.0
 

@@ -57,7 +57,8 @@ data each, and every result was set against its truth.
 | staged, DDS | The staged search with DDS, given the same number of model runs as the first |
 
 The four batches take too long to repeat when this page is built, so their results are
-stored with the package. `inst/benchmarks/search_methods.R` reruns them; each basin's
+stored with the package. The minutes are for four cores, except the confined polish, which
+the benchmark has to run on one. `inst/benchmarks/search_methods.R` reruns them; each basin's
 searches are seeded, so a rerun gives the same numbers.
 
 ```{r study}

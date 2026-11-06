@@ -193,9 +193,10 @@ the first</td>
 </tbody>
 </table>
 <p>The four batches take too long to repeat when this page is built, so
-their results are stored with the package.
-<code>inst/benchmarks/search_methods.R</code> reruns them; each basin’s
-searches are seeded, so a rerun gives the same numbers.</p>
+their results are stored with the package. The minutes are for four
+cores, except the confined polish, which the benchmark has to run on
+one. <code>inst/benchmarks/search_methods.R</code> reruns them; each
+basin’s searches are seeded, so a rerun gives the same numbers.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">study</span> <span class="op">&lt;-</span> <span class="fu">utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.csv</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"extdata"</span>, <span class="st">"search_study.csv"</span>, package <span class="op">=</span> <span class="st">"pdmS7"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">searches</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"staged, confined polish"</span>, <span class="st">"staged"</span>, <span class="st">"all at once"</span>, <span class="st">"staged, DDS"</span><span class="op">)</span></span>
@@ -209,20 +210,20 @@ searches are seeded, so a rerun gives the same numbers.</p>
 <span><span class="va">summary_table</span><span class="op">$</span><span class="va">largest_shortfall</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">summary_table</span><span class="op">$</span><span class="va">largest_shortfall</span>, <span class="fl">4</span><span class="op">)</span></span>
 <span><span class="va">summary_table</span></span>
 <span><span class="co">#&gt;                    search model_runs minutes at_least_truth short_by_over_0.001</span></span>
-<span><span class="co">#&gt; 1 staged, confined polish     3323.5    5.48             26                   2</span></span>
-<span><span class="co">#&gt; 2                  staged     3431.0    5.47             27                   0</span></span>
-<span><span class="co">#&gt; 3             all at once     2985.0    4.36             29                   0</span></span>
-<span><span class="co">#&gt; 4             staged, DDS     3384.0    6.99              4                  15</span></span>
+<span><span class="co">#&gt; 1 staged, confined polish     3323.5   15.30             26                   2</span></span>
+<span><span class="co">#&gt; 2                  staged     3431.0    4.37             27                   0</span></span>
+<span><span class="co">#&gt; 3             all at once     2985.0    3.41             29                   0</span></span>
+<span><span class="co">#&gt; 4             staged, DDS     3384.0    5.35              2                  19</span></span>
 <span><span class="co">#&gt;   largest_shortfall</span></span>
 <span><span class="co">#&gt; 1            0.0914</span></span>
 <span><span class="co">#&gt; 2            0.0003</span></span>
 <span><span class="co">#&gt; 3            0.0004</span></span>
-<span><span class="co">#&gt; 4            0.0917</span></span></code></pre></div>
+<span><span class="co">#&gt; 4            0.0155</span></span></code></pre></div>
 <p>The search was not the problem. Calibrating everything at once with
 L-BFGS-B scored at least as well as the truth in 29 of 30 catchments and
-was never short by more than 0.0004 in NSE, in 4.4 minutes on four
+was never short by more than 0.0004 in NSE, in 3.4 minutes on four
 cores. DDS, with the same budget as the staged search, fell short by
-more than 0.001 in 15 catchments. DDS is designed for budgets of
+more than 0.001 in 19 catchments. DDS is designed for budgets of
 thousands of runs per search; here it had about 564 for each of its six
 searches per catchment, and on a smooth objective such as NSE the
 slope-following search makes better use of them.</p>
@@ -280,7 +281,7 @@ slower of the pair, since they can swap without changing the flow.</p>
 <span><span class="co">#&gt; staged, confined polish 0.01 0.06 0.10 0.03   0.11   0.08 0.45</span></span>
 <span><span class="co">#&gt; staged                  0.01 0.06 0.09 0.03   0.15   0.10 0.47</span></span>
 <span><span class="co">#&gt; all at once             0.01 0.06 0.10 0.03   0.11   0.08 0.39</span></span>
-<span><span class="co">#&gt; staged, DDS             0.03 0.27 0.53 0.06   0.23   0.17 3.47</span></span></code></pre></div>
+<span><span class="co">#&gt; staged, DDS             0.03 0.20 0.43 0.10   0.34   0.24 2.81</span></span></code></pre></div>
 <p>Every search, good or bad, leaves <code>kb</code> the worst
 recovered. A search that reaches the truth’s score and still misses a
 parameter by that much is meeting a flat objective. The direct test is a
@@ -439,11 +440,13 @@ all.</li>
 <span>                                                        baseflow_fraction <span class="op">=</span> <span class="fl">0.7</span><span class="op">)</span><span class="op">)</span></span>
 <span>      <span class="fu"><a href="../reference/run_pdm.html">run_pdm</a></span><span class="op">(</span><span class="va">model</span>, <span class="va">s</span><span class="op">$</span><span class="va">forcing</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rain"</span>, <span class="st">"pet"</span><span class="op">)</span><span class="op">]</span>, <span class="va">state</span><span class="op">)</span><span class="op">$</span><span class="va">output</span><span class="op">$</span><span class="va">soil_mm</span></span>
 <span>    <span class="op">}</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>basin <span class="op">=</span> <span class="va">p</span><span class="op">$</span><span class="va">id</span>, scenario <span class="op">=</span> <span class="va">name</span>,</span>
-<span>      true_soil_at_end_mm <span class="op">=</span> <span class="va">soil</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/which.html" class="external-link">which</a></span><span class="op">(</span><span class="va">s</span><span class="op">$</span><span class="va">window</span><span class="op">)</span><span class="op">)</span><span class="op">]</span>, nse_spread <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/diff.html" class="external-link">diff</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/range.html" class="external-link">range</a></span><span class="op">(</span></span>
-<span>      <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">kb_sets</span>, <span class="kw">function</span><span class="op">(</span><span class="va">i</span><span class="op">)</span> <span class="va">p</span><span class="op">$</span><span class="va">fits</span><span class="op">[[</span><span class="va">i</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">refit</span>, <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>    <span class="va">fit_scores</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="va">kb_sets</span>, <span class="kw">function</span><span class="op">(</span><span class="va">i</span><span class="op">)</span> <span class="va">p</span><span class="op">$</span><span class="va">fits</span><span class="op">[[</span><span class="va">i</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">refit</span>, <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>      basin <span class="op">=</span> <span class="va">p</span><span class="op">$</span><span class="va">id</span>, scenario <span class="op">=</span> <span class="va">name</span>, true_soil_at_end_mm <span class="op">=</span> <span class="va">soil</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/which.html" class="external-link">which</a></span><span class="op">(</span><span class="va">s</span><span class="op">$</span><span class="va">window</span><span class="op">)</span><span class="op">)</span><span class="op">]</span>,</span>
+<span>      nse_spread <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/diff.html" class="external-link">diff</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/range.html" class="external-link">range</a></span><span class="op">(</span><span class="va">fit_scores</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>      low_flow_vs_truth_min <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="va">ratios</span><span class="op">)</span>, low_flow_vs_truth_max <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">ratios</span><span class="op">)</span>,</span>
-<span>      same_window_no_drought_min <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="va">usual</span><span class="op">)</span>, same_window_no_drought_max <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">usual</span><span class="op">)</span><span class="op">)</span></span>
+<span>      same_window_no_drought_min <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="va">usual</span><span class="op">)</span>, same_window_no_drought_max <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">usual</span><span class="op">)</span></span>
+<span>    <span class="op">)</span></span>
 <span>  <span class="op">}</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">drought</span><span class="op">[</span><span class="op">-</span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">2</span><span class="op">)</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">drought</span><span class="op">[</span><span class="op">-</span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">2</span><span class="op">)</span><span class="op">]</span>, <span class="fl">3</span><span class="op">)</span></span>
