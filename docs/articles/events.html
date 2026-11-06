@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.10.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.11.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -253,7 +253,7 @@ years of hourly data each, calibrated automatically.</p>
 <span><span class="co">#&gt; 6                         8</span></span>
 <span><span class="co">#&gt; 7                         0</span></span>
 <span><span class="co">#&gt; 8                         0</span></span></code></pre></div>
-<p>Finding and scoring 1460 events across 8 basins took 1.4 seconds. In
+<p>Finding and scoring 1460 events across 8 basins took 1.5 seconds. In
 every basin the response time of the calibrated model matches the
 response time of the record: the models respond as fast as the
 catchments do.</p>
@@ -348,11 +348,11 @@ Here both are timed on ten years of 15-minute data.</p>
 <span>  r_s <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">reference</span>, <span class="fl">1</span><span class="op">)</span>, same_answer <span class="op">=</span> <span class="va">fast</span><span class="op">$</span><span class="va">response_h</span> <span class="op">==</span> <span class="va">slow</span><span class="op">$</span><span class="va">response_h</span>,</span>
 <span>  find_events_s <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">all_events</span>, <span class="fl">2</span><span class="op">)</span>, events <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">quarter_events</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;         steps       windows    compiled_s           r_s   same_answer </span></span>
-<span><span class="co">#&gt;     350400.00        600.00          0.62         15.10          1.00 </span></span>
+<span><span class="co">#&gt;     350400.00        600.00          0.62         18.40          1.00 </span></span>
 <span><span class="co">#&gt; find_events_s        events </span></span>
-<span><span class="co">#&gt;          0.63        842.00</span></span></code></pre></div>
-<p>The compiled search took 0.62 seconds against 15.1 in R, with the
-same answer, and finding all 842 events took 0.63 seconds in all. A
+<span><span class="co">#&gt;          0.64        842.00</span></span></code></pre></div>
+<p>The compiled search took 0.62 seconds against 18.4 in R, with the
+same answer, and finding all 842 events took 0.64 seconds in all. A
 batch of hundreds of basins at 15 minutes is a matter of minutes.</p>
 </div>
 <div class="section level2">

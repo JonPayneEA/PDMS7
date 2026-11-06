@@ -58,8 +58,8 @@ compiled core, measured as this article was built.
 ``` r
 round(timings, 1)
 #>         R   C
-#> PDM  1633 2.6
-#> PACK  289 0.8
+#> PDM  1842 2.4
+#> PACK  300 0.8
 ```
 
 The exact figures depend on the machine, but the ratio is in the

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.10.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.11.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -93,6 +93,23 @@
       <small>Source: <a href="https://github.com/JonPayneEA/PDMS7/blob/HEAD/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.11.0" id="pdms7-0110">pdmS7 0.11.0<a class="anchor" aria-label="anchor" href="#pdms7-0110"></a></h2>
+<ul><li>
+<strong>Calibrating for events.</strong> NSE over a long record counts time steps, not events, so a model can score well with its flood peaks late and low. Four additions guard against it:
+<ul><li>
+<code>calibrate_pdm(objective = "events")</code> scores only the largest events, found with <code><a href="../reference/find_events.html">find_events()</a></code>: 1 - pooled event NSE, plus the mean absolute peak error, plus the mean absolute timing error in response times, weighted by <code>event_weights</code> (<code>nse = 1, peak = 0.5, timing = 0.5</code>). <code>event_share</code> (0.5) sets the share of events, largest first, that count.</li>
+<li>
+<code>pdm_stages(events = TRUE)</code> adds a fourth stage after the polish, which refits the surface stores, <code>b</code> and the time delay <code>td</code> (0 to <code>td_max</code> hours) on that objective with DDS (<code>event_budget</code> runs per start), leaving the water balance as stage 3 set it.</li>
+<li>
+<code>pdm_stages(thresholds = ...)</code> puts a threshold term on the last stage, which then also searches with DDS. Stages may now carry their own <code>method</code>, <code>control</code>, threshold settings and <code>extra_bounds</code> (for parameters outside the bounds table, such as <code>td</code>).</li>
+<li>
+<code><a href="../reference/calibration_checks.html">calibration_checks()</a></code> reports parameters that ended at a bound of their search range (a lower bound of zero excepted), and the median peak and timing errors and event NSE of the largest events in each window.</li>
+</ul></li>
+<li>
+<code><a href="../reference/calibration_log.html">log_auto_calibration()</a></code> accepts <code>objective = "events"</code> and records its weights and share.</li>
+<li>The “Automatic calibration, explained” article has a new section, “Calibrating for events”.</li>
+</ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.10.0" id="pdms7-0100">pdmS7 0.10.0<a class="anchor" aria-label="anchor" href="#pdms7-0100"></a></h2>
 <ul><li>

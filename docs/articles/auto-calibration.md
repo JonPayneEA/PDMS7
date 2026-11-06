@@ -408,6 +408,105 @@ next, with its stage recorded, and `calibrate_batch(staged = TRUE)` does
 the same for every basin, resuming from the last finished stage after an
 interruption.
 
+## Calibrating for events
+
+NSE over a long record counts time steps, not events. In a year of
+15-minute data, the hours around flood peaks are a small share of the
+steps; recessions and low flows are most of the rest. A model can get
+the recessions right, put every peak hours late and half its size, and
+still score 0.9. That has happened on real data: a small, fast catchment
+calibrated to NSE 0.90 over nine years, with its largest flood 47% low
+and 16 hours late. The search had pushed three parameters to the edges
+of their ranges and routed the floods through the slow stores.
+
+Four tools guard against it.
+
+**The events stage.** `pdm_stages(events = TRUE)` adds a fourth stage
+after the polish. It refits the fast response (the surface stores and
+`b`) and the time delay `td` on the largest events alone, found with
+[`find_events()`](https://jonpayneea.github.io/PDMS7/articles/events.md).
+Its objective has three parts:
+
+| Part                                          | Measures                                                                                                        | Default weight |
+|-----------------------------------------------|-----------------------------------------------------------------------------------------------------------------|----------------|
+| 1 - pooled event NSE                          | the shape of each event’s hydrograph; squared errors over all chosen windows, each against its own event’s mean | 1              |
+| mean absolute peak error                      | each simulated peak against the observed, as a share                                                            | 0.5            |
+| mean absolute timing error, in response times | hours between the peaks, divided by the catchment’s response time                                               | 0.5            |
+
+Only the largest half of the calibration events count, by observed peak
+(`event_share`), so small events with noisy peaks do not steer it. The
+slow stores stay where stage 3 left them, which keeps the water balance.
+The timing part changes in whole steps, so this stage searches with DDS
+(`event_budget` model runs per start) rather than by slope.
+
+**The time delay.** `td` is not in the default bounds, because it is
+usually fixed by eye. On a 15-minute step a fixed delay an hour out
+costs every peak. The events stage searches it from 0 to `td_max` hours
+(6 by default).
+
+**Thresholds.** `pdm_stages(thresholds = ...)` puts the threshold term
+described above on the last stage, so the final adjustment also rewards
+crossing the warning flows when the observed flow does.
+
+**Acceptance checks.**
+[`calibration_checks()`](https://jonpayneea.github.io/PDMS7/reference/calibration_checks.md)
+reports the two warning signs a headline score hides: parameters that
+ended at a bound, and the median peak and timing errors of the largest
+events in each window (calibration, validation and any held-back years).
+
+Here the catchment is the same, but the true model delays its outflow by
+3 hours. The standard stages hold the delay at 0; the events stage may
+fit it:
+
+``` r
+delayed <- truth
+delayed$td <- 3
+observed_late <- run(delayed, start_flow = 0.6) * exp(stats::rnorm(n, 0, 0.03))
+plain <- calibrate_staged(begin, forcing, observed_late, warmup = 240, starts = 2, seed = 1)
+with_events <- calibrate_staged(begin, forcing, observed_late, warmup = 240, starts = 2, seed = 1,
+                                stages = pdm_stages(begin, events = TRUE, event_budget = 200))
+events <- find_events(forcing$rain, observed_late, forcing$time, dt = 1)
+event_view <- function(config) {
+  sim <- run(config, observed_late[1])
+  sc <- event_scores(events, sim, observed_late)
+  largest <- utils::head(sc[sc$flow_start > 240, ][order(-sc$observed_peak[sc$flow_start > 240]), ],
+                         5)
+  c(nse = pdm_scorecard(sim[scored], observed_late[scored])[["nse"]],
+    median_peak_error = stats::median(largest$peak_error),
+    median_timing_error_h = stats::median(largest$timing_error_h),
+    median_event_nse = stats::median(largest$nse), td = config$td)
+}
+round(rbind(staged = event_view(plain$config), with_events_stage = event_view(with_events$config)),
+      3)
+#>                     nse median_peak_error median_timing_error_h
+#> staged            0.837            -0.188                    -1
+#> with_events_stage 0.985            -0.001                     0
+#>                   median_event_nse    td
+#> staged                       0.737 0.000
+#> with_events_stage            0.988 3.276
+```
+
+The standard stages cannot move the delay, so they bend the stores
+instead: the peaks come out low and early. The events stage finds a
+delay close to the true 3 hours, and both the peaks and the overall NSE
+recover. On real data the gain will rarely be this clean. If the
+structure cannot produce the observed response at all, no objective will
+make it, and the events stage then shows the problem more plainly rather
+than solving it.
+
+In a project,
+[`log_staged_calibration()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_staged.md)
+takes the same stages, and the checks follow:
+
+``` r
+stages <- pdm_stages(structure, events = TRUE, thresholds = "Flood Warning")
+log_staged_calibration(project, parent = 3, reasoning = "Staged, with an events stage.",
+                       stages = stages, starts = 2, seed = 1)
+checks <- calibration_checks(project, entry = 7)
+checks$parameters[!is.na(checks$parameters$at_bound), ]   # parameters at a bound
+checks$summary                                             # largest events, by window
+```
+
 ## In a calibration project
 
 Inside a calibration project,
@@ -438,5 +537,7 @@ log_auto_calibration(
 | Low flows matter most                            | `objective = "log_nse"` or `"log_rmse"`                                                                                                                                                                                                    |
 | Calibrating as a hydrologist would, step by step | [`calibrate_staged()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_staged.md), or [`log_staged_calibration()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_staged.md) in a project                                   |
 | A flood warning service                          | Add `thresholds` and use `method = "nelder_mead"`; keep NSE as the main score                                                                                                                                                              |
+| Peaks and timing matter most                     | `pdm_stages(events = TRUE)`, which also fits the time delay; add `thresholds` for warning flows                                                                                                                                            |
+| Before accepting any calibration                 | [`calibration_checks()`](https://jonpayneea.github.io/PDMS7/reference/calibration_checks.md): no parameter at a bound, peaks and timing acceptable in validation                                                                           |
 | Comparing model structures                       | [`compare_structures()`](https://jonpayneea.github.io/PDMS7/reference/compare_structures.md) applies all of this the same way to each; see [Choosing a model structure](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.md) |
 | Many catchments                                  | [`calibrate_batch()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md); see [Calibrating many catchments](https://jonpayneea.github.io/PDMS7/articles/many-catchments.md)                                                  |
