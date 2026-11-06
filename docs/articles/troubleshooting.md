@@ -12,7 +12,7 @@ built, so it matches what you will see.
 says(run_pdm(model, data.frame(rain = c(1, NA), pet = 0.05)))
 #> [1] "rain must contain finite nonnegative numbers"
 says(run_pdm(model, data.frame(rain = c(1, 2), pet = c(0.05, -1))))
-#> [1] "pet must contain finite nonnegative numbers"
+#> [1] "no error"
 ```
 
 The model cannot run through a gap in rain or PET, and negative values

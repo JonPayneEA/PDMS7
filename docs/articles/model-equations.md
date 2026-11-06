@@ -73,6 +73,11 @@ interval and potential evaporation $e_{p}$:
 
 $$e_{req} = e_{p}\left\lbrack 1 - \left( 1 - \frac{s}{s_{\max}} \right)^{b_{e}} \right\rbrack.\qquad\text{(Eq. 8)}$$
 
+A negative $e_{p}$ is condensation, as products such as MOSES PE give
+when the surface is colder than the air. It is not scaled:
+$e_{req} = e_{p}$, so its whole depth joins the net depth below, however
+dry the soil, and a full store passes it on as runoff, like rain.
+
 Evaporation is allocated first and recharge second, so neither can
 overdraw the store:
 

@@ -28,7 +28,7 @@ sim_snow_pdm(
 
 - pet_mm:
 
-  Nonnegative aligned PET depths.
+  Aligned PET depths; negative values are condensation.
 
 - params:
 

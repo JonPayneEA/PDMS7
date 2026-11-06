@@ -17,7 +17,8 @@ run_pdm(model, forcing, state = initial_state(model))
 - forcing:
 
   Data frame with rain and pet interval depths in mm and optional
-  POSIXct time.
+  POSIXct time. Negative pet is condensation: its whole depth joins the
+  soil store, however dry the soil.
 
 - state:
 

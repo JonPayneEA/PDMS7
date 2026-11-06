@@ -24,7 +24,8 @@ pdm_step(model, state, rain, pet)
 
 - pet:
 
-  Nonnegative interval potential evaporation depth in mm.
+  Interval potential evaporation depth in mm. Negative values are
+  condensation and add their whole depth to the soil store.
 
 ## Value
 
