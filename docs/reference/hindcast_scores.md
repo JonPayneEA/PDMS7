@@ -56,6 +56,7 @@ forcing <- data.frame(rain = ifelse(runif(n) < 0.06, rgamma(n, 0.7, scale = 4), 
 observed <- run_pdm(pdm_model(area_km2 = 40, fc = 1.1), forcing)$output$q_m3s
 hc <- pdm_hindcast(pdm_model(area_km2 = 40), forcing, observed, horizon_h = 12)
 #> The EA 2024 AR default is defined for 15-minute steps; this model uses 1 h steps
+#> Warning: No response_time AR set: The default-family AR set is unstable for a decay of 2.96 h at 1 h steps: one root is 1.1. The family is built for 15-minute steps and is stable only for a decay of at least 4.88 steps (4.88 h here). Use a finer step, a longer decay, ar_ea_default() or fitted coefficients.
 scores <- hindcast_scores(hc, thresholds = c(high = 3))
 scores[scores$method == "ea_2024" & scores$lead_h %in% c(1, 6, 12), ]
 #>     method lead_h lead_ratio     n        nse      rmse        mae         bias

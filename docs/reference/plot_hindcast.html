@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -157,6 +157,7 @@ which flattens the rest of the chart; <code>c(-1, 1)</code> is often clearer.</p
 <span class="r-in"><span><span class="va">observed</span> <span class="op">&lt;-</span> <span class="fu"><a href="run_pdm.html">run_pdm</a></span><span class="op">(</span><span class="fu"><a href="pdm_model.html">pdm_model</a></span><span class="op">(</span>area_km2 <span class="op">=</span> <span class="fl">40</span>, fc <span class="op">=</span> <span class="fl">1.1</span><span class="op">)</span>, <span class="va">forcing</span><span class="op">)</span><span class="op">$</span><span class="va">output</span><span class="op">$</span><span class="va">q_m3s</span></span></span>
 <span class="r-in"><span><span class="va">hc</span> <span class="op">&lt;-</span> <span class="fu"><a href="pdm_hindcast.html">pdm_hindcast</a></span><span class="op">(</span><span class="fu"><a href="pdm_model.html">pdm_model</a></span><span class="op">(</span>area_km2 <span class="op">=</span> <span class="fl">40</span><span class="op">)</span>, <span class="va">forcing</span>, <span class="va">observed</span>, horizon_h <span class="op">=</span> <span class="fl">12</span><span class="op">)</span></span></span>
 <span class="r-msg co"><span class="r-pr">#&gt;</span> The EA 2024 AR default is defined for 15-minute steps; this model uses 1 h steps</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>No response_time AR set: The default-family AR set is unstable for a decay of 2.96 h at 1 h steps: one root is 1.1. The family is built for 15-minute steps and is stable only for a decay of at least 4.88 steps (4.88 h here). Use a finer step, a longer decay, ar_ea_default() or fitted coefficients.</span>
 <span class="r-in"><span><span class="fu">plot_hindcast</span><span class="op">(</span><span class="fu"><a href="hindcast_scores.html">hindcast_scores</a></span><span class="op">(</span><span class="va">hc</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-plt img"><img src="plot_hindcast-1.png" alt="" width="700" height="433"></span>
 </code></pre></div>

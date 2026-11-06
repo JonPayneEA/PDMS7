@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -348,11 +348,11 @@ Here both are timed on ten years of 15-minute data.</p>
 <span>  r_s <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">reference</span>, <span class="fl">1</span><span class="op">)</span>, same_answer <span class="op">=</span> <span class="va">fast</span><span class="op">$</span><span class="va">response_h</span> <span class="op">==</span> <span class="va">slow</span><span class="op">$</span><span class="va">response_h</span>,</span>
 <span>  find_events_s <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">all_events</span>, <span class="fl">2</span><span class="op">)</span>, events <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">quarter_events</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;         steps       windows    compiled_s           r_s   same_answer </span></span>
-<span><span class="co">#&gt;     350400.00        600.00          0.50         14.40          1.00 </span></span>
+<span><span class="co">#&gt;     350400.00        600.00          0.53         14.30          1.00 </span></span>
 <span><span class="co">#&gt; find_events_s        events </span></span>
-<span><span class="co">#&gt;          0.57        842.00</span></span></code></pre></div>
-<p>The compiled search took 0.50 seconds against 14.4 in R, with the
-same answer, and finding all 842 events took 0.57 seconds in all. A
+<span><span class="co">#&gt;          0.51        842.00</span></span></code></pre></div>
+<p>The compiled search took 0.53 seconds against 14.3 in R, with the
+same answer, and finding all 842 events took 0.51 seconds in all. A
 batch of hundreds of basins at 15 minutes is a matter of minutes.</p>
 </div>
 <div class="section level2">
@@ -383,7 +383,12 @@ may be the next event’s rise.</li>
 </ul>
 <p><code><a href="../reference/find_events.html">find_events()</a></code> is an independent implementation of the
 published method, from the paper and the authors’ reference code. Its
-tests check it on records with known storms and responses.</p>
+tests check it on records with known storms and responses. It was also
+checked against the authors’ MATLAB code, run in Octave, on three
+synthetic records: two years of hourly data from a fast and a slow
+catchment, and ten years of daily data. The response times and all 663
+event windows were identical. That check cannot run when this page is
+built, so its result is stated here rather than computed.</p>
 </div>
 <div class="section level2">
 <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>

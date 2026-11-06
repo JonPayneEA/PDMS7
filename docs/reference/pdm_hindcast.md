@@ -110,7 +110,11 @@ default-family set whose principal decay is the model's own time to peak
 at `response_flow`, from
 [`pdm_response_time()`](https://jonpayneea.github.io/PDMS7/reference/pdm_response_time.md).
 The 2024 default is defined for 15-minute steps; on other steps it is
-still applied, as given, with a message.
+still applied, as given, with a message. The default family is built for
+15-minute steps too: at longer steps, a time to peak under about 4.9
+steps gives an unstable set (see
+[`ar_from_response_time()`](https://jonpayneea.github.io/PDMS7/reference/ar_from_response_time.md)),
+which is left out with a warning.
 
 Errors are observed minus simulated flow, in m3/s, additive, as in IMFS.
 The AR projection at an origin needs the last three errors; if any of
@@ -143,6 +147,7 @@ model <- pdm_model(area_km2 = 40)
 hc <- pdm_hindcast(model, forcing, observed, window = (24 * 20 + 1):n, horizon_h = 24)
 #> Warning: A steady start at 1.976 m3/s with baseflow_fraction 0.70 needs 497.9 mm of soil storage, more than the store's capacity of 214.3 mm; the soil is capped and the run starts out of balance. Start at a lower flow or a smaller baseflow_fraction, or use start = "soil".
 #> The EA 2024 AR default is defined for 15-minute steps; this model uses 1 h steps
+#> Warning: No response_time AR set: The default-family AR set is unstable for a decay of 2.96 h at 1 h steps: one root is 1.1. The family is built for 15-minute steps and is stable only for a decay of at least 4.88 steps (4.88 h here). Use a finer step, a longer decay, ar_ea_default() or fitted coefficients.
 head(hindcast_scores(hc))
 #>     method lead_h lead_ratio     n       nse       rmse        mae
 #>     <char>  <num>      <num> <int>     <num>      <num>      <num>
