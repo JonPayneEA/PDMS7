@@ -106,6 +106,9 @@
 <li>New article: “Events in large samples: finding them and scoring models on them”.</li>
 <li>
 <code><a href="../reference/synthetic_basins.html">synthetic_basins()</a></code> at a sub-daily step no longer writes overlapping calibration and validation windows, which registration refused.</li>
+<li>
+<strong>Fix: <code><a href="../reference/ar_from_response_time.html">ar_from_response_time()</a></code> refuses unstable AR sets.</strong> The default family’s first coefficient is set for 15-minute steps; at longer steps a decay of under about 4.9 steps gave a root of 1 or more, so the projected error grew without limit. At hourly steps that is any catchment with a time to peak under 4.9 hours. <code><a href="../reference/pdm_hindcast.html">pdm_hindcast()</a></code> used such sets by default without a word; it now leaves them out with a warning. Hindcasts of fast catchments at steps longer than 15 minutes change.</li>
+<li>The AR article compares the model’s time to peak with the records’ response time (<code><a href="../reference/response_time_dmca.html">response_time_dmca()</a></code>) as the family’s timescale. They forecast alike at 15 minutes; at hourly steps the records’ shorter timescale gives an unstable set more often and is no better where both work, so the time to peak stays the recommendation.</li>
 </ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.8.1" id="pdms7-081">pdmS7 0.8.1<a class="anchor" aria-label="anchor" href="#pdms7-081"></a></h2>
