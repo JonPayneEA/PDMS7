@@ -1,3 +1,9 @@
+# pdmS7 0.9.1
+
+- `find_events()` has been checked against the authors' reference code for DMCA-ESR, run in
+  Octave, on three synthetic records (two hourly, one daily): identical response times and all
+  663 event windows identical. The help page and the events article record the check.
+
 # pdmS7 0.9.0
 
 - **Events from the records.** `find_events()` finds rainfall-runoff events in continuous rain
