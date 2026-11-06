@@ -736,8 +736,8 @@ static void run(const pdm_params* in, const double* rain, const double* pet, int
     double r = rain[t], ev = pet[t], old, pr, et_requested, dr_requested, et, dr, net;
     double soil_next, runoff, fast, slow, d1, d2, e1, e2, natural;
     route_out surf, gw;
-    if (!(isfinite(r) && r >= 0 && isfinite(ev) && ev >= 0)) {
-      set_error(e, PDM_ERR_ARGUMENT, "rain and pet must be finite nonnegative depths");
+    if (!(isfinite(r) && r >= 0 && isfinite(ev))) {
+      set_error(e, PDM_ERR_ARGUMENT, "rain must be finite and nonnegative, and pet finite");
       return;
     }
     if (!check(e, soil >= 0 && soil <= smax, "Soil storage exceeds capacity_mean(distribution)")) {
@@ -747,7 +747,9 @@ static void run(const pdm_params* in, const double* rain, const double* pet, int
        the storage at the start of the step, then limit both to the water available. */
     old = total_storage(soil, srf, surface, gwr, ground, ds, dg, n_pending);
     pr = r * in->fc;
-    et_requested = ev * (-expm1(in->be * log1p(-soil / smax)));
+    /* Negative PE is condensation: its whole depth joins the soil store, however dry the soil,
+       as dew forms on surfaces whatever the soil moisture. Positive PE is scaled by Eq. 8. */
+    et_requested = ev < 0 ? ev : ev * (-expm1(in->be * log1p(-soil / smax)));
     dr_requested = recharge_depth(in, soil, smax, ground[0], dt, e);
     if (e->code != PDM_OK) return;
     et = dmin(et_requested, soil + pr);

@@ -17,8 +17,8 @@ sim_pdm(
 \arguments{
 \item{rainfall_mm}{Non-empty finite nonnegative numeric rainfall depths in mm per interval.}
 
-\item{pet_mm}{Finite nonnegative numeric PET depths in mm per interval, equal length to
-rainfall_mm.}
+\item{pet_mm}{Finite numeric PET depths in mm per interval, equal length to rainfall_mm;
+negative values are condensation.}
 
 \item{params}{A named configuration list or FlodePdmModel. For a list, timestep_min sets dt.}
 

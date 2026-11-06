@@ -17,7 +17,8 @@
 #' @param model A FlodePdmModel compatible with the supplied state.
 #' @param state A compatible FlodePdmState; NULL in sim_pdm initializes the model.
 #' @param rain Nonnegative interval rainfall depth in mm.
-#' @param pet Nonnegative interval potential evaporation depth in mm.
+#' @param pet Interval potential evaporation depth in mm. Negative values are condensation
+#'   and add their whole depth to the soil store.
 #'
 #' @return A list with state and a one-row flux data.frame.
 #'
@@ -35,16 +36,18 @@
 pdm_step <- function(model, state, rain, pet) {
   .validate_state(model, state)
   .check(
-    .scalar(rain, 0) && .scalar(pet, 0),
-    "rain and pet must be finite nonnegative depths"
+    .scalar(rain, 0) && .scalar(pet),
+    "rain must be finite and nonnegative, and pet finite"
   )
   dt <- model@dt
   old <- .total_storage(state)
   smax <- capacity_mean(model@distribution)
   p <- rain * model@fc
   # Evaporation falls as the soil dries: E = PET [1 - (1 - S / Smax)^be].
-  # Eq. 8 and 10-14 are evaluated at the start of the interval.
-  et_requested <- pet * (-expm1(model@be * log1p(-state@soil / smax)))
+  # Eq. 8 and 10-14 are evaluated at the start of the interval. Negative PET is condensation:
+  # its whole depth joins the soil store, however dry the soil, since dew forms on surfaces
+  # whatever the soil moisture; a full store passes the excess on as runoff, like rain.
+  et_requested <- if (pet < 0) pet else pet * (-expm1(model@be * log1p(-state@soil / smax)))
   dr_requested <- recharge_depth(model@recharge,
                                  state@soil,
                                  smax,

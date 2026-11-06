@@ -165,7 +165,8 @@ PDM_CORE_API int32_t pdm_state_from_flow(const pdm_params* params, double observ
 PDM_CORE_API const char* pdm_flux_name(int32_t j);
 
 /* Runs the model for n steps.
-   rain, pet:  n depths in mm per interval, finite and >= 0.
+   rain, pet:  n depths in mm per interval, finite; rain >= 0. A negative pet is condensation:
+               its whole depth joins the soil store, however dry the soil.
    state:      state_length doubles (see pdm_state_length), updated in place on success.
    q_m3s:      n values written: mean flow over each interval, m3/s.
    q_end_m3s:  n values written: flow at the end of each interval, m3/s.

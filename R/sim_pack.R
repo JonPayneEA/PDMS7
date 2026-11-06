@@ -60,7 +60,7 @@ sim_pack <- function(precipitation_mm, temperature_c, params = pack_presets(),
 #' multiplies effective rain. Set fc=1 to avoid a second correction. Combined balance
 #' explicitly includes this second correction as an external input adjustment.
 #' @inheritParams sim_pack
-#' @param pet_mm Nonnegative aligned PET depths.
+#' @param pet_mm Aligned PET depths; negative values are condensation.
 #' @param params Named list with exactly pdm and snow configurations.
 #' @param state NULL or the complete final_state list from a previous coupled run.
 #' @param datetime Optional POSIXct interval-end timestamps, validated by sim_pdm.

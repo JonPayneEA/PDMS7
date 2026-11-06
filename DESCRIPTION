@@ -1,7 +1,7 @@
 Package: pdmS7
 Type: Package
 Title: Configurable Probability Distributed Rainfall Runoff Model
-Version: 0.9.1
+Version: 0.10.0
 Authors@R: person("PDM", "Contributors", role = c("aut", "cre"), email =
         "pdm@example.org")
 Description: An independent, configurable implementation of the Probability Distributed

@@ -1,3 +1,13 @@
+# pdmS7 0.10.0
+
+- **Negative PE is allowed, as condensation.** Potential evaporation products such as MOSES PE
+  go slightly negative when condensation exceeds evaporation. Both engines, R and C, now accept
+  negative `pet` (rain must still be nonnegative). A negative value is not scaled by soil
+  wetness (Eq. 8): its whole depth joins the soil store, however dry the soil, since dew forms
+  on surfaces whatever the soil moisture, and a full store passes it on as runoff, like rain.
+  `run_pdm()`, `register_data()`, `sim_pdm()` and the calibration functions all accept it;
+  missing PE is still refused. Results with nonnegative PE do not change.
+
 # pdmS7 0.9.1
 
 - `find_events()` has been checked against the authors' reference code for DMCA-ESR, run in

@@ -19,8 +19,8 @@
 #' coefficients.
 #'
 #' @param rainfall_mm Non-empty finite nonnegative numeric rainfall depths in mm per interval.
-#' @param pet_mm Finite nonnegative numeric PET depths in mm per interval, equal length to
-#' rainfall_mm.
+#' @param pet_mm Finite numeric PET depths in mm per interval, equal length to rainfall_mm;
+#' negative values are condensation.
 #' @param params A named configuration list or FlodePdmModel. For a list, timestep_min sets dt.
 #' @param timestep_min Positive integer-valued interval in minutes; must match a supplied model.
 #' @param warmup_steps Nonnegative integer number of rows flagged is_warmup, less than the
@@ -52,7 +52,7 @@ sim_pdm <- function(
     "rainfall_mm and pet_mm must have equal length"
   )
   .nonnegative(rainfall_mm, "rainfall_mm")
-  .nonnegative(pet_mm, "pet_mm")
+  .finite_depths(pet_mm, "pet_mm")
   .check(
     .scalar(timestep_min, 0, .Machine$integer.max, strict = TRUE) &&
       timestep_min == floor(timestep_min),

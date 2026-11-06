@@ -9,7 +9,8 @@ run_pdm(model, forcing, state = initial_state(model))
 \arguments{
 \item{model}{A FlodePdmModel compatible with the supplied state.}
 
-\item{forcing}{Data frame with rain and pet interval depths in mm and optional POSIXct time.}
+\item{forcing}{Data frame with rain and pet interval depths in mm and optional POSIXct time.
+Negative pet is condensation: its whole depth joins the soil store, however dry the soil.}
 
 \item{state}{A compatible FlodePdmState; NULL in sim_pdm initializes the model.}
 }

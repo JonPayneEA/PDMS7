@@ -14,6 +14,7 @@
 #' Run a forcing sequence
 #' @inheritParams pdm_step
 #' @param forcing Data frame with rain and pet interval depths in mm and optional POSIXct time.
+#'   Negative pet is condensation: its whole depth joins the soil store, however dry the soil.
 #' @return A list containing output, final state, initial state, model and water balance.
 #' @export
 # Runs a model over a forcing table. With the run log switched on (options(pdmS7.run_log)), each
@@ -60,14 +61,15 @@ run_pdm <- function(model, forcing, state = initial_state(model)) {
                          max_abs_step_mm = max(abs(output$balance_error_mm))))
 }
 
-# Forcing must have rain and pet columns of finite nonnegative depths (mm per step). An optional
+# Forcing must have rain and pet columns of finite depths (mm per step), rain nonnegative; pet
+# may be negative (condensation). An optional
 # time column must be complete and spaced exactly dt hours apart.
 .check_forcing <- function(model, forcing) {
   .check(is.data.frame(forcing) && all(c("rain", "pet") %in% names(forcing)),
          "forcing must be a data.frame with rain and pet columns (mm per interval)")
   .check(nrow(forcing) > 0L, "forcing must have at least one row")
   .nonnegative(forcing$rain, "rain")
-  .nonnegative(forcing$pet, "pet")
+  .finite_depths(forcing$pet, "pet")
   if ("time" %in% names(forcing)) {
     .check(inherits(forcing$time, "POSIXt") && all(is.finite(as.numeric(forcing$time))),
            "time must be complete finite POSIXct/POSIXlt")
