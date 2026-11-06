@@ -77,11 +77,26 @@ compare_structures <- function(project, structures = NULL, overrides = NULL, exc
   jobs <- lapply(names(structures), function(n) list(name = n, config = structures[[n]]))
   fits <- .run_jobs(jobs, .fit_structure, cores, data = data, card = card, info = info,
                     registration = registration, settings = settings)
-  comparison <- paste0("comparison-", format(Sys.time(), "%Y%m%dT%H%M%S", tz = "UTC"))
+  comparison <- .new_comparison_id(.read_entries(path))
   for (f in fits) .write_structure_fit(path, author, registration, f, comparison, settings,
                                        reasoning)
   logger::log_info("Compared {length(fits)} structures as {comparison}")
   structure_comparison(path, comparison)
+}
+
+# A name for a new comparison: its time, to the second, with a suffix (-2, -3, ...) if a
+# comparison in the log already has that name. Two comparisons finishing within the same second
+# used to share a name, and reading either back returned both.
+.new_comparison_id <- function(entries, now = Sys.time()) {
+  taken <- unlist(lapply(entries, function(e) e$comparison))
+  base <- paste0("comparison-", format(now, "%Y%m%dT%H%M%S", tz = "UTC"))
+  id <- base
+  k <- 1L
+  while (id %in% taken) {
+    k <- k + 1L
+    id <- paste0(base, "-", k)
+  }
+  id
 }
 
 # Defaults to the standard set built on the project's latest structure; every structure

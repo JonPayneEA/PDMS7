@@ -3,6 +3,9 @@
 - `find_events()` has been checked against the authors' reference code for DMCA-ESR, run in
   Octave, on three synthetic records (two hourly, one daily): identical response times and all
   663 event windows identical. The help page and the events article record the check.
+- **Fix: comparisons finishing within the same second no longer merge.** `compare_structures()`
+  named each comparison by its time to the second, so two on one project in the same second
+  shared a name, and reading either back returned both. A suffix now keeps them apart.
 
 # pdmS7 0.9.0
 
