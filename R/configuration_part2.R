@@ -25,8 +25,9 @@
 #' @param warmup Number of initial forcing steps excluded from calibration scoring, but still
 #' simulated.
 #' @param objective Calibration objective: rmse, nse (minimizes 1-NSE), log_rmse, log_nse
-#' (minimizes 1 minus NSE of log flows, which weights low flows), or threshold (the threshold
-#' term alone; needs thresholds).
+#' (minimizes 1 minus NSE of log flows, which weights low flows), threshold (the threshold
+#' term alone; needs thresholds), or events, which scores only the largest events: see
+#' `events`.
 #' @param flow Series to score: q_m3s (interval mean) or q_end_m3s (endpoint flow).
 #' @param log_offset Positive offset added before logarithms in log-RMSE and log NSE, cubic
 #' metres per second.
@@ -80,6 +81,17 @@
 #' weight times the absolute relative error in total flow over the scored rows. Zero, the
 #' default, adds nothing. [calibrate_staged()] uses it to hold the water balance while fitting
 #' low flows.
+#' @param events With `objective = "events"`, the events to score, from [find_events()]; by
+#' default they are found from `forcing$rain` and `observed`. Only events whose flow window
+#' lies wholly after the warm-up count, and of those the largest `event_share` by observed
+#' peak. The objective is `w_nse` times (1 - pooled event NSE) plus `w_peak` times the mean
+#' absolute peak error plus `w_timing` times the mean absolute timing error divided by the
+#' response time (see [find_events()]), with weights from `event_weights`. The pooled event NSE
+#' sums squared errors over every chosen window and divides by the squared deviations from
+#' each window's own mean flow, so long recessions between events do not count. The timing
+#' term changes in steps, so use `method = "dds"` or `"nelder_mead"`.
+#' @param event_weights Named weights `nse`, `peak` and `timing` of the three terms.
+#' @param event_share Share of the events, largest observed peak first, that are scored.
 #' @param archive Optional function of the full simulated flow returning one number. When given,
 #' every trial's parameters and that number are kept, and returned as `trials`. Calibration
 #' projects use it to record the headline score of each trial, from which the equally good
@@ -113,14 +125,15 @@
 #' @export
 calibrate_pdm <- function(
   config, forcing, observed, lower, upper, warmup = 0,
-  objective = c("rmse", "nse", "log_rmse", "log_nse", "threshold"),
+  objective = c("rmse", "nse", "log_rmse", "log_nse", "threshold", "events"),
   flow = c("q_m3s", "q_end_m3s"),
   log_offset = 0.01, control = list(maxit = 200),
   soil_fraction = 0.5, starts = 1L, seed = NULL, method = c("lbfgsb", "nelder_mead", "dds"),
   thresholds = NULL, threshold_weight = 1, threshold_score = "csi",
   event_settings = list(tolerance_h = 6, gap_h = 24, min_duration_h = 0),
   log_scale = character(0), volume_weight = 0, start = c("flow", "soil"),
-  baseflow_fraction = 0.7, start_flow = NULL, archive = NULL
+  baseflow_fraction = 0.7, start_flow = NULL, archive = NULL, events = NULL,
+  event_weights = c(nse = 1, peak = 0.5, timing = 0.5), event_share = 0.5
 ) {
   # Outline: check the arguments; map the parameters onto a unit box (log-scaled where asked);
   # build a loss function that runs the model and scores it; minimise that loss from each start;
@@ -139,7 +152,9 @@ calibrate_pdm <- function(
   # Rows that are scored: after the warm-up, and observed. Missing flow is simply left out.
   keep <- is.finite(observed) & seq_along(observed) > warmup
   .check(sum(keep) >= 2, "At least two observed values after warmup are required")
-  score <- .calibration_scorer(objective, observed[keep], log_offset)
+  scoring <- .objective_scorer(objective, observed, keep, warmup, log_offset, events,
+                               forcing$rain, pdm_from_config(config)@dt, event_weights,
+                               event_share)
   # Every trial starts the same way. The start is built once for the configured model first, so
   # a start that cannot work (a first flow below qc, say) stops here with its own message rather
   # than failing every trial.
@@ -177,7 +192,7 @@ calibrate_pdm <- function(
         # A trial whose start caps the soil is still scored; the fitted model is checked at the end.
         all_sim <- .quietly(.run_flow(mod, forcing, suppressWarnings(begin(mod)), flow))
         sim <- all_sim[keep]
-        val <- score(sim)
+        val <- scoring$score(all_sim)
         if (volume_weight > 0) {
           val <- val + volume_weight * abs(sum(sim) / sum(observed[keep]) - 1)
         }
@@ -219,7 +234,7 @@ calibrate_pdm <- function(
   if (start == "flow") .start_state(out$model, start, start_flow, baseflow_fraction, soil_fraction)
   c(out[c("config", "model", "parameters", "objective")], list(
     objective_name = .objective_name(objective, thresholds, threshold_weight, threshold_score,
-                                     volume_weight),
+                                     volume_weight, scoring$name),
     method = method
   ), out[c("convergence", "message", "optim", "start_results")],
   if (!is.null(archive)) list(trials = .trial_table(counter$trials, box, names(lower))))
@@ -279,6 +294,17 @@ calibrate_pdm <- function(
       (v - lo) / (hi - lo)
     }
   )
+}
+
+# The continuous part of the objective as a function of the full simulated series: the events
+# objective scores the event windows, every other objective the kept rows.
+.objective_scorer <- function(objective, observed, keep, warmup, log_offset, events, rain, dt,
+                              event_weights, event_share) {
+  if (objective == "events") {
+    return(.event_objective(events, rain, observed, warmup, dt, event_weights, event_share))
+  }
+  score <- .calibration_scorer(objective, observed[keep], log_offset)
+  list(score = function(sim) score(sim[keep]), name = NULL)
 }
 
 # The continuous part of the objective, as a function of the simulated flow on the kept rows.
@@ -443,8 +469,9 @@ calibrate_pdm <- function(
 
 # A readable description of the objective, recorded with every logged calibration, such as
 # "1-NSE + 1 x mean threshold loss (csi at Flood Warning)".
-.objective_name <- function(objective, thresholds, weight, score, volume_weight = 0) {
-  base <- switch(objective, nse = "1-NSE", log_nse = "1-log NSE", objective)
+.objective_name <- function(objective, thresholds, weight, score, volume_weight = 0,
+                            events_name = NULL) {
+  base <- switch(objective, nse = "1-NSE", log_nse = "1-log NSE", events = events_name, objective)
   if (volume_weight > 0) {
     base <- paste0(base, " + ", volume_weight, " x |volume error|")
   }

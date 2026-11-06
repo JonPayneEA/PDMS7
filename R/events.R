@@ -523,15 +523,14 @@ batch_events <- function(output, rain_min = NULL, max_response_h = 150) {
 
 # The events of one project, scored on its candidate, with its observed and simulated
 # response times.
-.basin_events <- function(path, id, rain_min, max_response_h) {
+.basin_events <- function(path, id, rain_min, max_response_h, configuration = NULL) {
   entries <- .read_entries(path)
   registration <- .registration(entries)
   card <- registration$scorecard
   data <- .load_registration(path, registration)
-  candidate <- read_entry(path, read_projects(path)$candidate)
-  run <- .run_registered(path, .project_info(entries), registration, candidate$configuration,
-                         data = data)
-  model <- pdm_from_config(candidate$configuration)
+  configuration <- configuration %||% read_entry(path, read_projects(path)$candidate)$configuration
+  run <- .run_registered(path, .project_info(entries), registration, configuration, data = data)
+  model <- pdm_from_config(configuration)
   rain <- data$forcing$rain
   events <- find_events(rain, data$observed, run$time, model@dt, rain_min, max_response_h,
                         model@area_km2)

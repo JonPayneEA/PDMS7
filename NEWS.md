@@ -1,3 +1,24 @@
+# pdmS7 0.11.0
+
+- **Calibrating for events.** NSE over a long record counts time steps, not events, so a
+  model can score well with its flood peaks late and low. Four additions guard against it:
+  - `calibrate_pdm(objective = "events")` scores only the largest events, found with
+    `find_events()`: 1 - pooled event NSE, plus the mean absolute peak error, plus the mean
+    absolute timing error in response times, weighted by `event_weights`
+    (`nse = 1, peak = 0.5, timing = 0.5`). `event_share` (0.5) sets the share of events,
+    largest first, that count.
+  - `pdm_stages(events = TRUE)` adds a fourth stage after the polish, which refits the surface
+    stores, `b` and the time delay `td` (0 to `td_max` hours) on that objective with DDS
+    (`event_budget` runs per start), leaving the water balance as stage 3 set it.
+  - `pdm_stages(thresholds = ...)` puts a threshold term on the last stage, which then also
+    searches with DDS. Stages may now carry their own `method`, `control`, threshold settings
+    and `extra_bounds` (for parameters outside the bounds table, such as `td`).
+  - `calibration_checks()` reports parameters that ended at a bound of their search range
+    (a lower bound of zero excepted), and the median peak and timing errors and event NSE of
+    the largest events in each window.
+- `log_auto_calibration()` accepts `objective = "events"` and records its weights and share.
+- The "Automatic calibration, explained" article has a new section, "Calibrating for events".
+
 # pdmS7 0.10.0
 
 - **Negative PE is allowed, as condensation.** Potential evaporation products such as MOSES PE

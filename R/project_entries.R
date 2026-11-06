@@ -103,6 +103,7 @@
 #' @param verdict Your judgement of the trial: `better`, `worse` or `inconclusive`.
 #' @param lower,upper,objective,starts,seed,control,method,log_scale,volume_weight Passed to
 #'   [calibrate_pdm()].
+#' @param event_weights,event_share Passed to [calibrate_pdm()] with `objective = "events"`.
 #' @param stage Optional label recorded with an automatic calibration, such as
 #'   `1 of 3: volume and baseflow`; [log_staged_calibration()] sets it.
 #' @param threshold_objective Optional names of registered thresholds to include in the
@@ -370,12 +371,15 @@ log_trial <- function(project, parent, changes, verdict, reasoning) {
 #' @rdname calibration_log
 #' @export
 log_auto_calibration <- function(project, parent, lower, upper,
-                                 objective = c("nse", "rmse", "log_rmse", "log_nse", "threshold"),
+                                 objective = c("nse", "rmse", "log_rmse", "log_nse", "threshold",
+                                               "events"),
                                  starts = 1L, seed = NULL, control = list(maxit = 200),
                                  reasoning, method = c("lbfgsb", "nelder_mead", "dds"),
                                  threshold_objective = NULL, threshold_weight = 1,
                                  threshold_score = "csi", log_scale = character(0),
-                                 volume_weight = 0, stage = NULL) {
+                                 volume_weight = 0, stage = NULL,
+                                 event_weights = c(nse = 1, peak = 0.5, timing = 0.5),
+                                 event_share = 0.5) {
   author <- .identity("custodian")
   objective <- match.arg(objective)
   method <- match.arg(method)
@@ -405,7 +409,7 @@ log_auto_calibration <- function(project, parent, lower, upper,
     start_flow = .first_observed(data$observed), starts = starts, seed = seed, method = method,
     thresholds = flows, threshold_weight = threshold_weight, threshold_score = threshold_score,
     event_settings = card$events, log_scale = log_scale, volume_weight = volume_weight,
-    archive = archive
+    archive = archive, event_weights = event_weights, event_share = event_share
   )
   good <- if (!is.null(archive)) {
     .equally_good(fit$trials, attr(fit$trials, "unit"), .headline_direction(card$headline),
@@ -422,6 +426,8 @@ log_auto_calibration <- function(project, parent, lower, upper,
          evaluations = sum(fit$start_results$evaluations),
          log_scale = if (length(log_scale)) as.list(log_scale),
          volume_weight = if (volume_weight > 0) volume_weight, stage = stage,
+         event_weights = if (objective == "events") as.list(event_weights),
+         event_share = if (objective == "events") event_share,
          starts = as.integer(starts), seed = seed,
          control = control, start_results = as.list(fit$start_results),
          configuration = fit$config, scores = run$scores, output_md5 = run$output_md5,

@@ -10,7 +10,15 @@ pdm_stages(
   exclude = NULL,
   polish = TRUE,
   volume_weight = 1,
-  band = NULL
+  band = NULL,
+  events = FALSE,
+  event_weights = c(nse = 1, peak = 0.5, timing = 0.5),
+  event_share = 0.5,
+  td_max = 6,
+  event_budget = 300L,
+  thresholds = NULL,
+  threshold_weight = 1,
+  threshold_score = "csi"
 )
 }
 \arguments{
@@ -24,6 +32,17 @@ pdm_stages(
 
 \item{band}{\code{NULL} (the default) for a stage 3 search over the full bounds, or the
 half-width of a narrowed search, as a fraction of each range.}
+
+\item{events}{Add stage 4, the events stage.}
+
+\item{event_weights, event_share}{Passed to \code{\link[=calibrate_pdm]{calibrate_pdm()}} in stage 4.}
+
+\item{td_max}{Largest time delay searched in stage 4, hours; \code{NULL} holds \code{td} fixed.}
+
+\item{event_budget}{Model runs per start for the DDS searches of stage 4 and of a last stage
+with thresholds.}
+
+\item{thresholds, threshold_weight, threshold_score}{A threshold term for the last stage.}
 }
 \value{
 A list of stages.
@@ -39,6 +58,7 @@ joint polish over everything.
    1. Volume and baseflow \tab \code{fc}, soil store, recharge, groundwater \tab 1 - log NSE + volume error \cr
    2. Fast response \tab Surface stores and the store shape \code{b} \tab 1 - NSE \cr
    3. Polish \tab Everything, over the full bounds \tab 1 - NSE \cr
+   4. Events (optional) \tab Surface stores, \code{b} and the time delay \code{td} \tab events objective \cr
 }
 
 
@@ -54,11 +74,28 @@ catchments, a polish confined to a quarter of each range either side (the defaul
 version 0.8.0) left two catchments far below the score of their true parameters. Pass
 \code{band} to confine it all the same.
 
+NSE over a long record weighs time steps, not events: the many hours of recession outweigh
+the few hours around each flood peak, so a model can score well while its peaks are late and
+low. \code{events = TRUE} adds stage 4, which refits the fast response and the time delay on the
+largest events alone, with the \code{events} objective of \code{\link[=calibrate_pdm]{calibrate_pdm()}}: pooled event NSE,
+peak error and timing error. The slow stores stay as stage 3 left them, so the water balance
+is kept. The time delay is not in the default bounds; stage 4 searches it from 0 to \code{td_max}
+hours. Its timing term changes in steps, so stage 4 uses DDS with \code{event_budget} model runs
+per start.
+
+\code{thresholds} adds a threshold term (\code{\link[=calibrate_pdm]{calibrate_pdm()}}) to the last stage, which then also uses
+DDS: a named vector of flows (m3/s) for \code{\link[=calibrate_staged]{calibrate_staged()}}, or the names of thresholds
+registered in the project for \code{\link[=log_staged_calibration]{log_staged_calibration()}}.
+
 Parameters come from \code{\link[=calibration_bounds]{calibration_bounds()}}, so every structure gets its own lists: a split
 recharge adds \code{recharge.alpha} to stage 1, an exponential store adds its two parameters.
 A stage is a plain list, so you can write your own: \code{name}, \code{parameters} (configuration
 paths), \code{objective} (as in \code{\link[=calibrate_pdm]{calibrate_pdm()}}), \code{volume_weight} and \code{band} (\code{NULL}, or the
-half-width of the narrowed search, as a fraction of each parameter's range).
+half-width of the narrowed search, as a fraction of each parameter's range). Optional
+fields: \code{method} and \code{control}, replacing the calibration's own for this stage;
+\code{event_weights} and \code{event_share} for the events objective; \code{thresholds},
+\code{threshold_weight} and \code{threshold_score}; and \code{extra_bounds}, rows like those of
+\code{\link[=calibration_bounds]{calibration_bounds()}} for parameters not in the bounds table, such as \code{td}.
 }
 \examples{
 str(pdm_stages(pdm_presets("standard")), max.level = 2)

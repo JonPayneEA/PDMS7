@@ -193,6 +193,7 @@ reference:
   - calibrate_pdm
   - calibrate_staged
   - pdm_stages
+  - calibration_checks
   - calibrate_pdm_multi
   - pdm_objectives
   - pdm_scorecard
