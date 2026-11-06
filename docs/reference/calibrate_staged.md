@@ -20,7 +20,7 @@ calibrate_staged(
   starts = 1L,
   seed = NULL,
   control = list(maxit = 200),
-  method = c("lbfgsb", "nelder_mead"),
+  method = c("lbfgsb", "nelder_mead", "dds"),
   soil_fraction = 0.5,
   log_offset = 0.01,
   start = c("flow", "soil"),
@@ -36,7 +36,7 @@ log_staged_calibration(
   starts = 1L,
   seed = NULL,
   control = list(maxit = 200),
-  method = c("lbfgsb", "nelder_mead")
+  method = c("lbfgsb", "nelder_mead", "dds")
 )
 ```
 
@@ -119,7 +119,7 @@ fit <- calibrate_staged(config, forcing, observed, warmup = 48,
                         control = list(maxit = 20))
 round(fit$parameters, 2)
 #>                fc distribution.cmax    distribution.b       recharge.kg 
-#>              0.90            148.10              1.17           1004.17 
+#>              0.76            139.07              2.00            667.85 
 #>    groundwater.kb        surface.k1        surface.k2 
-#>            344.98              3.87              3.87 
+#>            100.00              3.76              3.76 
 ```

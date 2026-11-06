@@ -1,5 +1,50 @@
 # Changelog
 
+## pdmS7 0.8.1
+
+- **New article: “What limits automatic calibration: a study”.** On 30
+  synthetic catchments, four searches are set against the score of the
+  true parameters; the search reaches the best fit the record allows.
+  Profiles show that `kb` cannot be recovered from flow records: across
+  a hundredfold range it barely changes the flow, because the slow
+  recharge hides it. It matters only in a drought long enough to stop
+  recharge, where equally good calibrations can disagree by a factor of
+  more than three in low flow.
+- The search results are stored as `inst/extdata/search_study.csv`;
+  `inst/benchmarks/search_methods.R` regenerates them, including the
+  staged search with the polish confined as before version 0.8.0.
+
+## pdmS7 0.8.0
+
+- **Staged calibration’s polish searches the full bounds.**
+  [`pdm_stages()`](https://jonpayneea.github.io/PDMS7/reference/pdm_stages.md)
+  used to confine stage 3 to a quarter of each range either side of
+  stage 2’s values. Stage 1 fits with the surface stores at their
+  starting values, and where the true stores are much slower it can
+  settle on the wrong slow stores; the confined polish could not undo
+  that. On 30 synthetic catchments it left two far short of their true
+  parameters’ score (NSE 0.904 against 0.995 in one). With the full
+  bounds, every catchment comes within 0.001 of the truth’s score.
+  `band` still confines the polish when asked. Staged results change.
+- **DDS.** `calibrate_pdm(method = "dds")` adds dynamically dimensioned
+  search (Tolson and Shoemaker, 2007), a derivative-free global search;
+  `control$maxit` is its budget of model runs per start. It accepts
+  threshold objectives, and
+  [`calibrate_batch()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md),
+  [`calibrate_staged()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_staged.md),
+  [`compare_structures()`](https://jonpayneea.github.io/PDMS7/reference/compare_structures.md),
+  [`log_auto_calibration()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
+  and the app offer it. On the smooth NSE of the standard structure,
+  L-BFGS-B remains the better choice: given the same number of model
+  runs, DDS fitted less well in 29 of 30 synthetic catchments.
+- **The large-sample article checks each calibration against the
+  truth.** Calibrations reach the true parameters’ score in almost every
+  catchment, so a parameter that still comes back wrong (`kb` above all)
+  cannot be recovered from the record, whatever the search. The article
+  now calibrates all parameters at once.
+- `inst/benchmarks/search_methods.R` compares the searches on the large
+  synthetic sample.
+
 ## pdmS7 0.7.0
 
 - **Large samples.**
@@ -12,6 +57,14 @@
 - [`calibrate_batch()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md)’s
   default structure takes each basin’s time step from its data, so daily
   and 15-minute basins need no structure of their own.
+- Parallel workers in
+  [`calibrate_batch()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md)
+  and
+  [`compare_structures()`](https://jonpayneea.github.io/PDMS7/reference/compare_structures.md)
+  now use the main session’s library paths, so a package installed
+  outside the default library (by `R CMD build`, renv or a user library)
+  works with `cores > 1`; workers used to fail with “there is no package
+  called ‘pdmS7’”.
 - [`read_projects()`](https://jonpayneea.github.io/PDMS7/reference/read_project.md)
   and
   [`batch_results()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md)

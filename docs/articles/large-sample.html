@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.8.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.8.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -57,6 +57,7 @@
     <li><a class="dropdown-item" href="../articles/extrapolation.html">Larger floods: extrapolation and the rating</a></li>
     <li><a class="dropdown-item" href="../articles/many-catchments.html">Calibrating many catchments</a></li>
     <li><a class="dropdown-item" href="../articles/large-sample.html">A large sample: what automatic calibration recovers</a></li>
+    <li><a class="dropdown-item" href="../articles/calibration-study.html">What limits automatic calibration: a study</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Records and review</h6></li>
     <li><a class="dropdown-item" href="../articles/calibration-log.html">Logging a manual calibration</a></li>
@@ -199,7 +200,7 @@ revealed at the end by the test, as every project does by default.</p>
 <span><span class="co">#&gt; done </span></span>
 <span><span class="co">#&gt;   30</span></span>
 <span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calibrate_batch.html">batch_results</a></span><span class="op">(</span><span class="va">output</span><span class="op">)</span></span></code></pre></div>
-<p>All 30 catchments finished, in 5 minutes on 3 cores. A sample of
+<p>All 30 catchments finished, in 6 minutes on 3 cores. A sample of
 hundreds takes the same call; <code><a href="../reference/calibrate_batch.html">calibrate_batch()</a></code> resumes
 where it stopped if interrupted. <a href="many-catchments.html">Calibrating many catchments</a> covers
 running it for real.</p>
@@ -324,11 +325,15 @@ kb comes back 39 per cent out, the search is not to blame: parameter
 sets that far apart fit the record equally well, and the record, with
 its gauge error, cannot choose between them. More model runs, or a
 different search, would not recover it.</p>
-<p>Two other searches were tried on this sample. Calibrating in stages
-(the water balance first, then the fast response, then a joint polish)
-did no better, and dynamically dimensioned search, given the same number
-of model runs, did worse. <code>inst/benchmarks/search_methods.R</code>
-in the package runs that comparison.</p>
+<p>Why can the record not see <code>kb</code>? Water reaches the
+groundwater store as recharge, which is already slow; a groundwater
+store faster than its recharge passes it on almost unchanged, so across
+a hundredfold range of <code>kb</code> the flow hardly changes. The
+parameter matters only when recharge stops, in a drought long enough to
+empty the soil, and there equally good calibrations can disagree widely.
+<a href="calibration-study.html">What limits automatic calibration</a>
+shows this with profiles and drought scenarios, and compares four
+searches on this sample.</p>
 </div>
 <div class="section level2">
 <h2 id="what-decides-whether-a-parameter-can-be-recovered">What decides whether a parameter can be recovered?<a class="anchor" aria-label="anchor" href="#what-decides-whether-a-parameter-can-be-recovered"></a>

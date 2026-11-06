@@ -93,7 +93,7 @@ explained](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.md).
 ``` r
 says(calibrate_pdm(config, forcing, observed = c(1, 2, 3, 2, 1, 1), lower = c(fc = 0.8),
                    upper = c(fc = 1.2), thresholds = c(alert = 2.5), method = "lbfgsb"))
-#> [1] "Threshold scores change in steps, which a gradient optimiser cannot follow; use method = \"nelder_mead\""
+#> [1] "Threshold scores change in steps, which a gradient optimiser cannot follow; use method = \"nelder_mead\" or \"dds\""
 ```
 
 Threshold scores change in steps, so a gradient method cannot follow

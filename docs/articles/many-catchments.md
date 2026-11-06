@@ -126,7 +126,7 @@ one_run <- system.time(
 c(seconds_per_run = signif(one_run, 2),
   estimated_minutes_for_8 = round(8 * 1500 * one_run / 60, 1))
 #>         seconds_per_run estimated_minutes_for_8 
-#>                  0.0084                  1.7000
+#>                   0.004                   0.800
 ```
 
 For a real batch, measure on a few catchments first; see the pilot
@@ -150,9 +150,9 @@ part <- do.call(calibrate_batch, c(list(basins, results, only = c("B01", "B02", 
 part
 #>     basin  state     step seconds message
 #>    <char> <char>   <char>   <num>  <char>
-#> 1:    B01   done complete     6.9        
-#> 2:    B02   done complete     5.8        
-#> 3:    B03   done complete     7.4
+#> 1:    B01   done complete     4.6        
+#> 2:    B02   done complete     3.9        
+#> 3:    B03   done complete     4.6
 ```
 
 Suppose the computer was switched off at this point, after three
@@ -170,11 +170,11 @@ status
 #> 1:    B01   done complete     0.0                                            
 #> 2:    B02   done complete     0.0                                            
 #> 3:    B03   done complete     0.0                                            
-#> 4:    B04   done complete     8.7                                            
-#> 5:    B05   done complete     6.8                                            
+#> 4:    B04   done complete     5.5                                            
+#> 5:    B05   done complete     4.8                                            
 #> 6:    B06 failed register     0.0 pet must contain finite nonnegative numbers
-#> 7:    B07   done complete     6.1                                            
-#> 8:    B08   done complete     7.2
+#> 7:    B07   done complete     4.3                                            
+#> 8:    B08   done complete     4.6
 ```
 
 The three finished catchments took a moment each: the batch read their
@@ -220,11 +220,11 @@ status
 #> 1:    B01   done complete     0.0        
 #> 2:    B02   done complete     0.0        
 #> 3:    B03   done complete     0.0        
-#> 4:    B04   done complete     8.7        
-#> 5:    B05   done complete     6.8        
-#> 6:    B06   done complete     8.8        
-#> 7:    B07   done complete     6.1        
-#> 8:    B08   done complete     7.2
+#> 4:    B04   done complete     5.5        
+#> 5:    B05   done complete     4.8        
+#> 6:    B06   done complete     5.6        
+#> 7:    B07   done complete     4.3        
+#> 8:    B08   done complete     4.6
 ```
 
 The failed attempt is still on record in B06’s project, followed by the
@@ -234,11 +234,10 @@ successful one.
 
 Add `staged = TRUE` to calibrate each catchment the way a hydrologist
 would by hand: the water balance and slow stores first, then the fast
-stores, then a short joint polish. Each stage is written to the
-catchment’s log as its own step, so a reviewer can see what each one
-changed. If the batch is interrupted part way through a catchment, the
-next run carries on from the last finished stage. [Automatic
-calibration,
+stores, then a joint polish. Each stage is written to the catchment’s
+log as its own step, so a reviewer can see what each one changed. If the
+batch is interrupted part way through a catchment, the next run carries
+on from the last finished stage. [Automatic calibration,
 explained](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.md)
 describes the stages.
 

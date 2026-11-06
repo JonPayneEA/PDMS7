@@ -43,6 +43,8 @@
   catchments](https://jonpayneea.github.io/PDMS7/articles/many-catchments.md):
 - [A large sample: what automatic calibration
   recovers](https://jonpayneea.github.io/PDMS7/articles/large-sample.md):
+- [What limits automatic calibration: a
+  study](https://jonpayneea.github.io/PDMS7/articles/calibration-study.md):
 
 ### Records and review
 

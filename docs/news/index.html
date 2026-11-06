@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.8.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.8.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -42,6 +42,7 @@
     <li><a class="dropdown-item" href="../articles/extrapolation.html">Larger floods: extrapolation and the rating</a></li>
     <li><a class="dropdown-item" href="../articles/many-catchments.html">Calibrating many catchments</a></li>
     <li><a class="dropdown-item" href="../articles/large-sample.html">A large sample: what automatic calibration recovers</a></li>
+    <li><a class="dropdown-item" href="../articles/calibration-study.html">What limits automatic calibration: a study</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Records and review</h6></li>
     <li><a class="dropdown-item" href="../articles/calibration-log.html">Logging a manual calibration</a></li>
@@ -91,6 +92,12 @@
       <small>Source: <a href="https://github.com/JonPayneEA/PDMS7/blob/HEAD/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.8.1" id="pdms7-081">pdmS7 0.8.1<a class="anchor" aria-label="anchor" href="#pdms7-081"></a></h2>
+<ul><li>
+<strong>New article: “What limits automatic calibration: a study”.</strong> On 30 synthetic catchments, four searches are set against the score of the true parameters; the search reaches the best fit the record allows. Profiles show that <code>kb</code> cannot be recovered from flow records: across a hundredfold range it barely changes the flow, because the slow recharge hides it. It matters only in a drought long enough to stop recharge, where equally good calibrations can disagree by a factor of more than three in low flow.</li>
+<li>The search results are stored as <code>inst/extdata/search_study.csv</code>; <code>inst/benchmarks/search_methods.R</code> regenerates them, including the staged search with the polish confined as before version 0.8.0.</li>
+</ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.8.0" id="pdms7-080">pdmS7 0.8.0<a class="anchor" aria-label="anchor" href="#pdms7-080"></a></h2>
 <ul><li>
