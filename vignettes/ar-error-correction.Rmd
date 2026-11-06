@@ -182,7 +182,7 @@ are too long or too short, and unwanted oscillation. Use it on any set before op
 | Source | Function | When |
 |---|---|---|
 | EA 2024 default | `ar_ea_default()` | No better information; defined for 15-minute steps |
-| The default family, from one timescale | `ar_from_response_time()` | You know how fast the catchment responds |
+| The default family, from one timescale | `ar_from_response_time()` | You know how fast the catchment responds; at steps longer than 15 minutes, only for a slow enough catchment (below) |
 | Fitted to this model's errors | `fit_error_updater()`, or `fit_window` in `pdm_hindcast()` | A long record of this model's errors exists |
 | Fitted to flood events only | `reach.postproc::fit_ar_from_events()` | Floods are what matter, and there are enough of them |
 
@@ -210,6 +210,131 @@ The EA 2024 default sits almost exactly on the 24-hour member. A flashy catchmen
 time to peak, gets a correction that fades quickly; a slow one keeps its correction for longer.
 Linking the forecast error's decay to the catchment's time to peak is an approximation, the
 same one reach.postproc makes, so check the result with a hindcast.
+
+## Which timescale?
+
+The family needs one timescale, and there are two candidates: the model's own time to peak,
+from `pdm_response_time()`, and the response time estimated from the records alone by
+`response_time_dmca()` ([Events in large samples](events.html)). The second needs no model,
+but it measures the timescale of the fast response, which is usually shorter than the time to
+peak. Two things decide between them: whether the set is stable, and whether it forecasts well.
+
+**Stability.** The family's first coefficient, 1.765, is set for 15-minute steps. With a
+principal decay of too few steps, its second root reaches 1, and the projected error grows
+without limit. `ar_from_response_time()` refuses such a set.
+
+```{r stability}
+shortest_steps <- -1 / log(1.765 - 1 + exp(-3))
+c(shortest_decay_steps = round(shortest_steps, 2),
+  at_15_minutes_h = round(shortest_steps * 0.25, 2), at_hourly_h = round(shortest_steps, 2))
+tryCatch(ar_from_response_time(3, dt = 1), error = function(e) conditionMessage(e))
+```
+
+At 15-minute steps the limit is `r round(shortest_steps * 0.25, 1)` hours, which almost every
+catchment exceeds. At hourly steps it is `r round(shortest_steps, 1)` hours, and fast
+catchments fall below it. `pdm_hindcast()` leaves an unstable default set out, with a warning.
+
+**This catchment, at 15-minute steps.** The two timescales, from the first half of the
+record, and hindcast skill against persistence over the second half:
+
+```{r timescales}
+half <- n / 2
+high <- unname(stats::quantile(observed[seq_len(half)], 0.9))
+time_to_peak <- pdm_response_time(model, flow = high)$time_to_peak_h
+dmca <- response_time_dmca(rain[seq_len(half)], observed[seq_len(half)], dt = 0.25)$response_h
+c(time_to_peak_h = round(time_to_peak, 2), dmca_h = dmca)
+compare <- pdm_hindcast(model, forcing, observed, window = (half + 1):n, every_h = 6,
+                        horizon_h = 24, response_flow = high,
+                        ar = list(time_to_peak = ar_from_response_time(time_to_peak, 0.25),
+                                  dmca = ar_from_response_time(dmca, 0.25)))
+compare_scores <- hindcast_scores(compare)
+compare_scores <- compare_scores[compare_scores$lead_h %in% c(1, 3, 6, 12, 24) &
+                                   compare_scores$method %in% c("time_to_peak", "dmca"), ]
+skill <- data.table::dcast(data.table::as.data.table(compare_scores), lead_h ~ method,
+                           value.var = "skill")
+skill$difference <- skill$dmca - skill$time_to_peak
+round(skill, 4)
+```
+
+```{r timescales-numbers, include=FALSE}
+largest_15 <- max(abs(skill$difference))
+```
+
+The two sets forecast alike here: the skill differs by at most `r sprintf("%.4f", largest_15)`
+at any lead time.
+
+**A sample, at hourly steps.** The same comparison over eight synthetic catchments with two
+years of hourly data each, calibrated automatically: both timescales from the calibration
+window, the hindcast over the validation window.
+
+```{r sample}
+basins <- file.path(tempdir(), "ar-basins")
+output <- file.path(tempdir(), "ar-projects")
+unlink(c(basins, output), recursive = TRUE)
+sample <- synthetic_basins(basins, n = 8, years = 2, dt = 1, seed = 21)
+old <- options(pdmS7.user = "Ann Custodian", pdmS7.role = "custodian")
+limited <- identical(toupper(Sys.getenv("_R_CHECK_LIMIT_CORES_")), "TRUE")
+cores <- if (limited) 2L else min(4L, max(1L, parallel::detectCores() - 1L))
+status <- calibrate_batch(basins, output, starts = 2, control = list(maxit = 30),
+                          cores = cores)
+options(old)
+stable_set <- function(h) tryCatch(ar_from_response_time(h, 1), error = function(e) NULL)
+per_basin <- lapply(sample$basin, function(id) {
+  dir <- file.path(basins, id)
+  f <- as.data.frame(data.table::fread(file.path(dir, "forcing.csv")))
+  obs <- data.table::fread(file.path(dir, "flow.csv"))$q_m3s
+  meta <- yaml::read_yaml(file.path(dir, "basin.yml"))
+  day <- substr(f$time, 1, 10)
+  cal <- match(meta$calibration[[1]], day):max(which(day == meta$calibration[[2]]))
+  val <- match(meta$validation[[1]], day):max(which(day == meta$validation[[2]]))
+  project <- file.path(output, id)
+  fitted <- pdm_from_config(read_entry(project, read_projects(project)$candidate)$configuration)
+  q90 <- unname(stats::quantile(obs[cal], 0.9, na.rm = TRUE))
+  ttp <- suppressWarnings(pdm_response_time(fitted, flow = q90))$time_to_peak_h
+  dm <- response_time_dmca(f$rain[cal], obs[cal], dt = 1)$response_h
+  sets <- Filter(Negate(is.null), list(time_to_peak = stable_set(ttp), dmca = stable_set(dm)))
+  out <- data.frame(basin = id, time_to_peak_h = round(ttp, 1), dmca_h = dm,
+                    time_to_peak_stable = !is.null(sets$time_to_peak),
+                    dmca_stable = !is.null(sets$dmca), change_3h = NA, change_12h = NA,
+                    change_24h = NA)
+  if (length(sets) == 2) {
+    hc <- suppressWarnings(pdm_hindcast(fitted, f, obs, window = val, every_h = 6,
+                                        horizon_h = 24, ar = sets, response_flow = q90))
+    sc <- hindcast_scores(hc)
+    at <- function(m, h) sc$skill[sc$method == m & sc$lead_h == h]
+    out[c("change_3h", "change_12h", "change_24h")] <- vapply(c(3, 12, 24), function(h) {
+      at("dmca", h) - at("time_to_peak", h)
+    }, numeric(1))
+  }
+  out
+})
+by_basin <- do.call(rbind, per_basin)
+by_basin[c("change_3h", "change_12h", "change_24h")] <-
+  round(by_basin[c("change_3h", "change_12h", "change_24h")], 4)
+by_basin
+```
+
+```{r sample-numbers, include=FALSE}
+both <- by_basin[by_basin$time_to_peak_stable & by_basin$dmca_stable, ]
+ratio <- stats::median(by_basin$dmca_h / by_basin$time_to_peak_h)
+worse_24 <- sum(both$change_24h < -0.001)
+```
+
+The response time from the records is typically `r sprintf("%.0f", 100 * ratio)` per cent of
+the time to peak. At hourly steps that matters more than anything else: the set built on it
+is unstable, and refused, in `r sum(!by_basin$dmca_stable)` of the `r nrow(by_basin)`
+catchments, against `r sum(!by_basin$time_to_peak_stable)` for the time to peak. Where both
+sets are stable (`r nrow(both)` catchments), the change in skill is small, and at a 24-hour
+lead the set built on the records' response time is worse in `r worse_24` of them.
+
+So the model's time to peak remains the timescale to use. The records' response time is no
+better where both work, and fails more often at hourly steps. For a fast catchment at hourly
+steps, neither works: use fitted coefficients, or run the model at 15-minute steps, where the
+family was built.
+
+```{r sample-cleanup, include=FALSE}
+unlink(c(basins, output), recursive = TRUE)
+```
 
 ## Fitting
 

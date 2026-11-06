@@ -72,7 +72,9 @@ given the same origins and scored by the same \code{\link[=hindcast_scores]{hind
 By default \code{ar} holds the Environment Agency 2024 default set and a default-family set
 whose principal decay is the model's own time to peak at \code{response_flow}, from
 \code{\link[=pdm_response_time]{pdm_response_time()}}. The 2024 default is defined for 15-minute steps; on other steps it is
-still applied, as given, with a message.
+still applied, as given, with a message. The default family is built for 15-minute steps
+too: at longer steps, a time to peak under about 4.9 steps gives an unstable set (see
+\code{\link[=ar_from_response_time]{ar_from_response_time()}}), which is left out with a warning.
 
 Errors are observed minus simulated flow, in m3/s, additive, as in IMFS. The AR projection at
 an origin needs the last three errors; if any of those observations is missing, that origin

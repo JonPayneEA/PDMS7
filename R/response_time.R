@@ -138,6 +138,11 @@ pdm_response_time <- function(model, flow, baseflow_fraction = 0.7, pulse_mm = 1
 #' against past events, not a derived result. Check any set with `reach.postproc::assess()`
 #' before operational use.
 #'
+#' The first coefficient is set for 15-minute steps. At longer steps, a short decay time makes
+#' the set unstable (a root of size 1 or more, so the projected error grows without limit), and
+#' `ar_from_response_time()` refuses it: the decay must be at least about 4.9 steps, which is
+#' 1.2 hours at 15-minute steps but 4.9 hours at hourly steps.
+#'
 #' @param decay_h Principal decay time in hours, typically `pdm_response_time()$time_to_peak_h`.
 #' @param dt Model time step in hours.
 #' @param first_coefficient The fixed first coefficient of the family.
@@ -155,6 +160,16 @@ ar_from_response_time <- function(decay_h, dt, first_coefficient = 1.765) {
   z1 <- exp(-1 / (decay_h / dt))
   z3 <- -exp(-3)
   z2 <- first_coefficient - z1 - z3
+  # The first coefficient is set for 15-minute steps. With a principal decay of too few steps the
+  # remaining root reaches 1 or more, and the projected error grows without limit.
+  if (!all(abs(c(z1, z2, z3)) < 1)) {
+    shortest <- -1 / log(first_coefficient - 1 - z3)
+    stop("The default-family AR set is unstable for a decay of ", signif(decay_h, 3), " h at ",
+         dt, " h steps: one root is ", signif(z2, 3), ". The family is built for 15-minute ",
+         "steps and is stable only for a decay of at least ", signif(shortest, 3), " steps (",
+         signif(shortest * dt, 3), " h here). Use a finer step, a longer decay, ",
+         "ar_ea_default() or fitted coefficients.", call. = FALSE)
+  }
   # (z - z1)(z - z2)(z - z3) = z^3 - a1 z^2 - a2 z - a3
   a <- c(
     a_1 = z1 + z2 + z3,
