@@ -5,7 +5,7 @@
 # Flode Module: standalone; target reach.hydro
 # Author:       pdmS7 contributors
 # Created:      2026-11-06
-# Modified:     2026-11-06 - Add response_time_dmca(), find_events(), event_scores()
+# Modified:     2026-11-06 - The C core does the work; R keeps the reference implementation
 # Tier:         3
 # Inputs:       Rain (mm per step) and flow (any units; m3/s with an area for volumes)
 # Outputs:      Response time; a table of events; per-event model scores
@@ -52,22 +52,32 @@
 #' @seealso [find_events()], [pdm_response_time()] for a model's own response
 #' @export
 response_time_dmca <- function(rain, flow, dt = 1, max_response_h = 150) {
+  h_max <- .dmca_h_max(rain, flow, dt, max_response_h)
+  # The C core (pdm_dmca_rho), unless options(pdmS7.engine = "r") asks for the R reference.
+  rho <- if (.engine_wanted()) {
+    dmca_rho(as.double(rain), as.double(flow), as.integer(h_max))
+  } else {
+    .dmca_rho_r(cumsum(.zero_missing(rain)), cumsum(.zero_missing(flow)), h_max)
+  }
+  .dmca_response(rho, dt)
+}
+
+# Checks the shared arguments of the response-time search and returns the largest half-window.
+.dmca_h_max <- function(rain, flow, dt, max_response_h) {
   .check(is.numeric(rain) && is.numeric(flow) && length(rain) == length(flow),
          "rain and flow must be numeric vectors of the same length")
   .check(.scalar(dt, 0, strict = TRUE), "dt must be a positive number of hours")
   .check(.scalar(max_response_h, dt), "max_response_h must be at least one time step")
   h_max <- min(floor(max_response_h / dt), floor((length(rain) - 2) / 2))
   .check(h_max >= 1, "The record is too short to search for a response time")
-  cum_rain <- cumsum(.zero_missing(rain))
-  cum_flow <- cumsum(.zero_missing(flow))
-  # The compiled search, unless options(pdmS7.engine = "r") asks for the R reference.
-  rho <- if (.engine_wanted()) {
-    dmca_rho(as.double(cum_rain), as.double(cum_flow), as.integer(h_max))
-  } else {
-    .dmca_rho_r(cum_rain, cum_flow, h_max)
-  }
+  as.integer(h_max)
+}
+
+# The response time from a correlation curve: the half-window with the most negative value.
+.dmca_response <- function(rho, dt) {
   .check(any(is.finite(rho)), "Rain or flow does not vary; no response time can be found")
   steps <- which.min(rho)
+  h_max <- length(rho)
   if (steps == h_max && h_max > 1) {
     warning("The response time is at the longest searched (", h_max * dt, " h); ",
             "raise max_response_h", call. = FALSE)
@@ -101,6 +111,10 @@ response_time_dmca <- function(rain, flow, dt = 1, max_response_h = 150) {
 #' code. One detail differs: overlapping events merge into one spanning all of them, where the
 #' reference code takes the end of the last. Rain windows that would run off either end of the
 #' record are discarded.
+#'
+#' The work is done by the C core (`pdm_find_events()` and `pdm_event_summary()` in
+#' `src/pdm_core.h`), which other languages can call directly; `options(pdmS7.engine = "r")`
+#' runs the R reference implementation instead.
 #'
 #' @param rain Rain per step (mm). Missing values count as zero.
 #' @param flow Flow per step, m3/s (or any units if `area_km2` is not given).
@@ -138,16 +152,30 @@ find_events <- function(rain, flow, time = NULL, dt = 1, rain_min = NULL,
   .check(is.null(time) || length(time) == length(rain), "time must match rain in length")
   .check(is.null(area_km2) || .scalar(area_km2, 0, strict = TRUE),
          "area_km2 must be a positive number, or NULL")
-  response <- response_time_dmca(rain, flow, dt, max_response_h)
-  intensity <- .zero_missing(rain) / dt
-  h <- response$response_steps
-  fl <- .event_fluctuations(intensity, flow, h, rain_min)
-  rows <- .dmca_esr(intensity, fl$rain, fl$flow, h, rain_min)
+  h_max <- .dmca_h_max(rain, flow, dt, max_response_h)
+  columns <- c("rain_start", "rain_end", "flow_start", "flow_end")
+  if (.engine_wanted()) {
+    found <- tryCatch(
+      find_events_engine(as.double(rain), as.double(flow), dt, rain_min, h_max),
+      error = function(e) {
+        # The core refuses a record whose rain or flow does not vary; say so as R does.
+        .check(FALSE, conditionMessage(e))
+      }
+    )
+    response <- .dmca_response(found$rho, dt)
+    rows <- matrix(as.integer(found$events), ncol = 4, dimnames = list(NULL, columns))
+  } else {
+    response <- response_time_dmca(rain, flow, dt, max_response_h)
+    intensity <- .zero_missing(rain) / dt
+    h <- response$response_steps
+    fl <- .event_fluctuations(intensity, flow, h, rain_min)
+    rows <- .dmca_esr(intensity, fl$rain, fl$flow, h, rain_min)
+  }
   .event_table(rows, rain, flow, time, dt, area_km2, response, rain_min)
 }
 
 # The DMCA correlation for half-windows 1..h_max, in R: the reference for the compiled
-# dmca_rho() (src/dmca.cpp). Only steps with a full window are scored.
+# pdm_dmca_rho() in the C core (src/pdm_core.c). Only steps with a full window are scored.
 .dmca_rho_r <- function(cum_rain, cum_flow, h_max) {
   n <- length(cum_rain)
   vapply(seq_len(h_max), function(h) {
@@ -258,14 +286,18 @@ find_events <- function(rain, flow, time = NULL, dt = 1, rain_min = NULL,
   n <- length(rain)
   vapply(seq_along(ec), function(g) {
     e <- ec[g]
-    if (!quiet[g]) {
-      e <- .walk(e, -1L, function(i) i > 1L && rain[i] > rain_min && i >= bc[g])
-      return(.walk(e, -1L, function(i) i > 1L && rain[i] < rain_min && i >= bc[g]))
-    }
+    if (!quiet[g]) return(.back_to_rain(rain, e, bc[g], rain_min))
     if (rain[e] == 0) return(.walk(e, -1L, function(i) i > 1L && rain[i] == 0))
     limit <- if (g < length(bc)) bc[g + 1L] else n
     .walk(e, 1L, function(i) i + 1L < n && rain[i] > rain_min && i < limit) - 1L
   }, integer(1))
+}
+
+# For a core that ended on quiet flow: back from e through any rain above rain_min, then through
+# the light rain below it, to the last step above rain_min, not before the core's start.
+.back_to_rain <- function(rain, e, core_start, rain_min) {
+  e <- .walk(e, -1L, function(i) i > 1L && rain[i] > rain_min && i >= core_start)
+  .walk(e, -1L, function(i) i > 1L && rain[i] < rain_min && i >= core_start)
 }
 
 # Step 5: the start of each rain event. Started from quiet rain with no rain at the core's
@@ -350,33 +382,48 @@ find_events <- function(rain, flow, time = NULL, dt = 1, rain_min = NULL,
       out[[paste0(w, "_time")]] <- time[out[[w]]]
     }
   }
-  span <- function(a, b) Map(seq.int, a, b)
-  out$rain_mm <- vapply(span(out$rain_start, out$rain_end), function(i) {
-    sum(.zero_missing(rain[i]))
-  }, numeric(1))
-  peaks <- vapply(span(out$flow_start, out$flow_end), function(i) {
-    if (!any(is.finite(flow[i]))) return(c(NA, NA))
-    j <- which.max(flow[i])
-    c(i[j], flow[i][j])
-  }, numeric(2))
-  out$peak_row <- as.integer(peaks[1, ])
-  out$peak_flow <- peaks[2, ]
-  baseflow <- .baseflow_line(flow, out$flow_start, out$flow_end)
+  # Totals from the C core (pdm_event_summary), or from the R reference.
+  totals <- if (.engine_wanted()) {
+    t <- event_summary_engine(as.double(rain), as.double(flow), dt, area_km2 %||% 0,
+                              as.double(rows))
+    list(summary = matrix(t$summary, ncol = 6), baseflow = t$baseflow)
+  } else {
+    .event_totals_r(rows, rain, flow, dt, area_km2)
+  }
+  sm <- totals$summary
+  out$rain_mm <- sm[, 1]
+  out$peak_row <- as.integer(sm[, 2] + 1)
+  out$peak_flow <- sm[, 3]
   if (!is.null(area_km2)) {
-    to_mm <- 3.6 * dt / area_km2
-    out$flow_mm <- vapply(span(out$flow_start, out$flow_end), function(i) {
-      sum(flow[i], na.rm = TRUE) * to_mm
-    }, numeric(1))
-    out$quickflow_mm <- vapply(span(out$flow_start, out$flow_end), function(i) {
-      sum(flow[i] - baseflow[i], na.rm = TRUE) * to_mm
-    }, numeric(1))
-    out$runoff_ratio <- out$quickflow_mm / out$rain_mm
+    out$flow_mm <- sm[, 4]
+    out$quickflow_mm <- sm[, 5]
+    out$runoff_ratio <- sm[, 6]
   }
   attr(out, "response") <- response
   attr(out, "rain_min") <- rain_min
   attr(out, "dt") <- dt
-  attr(out, "baseflow") <- baseflow
+  attr(out, "baseflow") <- totals$baseflow
   out
+}
+
+# The R reference for pdm_event_summary(): per event, rain depth, the peak's 0-based row, the
+# peak, and the flow and quick-flow volumes (mm) and runoff ratio (NA without an area); and
+# the baseflow line.
+.event_totals_r <- function(rows, rain, flow, dt, area_km2) {
+  span <- function(a, b) Map(seq.int, a, b)
+  rain_spans <- span(rows[, "rain_start"], rows[, "rain_end"])
+  flow_spans <- span(rows[, "flow_start"], rows[, "flow_end"])
+  baseflow <- .baseflow_line(flow, rows[, "flow_start"], rows[, "flow_end"])
+  to_mm <- if (is.null(area_km2)) NA_real_ else 3.6 * dt / area_km2
+  summary <- vapply(seq_len(nrow(rows)), function(e) {
+    i <- flow_spans[[e]]
+    rain_mm <- sum(.zero_missing(rain[rain_spans[[e]]]))
+    peak <- if (any(is.finite(flow[i]))) i[which.max(flow[i])] else NA
+    quick <- sum(flow[i] - baseflow[i], na.rm = TRUE) * to_mm
+    peak_flow <- if (is.na(peak)) NA_real_ else flow[peak]
+    c(rain_mm, peak - 1, peak_flow, sum(flow[i], na.rm = TRUE) * to_mm, quick, quick / rain_mm)
+  }, numeric(6))
+  list(summary = matrix(summary, ncol = 6, byrow = TRUE), baseflow = baseflow)
 }
 
 #' Model scores event by event
@@ -408,24 +455,34 @@ event_scores <- function(events, simulated, observed, dt = attr(events, "dt") %|
   .check(length(simulated) == length(observed), "simulated and observed must match in length")
   .check(!nrow(events) || max(events$flow_end) <= length(observed),
          "events run past the end of the flow series")
-  scores <- t(vapply(seq_len(nrow(events)), function(e) {
-    i <- seq.int(events$flow_start[e], events$flow_end[e])
-    i <- i[is.finite(observed[i]) & is.finite(simulated[i])]
-    if (length(i) < 2L) return(rep(NA_real_, 6))
-    o <- observed[i]
-    s <- simulated[i]
-    c(observed_peak = max(o), simulated_peak = max(s), peak_error = max(s) / max(o) - 1,
-      timing_error_h = (i[which.max(s)] - i[which.max(o)]) * dt,
-      volume_error = sum(s) / sum(o) - 1,
-      nse = 1 - sum((s - o)^2) / sum((o - mean(o))^2))
-  }, numeric(6)))
-  if (!nrow(events)) scores <- matrix(numeric(0), 0, 6)
+  # The C core (pdm_event_scores), or the R reference.
+  scores <- if (.engine_wanted()) {
+    windows <- cbind(events$flow_start, events$flow_end, events$flow_start, events$flow_end)
+    matrix(event_scores_engine(as.double(simulated), as.double(observed), dt,
+                               as.double(windows)), ncol = 6)
+  } else {
+    .event_scores_r(events, simulated, observed, dt)
+  }
   colnames(scores) <- c("observed_peak", "simulated_peak", "peak_error", "timing_error_h",
                         "volume_error", "nse")
   out <- cbind(events, as.data.frame(scores))
   attributes(out)[c("response", "rain_min", "dt")] <- attributes(events)[c("response",
                                                                            "rain_min", "dt")]
   out
+}
+
+# The R reference for pdm_event_scores(): one row of six scores per event.
+.event_scores_r <- function(events, simulated, observed, dt) {
+  scores <- vapply(seq_len(nrow(events)), function(e) {
+    i <- seq.int(events$flow_start[e], events$flow_end[e])
+    i <- i[is.finite(observed[i]) & is.finite(simulated[i])]
+    if (length(i) < 2L) return(rep(NA_real_, 6))
+    o <- observed[i]
+    s <- simulated[i]
+    c(max(o), max(s), max(s) / max(o) - 1, (i[which.max(s)] - i[which.max(o)]) * dt,
+      sum(s) / sum(o) - 1, 1 - sum((s - o)^2) / sum((o - mean(o))^2))
+  }, numeric(6))
+  matrix(scores, ncol = 6, byrow = TRUE)
 }
 
 #' Events and event scores across a batch

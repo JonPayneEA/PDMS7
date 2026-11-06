@@ -6,10 +6,31 @@
 #include <R_ext/Visibility.h>
 
 // dmca.cpp
-doubles dmca_rho(doubles cum_rain, doubles cum_flow, int h_max);
-extern "C" SEXP _pdmS7_dmca_rho(SEXP cum_rain, SEXP cum_flow, SEXP h_max) {
+doubles dmca_rho(doubles rain, doubles flow, int h_max);
+extern "C" SEXP _pdmS7_dmca_rho(SEXP rain, SEXP flow, SEXP h_max) {
   BEGIN_CPP11
-    return cpp11::as_sexp(dmca_rho(cpp11::as_cpp<cpp11::decay_t<doubles>>(cum_rain), cpp11::as_cpp<cpp11::decay_t<doubles>>(cum_flow), cpp11::as_cpp<cpp11::decay_t<int>>(h_max)));
+    return cpp11::as_sexp(dmca_rho(cpp11::as_cpp<cpp11::decay_t<doubles>>(rain), cpp11::as_cpp<cpp11::decay_t<doubles>>(flow), cpp11::as_cpp<cpp11::decay_t<int>>(h_max)));
+  END_CPP11
+}
+// dmca.cpp
+cpp11::list find_events_engine(doubles rain, doubles flow, double dt, double rain_min, int h_max);
+extern "C" SEXP _pdmS7_find_events_engine(SEXP rain, SEXP flow, SEXP dt, SEXP rain_min, SEXP h_max) {
+  BEGIN_CPP11
+    return cpp11::as_sexp(find_events_engine(cpp11::as_cpp<cpp11::decay_t<doubles>>(rain), cpp11::as_cpp<cpp11::decay_t<doubles>>(flow), cpp11::as_cpp<cpp11::decay_t<double>>(dt), cpp11::as_cpp<cpp11::decay_t<double>>(rain_min), cpp11::as_cpp<cpp11::decay_t<int>>(h_max)));
+  END_CPP11
+}
+// dmca.cpp
+cpp11::list event_summary_engine(doubles rain, doubles flow, double dt, double area_km2, doubles events);
+extern "C" SEXP _pdmS7_event_summary_engine(SEXP rain, SEXP flow, SEXP dt, SEXP area_km2, SEXP events) {
+  BEGIN_CPP11
+    return cpp11::as_sexp(event_summary_engine(cpp11::as_cpp<cpp11::decay_t<doubles>>(rain), cpp11::as_cpp<cpp11::decay_t<doubles>>(flow), cpp11::as_cpp<cpp11::decay_t<double>>(dt), cpp11::as_cpp<cpp11::decay_t<double>>(area_km2), cpp11::as_cpp<cpp11::decay_t<doubles>>(events)));
+  END_CPP11
+}
+// dmca.cpp
+doubles event_scores_engine(doubles simulated, doubles observed, double dt, doubles events);
+extern "C" SEXP _pdmS7_event_scores_engine(SEXP simulated, SEXP observed, SEXP dt, SEXP events) {
+  BEGIN_CPP11
+    return cpp11::as_sexp(event_scores_engine(cpp11::as_cpp<cpp11::decay_t<doubles>>(simulated), cpp11::as_cpp<cpp11::decay_t<doubles>>(observed), cpp11::as_cpp<cpp11::decay_t<double>>(dt), cpp11::as_cpp<cpp11::decay_t<doubles>>(events)));
   END_CPP11
 }
 // pdm_engine.cpp
@@ -52,6 +73,9 @@ extern "C" {
 static const R_CallMethodDef CallEntries[] = {
     {"_pdmS7_correct_engine_run",   (DL_FUNC) &_pdmS7_correct_engine_run,   4},
     {"_pdmS7_dmca_rho",             (DL_FUNC) &_pdmS7_dmca_rho,             3},
+    {"_pdmS7_event_scores_engine",  (DL_FUNC) &_pdmS7_event_scores_engine,  4},
+    {"_pdmS7_event_summary_engine", (DL_FUNC) &_pdmS7_event_summary_engine, 5},
+    {"_pdmS7_find_events_engine",   (DL_FUNC) &_pdmS7_find_events_engine,   5},
     {"_pdmS7_forecast_engine_run",  (DL_FUNC) &_pdmS7_forecast_engine_run,  7},
     {"_pdmS7_from_flow_engine_run", (DL_FUNC) &_pdmS7_from_flow_engine_run, 4},
     {"_pdmS7_pack_engine_run",      (DL_FUNC) &_pdmS7_pack_engine_run,      5},

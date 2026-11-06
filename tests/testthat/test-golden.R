@@ -4,7 +4,7 @@
 # Flode Module: standalone; target reach.hydro
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
-# Modified:     2026-10-31 - Check the PDM core against the golden files
+# Modified:     2026-11-06 - Check the event functions against their golden files
 # Tier:         3
 # Inputs:       Typed S7 components; depths in mm; time in hours
 # Outputs:      Validated S7 objects or hydrological values with documented units
@@ -287,6 +287,44 @@ test_that(
           golden_agree(pdmS7:::.engine_pack_state(state),
                        golden_read(paste0(fc$case, "_flow_state.csv"))$value,
                        paste(fc$case, engine))
+        }
+      }
+    }
+  }
+)
+
+# Guards: events, their totals and scores match their references in both engines; positions
+# exactly, numbers within the golden tolerance, missing values where the reference has them
+test_that(
+  "both engines reproduce the event golden files",
+  {
+    cases <- golden_read("events_cases.csv")
+    for (i in seq_len(nrow(cases))) {
+      ec <- cases[i, ]
+      series <- golden_read(paste0(ec$case, "_events_series.csv"))
+      want <- golden_read(paste0(ec$case, "_events_expected.csv"))
+      rho <- golden_read(paste0(ec$case, "_events_rho.csv"))$rho
+      base <- golden_read(paste0(ec$case, "_events_baseflow.csv"))$baseflow_m3s
+      for (engine in c("auto", "r")) {
+        old <- options(pdmS7.engine = engine)
+        ev <- find_events(series$rain_mm, series$flow_m3s, dt = ec$dt, rain_min = ec$rain_min,
+                          max_response_h = ec$h_max * ec$dt, area_km2 = ec$area_km2)
+        sc <- event_scores(ev, series$simulated_m3s, series$flow_m3s)
+        options(old)
+        label <- paste(ec$case, engine)
+        for (p in c("rain_start", "rain_end", "flow_start", "flow_end", "peak_row")) {
+          expect_identical(as.numeric(ev[[p]]) - 1, as.numeric(want[[p]]), label = label)
+        }
+        golden_agree(attr(ev, "response")$curve$rho, rho, paste(label, "rho"))
+        expect_identical(is.na(attr(ev, "baseflow")), is.na(base), label = label)
+        golden_agree(attr(ev, "baseflow")[!is.na(base)], base[!is.na(base)],
+                     paste(label, "baseflow"))
+        for (col in c("rain_mm", "peak_flow", "flow_mm", "quickflow_mm", "runoff_ratio")) {
+          golden_agree(ev[[col]], want[[col]], paste(label, col))
+        }
+        for (col in c("observed_peak", "simulated_peak", "peak_error", "timing_error_h",
+                      "volume_error", "nse")) {
+          golden_agree(sc[[col]], want[[col]], paste(label, col))
         }
       }
     }

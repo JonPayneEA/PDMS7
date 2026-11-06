@@ -68,6 +68,10 @@ This is an independent implementation from the published description and its ref
 code. One detail differs: overlapping events merge into one spanning all of them, where the
 reference code takes the end of the last. Rain windows that would run off either end of the
 record are discarded.
+
+The work is done by the C core (\code{pdm_find_events()} and \code{pdm_event_summary()} in
+\code{src/pdm_core.h}), which other languages can call directly; \code{options(pdmS7.engine = "r")}
+runs the R reference implementation instead.
 }
 \examples{
 river <- synthetic_catchment(years = 2, dt = 1, seed = 1)

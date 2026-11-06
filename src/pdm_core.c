@@ -1514,3 +1514,440 @@ int32_t pdm_state_from_flow(const pdm_params* params, double observed_m3s,
   }
   return finish(&e, message, message_length);
 }
+
+/* ---- Events: response time and DMCA-ESR ---------------------------------------------------- */
+
+/* The DMCA response time (Giani et al., 2021) and the event separation routine DMCA-ESR (Giani
+   et al., 2022), as in R/events.R, which keeps the R reference implementation. The steps below
+   follow the published ones and use 1-based positions internally, through AT(), so they read as
+   the R code does; positions are 0-based at the interface. */
+
+#define AT(a, i) ((a)[(i) - 1])
+
+/* Missing values count as zero, as the published method's cumulative series treat them. */
+static double finite_or_zero(double x) {
+  return isfinite(x) ? x : 0.0;
+}
+
+/* Fluctuations of a cumulative series about its centred moving average over 2h + 1 steps, the
+   window shrinking at the ends (as MATLAB's movmean does). prefix holds n + 1 prefix sums. */
+static void fluctuations(const double* cum, const double* prefix, int64_t n, int64_t h,
+                         double* out) {
+  int64_t i;
+  for (i = 0; i < n; i++) {
+    int64_t lo = i - h < 0 ? 0 : i - h;
+    int64_t hi = i + h > n - 1 ? n - 1 : i + h;
+    out[i] = cum[i] - (prefix[hi + 1] - prefix[lo]) / (double)(hi - lo + 1);
+  }
+}
+
+/* Cumulative sums of a series (missing values as zero) and their prefix sums. Both are
+   accumulated in long double and stored as double, as R's cumsum() does: over a gap or a dry
+   spell the cumulative series is flat, and whether its fluctuations come out exactly zero, which
+   decides where events break, depends on this rounding. */
+static void cumulate(const double* x, double scale, int64_t n, double* cum, double* prefix) {
+  int64_t i;
+  long double total = 0.0L, running = 0.0L;
+  prefix[0] = 0.0;
+  for (i = 0; i < n; i++) {
+    total += (long double)(finite_or_zero(x[i]) / scale);
+    cum[i] = (double)total;
+    running += (long double)cum[i];
+    prefix[i + 1] = (double)running;
+  }
+}
+
+/* The DMCA correlation for each half-window 1..h_max, scoring only steps with a full window. */
+static void dmca_curve(const double* cum_r, const double* pre_r, const double* cum_q,
+                       const double* pre_q, int64_t n, int32_t h_max, double* rho) {
+  int32_t h;
+  int64_t i;
+  for (h = 1; h <= h_max; h++) {
+    double width = 2.0 * h + 1.0, rq = 0.0, rr = 0.0, qq = 0.0;
+    for (i = h; i < n - h; i++) {
+      double fr = cum_r[i] - (pre_r[i + h + 1] - pre_r[i - h]) / width;
+      double fq = cum_q[i] - (pre_q[i + h + 1] - pre_q[i - h]) / width;
+      rq += fr * fq;
+      rr += fr * fr;
+      qq += fq * fq;
+    }
+    rho[h - 1] = rq / sqrt(rr * qq);
+  }
+}
+
+int32_t pdm_dmca_rho(const double* rain, const double* flow, int64_t n, int32_t h_max,
+                     double* rho, char* message, int64_t message_length) {
+  pdm_error e;
+  double* work;
+  e.code = PDM_OK;
+  e.text[0] = '\0';
+  if (rain == NULL || flow == NULL || rho == NULL || h_max < 1 || n < 2 * (int64_t)h_max + 2) {
+    set_error(&e, PDM_ERR_ARGUMENT, "pdm_dmca_rho needs rain, flow, rho and 1 <= h_max <= (n - 2) / 2");
+    return finish(&e, message, message_length);
+  }
+  work = (double*)malloc(sizeof(double) * (size_t)(4 * n + 2));
+  if (work == NULL) {
+    set_error(&e, PDM_ERR_NUMERICAL, "Out of memory");
+    return finish(&e, message, message_length);
+  }
+  cumulate(rain, 1.0, n, work, work + n);
+  cumulate(flow, 1.0, n, work + 2 * n + 1, work + 3 * n + 1);
+  dmca_curve(work, work + n, work + 2 * n + 1, work + 3 * n + 1, n, h_max, rho);
+  free(work);
+  return finish(&e, message, message_length);
+}
+
+/* Step 3: runs of non-zero bivariate fluctuations; two consecutive zero steps end a run. */
+static int64_t event_cores(const double* fr, const double* ff, int64_t n, int64_t* begin,
+                           int64_t* end) {
+  int64_t g = 0, q = 1;
+  while (q + 1 <= n) {
+    if (fabs(AT(fr, q) * AT(ff, q)) > 0) {
+      g++;
+      AT(begin, g) = q;
+      while (q + 1 < n && fabs(AT(fr, q) * AT(ff, q)) + fabs(AT(fr, q + 1) * AT(ff, q + 1)) > 0) {
+        q++;
+      }
+      AT(end, g) = q - 1;
+    }
+    q++;
+  }
+  return g;
+}
+
+/* Step 4: the end of rain event g. */
+static int64_t rain_end(const double* rain, int64_t n, const int64_t* bc, const int64_t* ec,
+                        int64_t k, int64_t g, int quiet, double rain_min) {
+  int64_t e = AT(ec, g), limit;
+  if (!quiet) {
+    while (e > 1 && AT(rain, e) > rain_min && e >= AT(bc, g)) e--;
+    while (e > 1 && AT(rain, e) < rain_min && e >= AT(bc, g)) e--;
+    return e;
+  }
+  if (AT(rain, e) == 0) {
+    while (e > 1 && AT(rain, e) == 0) e--;
+    return e;
+  }
+  limit = g < k ? AT(bc, g + 1) : n;
+  while (e + 1 < n && AT(rain, e) > rain_min && e < limit) e++;
+  return e - 1;
+}
+
+/* Step 5: the start of rain event g. */
+static int64_t rain_start(const double* rain, int64_t n, const int64_t* bc, const int64_t* er,
+                          int64_t g, int quiet, double rain_min) {
+  int64_t b = AT(bc, g), previous;
+  if (quiet && AT(rain, b) == 0) {
+    while (b + 1 < n && AT(rain, b) == 0) b++;
+    return b;
+  }
+  previous = g > 1 ? AT(er, g - 1) : 0;
+  while (b > 1 && AT(rain, b) > rain_min && b > previous) b--;
+  return b + 1;
+}
+
+/* Steps 4 to 10 on the cores; writes up to capacity events (0-based) and returns how many
+   there are. NA positions are 0 (positions are 1-based internally). */
+static int64_t separate(const double* rain, const double* fr, const double* ff, int64_t n,
+                        int64_t h, double rain_min, int64_t* bc, int64_t* ec, int64_t k,
+                        int64_t* br, int64_t* er, int64_t* bf, int64_t* ef, int64_t capacity,
+                        int64_t* events) {
+  int64_t g, j, count = 0, kept = 0, previous_re = 0, previous_fe = 0;
+  int64_t last[4] = {0, 0, 0, 0};
+  for (g = 1; g <= k; g++) {
+    int64_t e = AT(ec, g);
+    int quiet_after = e + 2 < n && AT(fr, e + 1) == 0 && AT(fr, e + 2) == 0;
+    AT(er, g) = rain_end(rain, n, bc, ec, k, g, quiet_after, rain_min);
+  }
+  for (g = 1; g <= k; g++) {
+    int64_t b = AT(bc, g);
+    int quiet_before = b > 2 && AT(fr, b - 2) == 0 && AT(fr, b - 1) == 0;
+    AT(br, g) = rain_start(rain, n, bc, er, g, quiet_before, rain_min);
+  }
+  /* Step 6: a rain event must start no later than it ends and be bounded by dry steps. */
+  for (g = 1; g <= k; g++) {
+    int64_t b = AT(br, g), e = AT(er, g);
+    if (!(b <= e && b > 1 && e < n && AT(rain, b - 1) <= rain_min && AT(rain, e + 1) <= rain_min)) {
+      AT(br, g) = 0;
+      AT(er, g) = 0;
+    }
+  }
+  /* Step 7: the end of each flow event. */
+  for (g = 1; g <= k; g++) {
+    int64_t e = AT(ec, g), f, next, limit;
+    AT(ef, g) = 0;
+    if (AT(br, g) == 0) continue;
+    if (!(e + 2 < n && AT(fr, e + 1) == 0 && AT(fr, e + 2) == 0)) {
+      f = e;
+      while (f > AT(bc, g) && AT(ff, f) <= 0) f--;
+      AT(ef, g) = f;
+      continue;
+    }
+    limit = INT64_MAX;
+    for (next = g + 1; next <= k; next++) {
+      if (AT(br, next) != 0) {
+        limit = AT(br, next) + h;
+        break;
+      }
+    }
+    f = AT(er, g);
+    while (f + 1 < n && AT(ff, f) <= 0 && f < limit) f++;
+    while (f + 1 < n && AT(ff, f) > 0 && f < limit) f++;
+    AT(ef, g) = f - 1;
+  }
+  /* Step 8: the start of each flow event. */
+  for (g = 1; g <= k; g++) {
+    int64_t b = AT(bc, g), s;
+    AT(bf, g) = 0;
+    if (AT(br, g) == 0 || AT(ef, g) == 0) continue;
+    if (b > 2 && AT(fr, b - 2) == 0 && AT(fr, b - 1) == 0) {
+      s = AT(br, g);
+      while (AT(ff, s) > 0 && s < AT(ef, g)) s++;
+    } else {
+      s = b;
+      while (s <= AT(ef, g) && AT(ff, s) >= 0) s++;
+    }
+    AT(bf, g) = s;
+  }
+  /* Steps 9 and 10: keep events whose flow window is valid; an event that overlaps the one
+     kept just before it (not the merged span) joins its group, which spans them all. */
+  for (g = 1; g <= k; g++) {
+    int64_t rs = AT(br, g), re = AT(er, g), fs = AT(bf, g), fe = AT(ef, g);
+    int overlaps;
+    if (rs == 0 || fs == 0 || fe == 0 || fs > n || fe > n) continue;
+    if (!(fe > fs && AT(ff, fs) <= 0 && AT(ff, fe) >= 0 && fs >= rs && fe >= re)) continue;
+    overlaps = kept > 0 && (previous_re > rs || previous_fe > fs);
+    previous_re = re;
+    previous_fe = fe;
+    if (overlaps) {
+      if (rs < last[0]) last[0] = rs;
+      if (re > last[1]) last[1] = re;
+      if (fs < last[2]) last[2] = fs;
+      if (fe > last[3]) last[3] = fe;
+    } else {
+      if (kept > 0) {
+        if (count < capacity) {
+          for (j = 0; j < 4; j++) events[4 * count + j] = last[j] - 1;
+        }
+        count++;
+      }
+      last[0] = rs;
+      last[1] = re;
+      last[2] = fs;
+      last[3] = fe;
+      kept++;
+    }
+  }
+  if (kept > 0) {
+    if (count < capacity) {
+      for (j = 0; j < 4; j++) events[4 * count + j] = last[j] - 1;
+    }
+    count++;
+  }
+  return count;
+}
+
+int32_t pdm_find_events(const double* rain, const double* flow, int64_t n, double dt,
+                        double rain_min, int32_t h_max, int32_t* response_steps, double* rho,
+                        int64_t capacity, int64_t* n_events, int64_t* events, char* message,
+                        int64_t message_length) {
+  pdm_error e;
+  double *work, *curve, *cum_r, *pre_r, *cum_q, *pre_q, *fr, *ff, *intensity, best, window;
+  int64_t *index, *bc, *ec, *br, *er, *bf, *ef, m, k, i;
+  int32_t h, steps = 0;
+  e.code = PDM_OK;
+  e.text[0] = '\0';
+  if (rain == NULL || flow == NULL || response_steps == NULL || n_events == NULL ||
+      (events == NULL && capacity > 0) || capacity < 0 || !(isfinite(dt) && dt > 0) ||
+      !(isfinite(rain_min) && rain_min > 0) || h_max < 1 || n < 2 * (int64_t)h_max + 2) {
+    set_error(&e, PDM_ERR_ARGUMENT,
+              "pdm_find_events needs rain, flow, outputs, dt > 0, rain_min > 0 and 1 <= h_max <= (n - 2) / 2");
+    return finish(&e, message, message_length);
+  }
+  m = n / 2 + 2;
+  work = (double*)malloc(sizeof(double) * (size_t)(8 * n + 4 + h_max));
+  index = (int64_t*)malloc(sizeof(int64_t) * (size_t)(6 * m));
+  if (work == NULL || index == NULL) {
+    free(work);
+    free(index);
+    set_error(&e, PDM_ERR_NUMERICAL, "Out of memory");
+    return finish(&e, message, message_length);
+  }
+  cum_r = work;
+  pre_r = work + n;
+  cum_q = work + 2 * n + 1;
+  pre_q = work + 3 * n + 1;
+  fr = work + 4 * n + 2;
+  ff = work + 5 * n + 2;
+  intensity = work + 6 * n + 2;
+  curve = work + 8 * n + 4;
+  /* Step 1: the response time, from rain in mm (the correlation does not depend on scale). */
+  cumulate(rain, 1.0, n, cum_r, pre_r);
+  cumulate(flow, 1.0, n, cum_q, pre_q);
+  dmca_curve(cum_r, pre_r, cum_q, pre_q, n, h_max, curve);
+  best = INFINITY;
+  for (h = 1; h <= h_max; h++) {
+    if (isfinite(curve[h - 1]) && curve[h - 1] < best) {
+      best = curve[h - 1];
+      steps = h;
+    }
+  }
+  if (rho != NULL) memcpy(rho, curve, sizeof(double) * (size_t)h_max);
+  if (steps == 0) {
+    free(work);
+    free(index);
+    set_error(&e, PDM_ERR_ARGUMENT, "Rain or flow does not vary; no response time can be found");
+    return finish(&e, message, message_length);
+  }
+  *response_steps = steps;
+  /* Step 2: fluctuations at the response-time window, with the rain tolerance of Eq. 1. */
+  for (i = 0; i < n; i++) intensity[i] = finite_or_zero(rain[i]) / dt;
+  cumulate(intensity, 1.0, n, cum_r, pre_r);
+  fluctuations(cum_r, pre_r, n, steps, fr);
+  fluctuations(cum_q, pre_q, n, steps, ff);
+  window = 2.0 * steps + 1.0;
+  for (i = 0; i < n; i++) {
+    if (fabs(fr[i]) < rain_min / window * (window - 1.0) / 2.0) fr[i] = 0.0;
+    if (fabs(ff[i]) < cum_q[n - 1] / 1e15) ff[i] = 0.0;
+  }
+  bc = index;
+  ec = index + m;
+  br = index + 2 * m;
+  er = index + 3 * m;
+  bf = index + 4 * m;
+  ef = index + 5 * m;
+  k = event_cores(fr, ff, n, bc, ec);
+  *n_events = separate(intensity, fr, ff, n, steps, rain_min, bc, ec, k, br, er, bf, ef,
+                       capacity, events);
+  free(work);
+  free(index);
+  if (*n_events > capacity) {
+    set_error(&e, PDM_ERR_ARGUMENT, "More events than capacity; n_events holds the number needed");
+  }
+  return finish(&e, message, message_length);
+}
+
+int32_t pdm_event_summary(const double* rain, const double* flow, int64_t n, double dt,
+                          double area_km2, const int64_t* events, int64_t n_events,
+                          double* baseflow, double* summary, char* message,
+                          int64_t message_length) {
+  pdm_error e;
+  int64_t v, i, j;
+  double* base;
+  double to_mm = area_km2 > 0 ? 3.6 * dt / area_km2 : NAN;
+  e.code = PDM_OK;
+  e.text[0] = '\0';
+  if (rain == NULL || flow == NULL || n_events < 0 ||
+      ((events == NULL || summary == NULL) && n_events > 0) || !(isfinite(dt) && dt > 0)) {
+    set_error(&e, PDM_ERR_ARGUMENT, "pdm_event_summary needs rain, flow, events, summary and dt > 0");
+    return finish(&e, message, message_length);
+  }
+  for (v = 0; v < n_events; v++) {
+    const int64_t* ev = events + 4 * v;
+    if (ev[0] < 0 || ev[1] < ev[0] || ev[2] < 0 || ev[3] <= ev[2] || ev[1] >= n || ev[3] >= n) {
+      set_error(&e, PDM_ERR_ARGUMENT, "An event's windows lie outside the series or are reversed");
+      return finish(&e, message, message_length);
+    }
+  }
+  base = (double*)malloc(sizeof(double) * (size_t)(n > 0 ? n : 1));
+  if (base == NULL) {
+    set_error(&e, PDM_ERR_NUMERICAL, "Out of memory");
+    return finish(&e, message, message_length);
+  }
+  /* The baseflow line joins the flow windows' delimiters in turn, never above the flow. */
+  for (i = 0; i < n; i++) base[i] = flow[i];
+  for (j = 0; j + 1 < 2 * n_events; j++) {
+    int64_t a = events[4 * (j / 2) + 2 + (j % 2)];
+    int64_t b = events[4 * ((j + 1) / 2) + 2 + ((j + 1) % 2)];
+    if (b - a > 1 && isfinite(flow[a]) && isfinite(flow[b])) {
+      for (i = a + 1; i < b; i++) {
+        base[i] = flow[a] + (flow[b] - flow[a]) * (double)(i - a) / (double)(b - a);
+      }
+    }
+  }
+  /* Never above the flow, and missing where the flow is (R's pmin() with a missing value). */
+  for (i = 0; i < n; i++) {
+    if (!isfinite(flow[i]) || base[i] > flow[i]) base[i] = flow[i];
+  }
+  for (v = 0; v < n_events; v++) {
+    const int64_t* ev = events + 4 * v;
+    double rain_mm = 0.0, peak = -INFINITY, volume = 0.0, quick = 0.0;
+    int64_t peak_at = -1;
+    for (i = ev[0]; i <= ev[1]; i++) rain_mm += finite_or_zero(rain[i]);
+    for (i = ev[2]; i <= ev[3]; i++) {
+      if (!isfinite(flow[i])) continue;
+      if (flow[i] > peak) {
+        peak = flow[i];
+        peak_at = i;
+      }
+      volume += flow[i];
+      if (isfinite(base[i])) quick += flow[i] - base[i];
+    }
+    summary[6 * v + 0] = rain_mm;
+    summary[6 * v + 1] = peak_at < 0 ? NAN : (double)peak_at;
+    summary[6 * v + 2] = peak_at < 0 ? NAN : peak;
+    summary[6 * v + 3] = volume * to_mm;
+    summary[6 * v + 4] = quick * to_mm;
+    summary[6 * v + 5] = quick * to_mm / rain_mm;
+  }
+  if (baseflow != NULL) memcpy(baseflow, base, sizeof(double) * (size_t)n);
+  free(base);
+  return finish(&e, message, message_length);
+}
+
+int32_t pdm_event_scores(const double* simulated, const double* observed, int64_t n, double dt,
+                         const int64_t* events, int64_t n_events, double* scores,
+                         char* message, int64_t message_length) {
+  pdm_error e;
+  int64_t v, i;
+  e.code = PDM_OK;
+  e.text[0] = '\0';
+  if (simulated == NULL || observed == NULL || n_events < 0 ||
+      ((events == NULL || scores == NULL) && n_events > 0) || !(isfinite(dt) && dt > 0)) {
+    set_error(&e, PDM_ERR_ARGUMENT, "pdm_event_scores needs both series, events, scores and dt > 0");
+    return finish(&e, message, message_length);
+  }
+  for (v = 0; v < n_events; v++) {
+    const int64_t* ev = events + 4 * v;
+    double o_peak = -INFINITY, s_peak = -INFINITY, so = 0.0, ss = 0.0, mean, sse = 0.0, sst = 0.0;
+    int64_t o_at = -1, s_at = -1, used = 0, j;
+    double* out = scores + 6 * v;
+    if (ev[2] < 0 || ev[3] >= n || ev[3] < ev[2]) {
+      set_error(&e, PDM_ERR_ARGUMENT, "An event's flow window lies outside the series");
+      return finish(&e, message, message_length);
+    }
+    for (i = ev[2]; i <= ev[3]; i++) {
+      if (!isfinite(observed[i]) || !isfinite(simulated[i])) continue;
+      used++;
+      so += observed[i];
+      ss += simulated[i];
+      if (observed[i] > o_peak) {
+        o_peak = observed[i];
+        o_at = i;
+      }
+      if (simulated[i] > s_peak) {
+        s_peak = simulated[i];
+        s_at = i;
+      }
+    }
+    if (used < 2) {
+      for (j = 0; j < 6; j++) out[j] = NAN;
+      continue;
+    }
+    mean = so / (double)used;
+    for (i = ev[2]; i <= ev[3]; i++) {
+      if (!isfinite(observed[i]) || !isfinite(simulated[i])) continue;
+      sse += (simulated[i] - observed[i]) * (simulated[i] - observed[i]);
+      sst += (observed[i] - mean) * (observed[i] - mean);
+    }
+    out[0] = o_peak;
+    out[1] = s_peak;
+    out[2] = s_peak / o_peak - 1.0;
+    out[3] = (double)(s_at - o_at) * dt;
+    out[4] = ss / so - 1.0;
+    out[5] = 1.0 - sse / sst;
+  }
+  return finish(&e, message, message_length);
+}
+
+#undef AT

@@ -46,7 +46,7 @@ test_that("the compiled DMCA search matches the R reference", {
   on.exit(options(old), add = TRUE)
   reference <- response_time_dmca(rain, flow, max_response_h = 60)
   expect_equal(compiled$response_steps, reference$response_steps)
-  expect_lt(max(abs(compiled$curve$rho - reference$curve$rho)), 1e-6)
+  expect_lt(max(abs(compiled$curve$rho - reference$curve$rho)), 1e-12)
 })
 
 # Guards: the moving mean shrinks its window at the ends, as the published method's does
@@ -144,4 +144,31 @@ test_that("batch_events scores the candidates of a batch event by event", {
   expect_true(all(c("calibration", "validation") %in% out$events$period))
   expect_true(all(is.finite(out$events$peak_error)))
   expect_error(batch_events(tempfile()), "")
+})
+
+# Guards: the C core and the R reference find the same events, totals and scores, including on
+# a record with gaps, where rounding in the running sums decides which steps are quiet
+test_that("the C core matches the R reference event for event", {
+  river <- synthetic_catchment(years = 1, dt = 1, seed = 9)
+  flow <- river$observed
+  flow[c(500:700, 6000:6100)] <- NA
+  rain <- river$forcing$rain
+  rain[3000:3010] <- NA
+  run <- function() {
+    ev <- find_events(rain, flow, dt = 1, area_km2 = river$truth$area_km2)
+    list(events = ev, scores = event_scores(ev, river$true_flow, flow))
+  }
+  core <- run()
+  old <- options(pdmS7.engine = "r")
+  on.exit(options(old), add = TRUE)
+  reference <- run()
+  positions <- c("rain_start", "rain_end", "flow_start", "flow_end", "peak_row")
+  expect_identical(as.matrix(core$events[positions]), as.matrix(reference$events[positions]))
+  numbers <- c("rain_mm", "peak_flow", "flow_mm", "quickflow_mm", "runoff_ratio")
+  expect_equal(core$events[numbers], reference$events[numbers], tolerance = 1e-12)
+  expect_equal(attr(core$events, "baseflow"), attr(reference$events, "baseflow"),
+               tolerance = 1e-12)
+  scores <- c("observed_peak", "simulated_peak", "peak_error", "timing_error_h",
+              "volume_error", "nse")
+  expect_equal(core$scores[scores], reference$scores[scores], tolerance = 1e-12)
 })

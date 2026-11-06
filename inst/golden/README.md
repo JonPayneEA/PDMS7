@@ -31,10 +31,21 @@ the compiled core, so the files test the core as well as the bindings.
 | `<case>_arma.csv`, `<case>_arma_innovations.csv` | The updated forecast, the error forecast and the innovations |
 | `flow_cases.csv` | Steady-state starts: the PDM case, `observed_m3s`, `baseflow_fraction`, `soil_fraction` and `expected_code` |
 | `<case>_flow_state.csv` | The state from `pdm_state_from_flow()` |
-| `generate_golden.R` | Regenerates every file from the R reference |
+| `events_cases.csv` | Event cases: `case`, `dt` (hours), `rain_min` (mm/h), `h_max` (steps) and `area_km2` |
+| `<case>_events_series.csv` | `rain_mm`, `flow_m3s` and `simulated_m3s` for `pdm_find_events()`, `pdm_event_summary()` and `pdm_event_scores()` |
+| `<case>_events_expected.csv` | One row per event: the four positions (0-based), the six totals of `pdm_event_summary()` and the six scores of `pdm_event_scores()` |
+| `<case>_events_rho.csv`, `<case>_events_baseflow.csv` | The response-time curve and the baseflow line |
+| `generate_golden.R` | Regenerates the model files from the R reference |
+| `generate_golden_events.R` | Regenerates the event files from the R reference |
 
 All numbers are written with 17 significant digits, so they round-trip exactly to doubles.
-There are no infinities or missing values.
+There are no infinities. The only missing values (`NaN`) are in the `gaps` event case, whose
+rain and flow have gaps on purpose; there a missing expected value must be matched by a
+missing result.
+
+The three event cases are half a year of hourly data, four years of daily data, and half a
+year of hourly data with gaps in both rain and flow. Event positions must match exactly; the
+response time must be the position of the curve's minimum.
 
 The 21 cases cover the default model, the Smith solver, a 15-minute step with a fractional
 delay, a daily step, unusual parameters with near-equal cascade constants, linear and
@@ -56,6 +67,8 @@ max |got - expected| <= 1e-12 * max(1, max |expected|)
 Exact equality is not required. R 4.5 and later round `sum()` and `^` slightly differently
 from R 4.3, and compilers may differ in the last place; 1e-12 allows for that and nothing more.
 
+Event positions are compared exactly, not within a tolerance.
+
 For each row of `invalid_cases.csv`, `pdm_run()` must return the expected code, write a
 non-empty message, and leave the state array unchanged.
 
@@ -70,6 +83,7 @@ Only when the model equations change:
 
 ```
 Rscript inst/golden/generate_golden.R
+Rscript inst/golden/generate_golden_events.R
 ```
 
 Review the diff before committing. Changed expected values mean changed model results, and
