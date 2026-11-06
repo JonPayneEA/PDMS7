@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.7.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -57,6 +57,8 @@
     <li><a class="dropdown-item" href="../articles/extrapolation.html">Larger floods: extrapolation and the rating</a></li>
     <li><a class="dropdown-item" href="../articles/many-catchments.html">Calibrating many catchments</a></li>
     <li><a class="dropdown-item" href="../articles/large-sample.html">A large sample: what automatic calibration recovers</a></li>
+    <li><a class="dropdown-item" href="../articles/calibration-study.html">What limits automatic calibration: a study</a></li>
+    <li><a class="dropdown-item" href="../articles/events.html">Events in large samples: finding them and scoring models on them</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Records and review</h6></li>
     <li><a class="dropdown-item" href="../articles/calibration-log.html">Logging a manual calibration</a></li>
@@ -215,7 +217,7 @@ the parts of the hydrograph they control, often helps. <a href="auto-calibration
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">says</span><span class="op">(</span><span class="fu"><a href="../reference/calibrate_pdm.html">calibrate_pdm</a></span><span class="op">(</span><span class="va">config</span>, <span class="va">forcing</span>, observed <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">3</span>, <span class="fl">2</span>, <span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span>, lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>fc <span class="op">=</span> <span class="fl">0.8</span><span class="op">)</span>,</span>
 <span>                   upper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>fc <span class="op">=</span> <span class="fl">1.2</span><span class="op">)</span>, thresholds <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>alert <span class="op">=</span> <span class="fl">2.5</span><span class="op">)</span>, method <span class="op">=</span> <span class="st">"lbfgsb"</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] "Threshold scores change in steps, which a gradient optimiser cannot follow; use method = \"nelder_mead\""</span></span></code></pre></div>
+<span><span class="co">#&gt; [1] "Threshold scores change in steps, which a gradient optimiser cannot follow; use method = \"nelder_mead\" or \"dds\""</span></span></code></pre></div>
 <p>Threshold scores change in steps, so a gradient method cannot follow
 them. Use <code>method = "nelder_mead"</code>.</p>
 </div>

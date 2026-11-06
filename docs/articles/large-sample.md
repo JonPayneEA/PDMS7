@@ -62,16 +62,19 @@ effects can be told apart.
 
 ## Calibrating all of them
 
-One call calibrates the whole sample: staged automatic calibration from
-the standard preset, two starts per stage, in parallel workers. Each
-record’s two wettest years are held back and revealed at the end by the
-test, as every project does by default.
+One call calibrates the whole sample: automatic calibration of all seven
+parameters at once from the standard preset, with four starts, in
+parallel workers. Each record’s two wettest years are held back and
+revealed at the end by the test, as every project does by default.
 
 ``` r
-cores <- min(4L, max(1L, parallel::detectCores() - 1L))
+# R CMD check allows two processes; elsewhere use up to four cores. The results do not depend
+# on the number: each basin's random starts are seeded from its name.
+limited <- identical(toupper(Sys.getenv("_R_CHECK_LIMIT_CORES_")), "TRUE")
+cores <- if (limited) 2L else min(4L, max(1L, parallel::detectCores() - 1L))
 elapsed <- system.time(
-  calibrate_batch(basins, output, staged = TRUE, starts = 2, control = list(maxit = 40),
-                  cores = cores, test = TRUE)
+  calibrate_batch(basins, output, starts = 4, control = list(maxit = 40), cores = cores,
+                  test = TRUE)
 )[["elapsed"]]
 status <- batch_status(output)
 table(status$state)
@@ -81,7 +84,7 @@ table(status$state)
 results <- batch_results(output)
 ```
 
-All 30 catchments finished, in 10 minutes on 3 cores. A sample of
+All 30 catchments finished, in 4 minutes on 3 cores. A sample of
 hundreds takes the same call;
 [`calibrate_batch()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md)
 resumes where it stopped if interrupted. [Calibrating many
@@ -111,15 +114,15 @@ the validation window and the held-back wettest years.
 ``` r
 round(sapply(scores, stats::quantile, c(0.1, 0.5, 0.9), na.rm = TRUE), 3)
 #>     calibration validation wettest years
-#> 10%       0.979      0.977         0.974
-#> 50%       0.991      0.988         0.982
-#> 90%       0.995      0.994         0.991
+#> 10%       0.979      0.978         0.976
+#> 50%       0.992      0.990         0.982
+#> 90%       0.995      0.995         0.991
 ```
 
-The median catchment scores 0.991 on calibration, 0.988 on validation
+The median catchment scores 0.992 on calibration, 0.990 on validation
 and 0.982 on the held-back wettest years. By the usual standard every
-one of these is an excellent fit. The weakest on validation is S027, at
-0.906. If scores were the whole story, this would be the end of the
+one of these is an excellent fit. The weakest on validation is S001, at
+0.972. If scores were the whole story, this would be the end of the
 article.
 
 ## Which parameters does it recover?
@@ -149,13 +152,13 @@ data.frame(parameter = names(typical), typical_error = round(exp(typical) - 1, 3
            within_10_percent = colSums(abs(log(fitted / truth)) < log(1.1)),
            row.names = NULL)
 #>   parameter typical_error within_10_percent
-#> 1        fc         0.010                29
-#> 2      cmax         0.058                22
-#> 3         b         0.103                14
-#> 4        kg         0.029                27
-#> 5    k_fast         0.110                13
-#> 6    k_slow         0.077                20
-#> 7        kb         0.449                 6
+#> 1        fc         0.009                30
+#> 2      cmax         0.060                23
+#> 3         b         0.100                15
+#> 4        kg         0.031                30
+#> 5    k_fast         0.114                12
+#> 6    k_slow         0.077                19
+#> 7        kb         0.393                 5
 ```
 
 ``` r
@@ -177,11 +180,59 @@ Calibrated against true values, one point per catchment. Points on the
 line are exact. Log scales for the parameters that span orders of
 magnitude.
 
+1 calibration (S017) ended with a parameter against a bound. That is
+worth checking in a real study: it can mean a search that went astray,
+or a true value close to the bound. Nothing in the batch flags it yet,
+so check for it as this article does.
+
 The ranking is clear. fc and kg come back closest, typically within 1
-and 3 per cent. kb and k_fast are the worst, typically 45 and 11 per
+and 3 per cent. kb and k_fast are the worst, typically 39 and 11 per
 cent out. Yet the calibrations that got them wrong still score an
 excellent NSE. A good score shows that the model reproduces the record;
 it does not show that the parameters are right.
+
+## Did the search find the best fit?
+
+A parameter that comes back wrong has two possible causes. The search
+may have stopped short of the best fit, or the record may not be able to
+tell the true value from the wrong one. The truth settles which: score
+each catchment’s true parameters on the same calibration window, and set
+the calibration’s score against it.
+
+``` r
+true_score <- vapply(sample$basin, function(id) {
+  project <- file.path(output, id)
+  entries <- read_project(project)$entries
+  fit <- utils::tail(entries$id[entries$type == "auto_calibration"], 1)
+  cfg <- read_pdm_config(file.path(basins, id, "truth.yml"))
+  changes <- vapply(b$path, function(p) pdmS7:::.path_get(cfg, p), numeric(1))
+  suppressWarnings(preview_trial(project, fit, changes))$scores$nse
+}, numeric(1))
+calibrated_score <- results$candidate_score[match(sample$basin, results$project)]
+gap <- calibrated_score - true_score
+round(c(at_least_truth = sum(gap >= -1e-6), short_by_over_0.001 = sum(gap < -0.001),
+        largest_shortfall = max(0, -min(gap))), 4)
+#>      at_least_truth short_by_over_0.001   largest_shortfall 
+#>             29.0000              0.0000              0.0004
+```
+
+In 29 of the 30 catchments the calibration scores at least as well as
+the true parameters, and in the other it falls short by no more than
+0.0004 in NSE. The search found the best fit each record allows. So when
+kb comes back 39 per cent out, the search is not to blame: parameter
+sets that far apart fit the record equally well, and the record, with
+its gauge error, cannot choose between them. More model runs, or a
+different search, would not recover it.
+
+Why can the record not see `kb`? Water reaches the groundwater store as
+recharge, which is already slow; a groundwater store faster than its
+recharge passes it on almost unchanged, so across a hundredfold range of
+`kb` the flow hardly changes. The parameter matters only when recharge
+stops, in a drought long enough to empty the soil, and there equally
+good calibrations can disagree widely. [What limits automatic
+calibration](https://jonpayneea.github.io/PDMS7/articles/calibration-study.md)
+shows this with profiles and drought scenarios, and compares four
+searches on this sample.
 
 ## What decides whether a parameter can be recovered?
 
@@ -209,14 +260,14 @@ dryness of its climate.
 ``` r
 rho <- stats::cor(dryness, cmax_error, method = "spearman")
 round(rho, 2)
-#> [1] -0.03
+#> [1] 0.11
 ```
 
 Across this sample, dryness alone does not explain how well the soil
-capacity is recovered (Spearman correlation -0.03): other things, such
-as how the parameters trade off against each other, matter as much. A
-real large-sample study can ask the same question of its own results,
-but cannot see the error itself; here it can.
+capacity is recovered (Spearman correlation 0.11): other things, such as
+how the parameters trade off against each other, matter as much. A real
+large-sample study can ask the same question of its own results, but
+cannot see the error itself; here it can.
 
 ## The largest floods
 
@@ -250,9 +301,9 @@ round(c(median_error_vs_recorded = stats::median(vs_recorded),
         median_spread = stats::median((peaks$high - peaks$low) / peaks$true),
         share_true_inside_spread = mean(peaks$true >= peaks$low & peaks$true <= peaks$high)), 3)
 #> median_error_vs_recorded     median_error_vs_true            median_spread 
-#>                    0.088                   -0.014                    0.119 
+#>                    0.099                   -0.011                    0.148 
 #> share_true_inside_spread 
-#>                    0.767
+#>                    0.883
 ```
 
 ``` r
@@ -269,10 +320,10 @@ peak.](large-sample_files/figure-html/peak-plot-1.png)
 Peak error in the held-back wettest years, judged against the recorded
 peak (which the rating understates) and against the true peak.
 
-Judged against the recorded peaks, the calibrated models look 9 per cent
-high in the median year. Judged against the true peaks, they are 1 per
-cent low. Across the 60 held-back years, the range of the equally good
-fits contains the true peak in 77 per cent of them. [Larger
+Judged against the recorded peaks, the calibrated models look 10 per
+cent high in the median year. Judged against the true peaks, they are 1
+per cent low. Across the 60 held-back years, the range of the equally
+good fits contains the true peak in 88 per cent of them. [Larger
 floods](https://jonpayneea.github.io/PDMS7/articles/extrapolation.md)
 explains these checks for one catchment; across a sample, they show how
 far a method can be trusted with floods it has not seen.
@@ -280,13 +331,15 @@ far a method can be trusted with floods it has not seen.
 ## What the sample shows
 
 - **Scores are not evidence of correct parameters.** Every catchment
-  scored an NSE of at least 0.91 on validation. Some parameters were
+  scored an NSE of at least 0.97 on validation. Some parameters were
   still recovered poorly, and only the known truth shows it.
+- **The search is not the limit.** In 29 of 30 catchments the
+  calibration fitted at least as well as the truth. What the record
+  cannot recover, no search will.
 - **Some parameters are reliably recovered and some are not.** Here fc
-  and kg were within 10 per cent in 27 or more of the 30 catchments; kb
-  was within 10 per cent in only
-  6.  A study that reads meaning into a parameter should first know
-      which kind it is.
+  and kg were within 10 per cent in all 30 catchments; kb was within 10
+  per cent in only 5 of them. A study that reads meaning into a
+  parameter should first know which kind it is.
 - **A rating extrapolated above the highest gauging makes a good model
   look bad on the biggest floods.** Judge peak errors with the rating
   flag in mind.

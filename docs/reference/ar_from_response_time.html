@@ -13,7 +13,7 @@ times that at t - 3."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.7.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -48,6 +48,8 @@ times that at t - 3."></head><body>
     <li><a class="dropdown-item" href="../articles/extrapolation.html">Larger floods: extrapolation and the rating</a></li>
     <li><a class="dropdown-item" href="../articles/many-catchments.html">Calibrating many catchments</a></li>
     <li><a class="dropdown-item" href="../articles/large-sample.html">A large sample: what automatic calibration recovers</a></li>
+    <li><a class="dropdown-item" href="../articles/calibration-study.html">What limits automatic calibration: a study</a></li>
+    <li><a class="dropdown-item" href="../articles/events.html">Events in large samples: finding them and scoring models on them</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Records and review</h6></li>
     <li><a class="dropdown-item" href="../articles/calibration-log.html">Logging a manual calibration</a></li>
@@ -145,6 +147,10 @@ first coefficient. As in reach.postproc, equating a catchment's time to peak wit
 decay of its forecast errors is an approximation, a starting estimate to be checked
 against past events, not a derived result. Check any set with <code><a href="https://rdrr.io/pkg/reach.postproc/man/assess.html" class="external-link">reach.postproc::assess()</a></code>
 before operational use.</p>
+<p>The first coefficient is set for 15-minute steps. At longer steps, a short decay time makes
+the set unstable (a root of size 1 or more, so the projected error grows without limit), and
+<code>ar_from_response_time()</code> refuses it: the decay must be at least about 4.9 steps, which is
+1.2 hours at 15-minute steps but 4.9 hours at hourly steps.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

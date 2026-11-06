@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.7.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -57,6 +57,8 @@
     <li><a class="dropdown-item" href="../articles/extrapolation.html">Larger floods: extrapolation and the rating</a></li>
     <li><a class="dropdown-item" href="../articles/many-catchments.html">Calibrating many catchments</a></li>
     <li><a class="dropdown-item" href="../articles/large-sample.html">A large sample: what automatic calibration recovers</a></li>
+    <li><a class="dropdown-item" href="../articles/calibration-study.html">What limits automatic calibration: a study</a></li>
+    <li><a class="dropdown-item" href="../articles/events.html">Events in large samples: finding them and scoring models on them</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Records and review</h6></li>
     <li><a class="dropdown-item" href="../articles/calibration-log.html">Logging a manual calibration</a></li>
@@ -209,8 +211,8 @@ compiled core, measured as this article was built.
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">timings</span>, <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="co">#&gt;         R   C</span></span>
-<span><span class="co">#&gt; PDM  2099 3.0</span></span>
-<span><span class="co">#&gt; PACK  319 0.9</span></span></code></pre></div>
+<span><span class="co">#&gt; PDM  1464 2.0</span></span>
+<span><span class="co">#&gt; PACK  195 0.7</span></span></code></pre></div>
 <p>The exact figures depend on the machine, but the ratio is in the
 hundreds. For a calibration that needs a million model runs, that is the
 difference between weeks and hours. The <a href="../performance.html">performance guide</a> gives measured figures
@@ -251,10 +253,11 @@ quantity’s size.</p>
 </h2>
 <p><code>inst/golden/</code> holds inputs and expected outputs from the
 R reference for every component: PDM configurations, snowpack runs,
-coupled snow and PDM runs, state corrections, ARMA updates and
-steady-state starts, together with invalid inputs that must be rejected.
-A binding in any language passes if it reproduces every output within
-1e-12 of its magnitude. The R tests check both engines against them, and
+coupled snow and PDM runs, state corrections, ARMA updates, steady-state
+starts, and events found in hourly, daily and gappy records, together
+with invalid inputs that must be rejected. A binding in any language
+passes if it reproduces every output within 1e-12 of its magnitude. The
+R tests check both engines against them, and
 <code>tools/core/check_golden.c</code> checks the core from plain C,
 with no R involved.</p>
 </div>
@@ -325,6 +328,20 @@ sizes against the header before trusting a new binding.</p>
 numerical failure, with a message in the buffer. On failure the state
 array is left unchanged. The core holds no global state, so separate
 runs can execute in parallel threads.</p>
+</div>
+<div class="section level2">
+<h2 id="finding-events-from-other-languages">Finding events from other languages<a class="anchor" aria-label="anchor" href="#finding-events-from-other-languages"></a>
+</h2>
+<p>The event functions of <a href="events.html">Events in large
+samples</a> live in the same library: <code>pdm_dmca_rho()</code> for
+the response-time curve, <code>pdm_find_events()</code> for the events,
+<code>pdm_event_summary()</code> for their totals and baseflow line, and
+<code>pdm_event_scores()</code> for a model’s scores on each event. They
+take only arrays of doubles and 64-bit integers, so no structures are
+needed. <code>tools/core/events_example.py</code> finds the events of a
+golden record from Python with the standard library alone, and checks
+them against the expected file. Positions are 0-based at the interface,
+where R’s are 1-based.</p>
 </div>
 <div class="section level2">
 <h2 id="calling-the-core-from-c-scala-julia-and-others">Calling the core from C, Scala, Julia and others<a class="anchor" aria-label="anchor" href="#calling-the-core-from-c-scala-julia-and-others"></a>

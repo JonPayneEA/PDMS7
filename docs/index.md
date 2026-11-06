@@ -114,6 +114,15 @@ Calibration:
   recovers](https://jonpayneea.github.io/PDMS7/articles/large-sample.html):
   30 synthetic catchments, each with its own climate and known truth,
   calibrated as a batch
+- [What limits automatic calibration: a
+  study](https://jonpayneea.github.io/PDMS7/articles/calibration-study.html):
+  four searches checked against the truth, a fault in staged
+  calibration, and why `kb` cannot be recovered from flow records but
+  matters in severe droughts
+- [Events in large
+  samples](https://jonpayneea.github.io/PDMS7/articles/events.html):
+  finding rainfall-runoff events and response times objectively from the
+  records, and scoring models event by event across a batch
 
 Records and review:
 

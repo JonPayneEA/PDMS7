@@ -114,6 +114,15 @@ Calibration:
   recovers](https://jonpayneea.github.io/PDMS7/articles/large-sample.html):
   30 synthetic catchments, each with its own climate and known truth,
   calibrated as a batch
+- [What limits automatic calibration: a
+  study](https://jonpayneea.github.io/PDMS7/articles/calibration-study.html):
+  four searches checked against the truth, a fault in staged
+  calibration, and why `kb` cannot be recovered from flow records but
+  matters in severe droughts
+- [Events in large
+  samples](https://jonpayneea.github.io/PDMS7/articles/events.html):
+  finding rainfall-runoff events and response times objectively from the
+  records, and scoring models event by event across a batch
 
 Records and review:
 
@@ -697,6 +706,20 @@ calibrations.
 - [`pdm_fingerprint()`](https://jonpayneea.github.io/PDMS7/reference/pdm_fingerprint.md)
   : Fingerprint a model configuration
 
+## Events
+
+Rainfall-runoff events and response time from the records alone, and
+model scores event by event.
+
+- [`find_events()`](https://jonpayneea.github.io/PDMS7/reference/find_events.md)
+  : Rainfall-runoff events from rain and flow records
+- [`response_time_dmca()`](https://jonpayneea.github.io/PDMS7/reference/response_time_dmca.md)
+  : Catchment response time from rain and flow records
+- [`event_scores()`](https://jonpayneea.github.io/PDMS7/reference/event_scores.md)
+  : Model scores event by event
+- [`batch_events()`](https://jonpayneea.github.io/PDMS7/reference/batch_events.md)
+  : Events and event scores across a batch
+
 ## Hindcasts and lead-time scores
 
 Rerun past forecasts from many origins and score each lead time against
@@ -782,6 +805,10 @@ State correction and ARMA error prediction (Moore 2007, Eq. 28-42).
   catchments](https://jonpayneea.github.io/PDMS7/articles/many-catchments.md):
 - [A large sample: what automatic calibration
   recovers](https://jonpayneea.github.io/PDMS7/articles/large-sample.md):
+- [What limits automatic calibration: a
+  study](https://jonpayneea.github.io/PDMS7/articles/calibration-study.md):
+- [Events in large samples: finding them and scoring models on
+  them](https://jonpayneea.github.io/PDMS7/articles/events.md):
 
 ### Records and review
 

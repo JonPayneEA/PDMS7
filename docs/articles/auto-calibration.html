@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.8.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -57,6 +57,8 @@
     <li><a class="dropdown-item" href="../articles/extrapolation.html">Larger floods: extrapolation and the rating</a></li>
     <li><a class="dropdown-item" href="../articles/many-catchments.html">Calibrating many catchments</a></li>
     <li><a class="dropdown-item" href="../articles/large-sample.html">A large sample: what automatic calibration recovers</a></li>
+    <li><a class="dropdown-item" href="../articles/calibration-study.html">What limits automatic calibration: a study</a></li>
+    <li><a class="dropdown-item" href="../articles/events.html">Events in large samples: finding them and scoring models on them</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Records and review</h6></li>
     <li><a class="dropdown-item" href="../articles/calibration-log.html">Logging a manual calibration</a></li>
@@ -571,9 +573,9 @@ catchments where the structure was exactly right, a polish kept within a
 quarter of each range (the default before version 0.8.0) left two
 catchments far short of their true parameters’ score. With the polish
 over the full bounds, staging and calibrating everything at once both
-came within 0.001 of the truth’s score in every catchment. <a href="large-sample.html">A large sample</a> describes the test. On
-synthetic data the two are equal, so the case for staging rests on real
-data, and on judgement.</p>
+came within 0.001 of the truth’s score in every catchment. <a href="calibration-study.html">What limits automatic calibration</a>
+describes the test. On synthetic data the two are equal, so the case for
+staging rests on real data, and on judgement.</p>
 <p>In a project, <code><a href="../reference/calibrate_staged.html">log_staged_calibration()</a></code> writes one
 <code>auto_calibration</code> entry per stage, each the parent of the
 next, with its stage recorded, and

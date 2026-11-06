@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.8.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -42,6 +42,8 @@
     <li><a class="dropdown-item" href="../articles/extrapolation.html">Larger floods: extrapolation and the rating</a></li>
     <li><a class="dropdown-item" href="../articles/many-catchments.html">Calibrating many catchments</a></li>
     <li><a class="dropdown-item" href="../articles/large-sample.html">A large sample: what automatic calibration recovers</a></li>
+    <li><a class="dropdown-item" href="../articles/calibration-study.html">What limits automatic calibration: a study</a></li>
+    <li><a class="dropdown-item" href="../articles/events.html">Events in large samples: finding them and scoring models on them</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Records and review</h6></li>
     <li><a class="dropdown-item" href="../articles/calibration-log.html">Logging a manual calibration</a></li>
@@ -856,6 +858,43 @@
 
         </dt>
         <dd>Fingerprint a model configuration</dd>
+      </dl></div><div class="section level2">
+      <h2 id="events">Events<a class="anchor" aria-label="anchor" href="#events"></a></h2>
+
+      <div class="section-desc"><p>Rainfall-runoff events and response time from the records alone, and model scores event by event.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="find_events.html">find_events()</a></code>
+
+        </dt>
+        <dd>Rainfall-runoff events from rain and flow records</dd>
+
+        <dt>
+
+          <code><a href="response_time_dmca.html">response_time_dmca()</a></code>
+
+        </dt>
+        <dd>Catchment response time from rain and flow records</dd>
+
+        <dt>
+
+          <code><a href="event_scores.html">event_scores()</a></code>
+
+        </dt>
+        <dd>Model scores event by event</dd>
+
+        <dt>
+
+          <code><a href="batch_events.html">batch_events()</a></code>
+
+        </dt>
+        <dd>Events and event scores across a batch</dd>
       </dl></div><div class="section level2">
       <h2 id="hindcasts-and-lead-time-scores">Hindcasts and lead-time scores<a class="anchor" aria-label="anchor" href="#hindcasts-and-lead-time-scores"></a></h2>
 

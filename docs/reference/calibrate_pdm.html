@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.8.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.9.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -42,6 +42,8 @@
     <li><a class="dropdown-item" href="../articles/extrapolation.html">Larger floods: extrapolation and the rating</a></li>
     <li><a class="dropdown-item" href="../articles/many-catchments.html">Calibrating many catchments</a></li>
     <li><a class="dropdown-item" href="../articles/large-sample.html">A large sample: what automatic calibration recovers</a></li>
+    <li><a class="dropdown-item" href="../articles/calibration-study.html">What limits automatic calibration: a study</a></li>
+    <li><a class="dropdown-item" href="../articles/events.html">Events in large samples: finding them and scoring models on them</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Records and review</h6></li>
     <li><a class="dropdown-item" href="../articles/calibration-log.html">Logging a manual calibration</a></li>
@@ -207,7 +209,7 @@ With <code>dds</code>, <code>control$maxit</code> is the number of model runs pe
 <code>control$r</code>, the perturbation size as a fraction of each range, defaults to 0.2. It also
 accepts threshold objectives. On the smooth NSE of the standard structure, L-BFGS-B is the
 better choice: on 30 synthetic catchments, given the same number of model runs (about 560
-per start), DDS fitted less well in 29 of them. DDS suits objectives with steps or many
+per start), DDS fitted less well in every one of them. DDS suits objectives with steps or many
 local optima, and budgets of thousands of runs per start.</p></dd>
 
 

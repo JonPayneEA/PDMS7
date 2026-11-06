@@ -325,16 +325,19 @@ response, then make a final adjustment.
 [`calibrate_staged()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_staged.md)
 does the same:
 
-| Stage                   | Fits                                                                       | Objective                          |
-|-------------------------|----------------------------------------------------------------------------|------------------------------------|
-| 1\. Volume and baseflow | `fc`, the soil store, recharge and groundwater                             | 1 - log NSE, plus the volume error |
-| 2\. Fast response       | The surface stores, and the store shape `b` again                          | 1 - NSE                            |
-| 3\. Polish              | Everything, within a quarter of each range either side of stage 2’s values | 1 - NSE                            |
+| Stage                   | Fits                                                             | Objective                          |
+|-------------------------|------------------------------------------------------------------|------------------------------------|
+| 1\. Volume and baseflow | `fc`, the soil store, recharge and groundwater                   | 1 - log NSE, plus the volume error |
+| 2\. Fast response       | The surface stores, and the store shape `b` again                | 1 - NSE                            |
+| 3\. Polish              | Everything, over the full bounds, starting from stage 2’s values | 1 - NSE                            |
 
 Log flows in stage 1 stop the floods dominating, so the slow stores are
 fitted to the low flows and recessions they control. Stage 2 then fits
 peaks and timing with the slow stores held. Stage 3 fixes any
-interaction between the two without drifting far.
+interaction between the two, and is free to move far: stage 1 fits with
+the surface stores at their starting values, and where the true stores
+are much slower it can settle on the wrong slow stores to compensate. A
+polish kept close to that point could not undo it.
 [`pdm_stages()`](https://jonpayneea.github.io/PDMS7/reference/pdm_stages.md)
 builds this list for any structure from the bounds table: a split
 recharge adds its share to stage 1, an exponential store its two
@@ -370,13 +373,13 @@ round(comparison, 3)
 #> all_at_once  0.992   0.991        0.000       4395
 #> stage_1      0.967   0.976        0.000       1012
 #> stage_2      0.978   0.979        0.005        364
-#> staged       0.990   0.989        0.001       3626
+#> staged       0.992   0.991        0.000       5246
 ```
 
-In this example both reach the same answer: NSE 0.992 at once and 0.990
+In this example both reach the same answer: NSE 0.992 at once and 0.992
 in stages. Stage 1 alone reaches 0.967, which shows how much of the fit
 comes from the water balance and the slow stores. Staging took more
-model runs here, 3,626 against 4,395.
+model runs here, 5,246 against 4,395.
 
 So why stage? A made-up catchment with a known truth and clean data is
 the easy case. On real data, with rating errors at the top end and a
@@ -386,6 +389,17 @@ good for the wrong reasons. Staging makes each group of parameters
 answer to the part of the hydrograph it controls. Each stage is also a
 separate, reviewable step: a Steward can see what the water balance did
 before the peaks were touched.
+
+Staging has to be free to undo its own first stage. On 30 synthetic
+catchments where the structure was exactly right, a polish kept within a
+quarter of each range (the default before version 0.8.0) left two
+catchments far short of their true parameters’ score. With the polish
+over the full bounds, staging and calibrating everything at once both
+came within 0.001 of the truth’s score in every catchment. [What limits
+automatic
+calibration](https://jonpayneea.github.io/PDMS7/articles/calibration-study.md)
+describes the test. On synthetic data the two are equal, so the case for
+staging rests on real data, and on judgement.
 
 In a project,
 [`log_staged_calibration()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_staged.md)

@@ -1,3 +1,50 @@
+# pdmS7 0.9.0
+
+- **Events from the records.** `find_events()` finds rainfall-runoff events in continuous rain
+  and flow records objectively, with the DMCA-based event separation routine of Giani et al.
+  (2022): no baseflow separation, one setting (`rain_min`), any time step that resolves the
+  delay between rain and flow. Each event has rain and flow windows, rain depth, peak, and with
+  an area, quick flow and runoff ratio.
+- `response_time_dmca()` estimates a catchment's response time from rain and flow alone (Giani
+  et al., 2021). Ten years of 15-minute data take under a second, about twenty-five times
+  faster than the R reference, which `options(pdmS7.engine = "r")` still selects.
+- **The event method is in the C core**, beside the model: `pdm_dmca_rho()`,
+  `pdm_find_events()`, `pdm_event_summary()` and `pdm_event_scores()` in `src/pdm_core.h`, so
+  Python, Scala and other languages find the same events as R. It matches the R reference
+  exactly in event positions and within 1e-14 in every number. Golden files for three records
+  (hourly, daily, and hourly with gaps) are in `inst/golden/`, checked from R, from plain C
+  (`tools/core/check_golden.c`) and from Python (`tools/core/events_example.py`).
+- `event_scores()` scores a model event by event: peak error, peak timing, volume error and NSE
+  over each flow window. `batch_events()` does it for every basin of a batch, labels each event
+  with its window, and compares each basin's observed and simulated response times.
+- New article: "Events in large samples: finding them and scoring models on them".
+- `synthetic_basins()` at a sub-daily step no longer writes overlapping calibration and
+  validation windows, which registration refused.
+- **Fix: `ar_from_response_time()` refuses unstable AR sets.** The default family's first
+  coefficient is set for 15-minute steps; at longer steps a decay of under about 4.9 steps
+  gave a root of 1 or more, so the projected error grew without limit. At hourly steps that
+  is any catchment with a time to peak under 4.9 hours. `pdm_hindcast()` used such sets by
+  default without a word; it now leaves them out with a warning. Hindcasts of fast catchments
+  at steps longer than 15 minutes change.
+- The AR article compares the model's time to peak with the records' response time
+  (`response_time_dmca()`) as the family's timescale. They forecast alike at 15 minutes; at
+  hourly steps the records' shorter timescale gives an unstable set more often and is no
+  better where both work, so the time to peak stays the recommendation.
+
+# pdmS7 0.8.1
+
+- **New article: "What limits automatic calibration: a study".** On 30 synthetic catchments,
+  four searches are set against the score of the true parameters; the search reaches the best
+  fit the record allows. Profiles show that `kb` cannot be recovered from flow records: across
+  a hundredfold range it barely changes the flow, because the slow recharge hides it. It
+  matters only in a drought long enough to stop recharge, where equally good calibrations can
+  disagree by a factor of more than three in low flow.
+- The search results are stored as `inst/extdata/search_study.csv`;
+  `inst/benchmarks/search_methods.R` regenerates them, including the staged search with the
+  polish confined as before version 0.8.0.
+- With the free polish of version 0.8.0, staged DDS fits less well than staged L-BFGS-B in all
+  30 synthetic catchments (29 with the old confined polish); `calibrate_pdm()`'s help says so.
+
 # pdmS7 0.8.0
 
 - **Staged calibration's polish searches the full bounds.** `pdm_stages()` used to confine

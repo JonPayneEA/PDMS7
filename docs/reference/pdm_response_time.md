@@ -82,7 +82,11 @@ calibration; the FEH figure is an independent check.
 ## See also
 
 [`ar_from_response_time()`](https://jonpayneea.github.io/PDMS7/reference/ar_from_response_time.md),
-[`pdm_hindcast()`](https://jonpayneea.github.io/PDMS7/reference/pdm_hindcast.md)
+[`pdm_hindcast()`](https://jonpayneea.github.io/PDMS7/reference/pdm_hindcast.md),
+and
+[`response_time_dmca()`](https://jonpayneea.github.io/PDMS7/reference/response_time_dmca.md)
+for a response time estimated from rain and flow records instead of from
+a model
 
 ## Examples
 

@@ -82,7 +82,7 @@ With \code{dds}, \code{control$maxit} is the number of model runs per start (200
 \code{control$r}, the perturbation size as a fraction of each range, defaults to 0.2. It also
 accepts threshold objectives. On the smooth NSE of the standard structure, L-BFGS-B is the
 better choice: on 30 synthetic catchments, given the same number of model runs (about 560
-per start), DDS fitted less well in 29 of them. DDS suits objectives with steps or many
+per start), DDS fitted less well in every one of them. DDS suits objectives with steps or many
 local optima, and budgets of thousands of runs per start.}
 
 \item{thresholds}{Optional named vector of threshold flows, m3/s. The objective then

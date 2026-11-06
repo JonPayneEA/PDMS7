@@ -19,7 +19,7 @@ calibrate_pdm(
   soil_fraction = 0.5,
   starts = 1L,
   seed = NULL,
-  method = c("lbfgsb", "nelder_mead"),
+  method = c("lbfgsb", "nelder_mead", "dds"),
   thresholds = NULL,
   threshold_weight = 1,
   threshold_score = "csi",
@@ -91,7 +91,7 @@ calibrate_pdm(
 
 - starts:
 
-  Positive integer number of L-BFGS-B starts. The default, 1, runs a
+  Positive integer number of optimiser starts. The default, 1, runs a
   single start from the values in config, as earlier versions did. With
   more than one, the first start is still the values in config and the
   others are drawn uniformly inside lower and upper. Every start is
@@ -99,9 +99,9 @@ calibrate_pdm(
 
 - seed:
 
-  Optional finite number that seeds the random starting points. The
-  caller's random number state is restored on exit. It has no effect
-  when starts is 1.
+  Optional finite number that seeds the random starting points and, with
+  `method = "dds"`, the search itself. The caller's random number state
+  is restored on exit. Without `dds`, it has no effect when starts is 1.
 
 - method:
 
@@ -109,7 +109,19 @@ calibrate_pdm(
   objectives, or `nelder_mead`, derivative-free, needed for threshold
   objectives because event counts change in steps. Nelder-Mead works on
   a logistic transform of the unit box, so every trial stays within
-  lower and upper; it usually needs several times more model runs.
+  lower and upper; it usually needs several times more model runs. Or
+  `dds`, dynamically dimensioned search (Tolson and Shoemaker, 2007), a
+  derivative-free global search built for watershed models: it perturbs
+  a random subset of parameters around the best point so far, starting
+  with all of them and narrowing to one or two as the budget runs out.
+  With `dds`, `control$maxit` is the number of model runs per start (200
+  if not given), and `control$r`, the perturbation size as a fraction of
+  each range, defaults to 0.2. It also accepts threshold objectives. On
+  the smooth NSE of the standard structure, L-BFGS-B is the better
+  choice: on 30 synthetic catchments, given the same number of model
+  runs (about 560 per start), DDS fitted less well in every one of them.
+  DDS suits objectives with steps or many local optima, and budgets of
+  thousands of runs per start.
 
 - thresholds:
 
@@ -119,8 +131,8 @@ calibrate_pdm(
   itself for false alarm ratios), from
   [`pdm_threshold_scores()`](https://jonpayneea.github.io/PDMS7/reference/pdm_threshold_scores.md)
   over the scored rows. An undefined score counts as the worst. Requires
-  `method = "nelder_mead"`, and at least one observed event at each
-  threshold.
+  `method = "nelder_mead"` or `"dds"`, and at least one observed event
+  at each threshold.
 
 - threshold_weight:
 
@@ -198,6 +210,11 @@ in the unit search box as its `unit` attribute.
 ## References
 
 Moore (2007), doi:10.5194/hess-11-483-2007.
+
+Tolson, B. A. and Shoemaker, C. A. (2007). Dynamically dimensioned
+search algorithm for computationally efficient watershed model
+calibration. Water Resources Research, 43, W01413,
+doi:10.1029/2005WR004723.
 
 ## Examples
 

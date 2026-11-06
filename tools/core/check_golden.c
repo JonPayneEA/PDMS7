@@ -4,7 +4,7 @@
 // Flode Module: standalone; target reach.hydro
 // Author:       Claude Code (AI-generated); human maintainer attribution not supplied
 // Created:      2026-10-31
-// Modified:     2026-10-31 - Initial standalone checker
+// Modified:     2026-11-06 - Check the event functions
 // Tier:         3
 // Inputs:       CSV files in inst/golden
 // Outputs:      Pass or fail per case on stdout; exit status 0 only if every case passes
@@ -547,6 +547,140 @@ static int check_flow_starts(const char* dir, const table* pdm_cases) {
   return failures;
 }
 
+/* Largest scaled difference, as scaled_error(), where a missing value (NaN) matches only a
+   missing value; a NaN on one side alone counts as an infinite difference. */
+static double scaled_error_nan(const double* got, const double* want, long n) {
+  double worst = 0, scale = 1;
+  for (long i = 0; i < n; ++i) {
+    if (isnan(want[i]) || isnan(got[i])) {
+      if (isnan(want[i]) != isnan(got[i])) return INFINITY;
+      continue;
+    }
+    if (fabs(want[i]) > scale) scale = fabs(want[i]);
+  }
+  for (long i = 0; i < n; ++i) {
+    if (isnan(want[i]) || isnan(got[i])) continue;
+    if (fabs(got[i] - want[i]) > worst) worst = fabs(got[i] - want[i]);
+  }
+  return worst / scale;
+}
+
+/* One column of a table, copied out (the tables are row-major). */
+static double* column(const table* t, const char* name) {
+  double* out = malloc(sizeof(double) * (size_t)(t->nrow > 0 ? t->nrow : 1));
+  for (int i = 0; i < t->nrow; ++i) out[i] = cell(t, i, name);
+  return out;
+}
+
+/* Events, their totals and the event scores. Returns the failure count. */
+static int check_events(const char* dir) {
+  static const char* positions[4] = {"rain_start", "rain_end", "flow_start", "flow_end"};
+  static const char* totals[6] = {"rain_mm", "peak_row", "peak_flow", "flow_mm",
+                                  "quickflow_mm", "runoff_ratio"};
+  static const char* scores[6] = {"observed_peak", "simulated_peak", "peak_error",
+                                  "timing_error_h", "volume_error", "nse"};
+  char path[1024], message[256];
+  table cases;
+  int failures = 0;
+  snprintf(path, sizeof(path), "%s/events_cases.csv", dir);
+  if (!read_table(path, 1, &cases)) return 1;
+  for (int c = 0; c < cases.nrow; ++c) {
+    const char* name = cases.labels[c];
+    table series, want, rho_want, base_want;
+    snprintf(path, sizeof(path), "%s/%s_events_series.csv", dir, name);
+    read_table(path, 0, &series);
+    snprintf(path, sizeof(path), "%s/%s_events_expected.csv", dir, name);
+    read_table(path, 0, &want);
+    snprintf(path, sizeof(path), "%s/%s_events_rho.csv", dir, name);
+    read_table(path, 0, &rho_want);
+    snprintf(path, sizeof(path), "%s/%s_events_baseflow.csv", dir, name);
+    read_table(path, 0, &base_want);
+    long n = series.nrow;
+    double dt = cell(&cases, c, "dt");
+    int32_t h_max = (int32_t)cell(&cases, c, "h_max");
+    double* rain = column(&series, "rain_mm");
+    double* flow = column(&series, "flow_m3s");
+    double* sim = column(&series, "simulated_m3s");
+    int64_t capacity = n / 2 + 1, count = 0;
+    int64_t* events = malloc(sizeof(int64_t) * (size_t)(4 * capacity));
+    double* rho = malloc(sizeof(double) * (size_t)h_max);
+    double* base = malloc(sizeof(double) * (size_t)n);
+    int32_t steps = 0;
+    double worst = 0;
+    int32_t code = pdm_find_events(rain, flow, n, dt, cell(&cases, c, "rain_min"), h_max, &steps,
+                                   rho, capacity, &count, events, message,
+                                   (int64_t)sizeof(message));
+    int ok = code == PDM_OK && count == want.nrow && rho_want.nrow == h_max;
+    if (code != PDM_OK) printf("  %s returned %d: %s\n", name, code, message);
+    /* Positions must match exactly, and the response time must be the curve's minimum. */
+    for (long v = 0; ok && v < count; ++v) {
+      for (int j = 0; j < 4; ++j) ok = ok && events[4 * v + j] == (int64_t)cell(&want, v, positions[j]);
+    }
+    if (ok) {
+      int best = 0;
+      for (int h = 1; h < h_max; ++h) if (rho_want.values[h] < rho_want.values[best]) best = h;
+      ok = steps == best + 1;
+      worst = fmax(worst, scaled_error(rho, rho_want.values, h_max));
+    }
+    if (ok) {
+      double* got = malloc(sizeof(double) * (size_t)(6 * (count > 0 ? count : 1)));
+      double* got_col = malloc(sizeof(double) * (size_t)(count > 0 ? count : 1));
+      code = pdm_event_summary(rain, flow, n, dt, cell(&cases, c, "area_km2"), events, count,
+                               base, got, message, (int64_t)sizeof(message));
+      ok = code == PDM_OK;
+      for (int j = 0; ok && j < 6; ++j) {
+        double* w = column(&want, totals[j]);
+        for (long v = 0; v < count; ++v) got_col[v] = got[6 * v + j];
+        worst = fmax(worst, scaled_error_nan(got_col, w, count));
+        free(w);
+      }
+      if (ok) worst = fmax(worst, scaled_error_nan(base, base_want.values, n));
+      if (ok) {
+        code = pdm_event_scores(sim, flow, n, dt, events, count, got, message,
+                                (int64_t)sizeof(message));
+        ok = code == PDM_OK;
+      }
+      for (int j = 0; ok && j < 6; ++j) {
+        double* w = column(&want, scores[j]);
+        for (long v = 0; v < count; ++v) got_col[v] = got[6 * v + j];
+        worst = fmax(worst, scaled_error_nan(got_col, w, count));
+        free(w);
+      }
+      free(got);
+      free(got_col);
+    }
+    ok = ok && worst <= TOLERANCE;
+    printf("%s events %-13s %ld events, response %d steps, largest scaled error %.3g\n",
+           ok ? "PASS" : "FAIL", name, (long)count, steps, worst);
+    failures += !ok;
+    free(rain);
+    free(flow);
+    free(sim);
+    free(events);
+    free(rho);
+    free(base);
+    free_table(&series);
+    free_table(&want);
+    free_table(&rho_want);
+    free_table(&base_want);
+  }
+  /* A record whose flow does not vary has no response time; the call must say so. */
+  {
+    double r[20] = {0}, q[20];
+    int32_t steps = 0;
+    int64_t count = 0;
+    for (int i = 0; i < 20; ++i) q[i] = 1.0;
+    r[5] = 3;
+    int32_t code = pdm_find_events(r, q, 20, 1.0, 0.2, 5, &steps, NULL, 0, &count, NULL, message,
+                                   (int64_t)sizeof(message));
+    int ok = code == PDM_ERR_ARGUMENT && message[0] != '\0';
+    printf("%s events %-13s code %d: %s\n", ok ? "PASS" : "FAIL", "steady flow", code, message);
+    failures += !ok;
+  }
+  free_table(&cases);
+  return failures;
+}
+
 /* Runs every case in every golden file against the core and prints one line per case. The exit
    status is 0 only if every case is within tolerance, so the checker can gate a build. */
 int main(int argc, char** argv) {
@@ -644,6 +778,7 @@ int main(int argc, char** argv) {
   failures += check_snow(dir, &cases);
   failures += check_updating(dir, &cases);
   failures += check_flow_starts(dir, &cases);
+  failures += check_events(dir);
 
   free(rain);
   free(pet);

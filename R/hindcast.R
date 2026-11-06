@@ -31,7 +31,9 @@
 #' By default `ar` holds the Environment Agency 2024 default set and a default-family set
 #' whose principal decay is the model's own time to peak at `response_flow`, from
 #' [pdm_response_time()]. The 2024 default is defined for 15-minute steps; on other steps it is
-#' still applied, as given, with a message.
+#' still applied, as given, with a message. The default family is built for 15-minute steps
+#' too: at longer steps, a time to peak under about 4.9 steps gives an unstable set (see
+#' [ar_from_response_time()]), which is left out with a warning.
 #'
 #' Errors are observed minus simulated flow, in m3/s, additive, as in IMFS. The AR projection at
 #' an origin needs the last three errors; if any of those observations is missing, that origin
@@ -175,7 +177,16 @@ pdm_hindcast <- function(model, forcing, observed, state = NULL, window = NULL, 
     message("The EA 2024 AR default is defined for 15-minute steps; this model uses ",
             dt, " h steps")
   }
-  list(ea_2024 = ar_ea_default(), response_time = ar_from_response_time(rt$time_to_peak_h, dt))
+  sets <- list(ea_2024 = ar_ea_default())
+  # A response time too short for the default family at this step gives an unstable set, which
+  # would forecast an error growing without limit; leave it out and say why.
+  tryCatch(
+    sets$response_time <- ar_from_response_time(rt$time_to_peak_h, dt),
+    error = function(e) {
+      warning("No response_time AR set: ", conditionMessage(e), call. = FALSE)
+    }
+  )
+  sets
 }
 
 # A typical high flow, the 90th percentile of observed flow, at which the response time is

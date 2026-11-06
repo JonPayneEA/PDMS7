@@ -58,8 +58,8 @@ compiled core, measured as this article was built.
 ``` r
 round(timings, 1)
 #>         R   C
-#> PDM  2099 3.0
-#> PACK  319 0.9
+#> PDM  1464 2.0
+#> PACK  195 0.7
 ```
 
 The exact figures depend on the machine, but the ratio is in the
@@ -104,12 +104,12 @@ the default.
 
 `inst/golden/` holds inputs and expected outputs from the R reference
 for every component: PDM configurations, snowpack runs, coupled snow and
-PDM runs, state corrections, ARMA updates and steady-state starts,
-together with invalid inputs that must be rejected. A binding in any
-language passes if it reproduces every output within 1e-12 of its
-magnitude. The R tests check both engines against them, and
-`tools/core/check_golden.c` checks the core from plain C, with no R
-involved.
+PDM runs, state corrections, ARMA updates, steady-state starts, and
+events found in hourly, daily and gappy records, together with invalid
+inputs that must be rejected. A binding in any language passes if it
+reproduces every output within 1e-12 of its magnitude. The R tests check
+both engines against them, and `tools/core/check_golden.c` checks the
+core from plain C, with no R involved.
 
 ## Calling the core from Python
 
@@ -187,6 +187,19 @@ Every function returns 0 on success, 1 for invalid input and 2 for a
 numerical failure, with a message in the buffer. On failure the state
 array is left unchanged. The core holds no global state, so separate
 runs can execute in parallel threads.
+
+## Finding events from other languages
+
+The event functions of [Events in large
+samples](https://jonpayneea.github.io/PDMS7/articles/events.md) live in
+the same library: `pdm_dmca_rho()` for the response-time curve,
+`pdm_find_events()` for the events, `pdm_event_summary()` for their
+totals and baseflow line, and `pdm_event_scores()` for a model’s scores
+on each event. They take only arrays of doubles and 64-bit integers, so
+no structures are needed. `tools/core/events_example.py` finds the
+events of a golden record from Python with the standard library alone,
+and checks them against the expected file. Positions are 0-based at the
+interface, where R’s are 1-based.
 
 ## Calling the core from C, Scala, Julia and others
 

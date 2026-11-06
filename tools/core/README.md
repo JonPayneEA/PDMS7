@@ -1,7 +1,7 @@
 # Using the PDM core outside R
 
-The PDM time loop is written once, in plain C99 in `src/pdm_core.c`, behind the interface in
-`src/pdm_core.h`. The core has no R dependency. Any language that can call C functions can
+The PDM time loop and the event functions are written once, in plain C99 in
+`src/pdm_core.c`, behind the interface in `src/pdm_core.h`. The core has no R dependency. Any language that can call C functions can
 use it: R does so through `src/pdm_engine.cpp`, and Python, Scala, Julia, MATLAB or Fortran
 can do the same through their foreign function interfaces.
 
@@ -22,6 +22,9 @@ Simulation only, for:
 - initial states: a cold start at a fixed soil fraction (`pdm_initial_state()`) or a warm start
   in steady state with an observed flow (`pdm_state_from_flow()`). For a hot start, keep the
   state array from the end of one run and pass it to the next.
+- rainfall-runoff events from rain and flow records (DMCA-ESR, Giani et al. 2021, 2022): the
+  response-time curve (`pdm_dmca_rho()`), the events (`pdm_find_events()`), their totals and
+  baseflow line (`pdm_event_summary()`) and a model's scores on each (`pdm_event_scores()`).
 
 Configuration files, calibration, metrics and the fitting of ARMA coefficients stay in each
 host language: R uses `fit_error_updater()` (`stats::arima()`); Python could use `statsmodels`.
@@ -79,6 +82,15 @@ caller must free, holds no global state, and is safe to call from several thread
   32 bytes (4 doubles), with no padding. Scala Native can call the core directly with
   `@extern`.
 - **Julia:** `ccall` with a `struct` matching `pdm_params`.
+
+The event functions need no structures: arrays of doubles, 64-bit integers for positions
+(0-based) and a message buffer. `events_example.py`, in this folder, calls them from Python
+with the standard library and checks the result against the golden files:
+
+```
+gcc -std=c99 -O2 -shared -fPIC src/pdm_core.c -lm -o libpdmcore.so
+python3 tools/core/events_example.py ./libpdmcore.so inst/golden
+```
 
 Read the struct sizes back and compare them with the sizes above, and check
 `pdm_core_abi_version()` against `PDM_CORE_ABI_VERSION`, before trusting a new binding.

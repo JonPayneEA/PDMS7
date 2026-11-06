@@ -5,10 +5,12 @@ articles:
   ar-error-correction: ar-error-correction.html
   auto-calibration: auto-calibration.html
   calibration-log: calibration-log.html
+  calibration-study: calibration-study.html
   calibration: calibration.html
   choosing-structure: choosing-structure.html
   compiled-core: compiled-core.html
   data-preparation: data-preparation.html
+  events: events.html
   example-workflow: example-workflow.html
   extrapolation: extrapolation.html
   forecast-updating: forecast-updating.html
@@ -28,7 +30,7 @@ articles:
   steward-guide: steward-guide.html
   synthetic-rivers: synthetic-rivers.html
   troubleshooting: troubleshooting.html
-last_built: 2026-11-05T09:46Z
+last_built: 2026-11-06T07:30Z
 urls:
   reference: https://jonpayneea.github.io/PDMS7/reference
   article: https://jonpayneea.github.io/PDMS7/articles

@@ -268,6 +268,20 @@ calibrations.
 - [`pdm_fingerprint()`](https://jonpayneea.github.io/PDMS7/reference/pdm_fingerprint.md)
   : Fingerprint a model configuration
 
+## Events
+
+Rainfall-runoff events and response time from the records alone, and
+model scores event by event.
+
+- [`find_events()`](https://jonpayneea.github.io/PDMS7/reference/find_events.md)
+  : Rainfall-runoff events from rain and flow records
+- [`response_time_dmca()`](https://jonpayneea.github.io/PDMS7/reference/response_time_dmca.md)
+  : Catchment response time from rain and flow records
+- [`event_scores()`](https://jonpayneea.github.io/PDMS7/reference/event_scores.md)
+  : Model scores event by event
+- [`batch_events()`](https://jonpayneea.github.io/PDMS7/reference/batch_events.md)
+  : Events and event scores across a batch
+
 ## Hindcasts and lead-time scores
 
 Rerun past forecasts from many origins and score each lead time against

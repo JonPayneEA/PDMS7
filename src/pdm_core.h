@@ -4,7 +4,7 @@
 // Flode Module: standalone; target reach.hydro
 // Author:       Claude Code (AI-generated); human maintainer attribution not supplied
 // Created:      2026-10-31
-// Modified:     2026-10-31 - Interface version 2: selectable distribution, recharge, routes
+// Modified:     2026-11-06 - Add event identification (DMCA-ESR) and event scores
 // Tier:         3
 // Inputs:       Parameters, state, rain and PET depths in mm per interval
 // Outputs:      Flow in m3/s, optional flux table, updated state
@@ -31,6 +31,8 @@
    - the PACK snowpack (Institute of Hydrology, NORA report 15304), alone or feeding PDM;
    - forecast updating: state correction (Moore 2007, Eq. 28-30) and ARMA error prediction
      (Eq. 31-42). Estimating the ARMA coefficients stays in the host language.
+   - rainfall-runoff events and response time from records (DMCA-ESR, Giani et al. 2021,
+     2022), with per-event totals and model scores.
    Units: depths in mm, time in hours, temperature in degrees Celsius, flow in m3/s.
 
    Golden test files in inst/golden/ hold inputs and expected outputs from the R reference
@@ -295,6 +297,61 @@ PDM_CORE_API int32_t pdm_update_forecast(const double* ar, int32_t p, const doub
                                          int64_t n_forecast, double* updated,
                                          double* error_forecast, double* innovations,
                                          char* message, int64_t message_length);
+
+/* ---- Events: response time and rainfall-runoff events ------------------------------------- */
+
+/* Response time and events from rain and flow records (R/events.R, find_events), by the DMCA
+   method of Giani et al. (2021, doi:10.1029/2020WR028201) and the event separation routine
+   DMCA-ESR of Giani et al. (2022, doi:10.1029/2021WR031283). Missing values (NaN) count as
+   zero in the cumulative series. Positions are 0-based. An event is four positions: the first
+   and last steps of its rain window and of its flow window, in that order. */
+
+/* The DMCA correlation between rain and flow fluctuations for each half-window h = 1..h_max;
+   the response time is the h with the most negative value.
+   rain, flow: n values, rain in mm per step, flow in any units.
+   rho:        h_max values written. Requires 1 <= h_max <= (n - 2) / 2. */
+PDM_CORE_API int32_t pdm_dmca_rho(const double* rain, const double* flow, int64_t n,
+                                  int32_t h_max, double* rho, char* message,
+                                  int64_t message_length);
+
+/* Finds the events of a record.
+   rain:           n values, mm per step; flow: n values, any units.
+   dt:             step, hours. rain_min: smallest intensity that counts, mm/h (Giani et al.
+                   suggest 0.2 mm/h at an hourly step, times dt^-0.5 at other steps).
+   h_max:          longest response searched, in steps; 1 <= h_max <= (n - 2) / 2.
+   response_steps: written: the response time, in steps.
+   rho:            null, or h_max values written: the correlation curve.
+   capacity:       rows available in events. n / 2 + 1 always suffices; with fewer, and more
+                   events found, the call fails and n_events holds the number needed.
+   n_events:       written: the number of events.
+   events:         capacity x 4 values, row-major: rain_start, rain_end, flow_start, flow_end. */
+PDM_CORE_API int32_t pdm_find_events(const double* rain, const double* flow, int64_t n,
+                                     double dt, double rain_min, int32_t h_max,
+                                     int32_t* response_steps, double* rho, int64_t capacity,
+                                     int64_t* n_events, int64_t* events, char* message,
+                                     int64_t message_length);
+
+/* Totals for each event, and the baseflow line joining the flow windows' delimiters in turn
+   (never above the flow, and missing where the flow is).
+   rain, flow: as for pdm_find_events, flow in m3/s. area_km2: catchment area; if not positive,
+               the volume columns are NaN.
+   baseflow:   null, or n values written.
+   summary:    n_events x 6 values, row-major: rain_mm, peak_row (0-based), peak_flow, flow_mm,
+               quickflow_mm (flow above the baseflow line) and runoff_ratio. */
+PDM_CORE_API int32_t pdm_event_summary(const double* rain, const double* flow, int64_t n,
+                                       double dt, double area_km2, const int64_t* events,
+                                       int64_t n_events, double* baseflow, double* summary,
+                                       char* message, int64_t message_length);
+
+/* A model's scores within each event's flow window, over steps where both series are finite.
+   scores: n_events x 6 values, row-major: observed_peak, simulated_peak, peak_error
+           (simulated / observed peak - 1), timing_error_h (simulated peak's step less the
+           observed one's, times dt), volume_error and nse. NaN for a window with fewer than
+           two usable steps. */
+PDM_CORE_API int32_t pdm_event_scores(const double* simulated, const double* observed,
+                                      int64_t n, double dt, const int64_t* events,
+                                      int64_t n_events, double* scores, char* message,
+                                      int64_t message_length);
 
 #ifdef __cplusplus
 }

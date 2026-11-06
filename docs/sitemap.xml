@@ -4,10 +4,12 @@
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/ar-error-correction.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/auto-calibration.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/calibration-log.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/articles/calibration-study.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/calibration.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/choosing-structure.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/compiled-core.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/data-preparation.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/articles/events.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/example-workflow.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/extrapolation.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/forecast-updating.html</loc></url>
@@ -76,6 +78,7 @@
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/TriangularCapacity.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/approved_configurations.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/ar_from_response_time.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/batch_events.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/build_report.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.html</loc></url>
@@ -92,6 +95,8 @@
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/correct_state.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/cubic_routing.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/error_updater.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/event_scores.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/find_events.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/fit_error_updater.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/fit_rain.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/hindcast_scores.html</loc></url>
@@ -125,6 +130,7 @@
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/read_project.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/read_run_log.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/recharge_depth.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/response_time_dmca.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/route_step.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/routing_flow.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/run_pdm.html</loc></url>

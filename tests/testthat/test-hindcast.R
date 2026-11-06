@@ -4,7 +4,7 @@
 # Flode Module: standalone; target reach.hydro
 # Author:       pdmS7 contributors
 # Created:      2026-11-01
-# Modified:     2026-11-01 - Add hindcast tests
+# Modified:     2026-11-06 - Default AR sets must be stable; test the refusal
 # Tier:         3
 # Inputs:       Synthetic forcing and flows
 # Outputs:      testthat expectations
@@ -79,7 +79,10 @@ hindcast_case <- function(n = 24 * 30, seed = 4) {
                                       0), pet = 0.05)
   truth <- pdm_model(area_km2 = 40, fc = 1.1)
   observed <- run_pdm(truth, forcing, initial_state_from_flow(truth, 0.5, 0.7))$output$q_m3s
-  list(forcing = forcing, observed = observed, model = pdm_model(area_km2 = 40))
+  # Surface stores slow enough for a stable default-family AR set at hourly steps: a time to
+  # peak of at least about 4.9 hours (see the test of unstable sets below).
+  model <- pdm_model(area_km2 = 40, surface = FlodeCascadeRouting(k1 = 6, k2 = 10))
+  list(forcing = forcing, observed = observed, model = model)
 }
 
 # Guards: none, persistence and AR forecasts are exactly what they claim to be
@@ -189,4 +192,25 @@ test_that("scores from a hindcast carry the response time and plot", {
   expect_error(plot_hindcast(s, metric = "nope"), "no column")
   expect_error(pdm_hindcast(case$model, case$forcing, case$observed, window = 720:720),
                "No forecast origins")
+})
+
+# Guards: a default-family set that would be unstable is refused, and a hindcast leaves it out
+# rather than forecast an error growing without limit
+test_that("unstable default-family AR sets are refused", {
+  # The family is stable only for a principal decay of at least about 4.9 steps.
+  expect_error(ar_from_response_time(4, dt = 1), "4.88 steps")
+  expect_error(ar_from_response_time(2, dt = 1), "unstable")
+  expect_true(all(abs(attr(ar_from_response_time(5, dt = 1), "roots")) < 1))
+  expect_true(all(abs(attr(ar_from_response_time(1.25, dt = 0.25), "roots")) < 1))
+  case <- hindcast_case(seed = 5)
+  fast <- pdm_model(area_km2 = 40, surface = FlodeCascadeRouting(k1 = 0.5, k2 = 0.5))
+  start <- initial_state_from_flow(fast, case$observed[1], 0.7)
+  q90 <- stats::quantile(case$observed, 0.9, names = FALSE)
+  expect_lt(pdm_response_time(fast, q90)$time_to_peak_h, 4.88)
+  expect_warning(
+    hc <- suppressMessages(pdm_hindcast(fast, case$forcing, case$observed,
+                                        state = start, every_h = 24, horizon_h = 6)),
+    "No response_time AR set"
+  )
+  expect_named(hc$ar, "ea_2024")
 })

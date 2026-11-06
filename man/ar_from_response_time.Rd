@@ -38,6 +38,11 @@ first coefficient. As in reach.postproc, equating a catchment's time to peak wit
 decay of its forecast errors is an approximation, a starting estimate to be checked
 against past events, not a derived result. Check any set with \code{reach.postproc::assess()}
 before operational use.
+
+The first coefficient is set for 15-minute steps. At longer steps, a short decay time makes
+the set unstable (a root of size 1 or more, so the projected error grows without limit), and
+\code{ar_from_response_time()} refuses it: the decay must be at least about 4.9 steps, which is
+1.2 hours at 15-minute steps but 4.9 hours at hourly steps.
 }
 \examples{
 ar_ea_default()

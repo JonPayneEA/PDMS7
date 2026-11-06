@@ -1,5 +1,91 @@
 # Changelog
 
+## pdmS7 0.9.0
+
+- **Events from the records.**
+  [`find_events()`](https://jonpayneea.github.io/PDMS7/reference/find_events.md)
+  finds rainfall-runoff events in continuous rain and flow records
+  objectively, with the DMCA-based event separation routine of Giani et
+  al. (2022): no baseflow separation, one setting (`rain_min`), any time
+  step that resolves the delay between rain and flow. Each event has
+  rain and flow windows, rain depth, peak, and with an area, quick flow
+  and runoff ratio.
+- [`response_time_dmca()`](https://jonpayneea.github.io/PDMS7/reference/response_time_dmca.md)
+  estimates a catchment’s response time from rain and flow alone (Giani
+  et al., 2021). Ten years of 15-minute data take under a second, about
+  twenty-five times faster than the R reference, which
+  `options(pdmS7.engine = "r")` still selects.
+- **The event method is in the C core**, beside the model:
+  `pdm_dmca_rho()`, `pdm_find_events()`, `pdm_event_summary()` and
+  `pdm_event_scores()` in `src/pdm_core.h`, so Python, Scala and other
+  languages find the same events as R. It matches the R reference
+  exactly in event positions and within 1e-14 in every number. Golden
+  files for three records (hourly, daily, and hourly with gaps) are in
+  `inst/golden/`, checked from R, from plain C
+  (`tools/core/check_golden.c`) and from Python
+  (`tools/core/events_example.py`).
+- [`event_scores()`](https://jonpayneea.github.io/PDMS7/reference/event_scores.md)
+  scores a model event by event: peak error, peak timing, volume error
+  and NSE over each flow window.
+  [`batch_events()`](https://jonpayneea.github.io/PDMS7/reference/batch_events.md)
+  does it for every basin of a batch, labels each event with its window,
+  and compares each basin’s observed and simulated response times.
+- New article: “Events in large samples: finding them and scoring models
+  on them”.
+- [`synthetic_basins()`](https://jonpayneea.github.io/PDMS7/reference/synthetic_basins.md)
+  at a sub-daily step no longer writes overlapping calibration and
+  validation windows, which registration refused.
+
+## pdmS7 0.8.1
+
+- **New article: “What limits automatic calibration: a study”.** On 30
+  synthetic catchments, four searches are set against the score of the
+  true parameters; the search reaches the best fit the record allows.
+  Profiles show that `kb` cannot be recovered from flow records: across
+  a hundredfold range it barely changes the flow, because the slow
+  recharge hides it. It matters only in a drought long enough to stop
+  recharge, where equally good calibrations can disagree by a factor of
+  more than three in low flow.
+- The search results are stored as `inst/extdata/search_study.csv`;
+  `inst/benchmarks/search_methods.R` regenerates them, including the
+  staged search with the polish confined as before version 0.8.0.
+- With the free polish of version 0.8.0, staged DDS fits less well than
+  staged L-BFGS-B in all 30 synthetic catchments (29 with the old
+  confined polish);
+  [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md)’s
+  help says so.
+
+## pdmS7 0.8.0
+
+- **Staged calibration’s polish searches the full bounds.**
+  [`pdm_stages()`](https://jonpayneea.github.io/PDMS7/reference/pdm_stages.md)
+  used to confine stage 3 to a quarter of each range either side of
+  stage 2’s values. Stage 1 fits with the surface stores at their
+  starting values, and where the true stores are much slower it can
+  settle on the wrong slow stores; the confined polish could not undo
+  that. On 30 synthetic catchments it left two far short of their true
+  parameters’ score (NSE 0.904 against 0.995 in one). With the full
+  bounds, every catchment comes within 0.001 of the truth’s score.
+  `band` still confines the polish when asked. Staged results change.
+- **DDS.** `calibrate_pdm(method = "dds")` adds dynamically dimensioned
+  search (Tolson and Shoemaker, 2007), a derivative-free global search;
+  `control$maxit` is its budget of model runs per start. It accepts
+  threshold objectives, and
+  [`calibrate_batch()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md),
+  [`calibrate_staged()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_staged.md),
+  [`compare_structures()`](https://jonpayneea.github.io/PDMS7/reference/compare_structures.md),
+  [`log_auto_calibration()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
+  and the app offer it. On the smooth NSE of the standard structure,
+  L-BFGS-B remains the better choice: given the same number of model
+  runs, DDS fitted less well in 29 of 30 synthetic catchments.
+- **The large-sample article checks each calibration against the
+  truth.** Calibrations reach the true parameters’ score in almost every
+  catchment, so a parameter that still comes back wrong (`kb` above all)
+  cannot be recovered from the record, whatever the search. The article
+  now calibrates all parameters at once.
+- `inst/benchmarks/search_methods.R` compares the searches on the large
+  synthetic sample.
+
 ## pdmS7 0.7.0
 
 - **Large samples.**
@@ -12,6 +98,14 @@
 - [`calibrate_batch()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md)’s
   default structure takes each basin’s time step from its data, so daily
   and 15-minute basins need no structure of their own.
+- Parallel workers in
+  [`calibrate_batch()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md)
+  and
+  [`compare_structures()`](https://jonpayneea.github.io/PDMS7/reference/compare_structures.md)
+  now use the main session’s library paths, so a package installed
+  outside the default library (by `R CMD build`, renv or a user library)
+  works with `cores > 1`; workers used to fail with “there is no package
+  called ‘pdmS7’”.
 - [`read_projects()`](https://jonpayneea.github.io/PDMS7/reference/read_project.md)
   and
   [`batch_results()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md)
