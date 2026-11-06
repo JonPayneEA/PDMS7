@@ -5,7 +5,7 @@
 # Flode Module: standalone; target reach.hydro
 # Author:       pdmS7 contributors
 # Created:      2026-11-05
-# Modified:     2026-11-05 - Add synthetic_basins()
+# Modified:     2026-11-06 - Sub-daily windows no longer overlap
 # Tier:         3
 # Inputs:       Sample size, record length, ranges for climate and parameters
 # Outputs:      Basin folders (forcing.csv, flow.csv, basin.yml, truth.yml); sample table
@@ -129,7 +129,9 @@ synthetic_basins <- function(folder, n = 30, years = 10, dt = 24, start = "2010-
     paste("catchment:", paste("Synthetic", id)), paste("gauge:", id),
     paste("area_km2:", signif(truth$area_km2, 6)),
     sprintf("calibration: [%s, %s]", day(warm + 1), day(split)),
-    sprintf("validation: [%s, %s]", day(split + 1), day(n)),
+    # Validation starts the day after calibration ends: windows are whole days, and at a
+    # sub-daily step the row after the split is often still the same day.
+    sprintf("validation: [%s, %s]", as.Date(day(split)) + 1, day(n)),
     paste("highest_gauged_m3s:", limit),
     # Holding back the two wettest years needs enough record to leave three for calibration.
     if (years < 7) "wettest_years: 0"

@@ -69,6 +69,7 @@ articles:
   - many-catchments
   - large-sample
   - calibration-study
+  - events
 - title: Records and review
   navbar: Records and review
   contents:
@@ -222,6 +223,13 @@ reference:
   - read_run_log
   - approved_configurations
   - pdm_fingerprint
+- title: Events
+  desc: Rainfall-runoff events and response time from the records alone, and model scores event by event.
+  contents:
+  - find_events
+  - response_time_dmca
+  - event_scores
+  - batch_events
 - title: Hindcasts and lead-time scores
   desc: Rerun past forecasts from many origins and score each lead time against persistence.
   contents:

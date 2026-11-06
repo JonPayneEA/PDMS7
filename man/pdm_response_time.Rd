@@ -66,5 +66,6 @@ rt <- pdm_response_time(model, flow = 5)
 rt[c("time_to_peak_h", "recession_h", "centroid_lag_h")]
 }
 \seealso{
-\code{\link[=ar_from_response_time]{ar_from_response_time()}}, \code{\link[=pdm_hindcast]{pdm_hindcast()}}
+\code{\link[=ar_from_response_time]{ar_from_response_time()}}, \code{\link[=pdm_hindcast]{pdm_hindcast()}}, and \code{\link[=response_time_dmca]{response_time_dmca()}} for a
+response time estimated from rain and flow records instead of from a model
 }

@@ -53,7 +53,8 @@
 #' model <- pdm_model(area_km2 = 50)
 #' rt <- pdm_response_time(model, flow = 5)
 #' rt[c("time_to_peak_h", "recession_h", "centroid_lag_h")]
-#' @seealso [ar_from_response_time()], [pdm_hindcast()]
+#' @seealso [ar_from_response_time()], [pdm_hindcast()], and [response_time_dmca()] for a
+#'   response time estimated from rain and flow records instead of from a model
 #' @export
 pdm_response_time <- function(model, flow, baseflow_fraction = 0.7, pulse_mm = 10,
                               max_hours = 24 * 60, feh_time_to_peak_h = NULL) {

@@ -5,6 +5,13 @@
 #include "cpp11/declarations.hpp"
 #include <R_ext/Visibility.h>
 
+// dmca.cpp
+doubles dmca_rho(doubles cum_rain, doubles cum_flow, int h_max);
+extern "C" SEXP _pdmS7_dmca_rho(SEXP cum_rain, SEXP cum_flow, SEXP h_max) {
+  BEGIN_CPP11
+    return cpp11::as_sexp(dmca_rho(cpp11::as_cpp<cpp11::decay_t<doubles>>(cum_rain), cpp11::as_cpp<cpp11::decay_t<doubles>>(cum_flow), cpp11::as_cpp<cpp11::decay_t<int>>(h_max)));
+  END_CPP11
+}
 // pdm_engine.cpp
 cpp11::list pdm_engine_run(doubles rain, doubles pet, doubles par, doubles state, bool full);
 extern "C" SEXP _pdmS7_pdm_engine_run(SEXP rain, SEXP pet, SEXP par, SEXP state, SEXP full) {
@@ -44,6 +51,7 @@ extern "C" SEXP _pdmS7_from_flow_engine_run(SEXP par, SEXP observed, SEXP basefl
 extern "C" {
 static const R_CallMethodDef CallEntries[] = {
     {"_pdmS7_correct_engine_run",   (DL_FUNC) &_pdmS7_correct_engine_run,   4},
+    {"_pdmS7_dmca_rho",             (DL_FUNC) &_pdmS7_dmca_rho,             3},
     {"_pdmS7_forecast_engine_run",  (DL_FUNC) &_pdmS7_forecast_engine_run,  7},
     {"_pdmS7_from_flow_engine_run", (DL_FUNC) &_pdmS7_from_flow_engine_run, 4},
     {"_pdmS7_pack_engine_run",      (DL_FUNC) &_pdmS7_pack_engine_run,      5},
