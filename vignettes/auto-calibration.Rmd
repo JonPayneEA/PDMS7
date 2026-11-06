@@ -342,7 +342,7 @@ Staging has to be free to undo its own first stage. On 30 synthetic catchments w
 structure was exactly right, a polish kept within a quarter of each range (the default before
 version 0.8.0) left two catchments far short of their true parameters' score. With the polish
 over the full bounds, staging and calibrating everything at once both came within 0.001 of the
-truth's score in every catchment. [A large sample](large-sample.html) describes the test. On
+truth's score in every catchment. [What limits automatic calibration](calibration-study.html) describes the test. On
 synthetic data the two are equal, so the case for staging rests on real data, and on
 judgement.
 

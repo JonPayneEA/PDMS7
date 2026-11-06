@@ -81,6 +81,9 @@ Calibration:
   interruption, fixing failures, and reading the results
 - [A large sample: what automatic calibration recovers](https://jonpayneea.github.io/PDMS7/articles/large-sample.html):
   30 synthetic catchments, each with its own climate and known truth, calibrated as a batch
+- [What limits automatic calibration: a study](https://jonpayneea.github.io/PDMS7/articles/calibration-study.html):
+  four searches checked against the truth, a fault in staged calibration, and why `kb` cannot
+  be recovered from flow records but matters in severe droughts
 
 Records and review:
 

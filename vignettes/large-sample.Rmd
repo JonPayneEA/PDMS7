@@ -222,10 +222,13 @@ In `r n_match` of the `r length(gap)` catchments the calibration scores at least
 the true parameters`r if (n_short == 0) paste0(if (n_match < length(gap)) paste0(", and in the other", if (length(gap) - n_match > 1) "s" else "", " it falls short by no more than ", sprintf("%.4f", max(0, -min(gap))), " in NSE") else "") else paste0("; in ", n_short, " it falls short by more than 0.001")`.
 `r if (n_short == 0) paste0("The search found the best fit each record allows. So when ", order_by[7], " comes back ", pct(order_by[7]), " per cent out, the search is not to blame: parameter sets that far apart fit the record equally well, and the record, with its gauge error, cannot choose between them. More model runs, or a different search, would not recover it.") else "Those catchments are search failures, and their parameters say nothing about what the record can recover."`
 
-Two other searches were tried on this sample. Calibrating in stages (the water balance first,
-then the fast response, then a joint polish) did no better, and dynamically dimensioned
-search, given the same number of model runs, did worse. `inst/benchmarks/search_methods.R` in
-the package runs that comparison.
+Why can the record not see `kb`? Water reaches the groundwater store as recharge, which is
+already slow; a groundwater store faster than its recharge passes it on almost unchanged, so
+across a hundredfold range of `kb` the flow hardly changes. The parameter matters only when
+recharge stops, in a drought long enough to empty the soil, and there equally good
+calibrations can disagree widely.
+[What limits automatic calibration](calibration-study.html) shows this with profiles and
+drought scenarios, and compares four searches on this sample.
 
 # What decides whether a parameter can be recovered?
 

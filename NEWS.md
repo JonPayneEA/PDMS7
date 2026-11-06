@@ -1,3 +1,15 @@
+# pdmS7 0.8.1
+
+- **New article: "What limits automatic calibration: a study".** On 30 synthetic catchments,
+  four searches are set against the score of the true parameters; the search reaches the best
+  fit the record allows. Profiles show that `kb` cannot be recovered from flow records: across
+  a hundredfold range it barely changes the flow, because the slow recharge hides it. It
+  matters only in a drought long enough to stop recharge, where equally good calibrations can
+  disagree by a factor of more than three in low flow.
+- The search results are stored as `inst/extdata/search_study.csv`;
+  `inst/benchmarks/search_methods.R` regenerates them, including the staged search with the
+  polish confined as before version 0.8.0.
+
 # pdmS7 0.8.0
 
 - **Staged calibration's polish searches the full bounds.** `pdm_stages()` used to confine

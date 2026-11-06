@@ -4,7 +4,7 @@
 # Flode Module: standalone; target reach.hydro
 # Author:       pdmS7 contributors
 # Created:      2026-11-02
-# Modified:     2026-11-02 - Add synthetic rain and catchment tests
+# Modified:     2026-11-06 - Check the stored search study
 # Tier:         3
 # Inputs:       Simulated rain and flow
 # Outputs:      testthat expectations
@@ -187,4 +187,19 @@ test_that("synthetic_basins writes a reproducible sample the batch can calibrate
   as_person("Ann Custodian", "custodian", "ann") # nolint: object_usage_linter.
   status <- calibrate_batch(root, output, starts = 1, control = list(maxit = 3))
   expect_equal(status$state, c("done", "done"))
+})
+
+# Guards: the stored search study, read by the article "What limits automatic calibration", is
+# complete: four searches over the same 30 basins, with finite scores and parameters
+test_that("the stored search study is complete", {
+  path <- system.file("extdata", "search_study.csv", package = "pdmS7")
+  expect_true(nzchar(path))
+  study <- utils::read.csv(path)
+  expect_setequal(unique(study$search),
+                  c("staged, confined polish", "staged", "all at once", "staged, DDS"))
+  expect_true(all(table(study$search) == 30L))
+  same_basins <- tapply(study$basin, study$search, function(b) setequal(b, sprintf("S%03d", 1:30)))
+  expect_true(all(same_basins))
+  numbers <- study[c("model_runs", "nse", "true_nse", "fc", "cmax", "b", "kg", "k1", "k2", "kb")]
+  expect_true(all(vapply(numbers, function(x) all(is.finite(x)), logical(1))))
 })
