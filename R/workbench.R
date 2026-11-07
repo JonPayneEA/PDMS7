@@ -176,8 +176,8 @@ print.pdm_workbench <- function(x, ...) {
   keep <- keep[order(-events$peak_flow[keep])][seq_len(min(n, length(keep)))]
   out <- events[sort(keep), ]
   out <- out[order(-out$peak_flow), ]
-  attributes(out)[c("response", "dt", "baseflow")] <- attributes(events)[c("response", "dt",
-                                                                          "baseflow")]
+  kept <- c("response", "dt", "baseflow")
+  attributes(out)[kept] <- attributes(events)[kept]
   out
 }
 
