@@ -101,7 +101,7 @@ fields <- list(
   "Radar" = radar[, , wet],
   "Thiessen" = rainfall_field(gauges, gauge_rain[wet, ], grid, method = "thiessen"),
   "Multiquadric (gauges)" = rainfall_field(gauges, gauge_rain[wet, ], grid,
-                                          method = "multiquadric", c = 6000),
+                                           method = "multiquadric", c = 6000),
   "Conditional merging" = rainfall_field(gauges, gauge_rain[wet, ], grid,
                                          method = "conditional", c = 1000,
                                          radar = radar[, , wet])
