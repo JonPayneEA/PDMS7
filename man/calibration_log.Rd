@@ -63,7 +63,7 @@ log_auto_calibration(
   parent,
   lower,
   upper,
-  objective = c("nse", "rmse", "log_rmse", "log_nse", "threshold"),
+  objective = c("nse", "rmse", "log_rmse", "log_nse", "threshold", "events"),
   starts = 1L,
   seed = NULL,
   control = list(maxit = 200),
@@ -74,7 +74,10 @@ log_auto_calibration(
   threshold_score = "csi",
   log_scale = character(0),
   volume_weight = 0,
-  stage = NULL
+  stage = NULL,
+  event_weights = c(nse = 1, peak = 0.5, timing = 0.5),
+  event_share = 0.5,
+  event_screen = list()
 )
 
 log_note(project, text, refers_to = NULL)
@@ -180,6 +183,10 @@ agree.}
 
 \item{stage}{Optional label recorded with an automatic calibration, such as
 \verb{1 of 3: volume and baseflow}; \code{\link[=log_staged_calibration]{log_staged_calibration()}} sets it.}
+
+\item{event_weights, event_share, event_screen}{Passed to \code{\link[=calibrate_pdm]{calibrate_pdm()}} with
+\code{objective = "events"}. In a project, the screen takes the registered highest gauged flow
+unless it names its own.}
 
 \item{refers_to}{Optional id of the entry a note concerns.}
 

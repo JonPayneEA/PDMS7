@@ -193,6 +193,7 @@ reference:
   - calibrate_pdm
   - calibrate_staged
   - pdm_stages
+  - calibration_checks
   - calibrate_pdm_multi
   - pdm_objectives
   - pdm_scorecard
@@ -230,6 +231,13 @@ reference:
   - response_time_dmca
   - event_scores
   - batch_events
+  - screen_events
+  - event_states
+- title: Recession analysis
+  desc: How fast flow falls against how high it is, and the groundwater store it points to.
+  contents:
+  - recession_analysis
+  - plot_recession
 - title: Hindcasts and lead-time scores
   desc: Rerun past forecasts from many origins and score each lead time against persistence.
   contents:

@@ -11,7 +11,7 @@ calibrate_pdm(
   lower,
   upper,
   warmup = 0,
-  objective = c("rmse", "nse", "log_rmse", "log_nse", "threshold"),
+  objective = c("rmse", "nse", "log_rmse", "log_nse", "threshold", "events"),
   flow = c("q_m3s", "q_end_m3s"),
   log_offset = 0.01,
   control = list(maxit = 200),
@@ -28,7 +28,11 @@ calibrate_pdm(
   start = c("flow", "soil"),
   baseflow_fraction = 0.7,
   start_flow = NULL,
-  archive = NULL
+  archive = NULL,
+  events = NULL,
+  event_weights = c(nse = 1, peak = 0.5, timing = 0.5),
+  event_share = 0.5,
+  event_screen = list()
 )
 }
 \arguments{
@@ -49,8 +53,9 @@ surface.k1.}
 simulated.}
 
 \item{objective}{Calibration objective: rmse, nse (minimizes 1-NSE), log_rmse, log_nse
-(minimizes 1 minus NSE of log flows, which weights low flows), or threshold (the threshold
-term alone; needs thresholds).}
+(minimizes 1 minus NSE of log flows, which weights low flows), threshold (the threshold
+term alone; needs thresholds), or events, which scores only the largest events: see
+\code{events}.}
 
 \item{flow}{Series to score: q_m3s (interval mean) or q_end_m3s (endpoint flow).}
 
@@ -125,6 +130,23 @@ observed value of \code{observed}.}
 every trial's parameters and that number are kept, and returned as \code{trials}. Calibration
 projects use it to record the headline score of each trial, from which the equally good
 parameter sets are drawn.}
+
+\item{events}{With \code{objective = "events"}, the events to score, from \code{\link[=find_events]{find_events()}}; by
+default they are found from \code{forcing$rain} and \code{observed}. Only events whose flow window
+lies wholly after the warm-up count, and of those the largest \code{event_share} by observed
+peak. The objective is \code{w_nse} times (1 - pooled event NSE) plus \code{w_peak} times the mean
+absolute peak error plus \code{w_timing} times the mean absolute timing error divided by the
+response time (see \code{\link[=find_events]{find_events()}}), with weights from \code{event_weights}. The pooled event NSE
+sums squared errors over every chosen window and divides by the squared deviations from
+each window's own mean flow, so long recessions between events do not count. The timing
+term changes in steps, so use \code{method = "dds"} or \code{"nelder_mead"}.}
+
+\item{event_weights}{Named weights \code{nse}, \code{peak} and \code{timing} of the three terms.}
+
+\item{event_share}{Share of the events, largest observed peak first, that are scored.}
+
+\item{event_screen}{Settings for \code{\link[=screen_events]{screen_events()}}, which leaves out events with a rise lost
+in the baseflow, more quick flow than rain, or gaps; \code{NULL} scores every event.}
 }
 \value{
 A list of config, model, parameters, objective, convergence, message, optim

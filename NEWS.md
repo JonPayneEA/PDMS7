@@ -1,3 +1,57 @@
+# pdmS7 0.12.0
+
+- **Event screening.** `screen_events()` flags events a hydrologist would not trust: a rise
+  lost in the baseflow (`small_rise`: the peak rises less than `min_rise` times the baseflow
+  beneath it), more quick flow than rain, gaps in the flow window, and peaks above the highest
+  gauged flow. Every test works on flow above the baseflow line, so a high, steady baseflow is
+  neither counted as event runoff nor mistaken for a rise. The events objective
+  (`event_screen`) and `calibration_checks()` (`screen`) leave flagged events out by default,
+  except peaks above the highest gauging, which are flagged but kept; in a project the
+  registered highest gauged flow is used.
+- **Events rerun on their own.** `event_states()` runs the record once and saves the model's
+  state at the start of each event's window; `run_events()` reruns only the windows, from those
+  states. With the same model the result is exact. After changing the surface stores or the
+  time delay, a lead-in five times the sum of the surface time constants brings event peaks
+  within 0.1% of a full run; changing the soil or groundwater stores needs the states saved
+  again, and `run_events()` refuses it. This is the groundwork for an events workbench and
+  for tracing trade-offs between whole-record and event fit.
+- **Recession analysis.** `recession_analysis()` plots how fast flow falls against how high it
+  is, from dry, falling steps long enough after rain, and fits the slope of that relation with
+  a bootstrap interval over whole recessions. The slope identifies the groundwater store (1
+  linear, 1.5 quadratic, 1.67 cubic, 2 exponential) and the exponent of a power store.
+  On made-up catchments it recovered every store where recharge stops between events (split
+  recharge), but standard recharge, which keeps feeding groundwater through recessions,
+  lowered the slopes by 0.1 to 0.9. So the slope is read straight only where recharge stops;
+  otherwise compare the record's slope with each fitted model's, which `plot_recession()`
+  draws together.
+- **Can the record choose the groundwater store?** `inst/benchmarks/recession_stores.R`
+  calibrates sixteen made-up catchments with all four stores. The slope read from the record
+  found the true store in 8, the closest simulated slope in 9, and the best validation score
+  in all 16, but by a median margin of 0.003 in log NSE, below the 0.02 tie tolerance in 15.
+  The calibration study article has a new section on it: compare stores, call those within
+  the tolerance equally good, and keep the cubic store unless one is clearly better.
+
+# pdmS7 0.11.0
+
+- **Calibrating for events.** NSE over a long record counts time steps, not events, so a
+  model can score well with its flood peaks late and low. Four additions guard against it:
+  - `calibrate_pdm(objective = "events")` scores only the largest events, found with
+    `find_events()`: 1 - pooled event NSE, plus the mean absolute peak error, plus the mean
+    absolute timing error in response times, weighted by `event_weights`
+    (`nse = 1, peak = 0.5, timing = 0.5`). `event_share` (0.5) sets the share of events,
+    largest first, that count.
+  - `pdm_stages(events = TRUE)` adds a fourth stage after the polish, which refits the surface
+    stores, `b` and the time delay `td` (0 to `td_max` hours) on that objective with DDS
+    (`event_budget` runs per start), leaving the water balance as stage 3 set it.
+  - `pdm_stages(thresholds = ...)` puts a threshold term on the last stage, which then also
+    searches with DDS. Stages may now carry their own `method`, `control`, threshold settings
+    and `extra_bounds` (for parameters outside the bounds table, such as `td`).
+  - `calibration_checks()` reports parameters that ended at a bound of their search range
+    (a lower bound of zero excepted), and the median peak and timing errors and event NSE of
+    the largest events in each window.
+- `log_auto_calibration()` accepts `objective = "events"` and records its weights and share.
+- The "Automatic calibration, explained" article has a new section, "Calibrating for events".
+
 # pdmS7 0.10.0
 
 - **Negative PE is allowed, as condensation.** Potential evaporation products such as MOSES PE

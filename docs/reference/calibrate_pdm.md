@@ -12,7 +12,7 @@ calibrate_pdm(
   lower,
   upper,
   warmup = 0,
-  objective = c("rmse", "nse", "log_rmse", "log_nse", "threshold"),
+  objective = c("rmse", "nse", "log_rmse", "log_nse", "threshold", "events"),
   flow = c("q_m3s", "q_end_m3s"),
   log_offset = 0.01,
   control = list(maxit = 200),
@@ -29,7 +29,10 @@ calibrate_pdm(
   start = c("flow", "soil"),
   baseflow_fraction = 0.7,
   start_flow = NULL,
-  archive = NULL
+  archive = NULL,
+  events = NULL,
+  event_weights = c(nse = 1, peak = 0.5, timing = 0.5),
+  event_share = 0.5
 )
 ```
 
@@ -67,8 +70,9 @@ calibrate_pdm(
 - objective:
 
   Calibration objective: rmse, nse (minimizes 1-NSE), log_rmse, log_nse
-  (minimizes 1 minus NSE of log flows, which weights low flows), or
-  threshold (the threshold term alone; needs thresholds).
+  (minimizes 1 minus NSE of log flows, which weights low flows),
+  threshold (the threshold term alone; needs thresholds), or events,
+  which scores only the largest events: see `events`.
 
 - flow:
 
@@ -191,6 +195,31 @@ calibrate_pdm(
   returned as `trials`. Calibration projects use it to record the
   headline score of each trial, from which the equally good parameter
   sets are drawn.
+
+- events:
+
+  With `objective = "events"`, the events to score, from
+  [`find_events()`](https://jonpayneea.github.io/PDMS7/reference/find_events.md);
+  by default they are found from `forcing$rain` and `observed`. Only
+  events whose flow window lies wholly after the warm-up count, and of
+  those the largest `event_share` by observed peak. The objective is
+  `w_nse` times (1 - pooled event NSE) plus `w_peak` times the mean
+  absolute peak error plus `w_timing` times the mean absolute timing
+  error divided by the response time (see
+  [`find_events()`](https://jonpayneea.github.io/PDMS7/reference/find_events.md)),
+  with weights from `event_weights`. The pooled event NSE sums squared
+  errors over every chosen window and divides by the squared deviations
+  from each window's own mean flow, so long recessions between events do
+  not count. The timing term changes in steps, so use `method = "dds"`
+  or `"nelder_mead"`.
+
+- event_weights:
+
+  Named weights `nse`, `peak` and `timing` of the three terms.
+
+- event_share:
+
+  Share of the events, largest observed peak first, that are scored.
 
 ## Value
 
