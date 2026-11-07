@@ -1,5 +1,99 @@
 # Changelog
 
+## pdmS7 0.13.0
+
+- **Events workbench.**
+  [`event_workbench()`](https://jonpayneea.github.io/PDMS7/reference/event_workbench.md)
+  gathers a run’s `n` largest events (10 by default) in the calibration
+  or validation window, screened with
+  [`screen_events()`](https://jonpayneea.github.io/PDMS7/reference/screen_events.md).
+  [`workbench_try()`](https://jonpayneea.github.io/PDMS7/reference/event_workbench.md)
+  reruns them with parameters changed and scores each one;
+  [`plot_workbench()`](https://jonpayneea.github.io/PDMS7/reference/event_workbench.md)
+  draws them before and after. A change to the surface stores or the
+  time delay reruns only the event windows, from saved states, exactly
+  as a full run would; any other change reruns the whole record. The
+  calibration app has a new Events tab: choose the number of events,
+  move sliders for the surface stores, the time delay and `b`, and save
+  the setting as a logged trial; a button draws the recession plot of
+  the record and the model. The calibration log article has a new
+  section on it.
+- **Structure recommendation.**
+  [`recommend_structure()`](https://jonpayneea.github.io/PDMS7/reference/recommend_structure.md)
+  chooses the recharge rule, then the soil store distribution, then the
+  groundwater store, each by a logged structure comparison on the
+  validation window. Structures with a parameter at a bound are set
+  aside; those within the tie tolerance of the best are equally good;
+  the incumbent is kept when it is among them; otherwise the smallest
+  median peak error on the largest validation events wins, then fewer
+  parameters. Each step’s choice and reason is written to the log as a
+  note. The choosing a structure article has a new section on it.
+- **New article: “Getting the floods right”.** A plain-English walk
+  through why a good score can hide bad floods, and the tools against
+  it: finding and screening events, the acceptance checks, the events
+  stage, the workbench, recession analysis, what a record can tell apart
+  about structure, and a suggested order of work. Its worked example
+  runs live.
+- **Can the record choose the recharge rule?**
+  `inst/benchmarks/recharge_rules.R` calibrates nine made-up catchments
+  with standard, split and demand recharge. Validation scores found the
+  true rule in all nine, by 0.08 to 0.25 in log NSE, against 0.003 for
+  the groundwater store. Whether the baseflow line rises with each
+  event’s quick flow separates split recharge from the other two without
+  a model. The calibration study article has a new section on it.
+
+## pdmS7 0.12.0
+
+- **Event screening.**
+  [`screen_events()`](https://jonpayneea.github.io/PDMS7/reference/screen_events.md)
+  flags events a hydrologist would not trust: a rise lost in the
+  baseflow (`small_rise`: the peak rises less than `min_rise` times the
+  baseflow beneath it), more quick flow than rain, gaps in the flow
+  window, and peaks above the highest gauged flow. Every test works on
+  flow above the baseflow line, so a high, steady baseflow is neither
+  counted as event runoff nor mistaken for a rise. The events objective
+  (`event_screen`) and
+  [`calibration_checks()`](https://jonpayneea.github.io/PDMS7/reference/calibration_checks.md)
+  (`screen`) leave flagged events out by default, except peaks above the
+  highest gauging, which are flagged but kept; in a project the
+  registered highest gauged flow is used.
+- **Events rerun on their own.**
+  [`event_states()`](https://jonpayneea.github.io/PDMS7/reference/event_states.md)
+  runs the record once and saves the model’s state at the start of each
+  event’s window;
+  [`run_events()`](https://jonpayneea.github.io/PDMS7/reference/event_states.md)
+  reruns only the windows, from those states. With the same model the
+  result is exact. After changing the surface stores or the time delay,
+  a lead-in five times the sum of the surface time constants brings
+  event peaks within 0.1% of a full run; changing the soil or
+  groundwater stores needs the states saved again, and
+  [`run_events()`](https://jonpayneea.github.io/PDMS7/reference/event_states.md)
+  refuses it. This is the groundwork for an events workbench and for
+  tracing trade-offs between whole-record and event fit.
+- **Recession analysis.**
+  [`recession_analysis()`](https://jonpayneea.github.io/PDMS7/reference/recession_analysis.md)
+  plots how fast flow falls against how high it is, from dry, falling
+  steps long enough after rain, and fits the slope of that relation with
+  a bootstrap interval over whole recessions. The slope identifies the
+  groundwater store (1 linear, 1.5 quadratic, 1.67 cubic, 2 exponential)
+  and the exponent of a power store. On made-up catchments it recovered
+  every store where recharge stops between events (split recharge), but
+  standard recharge, which keeps feeding groundwater through recessions,
+  lowered the slopes by 0.1 to 0.9. So the slope is read straight only
+  where recharge stops; otherwise compare the record’s slope with each
+  fitted model’s, which
+  [`plot_recession()`](https://jonpayneea.github.io/PDMS7/reference/plot_recession.md)
+  draws together.
+- **Can the record choose the groundwater store?**
+  `inst/benchmarks/recession_stores.R` calibrates sixteen made-up
+  catchments with all four stores. The slope read from the record found
+  the true store in 8, the closest simulated slope in 9, and the best
+  validation score in all 16, but by a median margin of 0.003 in log
+  NSE, below the 0.02 tie tolerance in 15. The calibration study article
+  has a new section on it: compare stores, call those within the
+  tolerance equally good, and keep the cubic store unless one is clearly
+  better.
+
 ## pdmS7 0.11.0
 
 - **Calibrating for events.** NSE over a long record counts time steps,

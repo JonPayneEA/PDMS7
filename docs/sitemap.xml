@@ -12,6 +12,7 @@
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/events.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/example-workflow.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/extrapolation.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/articles/floods.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/forecast-updating.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/further-reading.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/glossary.html</loc></url>
@@ -97,6 +98,8 @@
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/cubic_routing.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/error_updater.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/event_scores.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/event_states.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/event_workbench.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/find_events.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/fit_error_updater.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/fit_rain.html</loc></url>
@@ -123,6 +126,7 @@
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/pdm_step.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/pdm_threshold_scores.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/plot_hindcast.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/plot_recession.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/power_routing.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/quadratic_routing.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/rain_parameters.html</loc></url>
@@ -130,11 +134,14 @@
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/read_pdm_config.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/read_project.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/read_run_log.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/recession_analysis.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/recharge_depth.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/recommend_structure.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/response_time_dmca.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/route_step.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/routing_flow.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/run_pdm.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/screen_events.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/sim_pack.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/sim_pdm.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/sim_snow_pdm.html</loc></url>

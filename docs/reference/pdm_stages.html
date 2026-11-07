@@ -11,7 +11,7 @@ joint polish over everything."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.11.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.13.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -40,6 +40,7 @@ joint polish over everything."></head><body>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Calibration</h6></li>
     <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: multi-start, budgets and staged calibration</a></li>
+    <li><a class="dropdown-item" href="../articles/floods.html">Getting the floods right</a></li>
     <li><a class="dropdown-item" href="../articles/auto-calibration.html">Automatic calibration, explained</a></li>
     <li><a class="dropdown-item" href="../articles/scoring.html">Scoring a simulation: from NSE to POD, FAR and CSI</a></li>
     <li><a class="dropdown-item" href="../articles/choosing-structure.html">Choosing a model structure</a></li>
@@ -116,6 +117,7 @@ joint polish over everything.</p>
 <span>  events <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  event_weights <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>nse <span class="op">=</span> <span class="fl">1</span>, peak <span class="op">=</span> <span class="fl">0.5</span>, timing <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span>,</span>
 <span>  event_share <span class="op">=</span> <span class="fl">0.5</span>,</span>
+<span>  event_screen <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  td_max <span class="op">=</span> <span class="fl">6</span>,</span>
 <span>  event_budget <span class="op">=</span> <span class="fl">300L</span>,</span>
 <span>  thresholds <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -153,7 +155,7 @@ half-width of a narrowed search, as a fraction of each range.</p></dd>
 <dd><p>Add stage 4, the events stage.</p></dd>
 
 
-<dt id="arg-event-weights-event-share">event_weights, event_share<a class="anchor" aria-label="anchor" href="#arg-event-weights-event-share"></a></dt>
+<dt id="arg-event-weights-event-share-event-screen">event_weights, event_share, event_screen<a class="anchor" aria-label="anchor" href="#arg-event-weights-event-share-event-screen"></a></dt>
 <dd><p>Passed to <code><a href="calibrate_pdm.html">calibrate_pdm()</a></code> in stage 4.</p></dd>
 
 

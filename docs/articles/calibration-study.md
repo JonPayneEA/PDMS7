@@ -347,6 +347,144 @@ of the extrapolated rating at the top end ([Larger
 floods](https://jonpayneea.github.io/PDMS7/articles/extrapolation.md)):
 a model can be trusted only as far as its record exercised it.
 
+## Which groundwater store?
+
+`kb` cannot be identified within one store. A related question is
+whether the record can choose the store itself: linear, quadratic, cubic
+or exponential. [Recession
+analysis](https://jonpayneea.github.io/PDMS7/reference/recession_analysis.md)
+suggests it might, from data alone. Once the surface stores have
+drained, the rate at which flow falls against the flow itself, on log
+axes, has a slope of 1, 1.5, 1.67 or 2 for the four stores.
+
+The test used sixteen made-up catchments: each store, under standard
+recharge (the soil store drains to groundwater all the time) and split
+recharge (groundwater fills only when runoff does), on two ten-year
+hourly rain records with 3% gauge noise. Each catchment was calibrated
+with all four stores on seven years and scored on the last three. Four
+ways of choosing were compared: the slope read straight off the record,
+the best validation NSE, the best validation log NSE, and the fitted
+store whose simulated recession slope comes closest to the record’s. The
+script is `inst/benchmarks/recession_stores.R`.
+
+``` r
+stores <- read.csv(system.file("extdata", "recession_stores.csv", package = "pdmS7"))
+theory <- c(linear = 1, quadratic = 1.5, cubic = 5 / 3, exponential = 2)
+cases <- split(stores, list(stores$truth, stores$recharge, stores$seed), drop = TRUE)
+chosen <- do.call(rbind, lapply(cases, function(x) {
+  ranked <- order(-x$val_log_nse)
+  data.frame(
+    recharge = x$recharge[1], truth = x$truth[1],
+    slope_read = names(theory)[which.min(abs(theory - x$observed_slope[1]))],
+    best_nse = x$candidate[which.max(x$val_nse)],
+    best_log_nse = x$candidate[ranked[1]],
+    closest_simulated_slope = x$candidate[which.min(abs(x$simulated_slope -
+                                                          x$observed_slope))],
+    log_nse_margin = x$val_log_nse[ranked[1]] - x$val_log_nse[ranked[2]]
+  )
+}))
+right <- function(rule) tapply(chosen[[rule]] == chosen$truth, chosen$recharge, sum)
+rules <- c("slope_read", "best_nse", "best_log_nse", "closest_simulated_slope")
+correct <- t(vapply(rules, right, c(split = 0, standard = 0)))
+cbind(correct, all = rowSums(correct))
+#>                         split standard all
+#> slope_read                  6        2   8
+#> best_nse                    8        8  16
+#> best_log_nse                8        8  16
+#> closest_simulated_slope     6        3   9
+margins <- chosen$log_nse_margin
+```
+
+The validation scores found the true store in every catchment. Neither
+recession rule did as well:
+
+- **The slope read off the record** worked under split recharge but not
+  standard. Recharge that continues through a recession slows its fall,
+  and the slopes came out 0.1 to 0.9 low, so nearly every store looked
+  linear. Even with split recharge, the exponential store’s slope (about
+  1.8) sat nearer the cubic’s 1.67 than its own 2.
+- **Matching the simulated recession slope** did little better. Each
+  fitted store bends its parameters until its recessions look roughly
+  right, so the slopes no longer separate them.
+
+The validation scores won, but only just. The best store’s log NSE beat
+the next by a median of 0.0033, at most 0.024, and in 15 of 16
+catchments by less than 0.02, the tolerance within which a calibration
+project counts two scores as equally good. These records came from the
+model being fitted, with small, simple noise. Real records add rain
+errors and a structure that is never exactly right, and margins of a few
+thousandths would not survive them.
+
+So the record can choose the groundwater store only in principle. In
+practice, compare the stores, report the ones within the tolerance of
+the best as equally good, and keep the standard cubic store unless one
+is clearly better. Use the recession plot as a check that a fitted
+model’s low flows fall at the right rate, not as a way to choose its
+store.
+
+## Which recharge rule?
+
+The same test for recharge used nine made-up catchments: standard
+recharge (the soil store drains to groundwater all the time), split
+recharge (a share of each event’s runoff goes to groundwater) and demand
+recharge (groundwater draws fastest when it is emptiest), each on three
+ten-year hourly rain records with the cubic store and 3% gauge noise.
+Each was calibrated with all three rules. The script is
+`inst/benchmarks/recharge_rules.R`.
+
+``` r
+rules <- read.csv(system.file("extdata", "recharge_rules.csv", package = "pdmS7"))
+cases <- split(rules, list(rules$truth, rules$seed), drop = TRUE)
+picked <- do.call(rbind, lapply(cases, function(x) {
+  by_log <- order(-x$val_log_nse)
+  by_nse <- order(-x$val_nse)
+  data.frame(truth = x$truth[1], best_log_nse = x$candidate[by_log[1]],
+             log_nse_margin = x$val_log_nse[by_log[1]] - x$val_log_nse[by_log[2]],
+             best_nse = x$candidate[by_nse[1]],
+             nse_margin = x$val_nse[by_nse[1]] - x$val_nse[by_nse[2]],
+             rise_follows_quick_flow = x$observed_rise_cor[1])
+}))
+rownames(picked) <- NULL
+picked[order(picked$truth), ]
+#>      truth best_log_nse log_nse_margin best_nse nse_margin
+#> 1   demand       demand     0.15582733   demand 0.01190657
+#> 4   demand       demand     0.21134406   demand 0.02287367
+#> 7   demand       demand     0.18789850   demand 0.01524153
+#> 2    split        split     0.24570012    split 0.01455068
+#> 5    split        split     0.24323174    split 0.01554466
+#> 8    split        split     0.20302903    split 0.01074521
+#> 3 standard     standard     0.07661034 standard 0.00980218
+#> 6 standard     standard     0.22537891 standard 0.04487296
+#> 9 standard     standard     0.12120537 standard 0.01985162
+#>   rise_follows_quick_flow
+#> 1              0.02302057
+#> 4             -0.06304701
+#> 7              0.02249461
+#> 2              0.14225911
+#> 5              0.08354189
+#> 8              0.08963414
+#> 3              0.04190775
+#> 6             -0.04634035
+#> 9              0.01245923
+```
+
+Here the record speaks clearly. The validation scores picked the true
+rule in all 9 catchments, and by margins in log NSE of 0.08 to 0.25,
+against a median of 0.0033 for the groundwater store. A wrong recharge
+rule cannot be hidden by the other parameters: it changes when
+groundwater fills, and so the shape of every recession and the level of
+every low flow. Margins this size should survive the errors of real
+data, though only a test on gauged catchments can show it.
+
+One diagnostic needs no model. Across each event, the rise of the
+baseflow line that
+[`find_events()`](https://jonpayneea.github.io/PDMS7/reference/find_events.md)
+draws can be set against the event’s quick flow. Split recharge feeds
+groundwater in proportion to each event’s runoff, so the two move
+together: their correlation was 0.08 to 0.14 under split recharge, and
+-0.06 to 0.04 under the other two. It separates split recharge from the
+rest, but not standard from demand.
+
 ## What the study shows
 
 - **Check the search against the truth before blaming it.** Scoring the
@@ -366,6 +504,14 @@ a model can be trusted only as far as its record exercised it.
   [`pdm_stages()`](https://jonpayneea.github.io/PDMS7/reference/pdm_stages.md)),
   or calibrate it and report the range of equally good values instead of
   one number.
+- **Do not expect the record to choose the groundwater store.**
+  Validation scores picked the true store in every synthetic catchment,
+  by margins too small to survive real data. The recession slope reads
+  the store only where recharge stops between events.
+- **Do test the recharge rule.** It was identified in every synthetic
+  catchment, by margins of 0.08 or more in log NSE, and whether baseflow
+  rises with each event’s quick flow points to split recharge before any
+  calibration.
 - **Before trusting a model in a severe drought, run the drought.** Pass
   a drought scenario through the spread of equally good fits. If the
   spread is wide, the record cannot answer the question, however good
@@ -383,7 +529,16 @@ for any model: compare the flows, not the parameters, and compare them
 where the question lies. A score on the record says little about a
 drought the record does not contain.
 
-## Reference
+## References
+
+Brutsaert, W. and Nieber, J. L. (1977). Regionalized drought flow
+hydrographs from a mature glaciated plateau. *Water Resources Research*,
+13(3), 637-643.
+
+Kirchner, J. W. (2009). Catchments as simple dynamical systems:
+catchment characterization, rainfall-runoff modeling, and doing
+hydrology backward. *Water Resources Research*, 45, W02429.
+<doi:10.1029/2008WR006912>.
 
 Tolson, B. A. and Shoemaker, C. A. (2007). Dynamically dimensioned
 search algorithm for computationally efficient watershed model

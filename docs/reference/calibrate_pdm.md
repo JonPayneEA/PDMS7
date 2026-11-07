@@ -32,7 +32,8 @@ calibrate_pdm(
   archive = NULL,
   events = NULL,
   event_weights = c(nse = 1, peak = 0.5, timing = 0.5),
-  event_share = 0.5
+  event_share = 0.5,
+  event_screen = list()
 )
 ```
 
@@ -220,6 +221,13 @@ calibrate_pdm(
 - event_share:
 
   Share of the events, largest observed peak first, that are scored.
+
+- event_screen:
+
+  Settings for
+  [`screen_events()`](https://jonpayneea.github.io/PDMS7/reference/screen_events.md),
+  which leaves out events with a rise lost in the baseflow, more quick
+  flow than rain, or gaps; `NULL` scores every event.
 
 ## Value
 

@@ -110,6 +110,11 @@ Calibration:
   [`calibrate_batch()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md):
   preparing folders, running, resuming after an interruption, fixing
   failures, and reading the results
+- [Getting the floods
+  right](https://jonpayneea.github.io/PDMS7/articles/floods.html): in
+  plain English, why a good score can hide bad floods, and how to find,
+  check, calibrate and inspect the events, and what the record can say
+  about the model’s structure
 - [A large sample: what automatic calibration
   recovers](https://jonpayneea.github.io/PDMS7/articles/large-sample.html):
   30 synthetic catchments, each with its own climate and known truth,

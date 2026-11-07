@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.11.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.13.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -51,6 +51,7 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Calibration</h6></li>
     <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: multi-start, budgets and staged calibration</a></li>
+    <li><a class="dropdown-item" href="../articles/floods.html">Getting the floods right</a></li>
     <li><a class="dropdown-item" href="../articles/auto-calibration.html">Automatic calibration, explained</a></li>
     <li><a class="dropdown-item" href="../articles/scoring.html">Scoring a simulation: from NSE to POD, FAR and CSI</a></li>
     <li><a class="dropdown-item" href="../articles/choosing-structure.html">Choosing a model structure</a></li>
@@ -675,10 +676,10 @@ may fit it:</p>
 <span>      <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt;                     nse median_peak_error median_timing_error_h</span></span>
 <span><span class="co">#&gt; staged            0.837            -0.188                    -1</span></span>
-<span><span class="co">#&gt; with_events_stage 0.985            -0.001                     0</span></span>
+<span><span class="co">#&gt; with_events_stage 0.983             0.028                     0</span></span>
 <span><span class="co">#&gt;                   median_event_nse    td</span></span>
 <span><span class="co">#&gt; staged                       0.737 0.000</span></span>
-<span><span class="co">#&gt; with_events_stage            0.988 3.276</span></span></code></pre></div>
+<span><span class="co">#&gt; with_events_stage            0.987 3.276</span></span></code></pre></div>
 <p>The standard stages cannot move the delay, so they bend the stores
 instead: the peaks come out low and early. The events stage finds a
 delay close to the true 3 hours, and both the peaks and the overall NSE

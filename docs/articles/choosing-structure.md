@@ -118,7 +118,7 @@ elapsed <- system.time(
                                 reasoning = "Which structure suits this catchment?")
 )[["elapsed"]]
 round(elapsed)
-#> [1] 42
+#> [1] 41
 ranking[, .(rank, structure, parameters, calibration = round(calibration, 4),
             validation = round(validation, 4), change = round(change, 4), starts_agree)]
 #>     rank               structure parameters calibration validation  change
@@ -234,6 +234,47 @@ the mean of the two held-out scores. It doubles the cost.
 compare_structures(project, structures, starts = 4, cross_validate = TRUE, cores = 8,
                    reasoning = "Short record: rank on both held-out windows.")
 ```
+
+## One component at a time
+
+Comparing every combination of soil store, recharge rule and groundwater
+store means sixty calibrations.
+[`recommend_structure()`](https://jonpayneea.github.io/PDMS7/reference/recommend_structure.md)
+chooses one component at a time instead, the way a hydrologist would,
+and writes its reasons to the log as notes:
+
+``` r
+rec <- recommend_structure(project, reasoning = "First choice of structure.")
+rec
+rec$steps$recharge$table
+```
+
+The order follows what a record can tell apart. On made-up catchments
+([What limits automatic
+calibration](https://jonpayneea.github.io/PDMS7/articles/calibration-study.md))
+the recharge rule was identified every time, by margins of 0.08 or more
+in log NSE, and the groundwater store only by margins too small to
+trust. So the recharge rule comes first, then the soil store
+distribution, then the groundwater store, each step starting from the
+structure the step before chose.
+
+Each step compares its options with
+[`compare_structures()`](https://jonpayneea.github.io/PDMS7/reference/compare_structures.md)
+and chooses by one rule:
+
+1.  A structure that ended with a parameter at a bound of its search
+    range is set aside, as being bent to fit.
+2.  The rest are ranked on the validation window. Every structure within
+    the tie tolerance of the best (0.02 unless registered otherwise)
+    counts as equally good.
+3.  If the structure the step started from is among the equally good, it
+    is kept: the record cannot justify a change.
+4.  Otherwise the one with the smallest median peak error on the largest
+    validation events wins, then the one with fewer parameters.
+
+Rule 3 makes the recommendation conservative. Where the record is
+silent, as it usually is about the groundwater store, the standard
+structure stays, and the note says why.
 
 ## In the app and at scale
 

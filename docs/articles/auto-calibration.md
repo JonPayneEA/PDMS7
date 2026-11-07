@@ -480,10 +480,10 @@ round(rbind(staged = event_view(plain$config), with_events_stage = event_view(wi
       3)
 #>                     nse median_peak_error median_timing_error_h
 #> staged            0.837            -0.188                    -1
-#> with_events_stage 0.985            -0.001                     0
+#> with_events_stage 0.983             0.028                     0
 #>                   median_event_nse    td
 #> staged                       0.737 0.000
-#> with_events_stage            0.988 3.276
+#> with_events_stage            0.987 3.276
 ```
 
 The standard stages cannot move the delay, so they bend the stores

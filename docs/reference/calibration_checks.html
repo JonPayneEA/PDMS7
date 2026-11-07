@@ -13,7 +13,7 @@ the headline score hides."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.11.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.13.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -42,6 +42,7 @@ the headline score hides."></head><body>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Calibration</h6></li>
     <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: multi-start, budgets and staged calibration</a></li>
+    <li><a class="dropdown-item" href="../articles/floods.html">Getting the floods right</a></li>
     <li><a class="dropdown-item" href="../articles/auto-calibration.html">Automatic calibration, explained</a></li>
     <li><a class="dropdown-item" href="../articles/scoring.html">Scoring a simulation: from NSE to POD, FAR and CSI</a></li>
     <li><a class="dropdown-item" href="../articles/choosing-structure.html">Choosing a model structure</a></li>
@@ -115,7 +116,8 @@ the headline score hides.</p>
 <span>  top <span class="op">=</span> <span class="fl">20L</span>,</span>
 <span>  edge <span class="op">=</span> <span class="fl">0.01</span>,</span>
 <span>  rain_min <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  max_response_h <span class="op">=</span> <span class="fl">150</span></span>
+<span>  max_response_h <span class="op">=</span> <span class="fl">150</span>,</span>
+<span>  screen <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -144,6 +146,11 @@ counts as at the bound.</p></dd>
 <dt id="arg-rain-min-max-response-h">rain_min, max_response_h<a class="anchor" aria-label="anchor" href="#arg-rain-min-max-response-h"></a></dt>
 <dd><p>Passed to <code><a href="find_events.html">find_events()</a></code>.</p></dd>
 
+
+<dt id="arg-screen">screen<a class="anchor" aria-label="anchor" href="#arg-screen"></a></dt>
+<dd><p>Settings for <code><a href="screen_events.html">screen_events()</a></code>, with the project's highest gauged flow unless
+they name one; <code>NULL</code> summarises every event.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -151,7 +158,8 @@ counts as at the bound.</p></dd>
 <code>lower</code>, <code>upper</code>, <code>scale</code> and <code>at_bound</code> (<code>"lower"</code>, <code>"upper"</code> or <code>NA</code>). <code>events</code>: every
 event with its <code>period</code> and the columns of <code><a href="event_scores.html">event_scores()</a></code>. <code>summary</code>: one row per window
 with <code>events</code> (the number summarised), <code>median_peak_error</code>, <code>median_timing_error_h</code>,
-<code>share_peak_within_20pct</code> and <code>median_event_nse</code>. <code>response_h</code>: the response times
+<code>share_peak_within_20pct</code> and <code>median_event_nse</code>, and <code>screened_out</code>, the events of that
+window the screen left out. <code>response_h</code>: the response times
 estimated from the observed and the simulated flow.</p>
     </div>
     <div class="section level2">
@@ -165,7 +173,8 @@ zero, such as no time delay, is a natural limit rather than an imposed one, and 
 observed flow and scored with <code><a href="event_scores.html">event_scores()</a></code>. In each window (calibration, validation, the
 held-back wettest years, and any outside them), the <code>top</code> largest by observed peak are
 summarised: median peak error, median timing error, the share of peaks within 20% of the
-observed, and median event NSE.</p>
+observed, and median event NSE. Events are first screened with <code><a href="screen_events.html">screen_events()</a></code>; those it
+leaves out are kept in <code>events</code> with their flags, but not summarised.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
