@@ -63,6 +63,7 @@ articles:
   contents:
   - calibration
   - floods
+  - rainfall
   - auto-calibration
   - scoring
   - choosing-structure
@@ -240,6 +241,7 @@ reference:
   desc: Catchment-average rain from gauges and radar, by Thiessen polygons, multiquadric interpolation or conditional merging.
   contents:
   - merge_rainfall
+  - rainfall_field
   - h19_radar
 - title: Recession analysis
   desc: How fast flow falls against how high it is, and the groundwater store it points to.

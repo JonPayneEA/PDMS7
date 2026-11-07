@@ -184,6 +184,49 @@ catchment_mask <- function(x, y, polygon) {
   matrix(inside, nrow = length(x), ncol = length(y))
 }
 
+#' One step's rainfall field on a grid
+#'
+#' The field [merge_rainfall()] averages over the catchment, for one time step and every cell of
+#' the grid: for mapping a storm, or for seeing what each method does to it.
+#'
+#' @inheritParams merge_rainfall
+#' @param values One step's gauge depths, mm, in the order of `gauges`; `NA` leaves a gauge out.
+#' @param radar With `method = "conditional"`, that step's radar grid, mm: a matrix of
+#'   `length(grid$x)` rows by `length(grid$y)` columns.
+#' @param c Multiquadric shape parameter; by default the median distance between neighbouring
+#'   gauges.
+#' @return A matrix of rain, mm, with `length(grid$x)` rows and `length(grid$y)` columns.
+#' @examples
+#' grid <- list(x = seq(500, 9500, by = 1000), y = seq(500, 9500, by = 1000))
+#' gauges <- data.frame(id = 1:4, x = c(2000, 8000, 2000, 8000), y = c(2000, 2000, 8000, 8000))
+#' field <- rainfall_field(gauges, c(1, 4, 2, 0), grid, method = "multiquadric")
+#' image(grid$x, grid$y, field)
+#' @seealso [merge_rainfall()]
+#' @export
+rainfall_field <- function(gauges, values, grid, method = c("multiquadric", "conditional",
+                                                            "thiessen"),
+                           c = NULL, smooth = 0, radar = NULL) {
+  method <- match.arg(method)
+  .check_gauge_inputs(gauges, matrix(values, nrow = 1))
+  .check(is.list(grid) && is.numeric(grid$x) && is.numeric(grid$y),
+         "grid must be a list of cell-centre x and y")
+  nx <- length(grid$x)
+  ny <- length(grid$y)
+  if (method == "conditional") {
+    .check(is.matrix(radar) && all(dim(radar) == c(nx, ny)),
+           "radar must be one step's grid, a matrix of grid columns by rows")
+  }
+  c <- c %||% if (nrow(gauges) > 1) .gauge_spacing(gauges) else 1
+  cells <- list(i = rep(seq_len(nx), ny), j = rep(seq_len(ny), each = nx))
+  cells$x <- grid$x[cells$i]
+  cells$y <- grid$y[cells$j]
+  at <- .gauge_cells(gauges, grid)
+  step <- if (method == "conditional") {
+    list(cells = radar[cbind(cells$i, cells$j)], gauges = radar[cbind(at$i, at$j)])
+  }
+  matrix(.rain_field(gauges, values, cells, method, c, smooth, step), nx, ny)
+}
+
 #' @export
 print.pdm_rainfall <- function(x, ...) {
   cat(sprintf("Catchment rainfall by %s%s: %d steps, %.1f mm in all\n", x$method,

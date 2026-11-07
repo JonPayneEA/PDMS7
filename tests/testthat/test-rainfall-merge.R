@@ -132,3 +132,21 @@ test_that("catchment_mask and input checks", {
                "radar must be")
   expect_error(merge_rainfall(d$gauges, d$gauge_rain, d$grid, d$mask, c = -1), "positive")
 })
+
+# Guards: the one-step field agrees with the catchment series and with the gauges
+test_that("rainfall_field maps one step consistently with merge_rainfall", {
+  d <- merge_case(nt = 60)
+  wet <- which.max(rowSums(d$gauge_rain))
+  cm <- merge_rainfall(d$gauges, d$gauge_rain, d$grid, d$mask, radar = d$radar,
+                       method = "conditional", c = 3000)
+  field <- rainfall_field(d$gauges, d$gauge_rain[wet, ], d$grid, method = "conditional",
+                          c = 3000, radar = d$radar[, , wet])
+  expect_equal(dim(field), c(length(d$grid$x), length(d$grid$y)))
+  expect_equal(mean(field[d$mask]), cm$rain[wet], tolerance = 1e-10)
+  mq <- rainfall_field(d$gauges, d$gauge_rain[wet, ], d$grid, method = "multiquadric",
+                       c = 3000)
+  expect_equal(mq[cbind(d$at$i, d$at$j)], d$gauge_rain[wet, ], tolerance = 0.3)
+  expect_true(all(mq >= 0))
+  expect_error(rainfall_field(d$gauges, d$gauge_rain[wet, ], d$grid, method = "conditional"),
+               "radar must be")
+})

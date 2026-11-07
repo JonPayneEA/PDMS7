@@ -82,6 +82,9 @@ Calibration:
 - [Getting the floods right](https://jonpayneea.github.io/PDMS7/articles/floods.html):
   in plain English, why a good score can hide bad floods, and how to find, check, calibrate
   and inspect the events, and what the record can say about the model's structure
+- [Catchment rainfall from gauges and radar](https://jonpayneea.github.io/PDMS7/articles/rainfall.html):
+  Thiessen polygons, multiquadric surfaces and conditional merging of gauges with radar, shown
+  on a made-up storm, with how to judge them and how to read H19 radar
 - [A large sample: what automatic calibration recovers](https://jonpayneea.github.io/PDMS7/articles/large-sample.html):
   30 synthetic catchments, each with its own climate and known truth, calibrated as a batch
 - [What limits automatic calibration: a study](https://jonpayneea.github.io/PDMS7/articles/calibration-study.html):
