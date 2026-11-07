@@ -35,8 +35,10 @@
     <li><a class="dropdown-item" href="../articles/starting-states.html">Starting a run: cold, warm and hot</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Calibration</h6></li>
+    <li><a class="dropdown-item" href="../articles/calibration-journey.html">Automatic calibration from start to finish</a></li>
     <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: multi-start, budgets and staged calibration</a></li>
     <li><a class="dropdown-item" href="../articles/floods.html">Getting the floods right</a></li>
+    <li><a class="dropdown-item" href="../articles/rainfall.html">Catchment rainfall from gauges and radar</a></li>
     <li><a class="dropdown-item" href="../articles/auto-calibration.html">Automatic calibration, explained</a></li>
     <li><a class="dropdown-item" href="../articles/scoring.html">Scoring a simulation: from NSE to POD, FAR and CSI</a></li>
     <li><a class="dropdown-item" href="../articles/choosing-structure.html">Choosing a model structure</a></li>
@@ -931,6 +933,36 @@
 
         </dt>
         <dd>Rerun events on their own, from saved states</dd>
+      </dl></div><div class="section level2">
+      <h2 id="catchment-rainfall">Catchment rainfall<a class="anchor" aria-label="anchor" href="#catchment-rainfall"></a></h2>
+
+      <div class="section-desc"><p>Catchment-average rain from gauges and radar, by Thiessen polygons, multiquadric interpolation or conditional merging.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="merge_rainfall.html">merge_rainfall()</a></code> <code><a href="merge_rainfall.html">rainfall_cross_validation()</a></code> <code><a href="merge_rainfall.html">catchment_mask()</a></code>
+
+        </dt>
+        <dd>Catchment rainfall from gauges and radar</dd>
+
+        <dt>
+
+          <code><a href="rainfall_field.html">rainfall_field()</a></code>
+
+        </dt>
+        <dd>One step's rainfall field on a grid</dd>
+
+        <dt>
+
+          <code><a href="h19_radar.html">h19_radar()</a></code>
+
+        </dt>
+        <dd>Gridded H19 radar for merging with gauges</dd>
       </dl></div><div class="section level2">
       <h2 id="recession-analysis">Recession analysis<a class="anchor" aria-label="anchor" href="#recession-analysis"></a></h2>
 

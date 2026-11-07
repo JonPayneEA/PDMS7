@@ -3,6 +3,7 @@
 <url><loc>https://jonpayneea.github.io/PDMS7/LICENSE-text.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/ar-error-correction.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/auto-calibration.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/articles/calibration-journey.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/calibration-log.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/calibration-study.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/calibration.html</loc></url>
@@ -24,6 +25,7 @@
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/model-equations.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/model-options.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/pdm-explained.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/articles/rainfall.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/reading-paths.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/scoring.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/snowpack-explained.html</loc></url>
@@ -103,12 +105,14 @@
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/find_events.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/fit_error_updater.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/fit_rain.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/h19_radar.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/hindcast_scores.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/index.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/initial_state.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/initial_state_from_flow.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/linear_routing.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/load_pdm_model.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/merge_rainfall.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/pack_from_config.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/pack_presets.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/pack_step.html</loc></url>
@@ -131,6 +135,7 @@
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/quadratic_routing.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/rain_parameters.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/rain_statistics.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/rainfall_field.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/read_pdm_config.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/read_project.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/read_run_log.html</loc></url>

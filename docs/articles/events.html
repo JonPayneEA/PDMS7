@@ -50,8 +50,10 @@
     <li><a class="dropdown-item" href="../articles/starting-states.html">Starting a run: cold, warm and hot</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Calibration</h6></li>
+    <li><a class="dropdown-item" href="../articles/calibration-journey.html">Automatic calibration from start to finish</a></li>
     <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: multi-start, budgets and staged calibration</a></li>
     <li><a class="dropdown-item" href="../articles/floods.html">Getting the floods right</a></li>
+    <li><a class="dropdown-item" href="../articles/rainfall.html">Catchment rainfall from gauges and radar</a></li>
     <li><a class="dropdown-item" href="../articles/auto-calibration.html">Automatic calibration, explained</a></li>
     <li><a class="dropdown-item" href="../articles/scoring.html">Scoring a simulation: from NSE to POD, FAR and CSI</a></li>
     <li><a class="dropdown-item" href="../articles/choosing-structure.html">Choosing a model structure</a></li>
@@ -349,11 +351,11 @@ Here both are timed on ten years of 15-minute data.</p>
 <span>  r_s <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">reference</span>, <span class="fl">1</span><span class="op">)</span>, same_answer <span class="op">=</span> <span class="va">fast</span><span class="op">$</span><span class="va">response_h</span> <span class="op">==</span> <span class="va">slow</span><span class="op">$</span><span class="va">response_h</span>,</span>
 <span>  find_events_s <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">all_events</span>, <span class="fl">2</span><span class="op">)</span>, events <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">quarter_events</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;         steps       windows    compiled_s           r_s   same_answer </span></span>
-<span><span class="co">#&gt;     350400.00        600.00          0.55         18.80          1.00 </span></span>
+<span><span class="co">#&gt;     350400.00        600.00          0.55         18.70          1.00 </span></span>
 <span><span class="co">#&gt; find_events_s        events </span></span>
-<span><span class="co">#&gt;          0.59        842.00</span></span></code></pre></div>
-<p>The compiled search took 0.55 seconds against 18.8 in R, with the
-same answer, and finding all 842 events took 0.59 seconds in all. A
+<span><span class="co">#&gt;          0.57        842.00</span></span></code></pre></div>
+<p>The compiled search took 0.55 seconds against 18.7 in R, with the
+same answer, and finding all 842 events took 0.57 seconds in all. A
 batch of hundreds of basins at 15 minutes is a matter of minutes.</p>
 </div>
 <div class="section level2">
