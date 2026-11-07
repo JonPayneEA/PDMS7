@@ -9,6 +9,11 @@
   number of events, move sliders for the surface stores, the time delay and `b`, and save the
   setting as a logged trial; a button draws the recession plot of the record and the model.
   The calibration log article has a new section on it.
+- **Can the record choose the recharge rule?** `inst/benchmarks/recharge_rules.R` calibrates
+  nine made-up catchments with standard, split and demand recharge. Validation scores found
+  the true rule in all nine, by 0.08 to 0.25 in log NSE, against 0.003 for the groundwater
+  store. Whether the baseflow line rises with each event's quick flow separates split recharge
+  from the other two without a model. The calibration study article has a new section on it.
 
 # pdmS7 0.12.0
 
