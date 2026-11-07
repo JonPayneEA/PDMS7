@@ -30,7 +30,8 @@ window starts.}
 \value{
 \code{event_states()}: a list with \code{first} and \code{last} (each window's first and last row
 of the record), \code{states} (the state before each window's first row), \code{lead_h}, \code{tail_h},
-\code{events} and the \code{model} the states were saved from. \code{run_events()}: a list with one element per event run, each a list of
+\code{events} and the \code{model} the states were saved from. \code{run_events()}: a list with one
+element per event run, each a list of
 \code{rows} (rows of the record) and \code{q_m3s} (simulated flow on those rows).
 }
 \description{

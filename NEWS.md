@@ -15,6 +15,16 @@
   within 0.1% of a full run; changing the soil or groundwater stores needs the states saved
   again, and `run_events()` refuses it. This is the groundwork for an events workbench and
   for tracing trade-offs between whole-record and event fit.
+- **Recession analysis.** `recession_analysis()` plots how fast flow falls against how high it
+  is, from dry, falling steps long enough after rain, and fits the slope of that relation with
+  a bootstrap interval over whole recessions. The slope identifies the groundwater store (1
+  linear, 1.5 quadratic, 1.67 cubic, 2 exponential) and the exponent of a power store.
+  On made-up catchments it recovered every store where recharge stops between events (split
+  recharge), but standard recharge, which keeps feeding groundwater through recessions,
+  lowered the slopes by 0.25 to 0.65. So the slope is read straight only where recharge stops;
+  otherwise compare the record's slope with each fitted model's, which `plot_recession()`
+  draws together. `inst/benchmarks/recession_stores.R` tests how often each way of choosing
+  a store picks the true one.
 
 # pdmS7 0.11.0
 
