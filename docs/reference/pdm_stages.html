@@ -11,7 +11,7 @@ joint polish over everything."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.10.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.11.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -112,7 +112,15 @@ joint polish over everything.</p>
 <span>  exclude <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  polish <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  volume_weight <span class="op">=</span> <span class="fl">1</span>,</span>
-<span>  band <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  band <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  events <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  event_weights <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>nse <span class="op">=</span> <span class="fl">1</span>, peak <span class="op">=</span> <span class="fl">0.5</span>, timing <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span>,</span>
+<span>  event_share <span class="op">=</span> <span class="fl">0.5</span>,</span>
+<span>  td_max <span class="op">=</span> <span class="fl">6</span>,</span>
+<span>  event_budget <span class="op">=</span> <span class="fl">300L</span>,</span>
+<span>  thresholds <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  threshold_weight <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>  threshold_score <span class="op">=</span> <span class="st">"csi"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -140,6 +148,27 @@ joint polish over everything.</p>
 <dd><p><code>NULL</code> (the default) for a stage 3 search over the full bounds, or the
 half-width of a narrowed search, as a fraction of each range.</p></dd>
 
+
+<dt id="arg-events">events<a class="anchor" aria-label="anchor" href="#arg-events"></a></dt>
+<dd><p>Add stage 4, the events stage.</p></dd>
+
+
+<dt id="arg-event-weights-event-share">event_weights, event_share<a class="anchor" aria-label="anchor" href="#arg-event-weights-event-share"></a></dt>
+<dd><p>Passed to <code><a href="calibrate_pdm.html">calibrate_pdm()</a></code> in stage 4.</p></dd>
+
+
+<dt id="arg-td-max">td_max<a class="anchor" aria-label="anchor" href="#arg-td-max"></a></dt>
+<dd><p>Largest time delay searched in stage 4, hours; <code>NULL</code> holds <code>td</code> fixed.</p></dd>
+
+
+<dt id="arg-event-budget">event_budget<a class="anchor" aria-label="anchor" href="#arg-event-budget"></a></dt>
+<dd><p>Model runs per start for the DDS searches of stage 4 and of a last stage
+with thresholds.</p></dd>
+
+
+<dt id="arg-thresholds-threshold-weight-threshold-score">thresholds, threshold_weight, threshold_score<a class="anchor" aria-label="anchor" href="#arg-thresholds-threshold-weight-threshold-score"></a></dt>
+<dd><p>A threshold term for the last stage.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -148,7 +177,7 @@ half-width of a narrowed search, as a fraction of each range.</p></dd>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
 
-<table class="table table"><tr><td>Stage</td><td>Fits</td><td>Objective</td></tr><tr><td>1. Volume and baseflow</td><td><code>fc</code>, soil store, recharge, groundwater</td><td>1 - log NSE + volume error</td></tr><tr><td>2. Fast response</td><td>Surface stores and the store shape <code>b</code></td><td>1 - NSE</td></tr><tr><td>3. Polish</td><td>Everything, over the full bounds</td><td>1 - NSE</td></tr></table><p>Low flows and the total volume depend on the slow stores, and logs stop the floods
+<table class="table table"><tr><td>Stage</td><td>Fits</td><td>Objective</td></tr><tr><td>1. Volume and baseflow</td><td><code>fc</code>, soil store, recharge, groundwater</td><td>1 - log NSE + volume error</td></tr><tr><td>2. Fast response</td><td>Surface stores and the store shape <code>b</code></td><td>1 - NSE</td></tr><tr><td>3. Polish</td><td>Everything, over the full bounds</td><td>1 - NSE</td></tr><tr><td>4. Events (optional)</td><td>Surface stores, <code>b</code> and the time delay <code>td</code></td><td>events objective</td></tr></table><p>Low flows and the total volume depend on the slow stores, and logs stop the floods
 dominating stage 1. Peak size and timing depend on the fast stores, fitted in stage 2 with
 stage 1's values fixed. Stage 3 starts from the stage 2 result and searches every parameter
 over its full bounds, to fix interactions the stages missed.</p>
@@ -158,11 +187,26 @@ stores, and a polish confined near that point cannot leave it. In a sample of 30
 catchments, a polish confined to a quarter of each range either side (the default before
 version 0.8.0) left two catchments far below the score of their true parameters. Pass
 <code>band</code> to confine it all the same.</p>
+<p>NSE over a long record weighs time steps, not events: the many hours of recession outweigh
+the few hours around each flood peak, so a model can score well while its peaks are late and
+low. <code>events = TRUE</code> adds stage 4, which refits the fast response and the time delay on the
+largest events alone, with the <code>events</code> objective of <code><a href="calibrate_pdm.html">calibrate_pdm()</a></code>: pooled event NSE,
+peak error and timing error. The slow stores stay as stage 3 left them, so the water balance
+is kept. The time delay is not in the default bounds; stage 4 searches it from 0 to <code>td_max</code>
+hours. Its timing term changes in steps, so stage 4 uses DDS with <code>event_budget</code> model runs
+per start.</p>
+<p><code>thresholds</code> adds a threshold term (<code><a href="calibrate_pdm.html">calibrate_pdm()</a></code>) to the last stage, which then also uses
+DDS: a named vector of flows (m3/s) for <code><a href="calibrate_staged.html">calibrate_staged()</a></code>, or the names of thresholds
+registered in the project for <code><a href="calibrate_staged.html">log_staged_calibration()</a></code>.</p>
 <p>Parameters come from <code><a href="calibration_bounds.html">calibration_bounds()</a></code>, so every structure gets its own lists: a split
 recharge adds <code>recharge.alpha</code> to stage 1, an exponential store adds its two parameters.
 A stage is a plain list, so you can write your own: <code>name</code>, <code>parameters</code> (configuration
 paths), <code>objective</code> (as in <code><a href="calibrate_pdm.html">calibrate_pdm()</a></code>), <code>volume_weight</code> and <code>band</code> (<code>NULL</code>, or the
-half-width of the narrowed search, as a fraction of each parameter's range).</p>
+half-width of the narrowed search, as a fraction of each parameter's range). Optional
+fields: <code>method</code> and <code>control</code>, replacing the calibration's own for this stage;
+<code>event_weights</code> and <code>event_share</code> for the events objective; <code>thresholds</code>,
+<code>threshold_weight</code> and <code>threshold_score</code>; and <code>extra_bounds</code>, rows like those of
+<code><a href="calibration_bounds.html">calibration_bounds()</a></code> for parameters not in the bounds table, such as <code>td</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

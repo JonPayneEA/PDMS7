@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.10.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.11.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -583,6 +583,120 @@ next, with its stage recorded, and
 basin, resuming from the last finished stage after an interruption.</p>
 </div>
 <div class="section level2">
+<h2 id="calibrating-for-events">Calibrating for events<a class="anchor" aria-label="anchor" href="#calibrating-for-events"></a>
+</h2>
+<p>NSE over a long record counts time steps, not events. In a year of
+15-minute data, the hours around flood peaks are a small share of the
+steps; recessions and low flows are most of the rest. A model can get
+the recessions right, put every peak hours late and half its size, and
+still score 0.9. That has happened on real data: a small, fast catchment
+calibrated to NSE 0.90 over nine years, with its largest flood 47% low
+and 16 hours late. The search had pushed three parameters to the edges
+of their ranges and routed the floods through the slow stores.</p>
+<p>Four tools guard against it.</p>
+<p><strong>The events stage.</strong>
+<code>pdm_stages(events = TRUE)</code> adds a fourth stage after the
+polish. It refits the fast response (the surface stores and
+<code>b</code>) and the time delay <code>td</code> on the largest events
+alone, found with <a href="events.html"><code>find_events()</code></a>.
+Its objective has three parts:</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th>Part</th>
+<th>Measures</th>
+<th>Default weight</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>1 - pooled event NSE</td>
+<td>the shape of each event’s hydrograph; squared errors over all chosen
+windows, each against its own event’s mean</td>
+<td>1</td>
+</tr>
+<tr class="even">
+<td>mean absolute peak error</td>
+<td>each simulated peak against the observed, as a share</td>
+<td>0.5</td>
+</tr>
+<tr class="odd">
+<td>mean absolute timing error, in response times</td>
+<td>hours between the peaks, divided by the catchment’s response
+time</td>
+<td>0.5</td>
+</tr>
+</tbody>
+</table>
+<p>Only the largest half of the calibration events count, by observed
+peak (<code>event_share</code>), so small events with noisy peaks do not
+steer it. The slow stores stay where stage 3 left them, which keeps the
+water balance. The timing part changes in whole steps, so this stage
+searches with DDS (<code>event_budget</code> model runs per start)
+rather than by slope.</p>
+<p><strong>The time delay.</strong> <code>td</code> is not in the
+default bounds, because it is usually fixed by eye. On a 15-minute step
+a fixed delay an hour out costs every peak. The events stage searches it
+from 0 to <code>td_max</code> hours (6 by default).</p>
+<p><strong>Thresholds.</strong>
+<code>pdm_stages(thresholds = ...)</code> puts the threshold term
+described above on the last stage, so the final adjustment also rewards
+crossing the warning flows when the observed flow does.</p>
+<p><strong>Acceptance checks.</strong> <code><a href="../reference/calibration_checks.html">calibration_checks()</a></code>
+reports the two warning signs a headline score hides: parameters that
+ended at a bound, and the median peak and timing errors of the largest
+events in each window (calibration, validation and any held-back
+years).</p>
+<p>Here the catchment is the same, but the true model delays its outflow
+by 3 hours. The standard stages hold the delay at 0; the events stage
+may fit it:</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">delayed</span> <span class="op">&lt;-</span> <span class="va">truth</span></span>
+<span><span class="va">delayed</span><span class="op">$</span><span class="va">td</span> <span class="op">&lt;-</span> <span class="fl">3</span></span>
+<span><span class="va">observed_late</span> <span class="op">&lt;-</span> <span class="fu">run</span><span class="op">(</span><span class="va">delayed</span>, start_flow <span class="op">=</span> <span class="fl">0.6</span><span class="op">)</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n</span>, <span class="fl">0</span>, <span class="fl">0.03</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">plain</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calibrate_staged.html">calibrate_staged</a></span><span class="op">(</span><span class="va">begin</span>, <span class="va">forcing</span>, <span class="va">observed_late</span>, warmup <span class="op">=</span> <span class="fl">240</span>, starts <span class="op">=</span> <span class="fl">2</span>, seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
+<span><span class="va">with_events</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calibrate_staged.html">calibrate_staged</a></span><span class="op">(</span><span class="va">begin</span>, <span class="va">forcing</span>, <span class="va">observed_late</span>, warmup <span class="op">=</span> <span class="fl">240</span>, starts <span class="op">=</span> <span class="fl">2</span>, seed <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>                                stages <span class="op">=</span> <span class="fu"><a href="../reference/pdm_stages.html">pdm_stages</a></span><span class="op">(</span><span class="va">begin</span>, events <span class="op">=</span> <span class="cn">TRUE</span>, event_budget <span class="op">=</span> <span class="fl">200</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">events</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/find_events.html">find_events</a></span><span class="op">(</span><span class="va">forcing</span><span class="op">$</span><span class="va">rain</span>, <span class="va">observed_late</span>, <span class="va">forcing</span><span class="op">$</span><span class="va">time</span>, dt <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
+<span><span class="va">event_view</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">config</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">sim</span> <span class="op">&lt;-</span> <span class="fu">run</span><span class="op">(</span><span class="va">config</span>, <span class="va">observed_late</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span></span>
+<span>  <span class="va">sc</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/event_scores.html">event_scores</a></span><span class="op">(</span><span class="va">events</span>, <span class="va">sim</span>, <span class="va">observed_late</span><span class="op">)</span></span>
+<span>  <span class="va">largest</span> <span class="op">&lt;-</span> <span class="fu">utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">sc</span><span class="op">[</span><span class="va">sc</span><span class="op">$</span><span class="va">flow_start</span> <span class="op">&gt;</span> <span class="fl">240</span>, <span class="op">]</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="op">-</span><span class="va">sc</span><span class="op">$</span><span class="va">observed_peak</span><span class="op">[</span><span class="va">sc</span><span class="op">$</span><span class="va">flow_start</span> <span class="op">&gt;</span> <span class="fl">240</span><span class="op">]</span><span class="op">)</span>, <span class="op">]</span>,</span>
+<span>                         <span class="fl">5</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>nse <span class="op">=</span> <span class="fu"><a href="../reference/pdm_scorecard.html">pdm_scorecard</a></span><span class="op">(</span><span class="va">sim</span><span class="op">[</span><span class="va">scored</span><span class="op">]</span>, <span class="va">observed_late</span><span class="op">[</span><span class="va">scored</span><span class="op">]</span><span class="op">)</span><span class="op">[[</span><span class="st">"nse"</span><span class="op">]</span><span class="op">]</span>,</span>
+<span>    median_peak_error <span class="op">=</span> <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">largest</span><span class="op">$</span><span class="va">peak_error</span><span class="op">)</span>,</span>
+<span>    median_timing_error_h <span class="op">=</span> <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">largest</span><span class="op">$</span><span class="va">timing_error_h</span><span class="op">)</span>,</span>
+<span>    median_event_nse <span class="op">=</span> <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">largest</span><span class="op">$</span><span class="va">nse</span><span class="op">)</span>, td <span class="op">=</span> <span class="va">config</span><span class="op">$</span><span class="va">td</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span>staged <span class="op">=</span> <span class="fu">event_view</span><span class="op">(</span><span class="va">plain</span><span class="op">$</span><span class="va">config</span><span class="op">)</span>, with_events_stage <span class="op">=</span> <span class="fu">event_view</span><span class="op">(</span><span class="va">with_events</span><span class="op">$</span><span class="va">config</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>      <span class="fl">3</span><span class="op">)</span></span>
+<span><span class="co">#&gt;                     nse median_peak_error median_timing_error_h</span></span>
+<span><span class="co">#&gt; staged            0.837            -0.188                    -1</span></span>
+<span><span class="co">#&gt; with_events_stage 0.985            -0.001                     0</span></span>
+<span><span class="co">#&gt;                   median_event_nse    td</span></span>
+<span><span class="co">#&gt; staged                       0.737 0.000</span></span>
+<span><span class="co">#&gt; with_events_stage            0.988 3.276</span></span></code></pre></div>
+<p>The standard stages cannot move the delay, so they bend the stores
+instead: the peaks come out low and early. The events stage finds a
+delay close to the true 3 hours, and both the peaks and the overall NSE
+recover. On real data the gain will rarely be this clean. If the
+structure cannot produce the observed response at all, no objective will
+make it, and the events stage then shows the problem more plainly rather
+than solving it.</p>
+<p>In a project, <code><a href="../reference/calibrate_staged.html">log_staged_calibration()</a></code> takes the same
+stages, and the checks follow:</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">stages</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pdm_stages.html">pdm_stages</a></span><span class="op">(</span><span class="va">structure</span>, events <span class="op">=</span> <span class="cn">TRUE</span>, thresholds <span class="op">=</span> <span class="st">"Flood Warning"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/calibrate_staged.html">log_staged_calibration</a></span><span class="op">(</span><span class="va">project</span>, parent <span class="op">=</span> <span class="fl">3</span>, reasoning <span class="op">=</span> <span class="st">"Staged, with an events stage."</span>,</span>
+<span>                       stages <span class="op">=</span> <span class="va">stages</span>, starts <span class="op">=</span> <span class="fl">2</span>, seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
+<span><span class="va">checks</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calibration_checks.html">calibration_checks</a></span><span class="op">(</span><span class="va">project</span>, entry <span class="op">=</span> <span class="fl">7</span><span class="op">)</span></span>
+<span><span class="va">checks</span><span class="op">$</span><span class="va">parameters</span><span class="op">[</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">checks</span><span class="op">$</span><span class="va">parameters</span><span class="op">$</span><span class="va">at_bound</span><span class="op">)</span>, <span class="op">]</span>   <span class="co"># parameters at a bound</span></span>
+<span><span class="va">checks</span><span class="op">$</span><span class="va">summary</span>                                             <span class="co"># largest events, by window</span></span></code></pre></div>
+</div>
+<div class="section level2">
 <h2 id="in-a-calibration-project">In a calibration project<a class="anchor" aria-label="anchor" href="#in-a-calibration-project"></a>
 </h2>
 <p>Inside a calibration project, <code><a href="../reference/calibration_log.html">log_auto_calibration()</a></code>
@@ -592,7 +706,7 @@ everything a reviewer would need to repeat it exactly: the fences, the
 search scales, the method, the score and its weights, the starting
 points and seed, where every start ended, how many model runs it took,
 and why it was run.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/calibration_log.html">log_auto_calibration</a></span><span class="op">(</span></span>
 <span>  <span class="va">project</span>, parent <span class="op">=</span> <span class="fl">7</span>,</span>
 <span>  lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>fc <span class="op">=</span> <span class="fl">0.7</span>, surface.k1 <span class="op">=</span> <span class="fl">0.5</span>, surface.k2 <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span>,</span>
@@ -638,6 +752,18 @@ says</td>
 <td>A flood warning service</td>
 <td>Add <code>thresholds</code> and use
 <code>method = "nelder_mead"</code>; keep NSE as the main score</td>
+</tr>
+<tr class="odd">
+<td>Peaks and timing matter most</td>
+<td>
+<code>pdm_stages(events = TRUE)</code>, which also fits the time
+delay; add <code>thresholds</code> for warning flows</td>
+</tr>
+<tr class="even">
+<td>Before accepting any calibration</td>
+<td>
+<code><a href="../reference/calibration_checks.html">calibration_checks()</a></code>: no parameter at a bound, peaks
+and timing acceptable in validation</td>
 </tr>
 <tr class="odd">
 <td>Comparing model structures</td>

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.10.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.11.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -107,7 +107,7 @@
 <span>  <span class="va">lower</span>,</span>
 <span>  <span class="va">upper</span>,</span>
 <span>  warmup <span class="op">=</span> <span class="fl">0</span>,</span>
-<span>  objective <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rmse"</span>, <span class="st">"nse"</span>, <span class="st">"log_rmse"</span>, <span class="st">"log_nse"</span>, <span class="st">"threshold"</span><span class="op">)</span>,</span>
+<span>  objective <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rmse"</span>, <span class="st">"nse"</span>, <span class="st">"log_rmse"</span>, <span class="st">"log_nse"</span>, <span class="st">"threshold"</span>, <span class="st">"events"</span><span class="op">)</span>,</span>
 <span>  flow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"q_m3s"</span>, <span class="st">"q_end_m3s"</span><span class="op">)</span>,</span>
 <span>  log_offset <span class="op">=</span> <span class="fl">0.01</span>,</span>
 <span>  control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>maxit <span class="op">=</span> <span class="fl">200</span><span class="op">)</span>,</span>
@@ -124,7 +124,10 @@
 <span>  start <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"flow"</span>, <span class="st">"soil"</span><span class="op">)</span>,</span>
 <span>  baseflow_fraction <span class="op">=</span> <span class="fl">0.7</span>,</span>
 <span>  start_flow <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  archive <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  archive <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  events <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  event_weights <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>nse <span class="op">=</span> <span class="fl">1</span>, peak <span class="op">=</span> <span class="fl">0.5</span>, timing <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span>,</span>
+<span>  event_share <span class="op">=</span> <span class="fl">0.5</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -162,8 +165,9 @@ simulated.</p></dd>
 
 <dt id="arg-objective">objective<a class="anchor" aria-label="anchor" href="#arg-objective"></a></dt>
 <dd><p>Calibration objective: rmse, nse (minimizes 1-NSE), log_rmse, log_nse
-(minimizes 1 minus NSE of log flows, which weights low flows), or threshold (the threshold
-term alone; needs thresholds).</p></dd>
+(minimizes 1 minus NSE of log flows, which weights low flows), threshold (the threshold
+term alone; needs thresholds), or events, which scores only the largest events: see
+<code>events</code>.</p></dd>
 
 
 <dt id="arg-flow">flow<a class="anchor" aria-label="anchor" href="#arg-flow"></a></dt>
@@ -272,6 +276,26 @@ observed value of <code>observed</code>.</p></dd>
 every trial's parameters and that number are kept, and returned as <code>trials</code>. Calibration
 projects use it to record the headline score of each trial, from which the equally good
 parameter sets are drawn.</p></dd>
+
+
+<dt id="arg-events">events<a class="anchor" aria-label="anchor" href="#arg-events"></a></dt>
+<dd><p>With <code>objective = "events"</code>, the events to score, from <code><a href="find_events.html">find_events()</a></code>; by
+default they are found from <code>forcing$rain</code> and <code>observed</code>. Only events whose flow window
+lies wholly after the warm-up count, and of those the largest <code>event_share</code> by observed
+peak. The objective is <code>w_nse</code> times (1 - pooled event NSE) plus <code>w_peak</code> times the mean
+absolute peak error plus <code>w_timing</code> times the mean absolute timing error divided by the
+response time (see <code><a href="find_events.html">find_events()</a></code>), with weights from <code>event_weights</code>. The pooled event NSE
+sums squared errors over every chosen window and divides by the squared deviations from
+each window's own mean flow, so long recessions between events do not count. The timing
+term changes in steps, so use <code>method = "dds"</code> or <code>"nelder_mead"</code>.</p></dd>
+
+
+<dt id="arg-event-weights">event_weights<a class="anchor" aria-label="anchor" href="#arg-event-weights"></a></dt>
+<dd><p>Named weights <code>nse</code>, <code>peak</code> and <code>timing</code> of the three terms.</p></dd>
+
+
+<dt id="arg-event-share">event_share<a class="anchor" aria-label="anchor" href="#arg-event-share"></a></dt>
+<dd><p>Share of the events, largest observed peak first, that are scored.</p></dd>
 
 </dl></div>
     <div class="section level2">
