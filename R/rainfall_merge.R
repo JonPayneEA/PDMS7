@@ -82,7 +82,6 @@
 #' @param seed Seed for that sample; the caller's random state is restored.
 #' @param x,y Cell-centre coordinates of a grid's columns and rows.
 #' @param polygon Data frame or matrix with the catchment boundary's `x` and `y`, in order.
-#' @param result A result of `merge_rainfall()`.
 #'
 #' @return `merge_rainfall()`: a list of class `pdm_rainfall` with `rain` (catchment-average rain,
 #'   mm per step), `method`, `c`, `smooth` and the cross-validation table `checks` when `c` was

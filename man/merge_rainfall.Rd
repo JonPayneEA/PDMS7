@@ -77,8 +77,6 @@ long 15-minute record is checked in seconds.}
 \item{x, y}{Cell-centre coordinates of a grid's columns and rows.}
 
 \item{polygon}{Data frame or matrix with the catchment boundary's \code{x} and \code{y}, in order.}
-
-\item{result}{A result of \code{merge_rainfall()}.}
 }
 \value{
 \code{merge_rainfall()}: a list of class \code{pdm_rainfall} with \code{rain} (catchment-average rain,
