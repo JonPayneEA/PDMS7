@@ -56,7 +56,8 @@
 #' catchments with ten years of hourly rain, with split recharge (none between events) the
 #' fitted slopes were 0.98, 1.50, 1.63 and 1.92 for the four stores, close to the table; with
 #' standard recharge they were 0.1 to 0.9 lower, by an amount depending on the store and the
-#' recharge rate, and the stores ran together. Fitting the steepest points instead did not remove the bias.
+#' recharge rate, and the stores ran together. Fitting the steepest points instead did not
+#' remove the bias.
 #' So read a store straight from the slope only where recharge stops between events.
 #'
 #' **Choosing a store.** In a benchmark of sixteen such catchments, each calibrated with all four
