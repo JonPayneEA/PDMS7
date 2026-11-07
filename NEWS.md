@@ -21,10 +21,15 @@
   linear, 1.5 quadratic, 1.67 cubic, 2 exponential) and the exponent of a power store.
   On made-up catchments it recovered every store where recharge stops between events (split
   recharge), but standard recharge, which keeps feeding groundwater through recessions,
-  lowered the slopes by 0.25 to 0.65. So the slope is read straight only where recharge stops;
+  lowered the slopes by 0.1 to 0.9. So the slope is read straight only where recharge stops;
   otherwise compare the record's slope with each fitted model's, which `plot_recession()`
-  draws together. `inst/benchmarks/recession_stores.R` tests how often each way of choosing
-  a store picks the true one.
+  draws together.
+- **Can the record choose the groundwater store?** `inst/benchmarks/recession_stores.R`
+  calibrates sixteen made-up catchments with all four stores. The slope read from the record
+  found the true store in 8, the closest simulated slope in 9, and the best validation score
+  in all 16, but by a median margin of 0.003 in log NSE, below the 0.02 tie tolerance in 15.
+  The calibration study article has a new section on it: compare stores, call those within
+  the tolerance equally good, and keep the cubic store unless one is clearly better.
 
 # pdmS7 0.11.0
 

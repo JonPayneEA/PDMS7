@@ -55,13 +55,17 @@
 #' recession, and the flow falls more slowly than the store alone would let it. On made-up
 #' catchments with ten years of hourly rain, with split recharge (none between events) the
 #' fitted slopes were 0.98, 1.50, 1.63 and 1.92 for the four stores, close to the table; with
-#' standard recharge they were 0.25 to 0.65 lower, by an amount depending on the recharge rate,
-#' and the stores ran together. Fitting the steepest points instead did not remove the bias.
-#' So read a store straight from the slope only where recharge stops between events. Otherwise
-#' compare the record's slope with that of each fitted model, run with the same settings on
-#' its simulated flow ([plot_recession()] draws both): the fitted model carries its own
-#' recharge, so a store that matches the record's recessions is a candidate, and one that does
-#' not is getting its low flows right for the wrong reason.
+#' standard recharge they were 0.1 to 0.9 lower, by an amount depending on the store and the
+#' recharge rate, and the stores ran together. Fitting the steepest points instead did not remove the bias.
+#' So read a store straight from the slope only where recharge stops between events.
+#'
+#' **Choosing a store.** In a benchmark of sixteen such catchments, each calibrated with all four
+#' stores (`inst/benchmarks/recession_stores.R`), the slope read from the record found the true
+#' store in 8, and the fitted store whose simulated slope came closest in 9: each fitted store
+#' bends its parameters until its recessions look roughly right. The best validation score found
+#' it in all 16, but by a median of 0.003 in log NSE. Use this analysis to check that a fitted
+#' model's low flows fall at the right rate ([plot_recession()] draws the record and the model
+#' together), not to choose its store; see the calibration study article.
 #'
 #' @param flow Flow, m3/s, at a regular step.
 #' @param rain Optional rain, mm per step, aligned with `flow`. Without it, only falling flow
