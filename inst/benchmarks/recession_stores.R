@@ -46,8 +46,11 @@ one_truth <- function(job) {
   truth <- base
   truth$groundwater <- stores[[job$store]]
   truth$recharge <- recharges[[job$recharge]]
+  # The record starts in steady state at 0.5 m3/s, as a river does; from empty stores its first
+  # flow would be zero, at which an exponential store has no state to start from.
+  model <- pdm_from_config(truth)
   set.seed(job$seed)
-  observed <- run_pdm(pdm_from_config(truth), forcing)$output$q_m3s *
+  observed <- run_pdm(model, forcing, initial_state_from_flow(model, 0.5, 0.7))$output$q_m3s *
     exp(stats::rnorm(nrow(forcing), 0, 0.03))
   observed_slope <- slope_of(observed, forcing$rain)
   do.call(rbind, lapply(names(stores), function(candidate) {
