@@ -14,31 +14,31 @@ knitr::opts_chunk$set(
   fig.height = 4, dpi = if (nzchar(Sys.getenv("IN_PKGDOWN"))) 110 else 60
 )
 logger::log_threshold(logger::WARN, namespace = "pdmS7")
-pal <- c(blue = "#236b83", orange = "#a26421", green = "#5b8c3a", grey = "#9aa7b0",
+flow_pal <- c(blue = "#236b83", orange = "#a26421", green = "#5b8c3a", grey = "#9aa7b0",
          dark = "#444444", purple = "#8a3b6b", red = "#b23b3b")
-fill <- c(blue = "#e3eef2", orange = "#f6ebe0", green = "#e7f0e1", grey = "#eef1f3",
+flow_fill <- c(blue = "#e3eef2", orange = "#f6ebe0", green = "#e7f0e1", grey = "#eef1f3",
           purple = "#f1e5ec", red = "#f5e2e2")
 
 # Drawing helpers for the flow diagrams: a blank 0-1 canvas, boxes, diamonds and arrows.
-canvas <- function() {
+flow_canvas <- function() {
   par(mar = c(0, 0, 0, 0))
   plot.new()
   plot.window(xlim = c(0, 1), ylim = c(0, 1))
 }
-box <- function(x, y, label, w = 0.17, h = 0.12, col = "blue", cex = 0.78, font = 1) {
-  rect(x - w / 2, y - h / 2, x + w / 2, y + h / 2, col = fill[[col]], border = pal[[col]],
+flow_box <- function(x, y, label, w = 0.17, h = 0.12, col = "blue", cex = 0.78, font = 1) {
+  rect(x - w / 2, y - h / 2, x + w / 2, y + h / 2, col = flow_fill[[col]], border = flow_pal[[col]],
        lwd = 1.6)
-  text(x, y, label, cex = cex, font = font, col = pal[["dark"]])
+  text(x, y, label, cex = cex, font = font, col = flow_pal[["dark"]])
 }
-diamond <- function(x, y, label, w = 0.2, h = 0.16, col = "orange", cex = 0.74) {
-  polygon(c(x - w / 2, x, x + w / 2, x), c(y, y + h / 2, y, y - h / 2), col = fill[[col]],
-          border = pal[[col]], lwd = 1.6)
-  text(x, y, label, cex = cex, col = pal[["dark"]])
+flow_diamond <- function(x, y, label, w = 0.2, h = 0.16, col = "orange", cex = 0.74) {
+  polygon(c(x - w / 2, x, x + w / 2, x), c(y, y + h / 2, y, y - h / 2), col = flow_fill[[col]],
+          border = flow_pal[[col]], lwd = 1.6)
+  text(x, y, label, cex = cex, col = flow_pal[["dark"]])
 }
-arrow <- function(x0, y0, x1, y1, label = NULL, pos = 3, col = "dark") {
-  arrows(x0, y0, x1, y1, length = 0.08, lwd = 1.4, col = pal[[col]])
+flow_arrow <- function(x0, y0, x1, y1, label = NULL, pos = 3, col = "dark") {
+  arrows(x0, y0, x1, y1, length = 0.08, lwd = 1.4, col = flow_pal[[col]])
   if (!is.null(label)) {
-    text((x0 + x1) / 2, (y0 + y1) / 2, label, pos = pos, cex = 0.72, col = pal[[col]],
+    text((x0 + x1) / 2, (y0 + y1) / 2, label, pos = pos, cex = 0.72, col = flow_pal[[col]],
          offset = 0.3)
   }
 }
@@ -56,7 +56,7 @@ each step is in its own article, linked as you go.
 # The whole journey
 
 ```{r overview, echo=FALSE, fig.height=4.2, fig.cap="A calibration from start to finish. Every step writes an entry to the project log."}
-canvas()
+flow_canvas()
 top <- 0.74
 bottom <- 0.36
 xs <- c(0.1, 0.3, 0.5, 0.7, 0.9)
@@ -64,19 +64,19 @@ steps_top <- c("1. Register\nthe data", "2. Look at\nthe events", "3. Choose the
                "4. Calibrate\nin stages", "5. Run the\nchecks")
 steps_bottom <- c("10. Sign-off", "9. Test on the\nwettest years", "8. Validate on\nunseen years",
                   "7. Propose the\ncandidate", "6. Look at the\nfloods yourself")
-for (i in 1:5) box(xs[i], top, steps_top[i])
-for (i in 1:5) box(xs[i], bottom, steps_bottom[i], col = if (i == 1) "green" else "blue")
-for (i in 1:4) arrow(xs[i] + 0.085, top, xs[i + 1] - 0.085, top)
-arrow(xs[5], top - 0.06, xs[5], bottom + 0.06)
-for (i in 5:2) arrow(xs[i] - 0.085, bottom, xs[i - 1] + 0.085, bottom)
-rect(0.02, 0.06, 0.98, 0.16, col = fill[["grey"]], border = pal[["grey"]])
+for (i in 1:5) flow_box(xs[i], top, steps_top[i])
+for (i in 1:5) flow_box(xs[i], bottom, steps_bottom[i], col = if (i == 1) "green" else "blue")
+for (i in 1:4) flow_arrow(xs[i] + 0.085, top, xs[i + 1] - 0.085, top)
+flow_arrow(xs[5], top - 0.06, xs[5], bottom + 0.06)
+for (i in 5:2) flow_arrow(xs[i] - 0.085, bottom, xs[i - 1] + 0.085, bottom)
+rect(0.02, 0.06, 0.98, 0.16, col = flow_fill[["grey"]], border = flow_pal[["grey"]])
 text(0.5, 0.11, "The project log: every step written down, who did it, when, and why",
-     cex = 0.85, col = pal[["dark"]])
-arrows(0.5, 0.29, 0.5, 0.17, length = 0.06, lty = 2, col = pal[["grey"]])
-segments(0.9, top + 0.06, 0.9, top + 0.15, col = pal[["red"]], lwd = 1.4)
-segments(0.9, top + 0.15, 0.5, top + 0.15, col = pal[["red"]], lwd = 1.4)
-arrows(0.5, top + 0.15, 0.5, top + 0.06, length = 0.08, lwd = 1.4, col = pal[["red"]])
-text(0.7, top + 0.15, "if the checks fail, go back", pos = 3, cex = 0.72, col = pal[["red"]],
+     cex = 0.85, col = flow_pal[["dark"]])
+arrows(0.5, 0.29, 0.5, 0.17, length = 0.06, lty = 2, col = flow_pal[["grey"]])
+segments(0.9, top + 0.06, 0.9, top + 0.15, col = flow_pal[["red"]], lwd = 1.4)
+segments(0.9, top + 0.15, 0.5, top + 0.15, col = flow_pal[["red"]], lwd = 1.4)
+arrows(0.5, top + 0.15, 0.5, top + 0.06, length = 0.08, lwd = 1.4, col = flow_pal[["red"]])
+text(0.7, top + 0.15, "if the checks fail, go back", pos = 3, cex = 0.72, col = flow_pal[["red"]],
      offset = 0.3)
 ```
 
@@ -105,27 +105,27 @@ prove which data they used.
 The record is then divided:
 
 ```{r timeline, echo=FALSE, fig.height=2.6, fig.cap="How the record is divided. The wettest years are held back from calibration and validation, and revealed only at the end."}
-canvas()
+flow_canvas()
 years <- 2008:2025
 x_of <- function(y) 0.05 + 0.9 * (y - 2008) / 18
 band <- function(from, to, y, col, label, at = (from + to) / 2) {
-  rect(x_of(from), y - 0.08, x_of(to), y + 0.08, col = fill[[col]], border = pal[[col]],
+  rect(x_of(from), y - 0.08, x_of(to), y + 0.08, col = flow_fill[[col]], border = flow_pal[[col]],
        lwd = 1.4)
-  text(x_of(at), y, label, cex = 0.8, col = pal[["dark"]])
+  text(x_of(at), y, label, cex = 0.8, col = flow_pal[["dark"]])
 }
 band(2008, 2010, 0.6, "grey", "warm-up")
 band(2010, 2019, 0.6, "blue", "calibration", at = 2012)
 band(2019, 2025.5, 0.6, "green", "validation", at = 2023.2)
 for (held in c(2016, 2020)) {
-  rect(x_of(held), 0.52, x_of(held + 1), 0.68, col = fill[["orange"]], border = pal[["orange"]],
+  rect(x_of(held), 0.52, x_of(held + 1), 0.68, col = flow_fill[["orange"]], border = flow_pal[["orange"]],
        lwd = 2)
 }
 text(x_of(2016.5), 0.3, "held-back wettest years (orange): scored only by the final test",
-     cex = 0.8, col = pal[["orange"]])
-segments(x_of(2008), 0.82, x_of(2025.5), 0.82, col = pal[["grey"]])
+     cex = 0.8, col = flow_pal[["orange"]])
+segments(x_of(2008), 0.82, x_of(2025.5), 0.82, col = flow_pal[["grey"]])
 for (y in seq(2008, 2024, by = 4)) {
-  segments(x_of(y), 0.8, x_of(y), 0.84, col = pal[["grey"]])
-  text(x_of(y), 0.9, y, cex = 0.75, col = pal[["dark"]])
+  segments(x_of(y), 0.8, x_of(y), 0.84, col = flow_pal[["grey"]])
+  text(x_of(y), 0.9, y, cex = 0.75, col = flow_pal[["dark"]])
 }
 ```
 
@@ -148,24 +148,24 @@ groundwater stores drain, and so on. The search tries sets of values, runs the m
 calibration years with each, and keeps the one whose flow is closest to the measured flow.
 
 ```{r search, echo=FALSE, fig.height=3.6, fig.cap="The search loop. It runs hundreds or thousands of times, from several starting points."}
-canvas()
-box(0.15, 0.55, "Try a set of\nparameter values", col = "blue")
-box(0.4, 0.55, "Run the model\nover the record", col = "blue")
-box(0.65, 0.55, "Score the flow\nagainst the gauge", col = "blue")
-diamond(0.87, 0.55, "Better than\nthe best so far?", w = 0.2, h = 0.22)
-arrow(0.235, 0.55, 0.315, 0.55)
-arrow(0.485, 0.55, 0.565, 0.55)
-arrow(0.735, 0.55, 0.77, 0.55)
-segments(0.87, 0.66, 0.87, 0.85, lwd = 1.4, col = pal[["dark"]])
-segments(0.87, 0.85, 0.15, 0.85, lwd = 1.4, col = pal[["dark"]])
-arrows(0.15, 0.85, 0.15, 0.61, length = 0.08, lwd = 1.4, col = pal[["dark"]])
+flow_canvas()
+flow_box(0.15, 0.55, "Try a set of\nparameter values", col = "blue")
+flow_box(0.4, 0.55, "Run the model\nover the record", col = "blue")
+flow_box(0.65, 0.55, "Score the flow\nagainst the gauge", col = "blue")
+flow_diamond(0.87, 0.55, "Better than\nthe best so far?", w = 0.2, h = 0.22)
+flow_arrow(0.235, 0.55, 0.315, 0.55)
+flow_arrow(0.485, 0.55, 0.565, 0.55)
+flow_arrow(0.735, 0.55, 0.77, 0.55)
+segments(0.87, 0.66, 0.87, 0.85, lwd = 1.4, col = flow_pal[["dark"]])
+segments(0.87, 0.85, 0.15, 0.85, lwd = 1.4, col = flow_pal[["dark"]])
+arrows(0.15, 0.85, 0.15, 0.61, length = 0.08, lwd = 1.4, col = flow_pal[["dark"]])
 text(0.5, 0.88, "keep it if so; choose the next values from what has been learnt", cex = 0.75,
-     col = pal[["dark"]])
-arrow(0.87, 0.44, 0.87, 0.24, "no more\nprogress", pos = 4)
-box(0.87, 0.17, "Best set found", col = "green", w = 0.18, h = 0.1)
+     col = flow_pal[["dark"]])
+flow_arrow(0.87, 0.44, 0.87, 0.24, "no more\nprogress", pos = 4)
+flow_box(0.87, 0.17, "Best set found", col = "green", w = 0.18, h = 0.1)
 text(0.4, 0.2, paste("Bounds: each parameter may only move within a\nsensible range.",
                      "Starts: the loop is run from\nseveral starting points, in case one",
-                     "gets stuck."), cex = 0.75, col = pal[["dark"]])
+                     "gets stuck."), cex = 0.75, col = flow_pal[["dark"]])
 ```
 
 Four things shape the search:
@@ -192,25 +192,25 @@ groundwater store. pdmS7 offers several of each. `recommend_structure()` chooses
 time, in the order the record can best answer:
 
 ```{r structure, echo=FALSE, fig.height=3.8, fig.cap="Choosing the structure one part at a time. Each part is chosen by the same rule, and the reason is written to the log."}
-canvas()
-box(0.12, 0.72, "Recharge rule\n(standard, split,\ndemand)", h = 0.18)
-box(0.37, 0.72, "Soil store\n(Pareto, rectangular,\nlognormal ...)", h = 0.18)
-box(0.62, 0.72, "Groundwater store\n(cubic, linear,\nexponential ...)", h = 0.18)
-box(0.87, 0.72, "Recommended\nstructure", col = "green", h = 0.18)
-arrow(0.205, 0.72, 0.285, 0.72)
-arrow(0.455, 0.72, 0.535, 0.72)
-arrow(0.705, 0.72, 0.785, 0.72)
+flow_canvas()
+flow_box(0.12, 0.72, "Recharge rule\n(standard, split,\ndemand)", h = 0.18)
+flow_box(0.37, 0.72, "Soil store\n(Pareto, rectangular,\nlognormal ...)", h = 0.18)
+flow_box(0.62, 0.72, "Groundwater store\n(cubic, linear,\nexponential ...)", h = 0.18)
+flow_box(0.87, 0.72, "Recommended\nstructure", col = "green", h = 0.18)
+flow_arrow(0.205, 0.72, 0.285, 0.72)
+flow_arrow(0.455, 0.72, 0.535, 0.72)
+flow_arrow(0.705, 0.72, 0.785, 0.72)
 text(0.37, 0.93, "each part: fit every option, score on the validation years", cex = 0.78,
-     col = pal[["dark"]])
-box(0.13, 0.32, "Set aside any option\nwith a parameter\nat a limit", col = "red", w = 0.2,
+     col = flow_pal[["dark"]])
+flow_box(0.13, 0.32, "Set aside any option\nwith a parameter\nat a limit", col = "red", w = 0.2,
     h = 0.17)
-diamond(0.43, 0.32, "Is the one in use\nwithin 0.02 of\nthe best score?", w = 0.26, h = 0.26)
-box(0.8, 0.43, "Keep it", col = "green", w = 0.28, h = 0.1)
-box(0.8, 0.2, "Of those within 0.02: the best\nfloods, then fewest parameters", w = 0.28,
+flow_diamond(0.43, 0.32, "Is the one in use\nwithin 0.02 of\nthe best score?", w = 0.26, h = 0.26)
+flow_box(0.8, 0.43, "Keep it", col = "green", w = 0.28, h = 0.1)
+flow_box(0.8, 0.2, "Of those within 0.02: the best\nfloods, then fewest parameters", w = 0.28,
     h = 0.13)
-arrow(0.23, 0.32, 0.3, 0.32)
-arrow(0.56, 0.36, 0.66, 0.43, "yes", pos = 3)
-arrow(0.56, 0.28, 0.66, 0.2, "no", pos = 1)
+flow_arrow(0.23, 0.32, 0.3, 0.32)
+flow_arrow(0.56, 0.36, 0.66, 0.43, "yes", pos = 3)
+flow_arrow(0.56, 0.28, 0.66, 0.2, "no", pos = 1)
 ```
 
 Tests on made-up catchments, where the true structure was known, showed what a record can
@@ -226,7 +226,7 @@ balance first, then the shape of the floods, then make a final adjustment. The s
 calibration does the same:
 
 ```{r stages, echo=FALSE, fig.height=4.2, fig.cap="The four stages. Each starts from where the last left off. Stage 4 is optional, for models whose floods matter most."}
-canvas()
+flow_canvas()
 xs <- c(0.13, 0.38, 0.63, 0.88)
 titles <- c("1. Volume and\nbaseflow", "2. Fast\nresponse", "3. Polish", "4. Events\n(optional)")
 moves <- c("rainfall factor,\nsoil store, recharge,\ngroundwater",
@@ -237,13 +237,13 @@ scores <- c("log NSE + volume:\nlow flows and\nthe water balance",
             "NSE", "the largest floods:\nshape, peak size,\ntiming")
 cols <- c("blue", "blue", "blue", "orange")
 for (i in 1:4) {
-  box(xs[i], 0.8, titles[i], col = cols[i], w = 0.2, h = 0.14, font = 2)
-  box(xs[i], 0.52, moves[i], col = "grey", w = 0.21, h = 0.17, cex = 0.72)
-  box(xs[i], 0.22, scores[i], col = "green", w = 0.21, h = 0.17, cex = 0.72)
+  flow_box(xs[i], 0.8, titles[i], col = cols[i], w = 0.2, h = 0.14, font = 2)
+  flow_box(xs[i], 0.52, moves[i], col = "grey", w = 0.21, h = 0.17, cex = 0.72)
+  flow_box(xs[i], 0.22, scores[i], col = "green", w = 0.21, h = 0.17, cex = 0.72)
 }
-for (i in 1:3) arrow(xs[i] + 0.1, 0.8, xs[i + 1] - 0.1, 0.8)
-text(0.005, 0.52, "moves", srt = 90, cex = 0.8, col = pal[["dark"]])
-text(0.005, 0.22, "scored by", srt = 90, cex = 0.8, col = pal[["dark"]])
+for (i in 1:3) flow_arrow(xs[i] + 0.1, 0.8, xs[i + 1] - 0.1, 0.8)
+text(0.005, 0.52, "moves", srt = 90, cex = 0.8, col = flow_pal[["dark"]])
+text(0.005, 0.22, "scored by", srt = 90, cex = 0.8, col = flow_pal[["dark"]])
 ```
 
 - **Stage 1** fits the parts that control how much water there is and how the river falls
@@ -263,25 +263,25 @@ A good score is not enough. Before accepting a calibration, `calibration_checks(
 questions the score hides:
 
 ```{r checks, echo=FALSE, fig.height=5, fig.cap="The checks after a calibration, in order. Each failure points back to a different step."}
-canvas()
-box(0.12, 0.88, "Calibrated\nmodel", col = "green", w = 0.16, h = 0.1)
-diamond(0.4, 0.88, "Any parameter\nat a limit?", w = 0.22, h = 0.16)
-diamond(0.4, 0.6, "Largest floods:\npeaks and timing\nacceptable?", w = 0.24, h = 0.2)
-diamond(0.4, 0.3, "Validation close\nto calibration?", w = 0.22, h = 0.16)
-box(0.4, 0.07, "Propose as candidate", col = "green", w = 0.24, h = 0.09)
-arrow(0.2, 0.88, 0.29, 0.88)
-arrow(0.4, 0.8, 0.4, 0.7, "no", pos = 4)
-arrow(0.4, 0.5, 0.4, 0.38, "yes", pos = 4)
-arrow(0.4, 0.22, 0.4, 0.115, "yes", pos = 4)
-box(0.8, 0.88, "The structure is being bent\nto fit: question it (step 3),\nor the bounds",
+flow_canvas()
+flow_box(0.12, 0.88, "Calibrated\nmodel", col = "green", w = 0.16, h = 0.1)
+flow_diamond(0.4, 0.88, "Any parameter\nat a limit?", w = 0.22, h = 0.16)
+flow_diamond(0.4, 0.6, "Largest floods:\npeaks and timing\nacceptable?", w = 0.24, h = 0.2)
+flow_diamond(0.4, 0.3, "Validation close\nto calibration?", w = 0.22, h = 0.16)
+flow_box(0.4, 0.07, "Propose as candidate", col = "green", w = 0.24, h = 0.09)
+flow_arrow(0.2, 0.88, 0.29, 0.88)
+flow_arrow(0.4, 0.8, 0.4, 0.7, "no", pos = 4)
+flow_arrow(0.4, 0.5, 0.4, 0.38, "yes", pos = 4)
+flow_arrow(0.4, 0.22, 0.4, 0.115, "yes", pos = 4)
+flow_box(0.8, 0.88, "The structure is being bent\nto fit: question it (step 3),\nor the bounds",
     col = "red", w = 0.3, h = 0.14)
-box(0.8, 0.6, "Add the events stage (step 4),\nlook at the floods (step 6),\nor check the rain",
+flow_box(0.8, 0.6, "Add the events stage (step 4),\nlook at the floods (step 6),\nor check the rain",
     col = "red", w = 0.3, h = 0.14)
-box(0.8, 0.3, "Fitted to quirks of the\ncalibration years, or the\nrecord changed: review",
+flow_box(0.8, 0.3, "Fitted to quirks of the\ncalibration years, or the\nrecord changed: review",
     col = "red", w = 0.3, h = 0.14)
-arrow(0.51, 0.88, 0.65, 0.88, "yes", pos = 3)
-arrow(0.52, 0.6, 0.65, 0.6, "no", pos = 3)
-arrow(0.51, 0.3, 0.65, 0.3, "no", pos = 3)
+flow_arrow(0.51, 0.88, 0.65, 0.88, "yes", pos = 3)
+flow_arrow(0.52, 0.6, 0.65, 0.6, "no", pos = 3)
+flow_arrow(0.51, 0.3, 0.65, 0.3, "no", pos = 3)
 ```
 
 - **A parameter at its limit** is the clearest warning sign. It means the search wanted to go
@@ -305,16 +305,16 @@ manual calibration](calibration-log.html).
 # Steps 7 to 10: candidate, validation, test, sign-off
 
 ```{r endgame, echo=FALSE, fig.height=2.6, fig.cap="The last steps. Each is a separate, signed entry in the log."}
-canvas()
+flow_canvas()
 xs <- c(0.12, 0.37, 0.62, 0.87)
 labels <- c("Propose a\ncandidate", "Validate on the\nunseen years",
             "Test on the held-back\nwettest years",
             "Steward\nsigns off")
-for (i in 1:4) box(xs[i], 0.55, labels[i], col = if (i == 4) "green" else "blue", w = 0.2,
+for (i in 1:4) flow_box(xs[i], 0.55, labels[i], col = if (i == 4) "green" else "blue", w = 0.2,
                    h = 0.3)
-for (i in 1:3) arrow(xs[i] + 0.1, 0.55, xs[i + 1] - 0.1, 0.55)
+for (i in 1:3) flow_arrow(xs[i] + 0.1, 0.55, xs[i + 1] - 0.1, 0.55)
 text(0.5, 0.12, "The validation and test scores are written down before anyone sees the next.",
-     cex = 0.78, col = pal[["dark"]])
+     cex = 0.78, col = flow_pal[["dark"]])
 ```
 
 The candidate is proposed first, then validated, then tested, in that order and only once
@@ -329,16 +329,16 @@ the scores, who did it, when and why. Each entry carries a checksum of the one b
 chain cannot be edited without it showing.
 
 ```{r chain, echo=FALSE, fig.height=2.4, fig.cap="The log as a chain of entries. Each entry carries a checksum of the one before."}
-canvas()
+flow_canvas()
 labels <- c("project\nstarted", "data\nregistered", "structure\nselected", "stage 1",
             "stage 2", "stage 3", "candidate", "validation", "test", "sign-off")
 xs <- seq(0.06, 0.94, length.out = length(labels))
 for (i in seq_along(labels)) {
-  box(xs[i], 0.55, labels[i], col = if (i == length(labels)) "green" else "grey", w = 0.085,
+  flow_box(xs[i], 0.55, labels[i], col = if (i == length(labels)) "green" else "grey", w = 0.085,
       h = 0.36, cex = 0.66)
 }
-for (i in 1:(length(labels) - 1)) arrow(xs[i] + 0.043, 0.55, xs[i + 1] - 0.043, 0.55)
-text(0.5, 0.12, "each link: a checksum of the entry before", cex = 0.78, col = pal[["dark"]])
+for (i in 1:(length(labels) - 1)) flow_arrow(xs[i] + 0.043, 0.55, xs[i + 1] - 0.043, 0.55)
+text(0.5, 0.12, "each link: a checksum of the entry before", cex = 0.78, col = flow_pal[["dark"]])
 ```
 
 Here is a real, if small, calibration run through the steps, and the log it leaves:
@@ -412,3 +412,8 @@ catchments](many-catchments.html).
 | What a record can and cannot tell | [What limits automatic calibration](calibration-study.html) |
 | The log, trials and sign-off | [Logging a manual calibration](calibration-log.html) |
 | Many catchments | [Calibrating many catchments](many-catchments.html) |
+
+```{r cleanup, include=FALSE}
+# Articles are built one after another in one R session: leave nothing behind.
+rm(list = ls(pattern = "^flow_"))
+```
