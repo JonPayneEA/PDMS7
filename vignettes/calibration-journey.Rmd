@@ -15,9 +15,9 @@ knitr::opts_chunk$set(
 )
 logger::log_threshold(logger::WARN, namespace = "pdmS7")
 flow_pal <- c(blue = "#236b83", orange = "#a26421", green = "#5b8c3a", grey = "#9aa7b0",
-         dark = "#444444", purple = "#8a3b6b", red = "#b23b3b")
+              dark = "#444444", purple = "#8a3b6b", red = "#b23b3b")
 flow_fill <- c(blue = "#e3eef2", orange = "#f6ebe0", green = "#e7f0e1", grey = "#eef1f3",
-          purple = "#f1e5ec", red = "#f5e2e2")
+               purple = "#f1e5ec", red = "#f5e2e2")
 
 # Drawing helpers for the flow diagrams: a blank 0-1 canvas, boxes, diamonds and arrows.
 flow_canvas <- function() {
@@ -117,7 +117,8 @@ band(2008, 2010, 0.6, "grey", "warm-up")
 band(2010, 2019, 0.6, "blue", "calibration", at = 2012)
 band(2019, 2025.5, 0.6, "green", "validation", at = 2023.2)
 for (held in c(2016, 2020)) {
-  rect(x_of(held), 0.52, x_of(held + 1), 0.68, col = flow_fill[["orange"]], border = flow_pal[["orange"]],
+  rect(x_of(held), 0.52, x_of(held + 1), 0.68, col = flow_fill[["orange"]],
+       border = flow_pal[["orange"]],
        lwd = 2)
 }
 text(x_of(2016.5), 0.3, "held-back wettest years (orange): scored only by the final test",
@@ -203,11 +204,11 @@ flow_arrow(0.705, 0.72, 0.785, 0.72)
 text(0.37, 0.93, "each part: fit every option, score on the validation years", cex = 0.78,
      col = flow_pal[["dark"]])
 flow_box(0.13, 0.32, "Set aside any option\nwith a parameter\nat a limit", col = "red", w = 0.2,
-    h = 0.17)
+         h = 0.17)
 flow_diamond(0.43, 0.32, "Is the one in use\nwithin 0.02 of\nthe best score?", w = 0.26, h = 0.26)
 flow_box(0.8, 0.43, "Keep it", col = "green", w = 0.28, h = 0.1)
 flow_box(0.8, 0.2, "Of those within 0.02: the best\nfloods, then fewest parameters", w = 0.28,
-    h = 0.13)
+         h = 0.13)
 flow_arrow(0.23, 0.32, 0.3, 0.32)
 flow_arrow(0.56, 0.36, 0.66, 0.43, "yes", pos = 3)
 flow_arrow(0.56, 0.28, 0.66, 0.2, "no", pos = 1)
@@ -274,11 +275,12 @@ flow_arrow(0.4, 0.8, 0.4, 0.7, "no", pos = 4)
 flow_arrow(0.4, 0.5, 0.4, 0.38, "yes", pos = 4)
 flow_arrow(0.4, 0.22, 0.4, 0.115, "yes", pos = 4)
 flow_box(0.8, 0.88, "The structure is being bent\nto fit: question it (step 3),\nor the bounds",
-    col = "red", w = 0.3, h = 0.14)
-flow_box(0.8, 0.6, "Add the events stage (step 4),\nlook at the floods (step 6),\nor check the rain",
-    col = "red", w = 0.3, h = 0.14)
+         col = "red", w = 0.3, h = 0.14)
+flow_box(0.8, 0.6,
+         "Add the events stage (step 4),\nlook at the floods (step 6),\nor check the rain",
+         col = "red", w = 0.3, h = 0.14)
 flow_box(0.8, 0.3, "Fitted to quirks of the\ncalibration years, or the\nrecord changed: review",
-    col = "red", w = 0.3, h = 0.14)
+         col = "red", w = 0.3, h = 0.14)
 flow_arrow(0.51, 0.88, 0.65, 0.88, "yes", pos = 3)
 flow_arrow(0.52, 0.6, 0.65, 0.6, "no", pos = 3)
 flow_arrow(0.51, 0.3, 0.65, 0.3, "no", pos = 3)
@@ -311,7 +313,7 @@ labels <- c("Propose a\ncandidate", "Validate on the\nunseen years",
             "Test on the held-back\nwettest years",
             "Steward\nsigns off")
 for (i in 1:4) flow_box(xs[i], 0.55, labels[i], col = if (i == 4) "green" else "blue", w = 0.2,
-                   h = 0.3)
+                        h = 0.3)
 for (i in 1:3) flow_arrow(xs[i] + 0.1, 0.55, xs[i + 1] - 0.1, 0.55)
 text(0.5, 0.12, "The validation and test scores are written down before anyone sees the next.",
      cex = 0.78, col = flow_pal[["dark"]])
@@ -335,7 +337,7 @@ labels <- c("project\nstarted", "data\nregistered", "structure\nselected", "stag
 xs <- seq(0.06, 0.94, length.out = length(labels))
 for (i in seq_along(labels)) {
   flow_box(xs[i], 0.55, labels[i], col = if (i == length(labels)) "green" else "grey", w = 0.085,
-      h = 0.36, cex = 0.66)
+           h = 0.36, cex = 0.66)
 }
 for (i in 1:(length(labels) - 1)) flow_arrow(xs[i] + 0.043, 0.55, xs[i + 1] - 0.043, 0.55)
 text(0.5, 0.12, "each link: a checksum of the entry before", cex = 0.78, col = flow_pal[["dark"]])
