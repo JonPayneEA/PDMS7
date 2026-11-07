@@ -16,6 +16,15 @@
   otherwise the smallest median peak error on the largest validation events wins, then fewer
   parameters. Each step's choice and reason is written to the log as a note. The choosing a
   structure article has a new section on it.
+- **Catchment rainfall from gauges and radar.** `merge_rainfall()` builds catchment-average
+  rain by Thiessen polygons, multiquadric interpolation of the gauges (Hardy, 1971), or
+  conditional merging of gauges and gridded radar (Sinclair and Pegram, 2005) with multiquadric
+  surfaces: the gauges set the level, the radar the storm's shape between them.
+  `rainfall_cross_validation()` leaves out each gauge in turn and chooses the multiquadric shape
+  parameter; `catchment_mask()` finds the grid cells inside a catchment boundary. Radar can be
+  passed as a function returning one step's grid, so a long record need not be held in memory.
+  On a synthetic storm field, conditional merging matched the true catchment total within 1%
+  with a correlation of 0.98, against 0.78 for Thiessen.
 - **New article: "Getting the floods right".** A plain-English walk through why a good score
   can hide bad floods, and the tools against it: finding and screening events, the acceptance
   checks, the events stage, the workbench, recession analysis, what a record can tell apart

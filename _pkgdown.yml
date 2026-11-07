@@ -236,6 +236,10 @@ reference:
   - batch_events
   - screen_events
   - event_states
+- title: Catchment rainfall
+  desc: Catchment-average rain from gauges and radar, by Thiessen polygons, multiquadric interpolation or conditional merging.
+  contents:
+  - merge_rainfall
 - title: Recession analysis
   desc: How fast flow falls against how high it is, and the groundwater store it points to.
   contents:
