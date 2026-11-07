@@ -200,6 +200,38 @@ compare_structures(project, structures, starts = 4, cross_validate = TRUE, cores
                    reasoning = "Short record: rank on both held-out windows.")
 ```
 
+# One component at a time
+
+Comparing every combination of soil store, recharge rule and groundwater store means
+sixty calibrations. `recommend_structure()` chooses one component at a time instead, the way
+a hydrologist would, and writes its reasons to the log as notes:
+
+```{r recommend, eval=FALSE}
+rec <- recommend_structure(project, reasoning = "First choice of structure.")
+rec
+rec$steps$recharge$table
+```
+
+The order follows what a record can tell apart. On made-up catchments ([What limits
+automatic calibration](calibration-study.html)) the recharge rule was identified every time,
+by margins of 0.08 or more in log NSE, and the groundwater store only by margins too small to
+trust. So the recharge rule comes first, then the soil store distribution, then the
+groundwater store, each step starting from the structure the step before chose.
+
+Each step compares its options with `compare_structures()` and chooses by one rule:
+
+1. A structure that ended with a parameter at a bound of its search range is set aside, as
+   being bent to fit.
+2. The rest are ranked on the validation window. Every structure within the tie tolerance of
+   the best (0.02 unless registered otherwise) counts as equally good.
+3. If the structure the step started from is among the equally good, it is kept: the record
+   cannot justify a change.
+4. Otherwise the one with the smallest median peak error on the largest validation events
+   wins, then the one with fewer parameters.
+
+Rule 3 makes the recommendation conservative. Where the record is silent, as it usually is
+about the groundwater store, the standard structure stays, and the note says why.
+
 # In the app and at scale
 
 The app's **Structures** tab runs the same comparison: tick the structures, set the starts

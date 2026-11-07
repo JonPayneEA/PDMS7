@@ -207,6 +207,7 @@ reference:
   desc: Calibrate several model structures alike and rank them on held-out data.
   contents:
   - compare_structures
+  - recommend_structure
   - structure_set
   - calibration_bounds
 - title: Calibration log

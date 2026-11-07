@@ -9,6 +9,13 @@
   number of events, move sliders for the surface stores, the time delay and `b`, and save the
   setting as a logged trial; a button draws the recession plot of the record and the model.
   The calibration log article has a new section on it.
+- **Structure recommendation.** `recommend_structure()` chooses the recharge rule, then the
+  soil store distribution, then the groundwater store, each by a logged structure comparison
+  on the validation window. Structures with a parameter at a bound are set aside; those within
+  the tie tolerance of the best are equally good; the incumbent is kept when it is among them;
+  otherwise the smallest median peak error on the largest validation events wins, then fewer
+  parameters. Each step's choice and reason is written to the log as a note. The choosing a
+  structure article has a new section on it.
 - **Can the record choose the recharge rule?** `inst/benchmarks/recharge_rules.R` calibrates
   nine made-up catchments with standard, split and demand recharge. Validation scores found
   the true rule in all nine, by 0.08 to 0.25 in log NSE, against 0.003 for the groundwater
