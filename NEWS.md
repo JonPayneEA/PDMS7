@@ -1,3 +1,21 @@
+# pdmS7 0.12.0
+
+- **Event screening.** `screen_events()` flags events a hydrologist would not trust: a rise
+  lost in the baseflow (`small_rise`: the peak rises less than `min_rise` times the baseflow
+  beneath it), more quick flow than rain, gaps in the flow window, and peaks above the highest
+  gauged flow. Every test works on flow above the baseflow line, so a high, steady baseflow is
+  neither counted as event runoff nor mistaken for a rise. The events objective
+  (`event_screen`) and `calibration_checks()` (`screen`) leave flagged events out by default,
+  except peaks above the highest gauging, which are flagged but kept; in a project the
+  registered highest gauged flow is used.
+- **Events rerun on their own.** `event_states()` runs the record once and saves the model's
+  state at the start of each event's window; `run_events()` reruns only the windows, from those
+  states. With the same model the result is exact. After changing the surface stores or the
+  time delay, a lead-in five times the sum of the surface time constants brings event peaks
+  within 0.1% of a full run; changing the soil or groundwater stores needs the states saved
+  again, and `run_events()` refuses it. This is the groundwork for an events workbench and
+  for tracing trade-offs between whole-record and event fit.
+
 # pdmS7 0.11.0
 
 - **Calibrating for events.** NSE over a long record counts time steps, not events, so a

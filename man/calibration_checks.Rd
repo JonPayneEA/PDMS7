@@ -10,7 +10,8 @@ calibration_checks(
   top = 20L,
   edge = 0.01,
   rain_min = NULL,
-  max_response_h = 150
+  max_response_h = 150,
+  screen = list()
 )
 }
 \arguments{
@@ -25,13 +26,17 @@ the latest candidate.}
 counts as at the bound.}
 
 \item{rain_min, max_response_h}{Passed to \code{\link[=find_events]{find_events()}}.}
+
+\item{screen}{Settings for \code{\link[=screen_events]{screen_events()}}, with the project's highest gauged flow unless
+they name one; \code{NULL} summarises every event.}
 }
 \value{
 A list of three data frames and the response times. \code{parameters}: \code{path}, \code{value},
 \code{lower}, \code{upper}, \code{scale} and \code{at_bound} (\code{"lower"}, \code{"upper"} or \code{NA}). \code{events}: every
 event with its \code{period} and the columns of \code{\link[=event_scores]{event_scores()}}. \code{summary}: one row per window
 with \code{events} (the number summarised), \code{median_peak_error}, \code{median_timing_error_h},
-\code{share_peak_within_20pct} and \code{median_event_nse}. \code{response_h}: the response times
+\code{share_peak_within_20pct} and \code{median_event_nse}, and \code{screened_out}, the events of that
+window the screen left out. \code{response_h}: the response times
 estimated from the observed and the simulated flow.
 }
 \description{
@@ -51,7 +56,8 @@ zero, such as no time delay, is a natural limit rather than an imposed one, and 
 observed flow and scored with \code{\link[=event_scores]{event_scores()}}. In each window (calibration, validation, the
 held-back wettest years, and any outside them), the \code{top} largest by observed peak are
 summarised: median peak error, median timing error, the share of peaks within 20\% of the
-observed, and median event NSE.
+observed, and median event NSE. Events are first screened with \code{\link[=screen_events]{screen_events()}}; those it
+leaves out are kept in \code{events} with their flags, but not summarised.
 }
 \examples{
 \dontrun{

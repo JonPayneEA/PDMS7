@@ -31,7 +31,8 @@ calibrate_pdm(
   archive = NULL,
   events = NULL,
   event_weights = c(nse = 1, peak = 0.5, timing = 0.5),
-  event_share = 0.5
+  event_share = 0.5,
+  event_screen = list()
 )
 }
 \arguments{
@@ -143,6 +144,9 @@ term changes in steps, so use \code{method = "dds"} or \code{"nelder_mead"}.}
 \item{event_weights}{Named weights \code{nse}, \code{peak} and \code{timing} of the three terms.}
 
 \item{event_share}{Share of the events, largest observed peak first, that are scored.}
+
+\item{event_screen}{Settings for \code{\link[=screen_events]{screen_events()}}, which leaves out events with a rise lost
+in the baseflow, more quick flow than rain, or gaps; \code{NULL} scores every event.}
 }
 \value{
 A list of config, model, parameters, objective, convergence, message, optim

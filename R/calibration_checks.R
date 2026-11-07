@@ -29,7 +29,8 @@
 #' observed flow and scored with [event_scores()]. In each window (calibration, validation, the
 #' held-back wettest years, and any outside them), the `top` largest by observed peak are
 #' summarised: median peak error, median timing error, the share of peaks within 20% of the
-#' observed, and median event NSE.
+#' observed, and median event NSE. Events are first screened with [screen_events()]; those it
+#' leaves out are kept in `events` with their flags, but not summarised.
 #'
 #' @param project A calibration project folder.
 #' @param entry Id of a model entry (structure, trial or calibration) or candidate; by default
@@ -38,12 +39,15 @@
 #' @param edge Distance from a bound, as a share of the searched range, within which a parameter
 #'   counts as at the bound.
 #' @param rain_min,max_response_h Passed to [find_events()].
+#' @param screen Settings for [screen_events()], with the project's highest gauged flow unless
+#'   they name one; `NULL` summarises every event.
 #'
 #' @return A list of three data frames and the response times. `parameters`: `path`, `value`,
 #'   `lower`, `upper`, `scale` and `at_bound` (`"lower"`, `"upper"` or `NA`). `events`: every
 #'   event with its `period` and the columns of [event_scores()]. `summary`: one row per window
 #'   with `events` (the number summarised), `median_peak_error`, `median_timing_error_h`,
-#'   `share_peak_within_20pct` and `median_event_nse`. `response_h`: the response times
+#'   `share_peak_within_20pct` and `median_event_nse`, and `screened_out`, the events of that
+#'   window the screen left out. `response_h`: the response times
 #'   estimated from the observed and the simulated flow.
 #' @examples
 #' \dontrun{
@@ -54,7 +58,7 @@
 #' @seealso [find_events()], [event_scores()], [pdm_stages()]
 #' @export
 calibration_checks <- function(project, entry = NULL, top = 20L, edge = 0.01, rain_min = NULL,
-                               max_response_h = 150) {
+                               max_response_h = 150, screen = list()) {
   .check(.whole(top, 1, Inf), "top must be a positive whole number")
   .check(.scalar(edge, 0, 0.5), "edge must lie between 0 and 0.5")
   path <- .project_path(project)
@@ -67,7 +71,8 @@ calibration_checks <- function(project, entry = NULL, top = 20L, edge = 0.01, ra
   }
   .check(!is.null(node$configuration), paste("Entry", node$id, "holds no model"))
   parameters <- .bound_flags(entries, node, edge)
-  scored <- .basin_events(path, basename(path), rain_min, max_response_h, node$configuration)
+  scored <- .basin_events(path, basename(path), rain_min, max_response_h, node$configuration,
+                          screen)
   events <- scored$events
   summary <- do.call(rbind, lapply(c("calibration", "validation", "wettest", "outside"),
                                    function(period) .event_summary(events, period, top)))
@@ -122,12 +127,15 @@ calibration_checks <- function(project, entry = NULL, top = 20L, edge = 0.01, ra
 
 # One window's largest events, summarised; NULL when the window has none.
 .event_summary <- function(events, period, top) {
-  e <- events[events$period == period & is.finite(events$peak_error), ]
+  used <- if ("use" %in% names(events)) events$use else rep(TRUE, nrow(events))
+  in_period <- events$period == period
+  e <- events[in_period & used & is.finite(events$peak_error), ]
   if (!nrow(e)) return(NULL)
   e <- e[order(-e$observed_peak), ][seq_len(min(top, nrow(e))), ]
   data.frame(period = period, events = nrow(e),
              median_peak_error = stats::median(e$peak_error),
              median_timing_error_h = stats::median(e$timing_error_h),
              share_peak_within_20pct = mean(abs(e$peak_error) <= 0.2),
-             median_event_nse = stats::median(e$nse, na.rm = TRUE))
+             median_event_nse = stats::median(e$nse, na.rm = TRUE),
+             screened_out = sum(in_period & !used))
 }

@@ -67,7 +67,7 @@
 #' @param band `NULL` (the default) for a stage 3 search over the full bounds, or the
 #'   half-width of a narrowed search, as a fraction of each range.
 #' @param events Add stage 4, the events stage.
-#' @param event_weights,event_share Passed to [calibrate_pdm()] in stage 4.
+#' @param event_weights,event_share,event_screen Passed to [calibrate_pdm()] in stage 4.
 #' @param td_max Largest time delay searched in stage 4, hours; `NULL` holds `td` fixed.
 #' @param event_budget Model runs per start for the DDS searches of stage 4 and of a last stage
 #'   with thresholds.
@@ -81,6 +81,7 @@
 pdm_stages <- function(config, overrides = NULL, exclude = NULL, polish = TRUE,
                        volume_weight = 1, band = NULL, events = FALSE,
                        event_weights = c(nse = 1, peak = 0.5, timing = 0.5), event_share = 0.5,
+                       event_screen = list(),
                        td_max = 6, event_budget = 300L, thresholds = NULL, threshold_weight = 1,
                        threshold_score = "csi") {
   # Sort the structure's parameters by the part of the hydrograph they control. The store shape b
@@ -100,7 +101,7 @@ pdm_stages <- function(config, overrides = NULL, exclude = NULL, polish = TRUE,
   }
   if (events) {
     stages[[length(stages) + 1L]] <- .events_stage(fast, paths, exclude, td_max, event_budget,
-                                                   event_weights, event_share)
+                                                   event_weights, event_share, event_screen)
   }
   # A structure may leave a stage with nothing to fit (everything excluded); drop it.
   stages <- stages[vapply(stages, function(s) length(s$parameters) > 0, logical(1))]
@@ -109,14 +110,14 @@ pdm_stages <- function(config, overrides = NULL, exclude = NULL, polish = TRUE,
 
 # Stage 4: the fast response and, unless it is excluded or td_max is NULL, the time delay, fitted
 # by DDS on the largest events.
-.events_stage <- function(fast, paths, exclude, td_max, budget, weights, share) {
+.events_stage <- function(fast, paths, exclude, td_max, budget, weights, share, screen) {
   .check(is.null(td_max) || .scalar(td_max, 0, strict = TRUE),
          "td_max must be a positive number of hours, or NULL")
   timing <- if (!is.null(td_max) && !"td" %in% paths && !"td" %in% exclude) "td"
   list(
     name = "events", parameters = c(fast, timing), objective = "events", volume_weight = 0,
     band = NULL, method = "dds", control = list(maxit = budget),
-    event_weights = weights, event_share = share,
+    event_weights = weights, event_share = share, event_screen = screen,
     extra_bounds = if (!is.null(timing)) {
       data.frame(path = "td", lower = 0, upper = td_max, scale = "linear",
                  note = "Time delay (h), searched by the events stage")
@@ -248,7 +249,8 @@ calibrate_staged <- function(config, forcing, observed, stages = pdm_stages(conf
       threshold_weight = stage$threshold_weight %||% 1,
       threshold_score = stage$threshold_score %||% "csi",
       event_weights = stage$event_weights %||% .default_event_weights,
-      event_share = stage$event_share %||% 0.5
+      event_share = stage$event_share %||% 0.5,
+      event_screen = if ("event_screen" %in% names(stage)) stage$event_screen else list()
     )
     fit$label <- .stage_label(i, stages)
     results[[i]] <- fit
@@ -303,6 +305,7 @@ log_staged_calibration <- function(project, parent, reasoning, stages = NULL, bo
     threshold_score = stage$threshold_score %||% "csi",
     event_weights = stage$event_weights %||% .default_event_weights,
     event_share = stage$event_share %||% 0.5,
+    event_screen = if ("event_screen" %in% names(stage)) stage$event_screen else list(),
     stage = .stage_label(i, stages),
     reasoning = paste0(reasoning, " Stage ", .stage_label(i, stages), ".")
   )

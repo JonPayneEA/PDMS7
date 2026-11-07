@@ -231,6 +231,8 @@ reference:
   - response_time_dmca
   - event_scores
   - batch_events
+  - screen_events
+  - event_states
 - title: Hindcasts and lead-time scores
   desc: Rerun past forecasts from many origins and score each lead time against persistence.
   contents:

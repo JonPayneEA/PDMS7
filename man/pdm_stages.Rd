@@ -14,6 +14,7 @@ pdm_stages(
   events = FALSE,
   event_weights = c(nse = 1, peak = 0.5, timing = 0.5),
   event_share = 0.5,
+  event_screen = list(),
   td_max = 6,
   event_budget = 300L,
   thresholds = NULL,
@@ -35,7 +36,7 @@ half-width of a narrowed search, as a fraction of each range.}
 
 \item{events}{Add stage 4, the events stage.}
 
-\item{event_weights, event_share}{Passed to \code{\link[=calibrate_pdm]{calibrate_pdm()}} in stage 4.}
+\item{event_weights, event_share, event_screen}{Passed to \code{\link[=calibrate_pdm]{calibrate_pdm()}} in stage 4.}
 
 \item{td_max}{Largest time delay searched in stage 4, hours; \code{NULL} holds \code{td} fixed.}
 

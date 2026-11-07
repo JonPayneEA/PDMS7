@@ -92,6 +92,8 @@
 #' term changes in steps, so use `method = "dds"` or `"nelder_mead"`.
 #' @param event_weights Named weights `nse`, `peak` and `timing` of the three terms.
 #' @param event_share Share of the events, largest observed peak first, that are scored.
+#' @param event_screen Settings for [screen_events()], which leaves out events with a rise lost
+#' in the baseflow, more quick flow than rain, or gaps; `NULL` scores every event.
 #' @param archive Optional function of the full simulated flow returning one number. When given,
 #' every trial's parameters and that number are kept, and returned as `trials`. Calibration
 #' projects use it to record the headline score of each trial, from which the equally good
@@ -133,7 +135,8 @@ calibrate_pdm <- function(
   event_settings = list(tolerance_h = 6, gap_h = 24, min_duration_h = 0),
   log_scale = character(0), volume_weight = 0, start = c("flow", "soil"),
   baseflow_fraction = 0.7, start_flow = NULL, archive = NULL, events = NULL,
-  event_weights = c(nse = 1, peak = 0.5, timing = 0.5), event_share = 0.5
+  event_weights = c(nse = 1, peak = 0.5, timing = 0.5), event_share = 0.5,
+  event_screen = list()
 ) {
   # Outline: check the arguments; map the parameters onto a unit box (log-scaled where asked);
   # build a loss function that runs the model and scores it; minimise that loss from each start;
@@ -153,8 +156,8 @@ calibrate_pdm <- function(
   keep <- is.finite(observed) & seq_along(observed) > warmup
   .check(sum(keep) >= 2, "At least two observed values after warmup are required")
   scoring <- .objective_scorer(objective, observed, keep, warmup, log_offset, events,
-                               forcing$rain, pdm_from_config(config)@dt, event_weights,
-                               event_share)
+                               forcing$rain, pdm_from_config(config), event_weights,
+                               event_share, event_screen)
   # Every trial starts the same way. The start is built once for the configured model first, so
   # a start that cannot work (a first flow below qc, say) stops here with its own message rather
   # than failing every trial.
@@ -298,10 +301,11 @@ calibrate_pdm <- function(
 
 # The continuous part of the objective as a function of the full simulated series: the events
 # objective scores the event windows, every other objective the kept rows.
-.objective_scorer <- function(objective, observed, keep, warmup, log_offset, events, rain, dt,
-                              event_weights, event_share) {
+.objective_scorer <- function(objective, observed, keep, warmup, log_offset, events, rain,
+                              model, event_weights, event_share, event_screen) {
   if (objective == "events") {
-    return(.event_objective(events, rain, observed, warmup, dt, event_weights, event_share))
+    return(.event_objective(events, rain, observed, warmup, model@dt, event_weights, event_share,
+                            event_screen, model@area_km2))
   }
   score <- .calibration_scorer(objective, observed[keep], log_offset)
   list(score = function(sim) score(sim[keep]), name = NULL)
