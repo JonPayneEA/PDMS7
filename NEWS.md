@@ -1,3 +1,15 @@
+# pdmS7 0.13.0
+
+- **Events workbench.** `event_workbench()` gathers a run's `n` largest events (10 by
+  default) in the calibration or validation window, screened with `screen_events()`.
+  `workbench_try()` reruns them with parameters changed and scores each one;
+  `plot_workbench()` draws them before and after. A change to the surface stores or the time
+  delay reruns only the event windows, from saved states, exactly as a full run would; any
+  other change reruns the whole record. The calibration app has a new Events tab: choose the
+  number of events, move sliders for the surface stores, the time delay and `b`, and save the
+  setting as a logged trial; a button draws the recession plot of the record and the model.
+  The calibration log article has a new section on it.
+
 # pdmS7 0.12.0
 
 - **Event screening.** `screen_events()` flags events a hydrologist would not trust: a rise

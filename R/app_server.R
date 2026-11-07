@@ -48,6 +48,7 @@
     .app_status(output, state)
     .app_setup(input, rv, act, session)
     .app_trial(input, output, session, rv, act, state)
+    .app_events(input, output, session, rv, act, state)
     .app_history(input, output, session, rv, act, state)
     .app_report(input, output, rv, act, state)
     .app_structures(input, output, rv, act, state)

@@ -155,6 +155,7 @@ calibration_app <- function(project = NULL) {
     "pdmS7 calibration", id = "tabs", header = shiny::div(class = "container-fluid", identity),
     shiny::tabPanel("Setup", .ui_setup()),
     shiny::tabPanel("Trial", .ui_trial()),
+    shiny::tabPanel("Events", .ui_events()),
     shiny::tabPanel("History", .ui_history()),
     shiny::tabPanel("Structures", .ui_structures()),
     shiny::tabPanel("Report", .ui_report()),
@@ -277,6 +278,40 @@ calibration_app <- function(project = NULL) {
     shiny::plotOutput("hydrograph", height = "380px", dblclick = "hydro_reset", brush = brush),
     shiny::helpText("Calibration window. Drag to zoom; double-click to reset."),
     shiny::tableOutput("scores")
+  )
+  shiny::sidebarLayout(side, main)
+}
+
+# Events tab: the largest events of a run, rerun at once as the sliders move; see
+# event_workbench().
+.ui_events <- function() {
+  side <- shiny::sidebarPanel(
+    width = 3,
+    shiny::selectInput("wb_parent", "Start from run", character(0), width = "100%"),
+    shiny::splitLayout(
+      shiny::numericInput("wb_n", "Events", 10, min = 1, max = 50, step = 1),
+      shiny::selectInput("wb_window", "Window", c("calibration", "validation", "all"))
+    ),
+    shiny::actionButton("wb_load", "Load events", class = "btn-primary"),
+    shiny::helpText("The largest events by observed peak, after screening out rises lost in",
+                    "the baseflow, gaps and more quick flow than rain."),
+    shiny::hr(),
+    shiny::uiOutput("wb_sliders"),
+    shiny::actionButton("wb_reset", "Back to the run's values"),
+    shiny::hr(),
+    shiny::radioButtons("wb_verdict", "Verdict", c("better", "worse", "inconclusive"),
+                        "inconclusive", inline = TRUE),
+    .text_area("wb_reasoning", "Reasoning", "What did the events show, and why this change?"),
+    shiny::actionButton("wb_save", "Save as trial", class = "btn-success"),
+    shiny::hr(),
+    shiny::actionButton("wb_recession", "Check recessions")
+  )
+  main <- shiny::mainPanel(
+    width = 9,
+    shiny::uiOutput("wb_summary"),
+    shiny::uiOutput("wb_plot_box"),
+    shiny::tableOutput("wb_table"),
+    shiny::plotOutput("wb_recession_plot", height = "380px")
   )
   shiny::sidebarLayout(side, main)
 }
