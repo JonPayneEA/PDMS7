@@ -25,6 +25,9 @@
   passed as a function returning one step's grid, so a long record need not be held in memory.
   On a synthetic storm field, conditional merging matched the true catchment total within 1%
   with a correlation of 0.98, against 0.78 for Thiessen.
+- `h19_radar()` reads gridded H19 radar from the archive's daily NetCDF files (either variable
+  name, 2010 to 2019 or 2021 on), crops it to an extent and hands `merge_rainfall()` one
+  15-minute grid at a time, loading each day once. `terra` and `ncdf4` are suggested packages.
 - **New article: "Getting the floods right".** A plain-English walk through why a good score
   can hide bad floods, and the tools against it: finding and screening events, the acceptance
   checks, the events stage, the workbench, recession analysis, what a record can tell apart
