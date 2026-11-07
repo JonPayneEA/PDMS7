@@ -16,6 +16,10 @@
   otherwise the smallest median peak error on the largest validation events wins, then fewer
   parameters. Each step's choice and reason is written to the log as a note. The choosing a
   structure article has a new section on it.
+- **New article: "Getting the floods right".** A plain-English walk through why a good score
+  can hide bad floods, and the tools against it: finding and screening events, the acceptance
+  checks, the events stage, the workbench, recession analysis, what a record can tell apart
+  about structure, and a suggested order of work. Its worked example runs live.
 - **Can the record choose the recharge rule?** `inst/benchmarks/recharge_rules.R` calibrates
   nine made-up catchments with standard, split and demand recharge. Validation scores found
   the true rule in all nine, by 0.08 to 0.25 in log NSE, against 0.003 for the groundwater
