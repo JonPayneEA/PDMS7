@@ -221,6 +221,8 @@ Calibrate several model structures alike and rank them on held-out data.
 - [`compare_structures()`](https://jonpayneea.github.io/PDMS7/reference/compare_structures.md)
   [`structure_comparison()`](https://jonpayneea.github.io/PDMS7/reference/compare_structures.md)
   : Compare model structures
+- [`recommend_structure()`](https://jonpayneea.github.io/PDMS7/reference/recommend_structure.md)
+  : Recommend a model structure
 - [`structure_set()`](https://jonpayneea.github.io/PDMS7/reference/structure_set.md)
   : Model structures to compare
 - [`calibration_bounds()`](https://jonpayneea.github.io/PDMS7/reference/calibration_bounds.md)
@@ -257,6 +259,10 @@ calibration.
   : Build the calibration report
 - [`calibration_app()`](https://jonpayneea.github.io/PDMS7/reference/calibration_app.md)
   : Calibration app
+- [`event_workbench()`](https://jonpayneea.github.io/PDMS7/reference/event_workbench.md)
+  [`workbench_try()`](https://jonpayneea.github.io/PDMS7/reference/event_workbench.md)
+  [`plot_workbench()`](https://jonpayneea.github.io/PDMS7/reference/event_workbench.md)
+  : Events workbench
 
 ## Run log
 
@@ -283,6 +289,22 @@ model scores event by event.
   : Model scores event by event
 - [`batch_events()`](https://jonpayneea.github.io/PDMS7/reference/batch_events.md)
   : Events and event scores across a batch
+- [`screen_events()`](https://jonpayneea.github.io/PDMS7/reference/screen_events.md)
+  : Screen events before scoring a model on them
+- [`event_states()`](https://jonpayneea.github.io/PDMS7/reference/event_states.md)
+  [`run_events()`](https://jonpayneea.github.io/PDMS7/reference/event_states.md)
+  : Rerun events on their own, from saved states
+
+## Recession analysis
+
+How fast flow falls against how high it is, and the groundwater store it
+points to.
+
+- [`recession_analysis()`](https://jonpayneea.github.io/PDMS7/reference/recession_analysis.md)
+  : Recession analysis: which groundwater store does the flow record
+  point to?
+- [`plot_recession()`](https://jonpayneea.github.io/PDMS7/reference/plot_recession.md)
+  : Plot a recession analysis
 
 ## Hindcasts and lead-time scores
 

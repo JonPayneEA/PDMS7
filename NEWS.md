@@ -1,3 +1,51 @@
+# pdmS7 0.13.0
+
+- **Events workbench.** `event_workbench()` gathers a run's `n` largest events (10 by
+  default) in the calibration or validation window, screened with `screen_events()`.
+  `workbench_try()` reruns them with parameters changed and scores each one;
+  `plot_workbench()` draws them before and after. A change to the surface stores or the time
+  delay reruns only the event windows, from saved states, exactly as a full run would; any
+  other change reruns the whole record. The calibration app has a new Events tab: choose the
+  number of events, move sliders for the surface stores, the time delay and `b`, and save the
+  setting as a logged trial; a button draws the recession plot of the record and the model.
+  The calibration log article has a new section on it.
+- **Structure recommendation.** `recommend_structure()` chooses the recharge rule, then the
+  soil store distribution, then the groundwater store, each by a logged structure comparison
+  on the validation window. Structures with a parameter at a bound are set aside; those within
+  the tie tolerance of the best are equally good; the incumbent is kept when it is among them;
+  otherwise the smallest median peak error on the largest validation events wins, then fewer
+  parameters. Each step's choice and reason is written to the log as a note. The choosing a
+  structure article has a new section on it.
+- **Catchment rainfall from gauges and radar.** `merge_rainfall()` builds catchment-average
+  rain by Thiessen polygons, multiquadric interpolation of the gauges (Hardy, 1971), or
+  conditional merging of gauges and gridded radar (Sinclair and Pegram, 2005) with multiquadric
+  surfaces: the gauges set the level, the radar the storm's shape between them.
+  `rainfall_cross_validation()` leaves out each gauge in turn and chooses the multiquadric shape
+  parameter; `catchment_mask()` finds the grid cells inside a catchment boundary. Radar can be
+  passed as a function returning one step's grid, so a long record need not be held in memory.
+  On a synthetic storm field, conditional merging matched the true catchment total within 1%
+  with a correlation of 0.98, against 0.78 for Thiessen.
+- `rainfall_field()` gives one step's rain field on the grid, for mapping a storm.
+- **New article: "Catchment rainfall from gauges and radar".** Why rain is the main error, the
+  three methods shown on a made-up storm (maps and cross-sections), checks at the gauges, over
+  the catchment and through the river, and how to use H19 radar.
+- `h19_radar()` reads gridded H19 radar from the archive's daily NetCDF files (either variable
+  name, 2010 to 2019 or 2021 on), crops it to an extent and hands `merge_rainfall()` one
+  15-minute grid at a time, loading each day once. `terra` and `ncdf4` are suggested packages.
+- **New article: "Automatic calibration from start to finish".** The whole calibration in
+  plain English, with flow diagrams: the record's windows, the search loop, choosing the
+  structure, the four stages, the checks and where each failure leads, the last steps and the
+  log. A small calibration runs live through every step.
+- **New article: "Getting the floods right".** A plain-English walk through why a good score
+  can hide bad floods, and the tools against it: finding and screening events, the acceptance
+  checks, the events stage, the workbench, recession analysis, what a record can tell apart
+  about structure, and a suggested order of work. Its worked example runs live.
+- **Can the record choose the recharge rule?** `inst/benchmarks/recharge_rules.R` calibrates
+  nine made-up catchments with standard, split and demand recharge. Validation scores found
+  the true rule in all nine, by 0.08 to 0.25 in log NSE, against 0.003 for the groundwater
+  store. Whether the baseflow line rises with each event's quick flow separates split recharge
+  from the other two without a model. The calibration study article has a new section on it.
+
 # pdmS7 0.12.0
 
 - **Event screening.** `screen_events()` flags events a hydrologist would not trust: a rise

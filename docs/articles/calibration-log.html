@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.11.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.13.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -51,6 +51,7 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Calibration</h6></li>
     <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: multi-start, budgets and staged calibration</a></li>
+    <li><a class="dropdown-item" href="../articles/floods.html">Getting the floods right</a></li>
     <li><a class="dropdown-item" href="../articles/auto-calibration.html">Automatic calibration, explained</a></li>
     <li><a class="dropdown-item" href="../articles/scoring.html">Scoring a simulation: from NSE to POD, FAR and CSI</a></li>
     <li><a class="dropdown-item" href="../articles/choosing-structure.html">Choosing a model structure</a></li>
@@ -288,9 +289,42 @@ like a trial, with its bounds, seed and the table of every start.</p>
 <span><span class="fu"><a href="../reference/calibration_log.html">log_note</a></span><span class="op">(</span><span class="va">project</span>, <span class="st">"The January gap is a logger fault, not low flow."</span>, refers_to <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
+<h2 id="trials-on-the-largest-events">Trials on the largest events<a class="anchor" aria-label="anchor" href="#trials-on-the-largest-events"></a>
+</h2>
+<p>The headline score weighs every time step alike, so a change that
+sharpens the floods may barely move it. <code><a href="../reference/event_workbench.html">event_workbench()</a></code>
+gathers a run’s largest events, ten unless you choose another number,
+screened for rises lost in the baseflow and gaps.
+<code><a href="../reference/event_workbench.html">workbench_try()</a></code> reruns them with a change, in a fraction of
+a second, and <code><a href="../reference/event_workbench.html">plot_workbench()</a></code> draws them before (blue) and
+after (orange), with each event’s peak and timing errors in its
+title:</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">wb</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/event_workbench.html">event_workbench</a></span><span class="op">(</span><span class="va">project</span>, entry <span class="op">=</span> <span class="va">auto</span><span class="op">$</span><span class="va">id</span>, n <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span>
+<span><span class="va">wb</span></span>
+<span><span class="co">#&gt; Events workbench: 4 largest events in the calibration window, from entry 0008</span></span>
+<span><span class="co">#&gt; Median peak error -4%, timing +0.5 h, event NSE 0.95</span></span>
+<span><span class="va">delayed</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/event_workbench.html">workbench_try</a></span><span class="op">(</span><span class="va">wb</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>td <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/event_workbench.html">plot_workbench</a></span><span class="op">(</span><span class="va">wb</span>, <span class="va">delayed</span><span class="op">)</span></span></code></pre></div>
+<div class="figure">
+<img src="calibration-log_files/figure-html/workbench-1.png" class="r-plt" alt="The four largest calibration events of the automatic calibration, and the same with a one-hour time delay." width="960"><p class="caption">
+The four largest calibration events of the automatic calibration, and
+the same with a one-hour time delay.
+</p>
+</div>
+<p>In the app, the Events tab does the same on sliders: the surface
+stores, the time delay and the store shape <code>b</code>. Choose how
+many events to show, move a slider, and the events redraw. <strong>Save
+as trial</strong> logs the setting through <code><a href="../reference/calibration_log.html">log_trial()</a></code> with
+your verdict and reasoning, so it joins the log like any other trial,
+and <strong>Check recessions</strong> draws the recession plot of the
+record and the model (<code><a href="../reference/recession_analysis.html">recession_analysis()</a></code>), to see that
+the low flows still fall at the right rate.</p>
+</div>
+<div class="section level2">
 <h2 id="the-calibration-path">The calibration path<a class="anchor" aria-label="anchor" href="#the-calibration-path"></a>
 </h2>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">trials</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_project.html">project_trials</a></span><span class="op">(</span><span class="va">project</span><span class="op">)</span></span>
 <span><span class="va">trials</span><span class="op">[</span>, <span class="fu">.</span><span class="op">(</span><span class="va">id</span>, <span class="va">type</span>, <span class="va">parent</span>, <span class="va">changes</span>, <span class="va">verdict</span>, nse <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">nse</span>, <span class="fl">3</span><span class="op">)</span>,</span>
 <span>           volume_error <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">volume_error</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span><span class="op">]</span></span>
@@ -332,7 +366,7 @@ its parent; colour shows the verdict.
 <p>The candidate is rerun before it is accepted, and must reproduce its
 recorded output exactly. Validation scores the validation window,
 once.</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/calibration_log.html">propose_candidate</a></span><span class="op">(</span><span class="va">project</span>, entry <span class="op">=</span> <span class="va">auto</span><span class="op">$</span><span class="va">id</span>,</span>
 <span>                  reasoning <span class="op">=</span> <span class="st">"Best NSE with physically sensible time constants."</span><span class="op">)</span></span>
 <span><span class="va">val</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calibration_log.html">validate_candidate</a></span><span class="op">(</span><span class="va">project</span>, reasoning <span class="op">=</span> <span class="st">"Holds up on January."</span><span class="op">)</span></span>
@@ -352,7 +386,7 @@ once.</p>
 above the threshold; a simulated crossing within six hours of an
 observed one is a hit, and exceedances less than a day apart count as
 one event.</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">pick</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">scores</span>, <span class="va">window</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">metrics</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"observed_events"</span>, <span class="st">"hits"</span>, <span class="st">"misses"</span>, <span class="st">"false_alarms"</span>, <span class="st">"pod"</span>, <span class="st">"far"</span>, <span class="st">"csi"</span>,</span>
 <span>               <span class="st">"crossing_error_h"</span>, <span class="st">"csi_step"</span><span class="op">)</span></span>
@@ -394,7 +428,7 @@ Automatic calibration can reward threshold skill too. Event counts
 change in steps, which a gradient optimiser cannot follow, so this uses
 the derivative-free Nelder-Mead method, with a continuous score to break
 ties:</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/calibration_log.html">log_auto_calibration</a></span><span class="op">(</span></span>
 <span>  <span class="va">project</span>, parent <span class="op">=</span> <span class="fl">7</span>, lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>surface.k1 <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>, upper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>surface.k1 <span class="op">=</span> <span class="fl">6</span><span class="op">)</span>,</span>
 <span>  objective <span class="op">=</span> <span class="st">"nse"</span>, method <span class="op">=</span> <span class="st">"nelder_mead"</span>, threshold_objective <span class="op">=</span> <span class="st">"Flood Warning"</span>,</span>
@@ -411,7 +445,7 @@ for.</p>
 wrote any of the calibration. The package checks both the declared name
 and the login, so a Steward cannot sign off from the Custodian’s
 session:</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>pdmS7.user <span class="op">=</span> <span class="st">"Sam Steward"</span>, pdmS7.role <span class="op">=</span> <span class="st">"steward"</span><span class="op">)</span></span>
 <span><span class="va">reviewed</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>integrity <span class="op">=</span> <span class="cn">TRUE</span>, data <span class="op">=</span> <span class="cn">TRUE</span>, calibration_path <span class="op">=</span> <span class="cn">TRUE</span>, validation <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/conditions.html" class="external-link">tryCatch</a></span><span class="op">(</span><span class="fu"><a href="../reference/calibration_log.html">sign_off_project</a></span><span class="op">(</span><span class="va">project</span>, <span class="st">"Accepted."</span>, <span class="va">reviewed</span><span class="op">)</span>,</span>
@@ -420,7 +454,7 @@ session:</p>
 <p>In practice the Steward signs off on their own machine, or in the
 app. Below we stand in for that machine by giving the Steward a
 different login.</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/calibration_log.html">sign_off_project</a></span><span class="op">(</span><span class="va">project</span>, <span class="st">"Reviewed the path, data and validation. Accepted for forecasting."</span>,</span>
 <span>                 <span class="va">reviewed</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/read_project.html">read_project</a></span><span class="op">(</span><span class="va">project</span><span class="op">)</span><span class="op">$</span><span class="va">status</span></span>
@@ -433,7 +467,7 @@ it with a reason.</p>
 </h2>
 <p><code><a href="../reference/verify_project.html">verify_project()</a></code> recomputes every checksum and, with
 <code>rerun = TRUE</code>, repeats every run.</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">checks</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/verify_project.html">verify_project</a></span><span class="op">(</span><span class="va">project</span>, rerun <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="va">checks</span><span class="op">[</span>, <span class="va">.N</span>, by <span class="op">=</span> <span class="fu">.</span><span class="op">(</span><span class="va">check</span>, <span class="va">ok</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="co">#&gt;            check     ok     N</span></span>
@@ -447,7 +481,7 @@ it with a reason.</p>
 <span><span class="co">#&gt; 7:         rerun   TRUE     7</span></span></code></pre></div>
 <p>Now suppose someone tidies the reasoning of trial 0005 after the
 event:</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">file</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">project</span>, <span class="st">"entries"</span>, <span class="st">"0005-trial.yml"</span><span class="op">)</span></span>
 <span><span class="va">original</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="va">file</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/writeLines.html" class="external-link">writeLines</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/grep.html" class="external-link">sub</a></span><span class="op">(</span><span class="st">"far too much water"</span>, <span class="st">"a little too much water"</span>, <span class="va">original</span><span class="op">)</span>, <span class="va">file</span><span class="op">)</span></span>
@@ -463,7 +497,7 @@ the same way.</p>
 <div class="section level2">
 <h2 id="the-report">The report<a class="anchor" aria-label="anchor" href="#the-report"></a>
 </h2>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/build_report.html">build_report</a></span><span class="op">(</span><span class="va">project</span><span class="op">)</span></span></code></pre></div>
 <p><code><a href="../reference/build_report.html">build_report()</a></code> writes <code>report/report.html</code>, a
 single file with embedded figures that can be attached to a review, and
@@ -478,7 +512,7 @@ sign-off and the final configuration with every entry’s checksum.</p>
 <p>Once a calibration is in use, the question changes from “how was it
 calibrated” to “which calibration produced this forecast”. The run log
 answers it. It is off by default.</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">register</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/basename.html" class="external-link">dirname</a></span><span class="op">(</span><span class="va">project</span><span class="op">)</span>, <span class="st">"approved.yml"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/writeLines.html" class="external-link">writeLines</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"projects:"</span>, <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"  - "</span>, <span class="fu"><a href="https://rdrr.io/r/base/basename.html" class="external-link">basename</a></span><span class="op">(</span><span class="va">project</span><span class="op">)</span><span class="op">)</span><span class="op">)</span>, <span class="va">register</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>pdmS7.run_log <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir</a></span><span class="op">(</span><span class="op">)</span>, <span class="st">"runs.csv"</span><span class="op">)</span>, pdmS7.register <span class="op">=</span> <span class="va">register</span>,</span>

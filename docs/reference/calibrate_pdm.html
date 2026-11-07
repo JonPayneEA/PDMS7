@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.11.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.13.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -36,6 +36,7 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Calibration</h6></li>
     <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: multi-start, budgets and staged calibration</a></li>
+    <li><a class="dropdown-item" href="../articles/floods.html">Getting the floods right</a></li>
     <li><a class="dropdown-item" href="../articles/auto-calibration.html">Automatic calibration, explained</a></li>
     <li><a class="dropdown-item" href="../articles/scoring.html">Scoring a simulation: from NSE to POD, FAR and CSI</a></li>
     <li><a class="dropdown-item" href="../articles/choosing-structure.html">Choosing a model structure</a></li>
@@ -127,7 +128,8 @@
 <span>  archive <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  events <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  event_weights <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>nse <span class="op">=</span> <span class="fl">1</span>, peak <span class="op">=</span> <span class="fl">0.5</span>, timing <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span>,</span>
-<span>  event_share <span class="op">=</span> <span class="fl">0.5</span></span>
+<span>  event_share <span class="op">=</span> <span class="fl">0.5</span>,</span>
+<span>  event_screen <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -296,6 +298,11 @@ term changes in steps, so use <code>method = "dds"</code> or <code>"nelder_mead"
 
 <dt id="arg-event-share">event_share<a class="anchor" aria-label="anchor" href="#arg-event-share"></a></dt>
 <dd><p>Share of the events, largest observed peak first, that are scored.</p></dd>
+
+
+<dt id="arg-event-screen">event_screen<a class="anchor" aria-label="anchor" href="#arg-event-screen"></a></dt>
+<dd><p>Settings for <code><a href="screen_events.html">screen_events()</a></code>, which leaves out events with a rise lost
+in the baseflow, more quick flow than rain, or gaps; <code>NULL</code> scores every event.</p></dd>
 
 </dl></div>
     <div class="section level2">

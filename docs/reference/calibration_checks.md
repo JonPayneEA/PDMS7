@@ -15,7 +15,8 @@ calibration_checks(
   top = 20L,
   edge = 0.01,
   rain_min = NULL,
-  max_response_h = 150
+  max_response_h = 150,
+  screen = list()
 )
 ```
 
@@ -44,6 +45,13 @@ calibration_checks(
   Passed to
   [`find_events()`](https://jonpayneea.github.io/PDMS7/reference/find_events.md).
 
+- screen:
+
+  Settings for
+  [`screen_events()`](https://jonpayneea.github.io/PDMS7/reference/screen_events.md),
+  with the project's highest gauged flow unless they name one; `NULL`
+  summarises every event.
+
 ## Value
 
 A list of three data frames and the response times. `parameters`:
@@ -53,8 +61,9 @@ columns of
 [`event_scores()`](https://jonpayneea.github.io/PDMS7/reference/event_scores.md).
 `summary`: one row per window with `events` (the number summarised),
 `median_peak_error`, `median_timing_error_h`, `share_peak_within_20pct`
-and `median_event_nse`. `response_h`: the response times estimated from
-the observed and the simulated flow.
+and `median_event_nse`, and `screened_out`, the events of that window
+the screen left out. `response_h`: the response times estimated from the
+observed and the simulated flow.
 
 ## Details
 
@@ -73,7 +82,11 @@ from the registered rain and observed flow and scored with
 In each window (calibration, validation, the held-back wettest years,
 and any outside them), the `top` largest by observed peak are
 summarised: median peak error, median timing error, the share of peaks
-within 20% of the observed, and median event NSE.
+within 20% of the observed, and median event NSE. Events are first
+screened with
+[`screen_events()`](https://jonpayneea.github.io/PDMS7/reference/screen_events.md);
+those it leaves out are kept in `events` with their flags, but not
+summarised.
 
 ## See also
 

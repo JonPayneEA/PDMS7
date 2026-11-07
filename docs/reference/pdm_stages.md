@@ -18,6 +18,7 @@ pdm_stages(
   events = FALSE,
   event_weights = c(nse = 1, peak = 0.5, timing = 0.5),
   event_share = 0.5,
+  event_screen = list(),
   td_max = 6,
   event_budget = 300L,
   thresholds = NULL,
@@ -54,7 +55,7 @@ pdm_stages(
 
   Add stage 4, the events stage.
 
-- event_weights, event_share:
+- event_weights, event_share, event_screen:
 
   Passed to
   [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md)

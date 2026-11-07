@@ -65,6 +65,9 @@ Model options:
 
 Calibration:
 
+- [Automatic calibration from start to finish](https://jonpayneea.github.io/PDMS7/articles/calibration-journey.html):
+  the whole journey in plain English, from the data to sign-off, with flow diagrams of each
+  step and a small calibration run live
 - [Calibration: multi-start, budgets and staged calibration](https://jonpayneea.github.io/PDMS7/articles/calibration.html)
 - [Automatic calibration, explained](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.html):
   in plain terms: bounds, search scales, the two search methods, rewarding flood warnings,
@@ -79,6 +82,12 @@ Calibration:
 - [Calibrating many catchments](https://jonpayneea.github.io/PDMS7/articles/many-catchments.html):
   a step-by-step guide to `calibrate_batch()`: preparing folders, running, resuming after an
   interruption, fixing failures, and reading the results
+- [Getting the floods right](https://jonpayneea.github.io/PDMS7/articles/floods.html):
+  in plain English, why a good score can hide bad floods, and how to find, check, calibrate
+  and inspect the events, and what the record can say about the model's structure
+- [Catchment rainfall from gauges and radar](https://jonpayneea.github.io/PDMS7/articles/rainfall.html):
+  Thiessen polygons, multiquadric surfaces and conditional merging of gauges with radar, shown
+  on a made-up storm, with how to judge them and how to read H19 radar
 - [A large sample: what automatic calibration recovers](https://jonpayneea.github.io/PDMS7/articles/large-sample.html):
   30 synthetic catchments, each with its own climate and known truth, calibrated as a batch
 - [What limits automatic calibration: a study](https://jonpayneea.github.io/PDMS7/articles/calibration-study.html):

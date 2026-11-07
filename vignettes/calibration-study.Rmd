@@ -391,6 +391,51 @@ stores, report the ones within the tolerance of the best as equally good, and ke
 standard cubic store unless one is clearly better. Use the recession plot as a check that a
 fitted model's low flows fall at the right rate, not as a way to choose its store.
 
+# Which recharge rule?
+
+The same test for recharge used nine made-up catchments: standard recharge (the soil store
+drains to groundwater all the time), split recharge (a share of each event's runoff goes to
+groundwater) and demand recharge (groundwater draws fastest when it is emptiest), each on
+three ten-year hourly rain records with the cubic store and 3% gauge noise. Each was
+calibrated with all three rules. The script is `inst/benchmarks/recharge_rules.R`.
+
+```{r recharge}
+rules <- read.csv(system.file("extdata", "recharge_rules.csv", package = "pdmS7"))
+cases <- split(rules, list(rules$truth, rules$seed), drop = TRUE)
+picked <- do.call(rbind, lapply(cases, function(x) {
+  by_log <- order(-x$val_log_nse)
+  by_nse <- order(-x$val_nse)
+  data.frame(truth = x$truth[1], best_log_nse = x$candidate[by_log[1]],
+             log_nse_margin = x$val_log_nse[by_log[1]] - x$val_log_nse[by_log[2]],
+             best_nse = x$candidate[by_nse[1]],
+             nse_margin = x$val_nse[by_nse[1]] - x$val_nse[by_nse[2]],
+             rise_follows_quick_flow = x$observed_rise_cor[1])
+}))
+rownames(picked) <- NULL
+picked[order(picked$truth), ]
+```
+
+```{r recharge-numbers, include=FALSE}
+log_margins <- picked$log_nse_margin
+split_rise <- picked$rise_follows_quick_flow[picked$truth == "split"]
+other_rise <- picked$rise_follows_quick_flow[picked$truth != "split"]
+```
+
+Here the record speaks clearly. The validation scores picked the true rule in all
+`r nrow(picked)` catchments, and by margins in log NSE of `r f2(min(log_margins))` to
+`r f2(max(log_margins))`, against a median of `r f4(stats::median(margins))` for the
+groundwater store. A wrong recharge rule cannot be hidden by the other parameters: it changes
+when groundwater fills, and so the shape of every recession and the level of every low flow.
+Margins this size should survive the errors of real data, though only a test on gauged
+catchments can show it.
+
+One diagnostic needs no model. Across each event, the rise of the baseflow line that
+[`find_events()`](../reference/find_events.html) draws can be set against the event's quick
+flow. Split recharge feeds groundwater in proportion to each event's runoff, so the two move
+together: their correlation was `r f2(min(split_rise))` to `r f2(max(split_rise))` under split
+recharge, and `r f2(min(other_rise))` to `r f2(max(other_rise))` under the other two. It
+separates split recharge from the rest, but not standard from demand.
+
 # What the study shows
 
 - **Check the search against the truth before blaming it.** Scoring the true parameters
@@ -407,6 +452,9 @@ fitted model's low flows fall at the right rate, not as a way to choose its stor
 - **Do not expect the record to choose the groundwater store.** Validation scores picked the
   true store in every synthetic catchment, by margins too small to survive real data. The
   recession slope reads the store only where recharge stops between events.
+- **Do test the recharge rule.** It was identified in every synthetic catchment, by margins
+  of 0.08 or more in log NSE, and whether baseflow rises with each event's quick flow points to
+  split recharge before any calibration.
 - **Before trusting a model in a severe drought, run the drought.** Pass a drought scenario
   through the spread of equally good fits. If the spread is wide, the record cannot answer
   the question, however good the calibration scores.

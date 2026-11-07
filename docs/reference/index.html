@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.11.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.13.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -36,6 +36,7 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Calibration</h6></li>
     <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: multi-start, budgets and staged calibration</a></li>
+    <li><a class="dropdown-item" href="../articles/floods.html">Getting the floods right</a></li>
     <li><a class="dropdown-item" href="../articles/auto-calibration.html">Automatic calibration, explained</a></li>
     <li><a class="dropdown-item" href="../articles/scoring.html">Scoring a simulation: from NSE to POD, FAR and CSI</a></li>
     <li><a class="dropdown-item" href="../articles/choosing-structure.html">Choosing a model structure</a></li>
@@ -773,6 +774,13 @@
 
         <dt>
 
+          <code><a href="recommend_structure.html">recommend_structure()</a></code>
+
+        </dt>
+        <dd>Recommend a model structure</dd>
+
+        <dt>
+
           <code><a href="structure_set.html">structure_set()</a></code>
 
         </dt>
@@ -835,6 +843,13 @@
 
         </dt>
         <dd>Calibration app</dd>
+
+        <dt>
+
+          <code><a href="event_workbench.html">event_workbench()</a></code> <code><a href="event_workbench.html">workbench_try()</a></code> <code><a href="event_workbench.html">plot_workbench()</a></code>
+
+        </dt>
+        <dd>Events workbench</dd>
       </dl></div><div class="section level2">
       <h2 id="run-log">Run log<a class="anchor" aria-label="anchor" href="#run-log"></a></h2>
 
@@ -902,6 +917,43 @@
 
         </dt>
         <dd>Events and event scores across a batch</dd>
+
+        <dt>
+
+          <code><a href="screen_events.html">screen_events()</a></code>
+
+        </dt>
+        <dd>Screen events before scoring a model on them</dd>
+
+        <dt>
+
+          <code><a href="event_states.html">event_states()</a></code> <code><a href="event_states.html">run_events()</a></code>
+
+        </dt>
+        <dd>Rerun events on their own, from saved states</dd>
+      </dl></div><div class="section level2">
+      <h2 id="recession-analysis">Recession analysis<a class="anchor" aria-label="anchor" href="#recession-analysis"></a></h2>
+
+      <div class="section-desc"><p>How fast flow falls against how high it is, and the groundwater store it points to.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="recession_analysis.html">recession_analysis()</a></code>
+
+        </dt>
+        <dd>Recession analysis: which groundwater store does the flow record point to?</dd>
+
+        <dt>
+
+          <code><a href="plot_recession.html">plot_recession()</a></code>
+
+        </dt>
+        <dd>Plot a recession analysis</dd>
       </dl></div><div class="section level2">
       <h2 id="hindcasts-and-lead-time-scores">Hindcasts and lead-time scores<a class="anchor" aria-label="anchor" href="#hindcasts-and-lead-time-scores"></a></h2>
 

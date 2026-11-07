@@ -182,6 +182,46 @@ auto <- log_auto_calibration(
 log_note(project, "The January gap is a logger fault, not low flow.", refers_to = 2)
 ```
 
+## Trials on the largest events
+
+The headline score weighs every time step alike, so a change that
+sharpens the floods may barely move it.
+[`event_workbench()`](https://jonpayneea.github.io/PDMS7/reference/event_workbench.md)
+gathers a run’s largest events, ten unless you choose another number,
+screened for rises lost in the baseflow and gaps.
+[`workbench_try()`](https://jonpayneea.github.io/PDMS7/reference/event_workbench.md)
+reruns them with a change, in a fraction of a second, and
+[`plot_workbench()`](https://jonpayneea.github.io/PDMS7/reference/event_workbench.md)
+draws them before (blue) and after (orange), with each event’s peak and
+timing errors in its title:
+
+``` r
+wb <- event_workbench(project, entry = auto$id, n = 4)
+wb
+#> Events workbench: 4 largest events in the calibration window, from entry 0008
+#> Median peak error -4%, timing +0.5 h, event NSE 0.95
+delayed <- workbench_try(wb, c(td = 1))
+plot_workbench(wb, delayed)
+```
+
+![The four largest calibration events of the automatic calibration, and
+the same with a one-hour time
+delay.](calibration-log_files/figure-html/workbench-1.png)
+
+The four largest calibration events of the automatic calibration, and
+the same with a one-hour time delay.
+
+In the app, the Events tab does the same on sliders: the surface stores,
+the time delay and the store shape `b`. Choose how many events to show,
+move a slider, and the events redraw. **Save as trial** logs the setting
+through
+[`log_trial()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
+with your verdict and reasoning, so it joins the log like any other
+trial, and **Check recessions** draws the recession plot of the record
+and the model
+([`recession_analysis()`](https://jonpayneea.github.io/PDMS7/reference/recession_analysis.md)),
+to see that the low flows still fall at the right rate.
+
 ## The calibration path
 
 ``` r

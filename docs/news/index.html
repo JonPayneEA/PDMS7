@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.11.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.13.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -36,6 +36,7 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Calibration</h6></li>
     <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: multi-start, budgets and staged calibration</a></li>
+    <li><a class="dropdown-item" href="../articles/floods.html">Getting the floods right</a></li>
     <li><a class="dropdown-item" href="../articles/auto-calibration.html">Automatic calibration, explained</a></li>
     <li><a class="dropdown-item" href="../articles/scoring.html">Scoring a simulation: from NSE to POD, FAR and CSI</a></li>
     <li><a class="dropdown-item" href="../articles/choosing-structure.html">Choosing a model structure</a></li>
@@ -93,6 +94,28 @@
       <small>Source: <a href="https://github.com/JonPayneEA/PDMS7/blob/HEAD/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.13.0" id="pdms7-0130">pdmS7 0.13.0<a class="anchor" aria-label="anchor" href="#pdms7-0130"></a></h2>
+<ul><li>
+<strong>Events workbench.</strong> <code><a href="../reference/event_workbench.html">event_workbench()</a></code> gathers a run’s <code>n</code> largest events (10 by default) in the calibration or validation window, screened with <code><a href="../reference/screen_events.html">screen_events()</a></code>. <code><a href="../reference/event_workbench.html">workbench_try()</a></code> reruns them with parameters changed and scores each one; <code><a href="../reference/event_workbench.html">plot_workbench()</a></code> draws them before and after. A change to the surface stores or the time delay reruns only the event windows, from saved states, exactly as a full run would; any other change reruns the whole record. The calibration app has a new Events tab: choose the number of events, move sliders for the surface stores, the time delay and <code>b</code>, and save the setting as a logged trial; a button draws the recession plot of the record and the model. The calibration log article has a new section on it.</li>
+<li>
+<strong>Structure recommendation.</strong> <code><a href="../reference/recommend_structure.html">recommend_structure()</a></code> chooses the recharge rule, then the soil store distribution, then the groundwater store, each by a logged structure comparison on the validation window. Structures with a parameter at a bound are set aside; those within the tie tolerance of the best are equally good; the incumbent is kept when it is among them; otherwise the smallest median peak error on the largest validation events wins, then fewer parameters. Each step’s choice and reason is written to the log as a note. The choosing a structure article has a new section on it.</li>
+<li>
+<strong>New article: “Getting the floods right”.</strong> A plain-English walk through why a good score can hide bad floods, and the tools against it: finding and screening events, the acceptance checks, the events stage, the workbench, recession analysis, what a record can tell apart about structure, and a suggested order of work. Its worked example runs live.</li>
+<li>
+<strong>Can the record choose the recharge rule?</strong> <code>inst/benchmarks/recharge_rules.R</code> calibrates nine made-up catchments with standard, split and demand recharge. Validation scores found the true rule in all nine, by 0.08 to 0.25 in log NSE, against 0.003 for the groundwater store. Whether the baseflow line rises with each event’s quick flow separates split recharge from the other two without a model. The calibration study article has a new section on it.</li>
+</ul></div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.12.0" id="pdms7-0120">pdmS7 0.12.0<a class="anchor" aria-label="anchor" href="#pdms7-0120"></a></h2>
+<ul><li>
+<strong>Event screening.</strong> <code><a href="../reference/screen_events.html">screen_events()</a></code> flags events a hydrologist would not trust: a rise lost in the baseflow (<code>small_rise</code>: the peak rises less than <code>min_rise</code> times the baseflow beneath it), more quick flow than rain, gaps in the flow window, and peaks above the highest gauged flow. Every test works on flow above the baseflow line, so a high, steady baseflow is neither counted as event runoff nor mistaken for a rise. The events objective (<code>event_screen</code>) and <code><a href="../reference/calibration_checks.html">calibration_checks()</a></code> (<code>screen</code>) leave flagged events out by default, except peaks above the highest gauging, which are flagged but kept; in a project the registered highest gauged flow is used.</li>
+<li>
+<strong>Events rerun on their own.</strong> <code><a href="../reference/event_states.html">event_states()</a></code> runs the record once and saves the model’s state at the start of each event’s window; <code><a href="../reference/event_states.html">run_events()</a></code> reruns only the windows, from those states. With the same model the result is exact. After changing the surface stores or the time delay, a lead-in five times the sum of the surface time constants brings event peaks within 0.1% of a full run; changing the soil or groundwater stores needs the states saved again, and <code><a href="../reference/event_states.html">run_events()</a></code> refuses it. This is the groundwork for an events workbench and for tracing trade-offs between whole-record and event fit.</li>
+<li>
+<strong>Recession analysis.</strong> <code><a href="../reference/recession_analysis.html">recession_analysis()</a></code> plots how fast flow falls against how high it is, from dry, falling steps long enough after rain, and fits the slope of that relation with a bootstrap interval over whole recessions. The slope identifies the groundwater store (1 linear, 1.5 quadratic, 1.67 cubic, 2 exponential) and the exponent of a power store. On made-up catchments it recovered every store where recharge stops between events (split recharge), but standard recharge, which keeps feeding groundwater through recessions, lowered the slopes by 0.1 to 0.9. So the slope is read straight only where recharge stops; otherwise compare the record’s slope with each fitted model’s, which <code><a href="../reference/plot_recession.html">plot_recession()</a></code> draws together.</li>
+<li>
+<strong>Can the record choose the groundwater store?</strong> <code>inst/benchmarks/recession_stores.R</code> calibrates sixteen made-up catchments with all four stores. The slope read from the record found the true store in 8, the closest simulated slope in 9, and the best validation score in all 16, but by a median margin of 0.003 in log NSE, below the 0.02 tie tolerance in 15. The calibration study article has a new section on it: compare stores, call those within the tolerance equally good, and keep the cubic store unless one is clearly better.</li>
+</ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.11.0" id="pdms7-0110">pdmS7 0.11.0<a class="anchor" aria-label="anchor" href="#pdms7-0110"></a></h2>
 <ul><li>

@@ -1,0 +1,421 @@
+---
+title: "Automatic calibration from start to finish"
+author: "pdmS7 documentation"
+vignette: >
+  %\VignetteIndexEntry{Automatic calibration from start to finish}
+  %\VignetteEngine{knitr::knitr}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+library(pdmS7)
+knitr::opts_chunk$set(
+  error = FALSE, collapse = TRUE, comment = "#>", fig.width = 8,
+  fig.height = 4, dpi = if (nzchar(Sys.getenv("IN_PKGDOWN"))) 110 else 60
+)
+logger::log_threshold(logger::WARN, namespace = "pdmS7")
+flow_pal <- c(blue = "#236b83", orange = "#a26421", green = "#5b8c3a", grey = "#9aa7b0",
+              dark = "#444444", purple = "#8a3b6b", red = "#b23b3b")
+flow_fill <- c(blue = "#e3eef2", orange = "#f6ebe0", green = "#e7f0e1", grey = "#eef1f3",
+               purple = "#f1e5ec", red = "#f5e2e2")
+
+# Drawing helpers for the flow diagrams: a blank 0-1 canvas, boxes, diamonds and arrows.
+flow_canvas <- function() {
+  par(mar = c(0, 0, 0, 0))
+  plot.new()
+  plot.window(xlim = c(0, 1), ylim = c(0, 1))
+}
+flow_box <- function(x, y, label, w = 0.17, h = 0.12, col = "blue", cex = 0.78, font = 1) {
+  rect(x - w / 2, y - h / 2, x + w / 2, y + h / 2, col = flow_fill[[col]], border = flow_pal[[col]],
+       lwd = 1.6)
+  text(x, y, label, cex = cex, font = font, col = flow_pal[["dark"]])
+}
+flow_diamond <- function(x, y, label, w = 0.2, h = 0.16, col = "orange", cex = 0.74) {
+  polygon(c(x - w / 2, x, x + w / 2, x), c(y, y + h / 2, y, y - h / 2), col = flow_fill[[col]],
+          border = flow_pal[[col]], lwd = 1.6)
+  text(x, y, label, cex = cex, col = flow_pal[["dark"]])
+}
+flow_arrow <- function(x0, y0, x1, y1, label = NULL, pos = 3, col = "dark") {
+  arrows(x0, y0, x1, y1, length = 0.08, lwd = 1.4, col = flow_pal[[col]])
+  if (!is.null(label)) {
+    text((x0 + x1) / 2, (y0 + y1) / 2, label, pos = pos, cex = 0.72, col = flow_pal[[col]],
+         offset = 0.3)
+  }
+}
+```
+
+Automatic calibration means letting the computer find the model parameters that make the
+simulated river match the measured one. Done well, it is faster and more repeatable than
+calibrating by hand, and every step can be checked. Done carelessly, it produces a model that
+scores well and is wrong where it matters.
+
+This article walks through a whole calibration in pdmS7, from the data to sign-off, in plain
+English and with diagrams. It explains what each step does and why it is there. The detail of
+each step is in its own article, linked as you go.
+
+# The whole journey
+
+```{r overview, echo=FALSE, fig.height=4.2, fig.cap="A calibration from start to finish. Every step writes an entry to the project log."}
+flow_canvas()
+top <- 0.74
+bottom <- 0.36
+xs <- c(0.1, 0.3, 0.5, 0.7, 0.9)
+steps_top <- c("1. Register\nthe data", "2. Look at\nthe events", "3. Choose the\nstructure",
+               "4. Calibrate\nin stages", "5. Run the\nchecks")
+steps_bottom <- c("10. Sign-off", "9. Test on the\nwettest years", "8. Validate on\nunseen years",
+                  "7. Propose the\ncandidate", "6. Look at the\nfloods yourself")
+for (i in 1:5) flow_box(xs[i], top, steps_top[i])
+for (i in 1:5) flow_box(xs[i], bottom, steps_bottom[i], col = if (i == 1) "green" else "blue")
+for (i in 1:4) flow_arrow(xs[i] + 0.085, top, xs[i + 1] - 0.085, top)
+flow_arrow(xs[5], top - 0.06, xs[5], bottom + 0.06)
+for (i in 5:2) flow_arrow(xs[i] - 0.085, bottom, xs[i - 1] + 0.085, bottom)
+rect(0.02, 0.06, 0.98, 0.16, col = flow_fill[["grey"]], border = flow_pal[["grey"]])
+text(0.5, 0.11, "The project log: every step written down, who did it, when, and why",
+     cex = 0.85, col = flow_pal[["dark"]])
+arrows(0.5, 0.29, 0.5, 0.17, length = 0.06, lty = 2, col = flow_pal[["grey"]])
+segments(0.9, top + 0.06, 0.9, top + 0.15, col = flow_pal[["red"]], lwd = 1.4)
+segments(0.9, top + 0.15, 0.5, top + 0.15, col = flow_pal[["red"]], lwd = 1.4)
+arrows(0.5, top + 0.15, 0.5, top + 0.06, length = 0.08, lwd = 1.4, col = flow_pal[["red"]])
+text(0.7, top + 0.15, "if the checks fail, go back", pos = 3, cex = 0.72, col = flow_pal[["red"]],
+     offset = 0.3)
+```
+
+| Step | What happens | In pdmS7 |
+|---|---|---|
+| 1. Register the data | Rain, evaporation and flow are stored in the project, with the years for warming up, calibrating and validating | `start_calibration_project()`, `register_data()` |
+| 2. Look at the events | The floods are found in the record, and the doubtful ones set aside | `find_events()`, `screen_events()` |
+| 3. Choose the structure | Which version of the model to fit: its soil store, recharge and groundwater store | `select_structure()`, `recommend_structure()` |
+| 4. Calibrate in stages | The search for parameters, one group at a time | `pdm_stages()`, `log_staged_calibration()` |
+| 5. Run the checks | Warning signs the score hides: parameters at their limits, floods late or low | `calibration_checks()` |
+| 6. Look at the floods | The largest events side by side, adjusted by eye if need be | `event_workbench()`, the app's Events tab |
+| 7. Propose | The chosen calibration is put forward, with the reasons | `propose_candidate()` |
+| 8. Validate | The candidate is scored on years no calibration saw | `validate_candidate()` |
+| 9. Test | The wettest years, held back from the start, are revealed | `test_candidate()` |
+| 10. Sign-off | A Steward reviews the log and signs | `sign_off_project()` |
+
+Steps 3 to 6 often go round more than once: the checks find a problem, and the hydrologist goes
+back to the structure, the stages or the rain.
+
+# Step 1: the data and the years
+
+A calibration needs rain, potential evaporation and measured flow on the same time steps. Once
+registered, the data are copied into the project and fingerprinted, so that later steps can
+prove which data they used.
+
+The record is then divided:
+
+```{r timeline, echo=FALSE, fig.height=2.6, fig.cap="How the record is divided. The wettest years are held back from calibration and validation, and revealed only at the end."}
+flow_canvas()
+years <- 2008:2025
+x_of <- function(y) 0.05 + 0.9 * (y - 2008) / 18
+band <- function(from, to, y, col, label, at = (from + to) / 2) {
+  rect(x_of(from), y - 0.08, x_of(to), y + 0.08, col = flow_fill[[col]], border = flow_pal[[col]],
+       lwd = 1.4)
+  text(x_of(at), y, label, cex = 0.8, col = flow_pal[["dark"]])
+}
+band(2008, 2010, 0.6, "grey", "warm-up")
+band(2010, 2019, 0.6, "blue", "calibration", at = 2012)
+band(2019, 2025.5, 0.6, "green", "validation", at = 2023.2)
+for (held in c(2016, 2020)) {
+  rect(x_of(held), 0.52, x_of(held + 1), 0.68, col = flow_fill[["orange"]],
+       border = flow_pal[["orange"]],
+       lwd = 2)
+}
+text(x_of(2016.5), 0.3, "held-back wettest years (orange): scored only by the final test",
+     cex = 0.8, col = flow_pal[["orange"]])
+segments(x_of(2008), 0.82, x_of(2025.5), 0.82, col = flow_pal[["grey"]])
+for (y in seq(2008, 2024, by = 4)) {
+  segments(x_of(y), 0.8, x_of(y), 0.84, col = flow_pal[["grey"]])
+  text(x_of(y), 0.9, y, cex = 0.75, col = flow_pal[["dark"]])
+}
+```
+
+- **Warm-up.** The model starts with its stores at a guess. A year or two of running lets them
+  settle before anything is scored.
+- **Calibration.** The years the search fits.
+- **Validation.** Later years the search never sees. A model that does well here has learned
+  the catchment, not the quirks of the calibration years.
+- **The wettest years, held back.** The years with the largest floods are taken out of both
+  windows at the start and scored only at the end. They test whether the model holds up on
+  floods larger than anything it was fitted to, which is what a flood warning model is for.
+
+See [Larger floods](extrapolation.html) for the held-back years and [Getting started with
+data](data-preparation.html) for preparing the files.
+
+# Step 2: what the search does
+
+The model has a handful of parameters: how much water the soil holds, how fast the surface and
+groundwater stores drain, and so on. The search tries sets of values, runs the model over the
+calibration years with each, and keeps the one whose flow is closest to the measured flow.
+
+```{r search, echo=FALSE, fig.height=3.6, fig.cap="The search loop. It runs hundreds or thousands of times, from several starting points."}
+flow_canvas()
+flow_box(0.15, 0.55, "Try a set of\nparameter values", col = "blue")
+flow_box(0.4, 0.55, "Run the model\nover the record", col = "blue")
+flow_box(0.65, 0.55, "Score the flow\nagainst the gauge", col = "blue")
+flow_diamond(0.87, 0.55, "Better than\nthe best so far?", w = 0.2, h = 0.22)
+flow_arrow(0.235, 0.55, 0.315, 0.55)
+flow_arrow(0.485, 0.55, 0.565, 0.55)
+flow_arrow(0.735, 0.55, 0.77, 0.55)
+segments(0.87, 0.66, 0.87, 0.85, lwd = 1.4, col = flow_pal[["dark"]])
+segments(0.87, 0.85, 0.15, 0.85, lwd = 1.4, col = flow_pal[["dark"]])
+arrows(0.15, 0.85, 0.15, 0.61, length = 0.08, lwd = 1.4, col = flow_pal[["dark"]])
+text(0.5, 0.88, "keep it if so; choose the next values from what has been learnt", cex = 0.75,
+     col = flow_pal[["dark"]])
+flow_arrow(0.87, 0.44, 0.87, 0.24, "no more\nprogress", pos = 4)
+flow_box(0.87, 0.17, "Best set found", col = "green", w = 0.18, h = 0.1)
+text(0.4, 0.2, paste("Bounds: each parameter may only move within a\nsensible range.",
+                     "Starts: the loop is run from\nseveral starting points, in case one",
+                     "gets stuck."), cex = 0.75, col = flow_pal[["dark"]])
+```
+
+Four things shape the search:
+
+- **The bounds.** Each parameter may only move within a range a hydrologist would accept, from
+  a table of sensible limits. A parameter that ends pressed against its limit is a warning
+  sign (step 5).
+- **The score.** Usually the Nash-Sutcliffe efficiency (NSE): 1 is a perfect match, 0 is no
+  better than always predicting the average flow. Other scores weight low flows, volumes, or
+  floods (see [Scoring a simulation](scoring.html)).
+- **The method.** The default feels for the slope of the ground and walks downhill (L-BFGS-B):
+  fast and reliable when the score changes smoothly. Where it changes in steps, as when
+  counting floods or timing peaks to the hour, a method that tries points instead (DDS) is
+  used.
+- **The starts.** The ground may have several valleys. Starting the search from several
+  places, and keeping the best result, guards against settling in a poor one.
+
+[Automatic calibration, explained](auto-calibration.html) shows each of these at work.
+
+# Step 3: choosing the structure
+
+Before the numbers come the shape of the model: which kind of soil store, recharge and
+groundwater store. pdmS7 offers several of each. `recommend_structure()` chooses one part at a
+time, in the order the record can best answer:
+
+```{r structure, echo=FALSE, fig.height=3.8, fig.cap="Choosing the structure one part at a time. Each part is chosen by the same rule, and the reason is written to the log."}
+flow_canvas()
+flow_box(0.12, 0.72, "Recharge rule\n(standard, split,\ndemand)", h = 0.18)
+flow_box(0.37, 0.72, "Soil store\n(Pareto, rectangular,\nlognormal ...)", h = 0.18)
+flow_box(0.62, 0.72, "Groundwater store\n(cubic, linear,\nexponential ...)", h = 0.18)
+flow_box(0.87, 0.72, "Recommended\nstructure", col = "green", h = 0.18)
+flow_arrow(0.205, 0.72, 0.285, 0.72)
+flow_arrow(0.455, 0.72, 0.535, 0.72)
+flow_arrow(0.705, 0.72, 0.785, 0.72)
+text(0.37, 0.93, "each part: fit every option, score on the validation years", cex = 0.78,
+     col = flow_pal[["dark"]])
+flow_box(0.13, 0.32, "Set aside any option\nwith a parameter\nat a limit", col = "red", w = 0.2,
+         h = 0.17)
+flow_diamond(0.43, 0.32, "Is the one in use\nwithin 0.02 of\nthe best score?", w = 0.26, h = 0.26)
+flow_box(0.8, 0.43, "Keep it", col = "green", w = 0.28, h = 0.1)
+flow_box(0.8, 0.2, "Of those within 0.02: the best\nfloods, then fewest parameters", w = 0.28,
+         h = 0.13)
+flow_arrow(0.23, 0.32, 0.3, 0.32)
+flow_arrow(0.56, 0.36, 0.66, 0.43, "yes", pos = 3)
+flow_arrow(0.56, 0.28, 0.66, 0.2, "no", pos = 1)
+```
+
+Tests on made-up catchments, where the true structure was known, showed what a record can
+tell apart. The recharge rule was found every time, by a clear margin. The groundwater store
+was found only by margins too small to survive real data, so the rule keeps the standard store
+unless another is clearly better. See [Choosing a model structure](choosing-structure.html) and
+[What limits automatic calibration](calibration-study.html).
+
+# Step 4: calibrating in stages
+
+A hydrologist calibrating by hand does not move everything at once. They settle the water
+balance first, then the shape of the floods, then make a final adjustment. The staged
+calibration does the same:
+
+```{r stages, echo=FALSE, fig.height=4.2, fig.cap="The four stages. Each starts from where the last left off. Stage 4 is optional, for models whose floods matter most."}
+flow_canvas()
+xs <- c(0.13, 0.38, 0.63, 0.88)
+titles <- c("1. Volume and\nbaseflow", "2. Fast\nresponse", "3. Polish", "4. Events\n(optional)")
+moves <- c("rainfall factor,\nsoil store, recharge,\ngroundwater",
+           "surface stores,\nsoil store shape b", "everything,\nover the full ranges",
+           "surface stores, b,\ntime delay")
+scores <- c("log NSE + volume:\nlow flows and\nthe water balance",
+            "NSE: the peaks\nand their timing",
+            "NSE", "the largest floods:\nshape, peak size,\ntiming")
+cols <- c("blue", "blue", "blue", "orange")
+for (i in 1:4) {
+  flow_box(xs[i], 0.8, titles[i], col = cols[i], w = 0.2, h = 0.14, font = 2)
+  flow_box(xs[i], 0.52, moves[i], col = "grey", w = 0.21, h = 0.17, cex = 0.72)
+  flow_box(xs[i], 0.22, scores[i], col = "green", w = 0.21, h = 0.17, cex = 0.72)
+}
+for (i in 1:3) flow_arrow(xs[i] + 0.1, 0.8, xs[i + 1] - 0.1, 0.8)
+text(0.005, 0.52, "moves", srt = 90, cex = 0.8, col = flow_pal[["dark"]])
+text(0.005, 0.22, "scored by", srt = 90, cex = 0.8, col = flow_pal[["dark"]])
+```
+
+- **Stage 1** fits the parts that control how much water there is and how the river falls
+  between storms, judged on log flows so that the floods do not dominate.
+- **Stage 2** fits the parts that shape each flood, with the water balance held.
+- **Stage 3** lets everything move together over its full range, to fix anything the first two
+  missed. It must be free to move far: a polish kept close to stage 2 can lock in a wrong first
+  stage.
+- **Stage 4**, the events stage, refits the flood-shaping parts and the time delay on the
+  largest floods alone. Over a long record most hours are quiet, so a model can score well with
+  every peak late and low; this stage puts the floods first. See [Getting the floods
+  right](floods.html).
+
+# Step 5: the checks
+
+A good score is not enough. Before accepting a calibration, `calibration_checks()` asks the
+questions the score hides:
+
+```{r checks, echo=FALSE, fig.height=5, fig.cap="The checks after a calibration, in order. Each failure points back to a different step."}
+flow_canvas()
+flow_box(0.12, 0.88, "Calibrated\nmodel", col = "green", w = 0.16, h = 0.1)
+flow_diamond(0.4, 0.88, "Any parameter\nat a limit?", w = 0.22, h = 0.16)
+flow_diamond(0.4, 0.6, "Largest floods:\npeaks and timing\nacceptable?", w = 0.24, h = 0.2)
+flow_diamond(0.4, 0.3, "Validation close\nto calibration?", w = 0.22, h = 0.16)
+flow_box(0.4, 0.07, "Propose as candidate", col = "green", w = 0.24, h = 0.09)
+flow_arrow(0.2, 0.88, 0.29, 0.88)
+flow_arrow(0.4, 0.8, 0.4, 0.7, "no", pos = 4)
+flow_arrow(0.4, 0.5, 0.4, 0.38, "yes", pos = 4)
+flow_arrow(0.4, 0.22, 0.4, 0.115, "yes", pos = 4)
+flow_box(0.8, 0.88, "The structure is being bent\nto fit: question it (step 3),\nor the bounds",
+         col = "red", w = 0.3, h = 0.14)
+flow_box(0.8, 0.6,
+         "Add the events stage (step 4),\nlook at the floods (step 6),\nor check the rain",
+         col = "red", w = 0.3, h = 0.14)
+flow_box(0.8, 0.3, "Fitted to quirks of the\ncalibration years, or the\nrecord changed: review",
+         col = "red", w = 0.3, h = 0.14)
+flow_arrow(0.51, 0.88, 0.65, 0.88, "yes", pos = 3)
+flow_arrow(0.52, 0.6, 0.65, 0.6, "no", pos = 3)
+flow_arrow(0.51, 0.3, 0.65, 0.3, "no", pos = 3)
+```
+
+- **A parameter at its limit** is the clearest warning sign. It means the search wanted to go
+  further than a sensible value, usually to make up for something the structure cannot do. In
+  one real catchment, three of seven parameters at their limits came with a score of 0.90 and
+  the largest flood 47% low and 16 hours late.
+- **The largest floods** in each window: the median peak error, timing error and how many peaks
+  fall within 20%. Floods the rain gauges plainly missed, or rises lost in a high baseflow, are
+  set aside first.
+- **Validation against calibration.** Some fall in score on unseen years is normal. A large
+  fall means the model has learned the calibration years rather than the catchment.
+
+# Step 6: looking at the floods yourself
+
+Scores summarise; they do not show. The events workbench draws the largest floods side by
+side, before and after a change, and redraws them in a fraction of a second as sliders move in
+the app's Events tab. A setting the hydrologist believes is saved as a trial, with a verdict
+and the reasons. Judgement stays with the hydrologist, and the log records it. See [Logging a
+manual calibration](calibration-log.html).
+
+# Steps 7 to 10: candidate, validation, test, sign-off
+
+```{r endgame, echo=FALSE, fig.height=2.6, fig.cap="The last steps. Each is a separate, signed entry in the log."}
+flow_canvas()
+xs <- c(0.12, 0.37, 0.62, 0.87)
+labels <- c("Propose a\ncandidate", "Validate on the\nunseen years",
+            "Test on the held-back\nwettest years",
+            "Steward\nsigns off")
+for (i in 1:4) flow_box(xs[i], 0.55, labels[i], col = if (i == 4) "green" else "blue", w = 0.2,
+                        h = 0.3)
+for (i in 1:3) flow_arrow(xs[i] + 0.1, 0.55, xs[i + 1] - 0.1, 0.55)
+text(0.5, 0.12, "The validation and test scores are written down before anyone sees the next.",
+     cex = 0.78, col = flow_pal[["dark"]])
+```
+
+The candidate is proposed first, then validated, then tested, in that order and only once
+each. A model cannot be quietly re-tuned after its test has been seen, because the log shows the
+order in which things happened. The Steward reads the log, checks the reasoning at each step,
+and signs. See [the Steward's guide](steward-guide.html).
+
+# Everything is written down
+
+Every step above writes an entry to the project log: what was done, the data and settings used,
+the scores, who did it, when and why. Each entry carries a checksum of the one before, so the
+chain cannot be edited without it showing.
+
+```{r chain, echo=FALSE, fig.height=2.4, fig.cap="The log as a chain of entries. Each entry carries a checksum of the one before."}
+flow_canvas()
+labels <- c("project\nstarted", "data\nregistered", "structure\nselected", "stage 1",
+            "stage 2", "stage 3", "candidate", "validation", "test", "sign-off")
+xs <- seq(0.06, 0.94, length.out = length(labels))
+for (i in seq_along(labels)) {
+  flow_box(xs[i], 0.55, labels[i], col = if (i == length(labels)) "green" else "grey", w = 0.085,
+           h = 0.36, cex = 0.66)
+}
+for (i in 1:(length(labels) - 1)) flow_arrow(xs[i] + 0.043, 0.55, xs[i + 1] - 0.043, 0.55)
+text(0.5, 0.12, "each link: a checksum of the entry before", cex = 0.78, col = flow_pal[["dark"]])
+```
+
+Here is a real, if small, calibration run through the steps, and the log it leaves:
+
+```{r live, results="hide"}
+rain <- synthetic_rain("2020-10-01", years = 2, dt = 1, seed = 3)
+forcing <- data.frame(time = rain$time, rain = rain$rain, pet = rain$pet)
+truth <- pdm_presets("standard")
+truth$area_km2 <- 30
+truth$td <- 2
+model <- pdm_from_config(truth)
+observed <- run_pdm(model, forcing, initial_state_from_flow(model, 0.5, 0.7))$output$q_m3s
+options(pdmS7.user = "A Hydrologist", pdmS7.role = "custodian")
+project <- file.path(tempdir(), "journey")
+unlink(project, recursive = TRUE)
+start_calibration_project(project, "Example Brook", "00002", "Journey article", 30,
+                          "An Owner", "A Steward")
+register_data(project, forcing, observed, calibration = c("2021-01-01", "2022-03-31 23:00"),
+              validation = c("2022-04-01", "2022-09-30 23:00"), wettest_years = 0)
+start <- pdm_presets("standard")
+start$area_km2 <- 30
+structure <- select_structure(project, start, "Standard PDM to start from")
+fits <- log_staged_calibration(project, structure$id, "Four stages, with the events stage.",
+                               stages = pdm_stages(start, events = TRUE, event_budget = 60),
+                               starts = 1, seed = 1, control = list(maxit = 15))
+propose_candidate(project, fits[[length(fits)]]$id, "Final stage of the staged calibration.")
+validate_candidate(project, "Validation year.")
+```
+
+```{r live-log}
+entries <- read_project(project)$entries
+entries[, c("id", "type")]
+checks <- calibration_checks(project, top = 5)
+checks$parameters[, c("path", "value", "lower", "upper", "at_bound")]
+checks$summary[, c("period", "events", "median_peak_error", "median_timing_error_h")]
+```
+
+Each row is one entry, from the start of the project to the validation of the candidate; the
+four automatic calibration entries are the four stages. In the parameter table, `at_bound` is
+empty (`NA`) when a parameter sits clear of its limits, and reads `lower` or `upper` when it
+does not; here none does. The largest floods in every window peak within a few percent of the
+measured peaks, and in the same hour.
+
+One number is a reminder of what a good fit does not prove. The events stage found a time delay
+of `r sprintf("%.1f", checks$parameters$value[checks$parameters$path == "td"])` hours, against
+the true 2 used to make the record. The two surface stores came out at
+`r sprintf("%.1f", checks$parameters$value[checks$parameters$path == "surface.k1"])` and
+`r sprintf("%.1f", checks$parameters$value[checks$parameters$path == "surface.k2"])` hours,
+against a true 2 and 4: the same two stores the other way round, which give the same flood,
+with the shorter delay making up the difference. The floods come out right; the parameters
+behind them are not unique. This is why the checks look
+at the floods themselves, and why [What limits automatic calibration](calibration-study.html)
+matters before reading too much into any one value.
+
+# Many catchments at once
+
+The same journey can be run over many catchments with `calibrate_batch()`, which runs each
+catchment's project through the stages, survives interruptions, and resumes where it stopped.
+The checks and the structure choice then become questions across the sample: which
+catchments failed which check, and which structure won where. See [Calibrating many
+catchments](many-catchments.html).
+
+# Where to go next
+
+| To learn about | Read |
+|---|---|
+| How the search works, bounds, scores, starts | [Automatic calibration, explained](auto-calibration.html) |
+| Why a good score can hide bad floods | [Getting the floods right](floods.html) |
+| The rain the model is given | [Catchment rainfall from gauges and radar](rainfall.html) |
+| Choosing the structure | [Choosing a model structure](choosing-structure.html) |
+| What a record can and cannot tell | [What limits automatic calibration](calibration-study.html) |
+| The log, trials and sign-off | [Logging a manual calibration](calibration-log.html) |
+| Many catchments | [Calibrating many catchments](many-catchments.html) |
+
+```{r cleanup, include=FALSE}
+# Articles are built one after another in one R session: leave nothing behind.
+rm(list = ls(pattern = "^flow_"))
+```

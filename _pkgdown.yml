@@ -61,7 +61,10 @@ articles:
 - title: Calibration
   navbar: Calibration
   contents:
+  - calibration-journey
   - calibration
+  - floods
+  - rainfall
   - auto-calibration
   - scoring
   - choosing-structure
@@ -207,6 +210,7 @@ reference:
   desc: Calibrate several model structures alike and rank them on held-out data.
   contents:
   - compare_structures
+  - recommend_structure
   - structure_set
   - calibration_bounds
 - title: Calibration log
@@ -218,6 +222,7 @@ reference:
   - verify_project
   - build_report
   - calibration_app
+  - event_workbench
 - title: Run log
   desc: An opt-in record of every model run, checked against signed-off calibrations.
   contents:
@@ -233,6 +238,12 @@ reference:
   - batch_events
   - screen_events
   - event_states
+- title: Catchment rainfall
+  desc: Catchment-average rain from gauges and radar, by Thiessen polygons, multiquadric interpolation or conditional merging.
+  contents:
+  - merge_rainfall
+  - rainfall_field
+  - h19_radar
 - title: Recession analysis
   desc: How fast flow falls against how high it is, and the groundwater store it points to.
   contents:

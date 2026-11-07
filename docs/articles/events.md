@@ -250,13 +250,13 @@ c(steps = length(rain), windows = nrow(fast$curve), compiled_s = round(compiled,
   r_s = round(reference, 1), same_answer = fast$response_h == slow$response_h,
   find_events_s = round(all_events, 2), events = nrow(quarter_events))
 #>         steps       windows    compiled_s           r_s   same_answer 
-#>     350400.00        600.00          0.62         18.40          1.00 
+#>     350400.00        600.00          0.55         18.80          1.00 
 #> find_events_s        events 
-#>          0.64        842.00
+#>          0.59        842.00
 ```
 
-The compiled search took 0.62 seconds against 18.4 in R, with the same
-answer, and finding all 842 events took 0.64 seconds in all. A batch of
+The compiled search took 0.55 seconds against 18.8 in R, with the same
+answer, and finding all 842 events took 0.59 seconds in all. A batch of
 hundreds of basins at 15 minutes is a matter of minutes.
 
 ## Limits
