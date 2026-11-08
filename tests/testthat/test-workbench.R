@@ -111,6 +111,11 @@ test_that("the Events tab sliders and changes", {
   expect_true(all(specs$min <= specs$value & specs$value <= specs$max))
   values <- stats::setNames(as.list(specs$value), specs$path)
   expect_null(.wb_changes(specs, values))
+  # A slider snaps the run's value to its step; that alone is not a change
+  snapped <- values
+  snapped$distribution.b <- snapped$distribution.b + 0.004
+  snapped$surface.k1 <- snapped$surface.k1 + 0.04
+  expect_null(.wb_changes(specs, snapped))
   values$td <- 1.5
   expect_equal(.wb_changes(specs, values), c(td = 1.5))
   cfg$td <- 20

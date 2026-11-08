@@ -1,3 +1,38 @@
+# pdmS7 0.17.1
+
+- **New article, "Tailoring calibration to the largest events in the app".** It follows one
+  project through the Events tab of `calibration_app()`, with screenshots: loading the largest
+  events, reading their peak and timing errors, moving the surface stores and the time delay,
+  saving the setting as a trial with a verdict and reasons, checking the recessions, refitting
+  the other parameters from the trial on the Trial tab, and proposing and validating the
+  result. The scripts that build the project and take the screenshots are in
+  `tools/app-screenshots`.
+- **Events tab fix.** A slider rounds the run's value to its step, so `b` = 0.439941 showed as
+  0.44. The tab took that rounding for a change: it reran the whole record, as for any change
+  to `b`, and a saved trial recorded a change to `b` nobody made. A slider now counts as moved
+  only when it is more than half a step from the run's value. The event plots are also drawn
+  at a higher resolution, so their labels can be read.
+
+# pdmS7 0.17.0
+
+- **`water_balance()`** checks the water balance before calibrating, for the whole record and
+  for each water year (from October). Over a year a catchment stores little, so its loss, rain
+  minus flow, is mostly evaporation, and two limits follow: flow cannot exceed rain, and the
+  loss cannot much exceed the potential evaporation. Years beyond either limit are flagged, and
+  so are years whose runoff ratio stands apart from the rest. A lasting change, such as a new
+  rating from one year on, can leave no single year apart, so the years are also split at each
+  boundary in turn and the largest change in the mean runoff ratio is flagged when it exceeds
+  25%; years already flagged on their own are left out of that test, so one bad year is not
+  mistaken for a change. Steps with missing flow are left out of all three totals, and part
+  years are reported but not judged. It also returns a double-mass curve and the baseflow
+  index. `plot()` and `autoplot()` draw each year against the Budyko limits and Fu's curve,
+  the ratios year by year, and the double-mass curve.
+- **The checks article** has a new section, "Year by year: the water balance", in which a new
+  rating from one year on is found by the change test and seen in the double-mass curve. Its
+  record now covers five whole water years, and its text on flagged parameters and peak
+  errors is written from the results rather than fixed, so it stays true if the example
+  changes.
+
 # pdmS7 0.16.0
 
 Standard visuals, part 2 of 4: calibration and event plots.

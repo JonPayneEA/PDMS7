@@ -30,6 +30,7 @@ and a copy of it with faults put in on purpose, so that each check can be seen t
 |---|---|---|---|
 | Before registering | Annual totals | Is the rain and evaporation plausible for the place? | `check_inputs()` |
 | Before registering | Runoff ratio | Does less water leave than falls? | `check_inputs()` |
+| Before registering | Water balance by year | Does each year fit the water and energy limits, and does any year or period stand apart? | `water_balance()` |
 | Before calibrating | Event balance | Did each event shed less quick flow than its rain? | `find_events()`, `plot()` |
 | Before calibrating | Event screening | Which events are too small, gappy or doubtful to judge by? | `screen_events()` |
 | After calibrating | Parameters | Did the search press against a limit? | `calibration_checks()` |
@@ -38,11 +39,11 @@ and a copy of it with faults put in on purpose, so that each check can be seen t
 
 # The record
 
-Three years of hourly rain over a 25 km^2^ catchment, and the flow of a model of it with
+Five years of hourly rain over a 25 km^2^ catchment, and the flow of a model of it with
 measurement error added. This is the record as it should be.
 
 ```{r record}
-rain <- synthetic_rain("2021-01-01", years = 3, dt = 1, seed = 11)
+rain <- synthetic_rain("2019-10-01", years = 5, dt = 1, seed = 11)
 forcing <- data.frame(time = rain$time, rain = rain$rain, pet = rain$pet)
 truth <- pdm_presets("standard")
 truth$area_km2 <- 25
@@ -75,6 +76,56 @@ check_inputs(forcing, flow, area_km2 = 2.5)
 The water balance is impossible, and the check says so before any calibration is spent on it.
 A model given this area would need ten times the rain it has; the search would push the
 rainfall factor to its limit and still fall short.
+
+## Year by year: the water balance
+
+A whole-record check can pass while single years fail. Over a year a catchment stores little,
+so what it loses, rain minus flow, is mostly evaporation. That gives two limits (Budyko,
+1974): the loss cannot exceed the rain, so the flow cannot go negative, and it cannot much
+exceed the potential evaporation, because the atmosphere cannot take more. `water_balance()`
+measures both for every water year, from October, and looks for years, or runs of years, that
+stand apart from the rest:
+
+```{r balance-years}
+wb <- water_balance(forcing, flow, area_km2 = 25)
+wb
+```
+
+```{r budyko, fig.cap="Each water year's loss over its rain against its potential evaporation over its rain. Above the dashed lines is impossible; the grey curve is where a typical catchment lies (Fu, 1981)."}
+plot(wb)
+```
+
+The years sit in a cluster below both limits. A part year at the start or end of a record is
+reported but not judged, since a winter alone would look far wetter than a whole year.
+
+Now the same record with a new rating from October 2022, under which every flow reads 40%
+higher. No single year stands far from the median, because half the record is affected; the
+whole-record runoff ratio still looks plausible. The change shows when the years are compared
+before and after each boundary:
+
+```{r balance-step}
+rerated <- flow
+after <- forcing$time >= as.POSIXct("2022-10-01", tz = "UTC")
+rerated[after] <- rerated[after] * 1.4
+wb_step <- water_balance(forcing, rerated, area_km2 = 25)
+wb_step$flags
+```
+
+```{r double-mass, fig.cap="Cumulative flow against cumulative rain. The curve bends upward where the new rating starts."}
+plot(wb_step, type = "double_mass")
+```
+
+The double-mass curve, cumulative flow against cumulative rain, is straight while the two
+records agree and kinks where one of them changes. Calibrated across the kink, a model would
+average two catchments that never existed. The cure is in the data: find out which record
+changed, and why, before calibrating; or calibrate on one side of the change only.
+
+`water_balance()` also returns the baseflow index, here `r sprintf("%.2f", wb$bfi)`: the share
+of flow beneath the baseflow line of the events. It is close to the standard UK index from
+five-day minima, about 0.2 on clay and 0.9 on chalk. A value far from what the geology
+suggests is worth questioning before the groundwater store is calibrated.
+
+## What was done to the data
 
 The check also lists what was done to each series, when it was prepared with pdmS7's
 preparation functions (see [Getting started with data](data-preparation.html)), so a gap
@@ -189,14 +240,24 @@ p <- checks$parameters
 place <- ifelse(p$scale %in% "log", log(p$value / p$lower) / log(p$upper / p$lower),
                 (p$value - p$lower) / (p$upper - p$lower))
 nearest <- which.max(pmax(place, 1 - place))
+edge <- p[!is.na(p$at_bound), ]
+edge_note <- if (nrow(edge)) {
+  sprintf("Here %s is flagged: it ended at %s, at the %s end of a range of %s to %s.",
+          paste(edge$path, collapse = " and "), paste(signif(edge$value, 3), collapse = " and "),
+          edge$at_bound[1], format(edge$lower[1]), format(edge$upper[1]))
+} else {
+  sprintf("Nothing is flagged here, but %s ends %s of the way along its range, close to its end.",
+          p$path[nearest], pct(max(place[nearest], 1 - place[nearest])))
+}
 ```
 
-Nothing is flagged here, but `r p$path[nearest]` ends `r pct(max(place[nearest], 1 - place[nearest]))`
-of the way along its range, close enough to its end to deserve a second look. A parameter
-that drifts to the edge without touching it often has little effect on the flow: the search
-moved it because nothing pulled it back. [What limits automatic
-calibration](calibration-study.html) shows which parameters a record can and cannot pin down;
-the recharge and groundwater constants are the usual drifters.
+`r edge_note` Not every parameter pressed to an edge is a fault in the data: some barely
+change the flow, and the search moves them because nothing pulls them back. The recharge and
+groundwater constants are the usual drifters; [What limits automatic
+calibration](calibration-study.html) shows which parameters a record can and cannot pin down.
+Before widening a range, ask which: a parameter that matters and sits at its limit points to a
+fault elsewhere; one that does not matter can be fixed at a sensible value with `exclude` in
+`calibration_bounds()`, so it stops drifting.
 
 ## Peaks and timing
 
@@ -211,13 +272,15 @@ plot(checks, type = "timing")
 ```{r peak-error, include=FALSE}
 big <- checks$events[checks$events$use %in% TRUE, ]
 median_peak <- stats::median(big$simulated_peak / big$observed_peak - 1, na.rm = TRUE)
+scores <- calibration_path(project)$windows
+cal_nse <- scores$value[scores$window == "calibration" & scores$metric == "nse"]
 ```
 
 The score over the whole record is dominated by the many hours of ordinary flow. These two
 plots look only at the floods. Here the peaks run `r pct(abs(median_peak))`
-`r if (median_peak < 0) "low" else "high"` in the median, across every window, while NSE is
-above 0.97: a short calibration that has the timing right and the size slightly wrong, which
-is just what the events stage is for. Peaks consistently low, or consistently late, outweigh a good
+`r if (median_peak < 0) "low" else "high"` in the median, while NSE on the calibration
+window is `r sprintf("%.2f", cal_nse)`: a short calibration that has the timing right and the
+size wrong, which is just what the events stage is for. Peaks consistently low, or consistently late, outweigh a good
 score: see [Getting the floods right](floods.html) for what to do about them, from the events
 stage to adjusting the largest floods by eye.
 
@@ -246,8 +309,9 @@ in NSE deserves a look at what changed between the windows.
 
 # The order of work
 
-1. **Prepare and check the record** with `check_inputs()`. Fix any flag before going on: a
-   calibration cannot repair a wrong area or a misread unit.
+1. **Prepare and check the record** with `check_inputs()`, then year by year with
+   `water_balance()`. Fix any flag before going on: a calibration cannot repair a wrong area, a
+   misread unit or a change of rating.
 2. **Look at the events** with `plot(events)`. Points above the limit are storms the rain
    missed; screening sets them aside, but several from one gauge mean the gauge needs a look.
 3. **Calibrate**, with `calibrate_project()` or step by step.
@@ -263,7 +327,9 @@ ggplot to change or combine. `pdm_save()` writes any of them at report, slide or
 ```{r cleanup, include=FALSE}
 # Articles are built one after another in one R session: leave nothing behind.
 unlink(project, recursive = TRUE)
-rm(list = c("rain", "forcing", "truth", "model", "flow", "events", "biggest", "storm",
+rm(list = c("rain", "forcing", "truth", "model", "flow", "wb", "rerated", "after", "wb_step",
+            "events", "biggest", "storm",
             "broken", "bad_events", "flagged", "project", "start", "checks", "p", "place",
-            "nearest", "big", "median_peak", "path", "pct"))
+            "nearest", "edge", "edge_note", "big", "median_peak", "scores", "cal_nse", "path",
+            "pct"))
 ```
