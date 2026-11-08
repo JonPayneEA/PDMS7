@@ -340,7 +340,8 @@ autoplot.pdm_calibration_path <- function(object, type = c("stages", "starts", "
     .layer(s$step, 1 - abs(s$volume_error), "1 - |volume error|", pal[[2]], lty = 2,
            lwd = 1.5)
   )
-  list(series = series, log = "", xlab = "", ylab = "Score on the calibration window",
+  list(series = series, log = "", zero = FALSE, xlab = "",
+       ylab = "Score on the calibration window",
        title = "Scores after each stage", xlim = c(0.7, nrow(s) + 0.3),
        xticks = list(at = s$step, labels = .stage_labels(s)),
        subtitle = "Higher is better; 1 is perfect")
