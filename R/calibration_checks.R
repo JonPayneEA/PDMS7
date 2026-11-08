@@ -42,7 +42,8 @@
 #' @param screen Settings for [screen_events()], with the project's highest gauged flow unless
 #'   they name one; `NULL` summarises every event.
 #'
-#' @return A list of three data frames and the response times. `parameters`: `path`, `value`,
+#' @return A `pdm_calibration_checks` list of three data frames and the response times; printing it
+#'   shows the parameters at a bound and the event summary. `parameters`: `path`, `value`,
 #'   `lower`, `upper`, `scale` and `at_bound` (`"lower"`, `"upper"` or `NA`). `events`: every
 #'   event with its `period` and the columns of [event_scores()]. `summary`: one row per window
 #'   with `events` (the number summarised), `median_peak_error`, `median_timing_error_h`,
@@ -76,9 +77,10 @@ calibration_checks <- function(project, entry = NULL, top = 20L, edge = 0.01, ra
   events <- scored$events
   summary <- do.call(rbind, lapply(c("calibration", "validation", "wettest", "outside"),
                                    function(period) .event_summary(events, period, top)))
-  list(parameters = parameters, events = events, summary = summary,
-       response_h = c(observed = scored$basin$response_observed_h,
-                      simulated = scored$basin$response_simulated_h))
+  structure(list(parameters = parameters, events = events, summary = summary,
+                 response_h = c(observed = scored$basin$response_observed_h,
+                                simulated = scored$basin$response_simulated_h)),
+            class = "pdm_calibration_checks")
 }
 
 # Every calibrated parameter of an entry with the widest range searched for it on the way to the

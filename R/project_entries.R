@@ -287,6 +287,8 @@ register_data <- function(project, forcing, observed, calibration, validation = 
   # read them from the scorecard rather than choosing again.
   wettest <- .choose_wettest(wettest_years, forcing_data, observed_data, cal, val)
   summary <- .data_summary(forcing_data, observed_data)
+  # What preparation functions noted on the series (units, gaps, negatives), for the log.
+  preparation <- .registration_notes(forcing, observed)
   # Files are stored under the lock, in a folder named by the entry id, and the scorecard (windows,
   # headline, thresholds, event settings) is fixed here for every later run in the project.
   entry <- .append_entry(path, "data_registered", author, function(id, entries) {
@@ -300,7 +302,7 @@ register_data <- function(project, forcing, observed, calibration, validation = 
       data$rating <- .store_series(rating, rating_data, path, id, "rating", copy,
                                    function(x, target) data.table::fwrite(x, target))
     }
-    list(
+    body <- list(
       data = data, summary = summary,
       scorecard = list(
         warmup_rows = cal$first_row - 1L, calibration = cal, validation = val, test = tst,
@@ -317,6 +319,8 @@ register_data <- function(project, forcing, observed, calibration, validation = 
                                         wettest = wettest)),
       reasoning = as.character(reasoning)
     )
+    if (length(preparation)) body$preparation <- preparation
+    body
   })
   logger::log_info("Registered data {entry$id}: {summary$rows} rows")
   invisible(entry)
@@ -643,4 +647,28 @@ reopen_project <- function(project, reason) {
     screen$highest_gauged_m3s <- card$highest_gauged_m3s
   }
   screen
+}
+
+# Preparation notes carried by the forcing and observed series, as records for the log; NULL
+# when there are none, so registrations of unprepared data are unchanged.
+.registration_notes <- function(forcing, observed) {
+  notes <- list()
+  if (is.data.frame(forcing)) {
+    notes$forcing <- preparation_notes(forcing[intersect(c("rain", "pet"), names(forcing))])
+  }
+  flow <- if (is.data.frame(observed)) {
+    observed[[if ("q_m3s" %in% names(observed)) "q_m3s" else setdiff(names(observed), "time")[1]]]
+  } else if (is.numeric(observed)) {
+    observed
+  }
+  if (!is.null(flow)) {
+    n <- preparation_notes(flow)
+    n$series <- rep("flow", nrow(n))
+    notes$flow <- n
+  }
+  all <- do.call(rbind, notes)
+  if (is.null(all) || !nrow(all)) return(NULL)
+  lapply(seq_len(nrow(all)), function(i) {
+    list(series = all$series[i], step = all$step[i], detail = all$detail[i])
+  })
 }

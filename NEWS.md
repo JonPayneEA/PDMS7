@@ -1,3 +1,33 @@
+# pdmS7 0.15.0
+
+The helper functions of the Beggearn Huish calibration script, tested and in the package.
+
+- **Data preparation.** `read_hydro_series()` reads hydrometric exports: split year, month and
+  day columns in any of their spellings, one time column in the common formats, or a date and a
+  time column, in any time zone; it refuses a file whose timestamps repeat. `align_series()`
+  puts several series on one grid over the period they share. `convert_units()` converts mm per
+  hour or day, metres, litres a second and megalitres a day, and with `"auto"` works the unit
+  out from plausible annual totals. `fill_gaps()` fills by a named rule (stop, zero,
+  interpolate up to a longest gap, none) and `zero_negatives()` sets negative values to zero.
+  `check_inputs()` reports the period, gaps, negatives, annual totals and runoff ratio, and
+  flags anything implausible.
+- **Preparation in the log.** Each of those functions notes what it did on the series it
+  returns (`preparation_notes()`), and `register_data()` writes the notes into the
+  registration entry; the report shows them in its Data section. Data registered without
+  notes register exactly as before.
+- **`calibrate_project()`** runs a whole logged calibration in one call: project, registration,
+  structure, staged calibration, candidate, validation when a window is registered and test
+  when one is. A finished project is left as it is; an unfinished one is moved aside.
+- **`candidate_model()`** returns the model of a project's candidate.
+- **`event_run()`** runs a project's model over a separate event file: from the record's own
+  state when the event lies inside the registered record, otherwise from steady state at its
+  first flow, with missing evaporation taken from the record. It prints the event's scores
+  and `plot()` draws its hydrograph.
+- **`calibration_checks()`** returns a `pdm_calibration_checks` list whose print method shows
+  the parameters at a bound and the largest events in each window.
+- **Article.** The data preparation article has a new section running the same steps with these
+  functions.
+
 # pdmS7 0.14.0
 
 Standard visuals, part 1 of 4: the house style and the run diagnostics.

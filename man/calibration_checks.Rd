@@ -31,7 +31,8 @@ counts as at the bound.}
 they name one; \code{NULL} summarises every event.}
 }
 \value{
-A list of three data frames and the response times. \code{parameters}: \code{path}, \code{value},
+A \code{pdm_calibration_checks} list of three data frames and the response times; printing it
+shows the parameters at a bound and the event summary. \code{parameters}: \code{path}, \code{value},
 \code{lower}, \code{upper}, \code{scale} and \code{at_bound} (\code{"lower"}, \code{"upper"} or \code{NA}). \code{events}: every
 event with its \code{period} and the columns of \code{\link[=event_scores]{event_scores()}}. \code{summary}: one row per window
 with \code{events} (the number summarised), \code{median_peak_error}, \code{median_timing_error_h},

@@ -191,8 +191,21 @@ reference:
   - fit_rain
   - rain_parameters
   - rain_statistics
+- title: Preparing data
+  desc: Read hydrometric exports, align them, convert units, fill gaps and check the result; each step is noted and recorded in the calibration log.
+  contents:
+  - read_hydro_series
+  - align_series
+  - convert_units
+  - fill_gaps
+  - zero_negatives
+  - check_inputs
+  - preparation_notes
 - title: Calibration
   contents:
+  - calibrate_project
+  - candidate_model
+  - event_run
   - calibrate_pdm
   - calibrate_staged
   - pdm_stages
