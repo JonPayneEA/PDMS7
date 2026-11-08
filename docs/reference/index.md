@@ -295,6 +295,20 @@ model scores event by event.
   [`run_events()`](https://jonpayneea.github.io/PDMS7/reference/event_states.md)
   : Rerun events on their own, from saved states
 
+## Catchment rainfall
+
+Catchment-average rain from gauges and radar, by Thiessen polygons,
+multiquadric interpolation or conditional merging.
+
+- [`merge_rainfall()`](https://jonpayneea.github.io/PDMS7/reference/merge_rainfall.md)
+  [`rainfall_cross_validation()`](https://jonpayneea.github.io/PDMS7/reference/merge_rainfall.md)
+  [`catchment_mask()`](https://jonpayneea.github.io/PDMS7/reference/merge_rainfall.md)
+  : Catchment rainfall from gauges and radar
+- [`rainfall_field()`](https://jonpayneea.github.io/PDMS7/reference/rainfall_field.md)
+  : One step's rainfall field on a grid
+- [`h19_radar()`](https://jonpayneea.github.io/PDMS7/reference/h19_radar.md)
+  : Gridded H19 radar for merging with gauges
+
 ## Recession analysis
 
 How fast flow falls against how high it is, and the groundwater store it

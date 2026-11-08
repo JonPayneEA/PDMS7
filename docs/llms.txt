@@ -86,6 +86,10 @@ Model options:
 
 Calibration:
 
+- [Automatic calibration from start to
+  finish](https://jonpayneea.github.io/PDMS7/articles/calibration-journey.html):
+  the whole journey in plain English, from the data to sign-off, with
+  flow diagrams of each step and a small calibration run live
 - [Calibration: multi-start, budgets and staged
   calibration](https://jonpayneea.github.io/PDMS7/articles/calibration.html)
 - [Automatic calibration,
@@ -115,6 +119,11 @@ Calibration:
   plain English, why a good score can hide bad floods, and how to find,
   check, calibrate and inspect the events, and what the record can say
   about the model’s structure
+- [Catchment rainfall from gauges and
+  radar](https://jonpayneea.github.io/PDMS7/articles/rainfall.html):
+  Thiessen polygons, multiquadric surfaces and conditional merging of
+  gauges with radar, shown on a made-up storm, with how to judge them
+  and how to read H19 radar
 - [A large sample: what automatic calibration
   recovers](https://jonpayneea.github.io/PDMS7/articles/large-sample.html):
   30 synthetic catchments, each with its own climate and known truth,
@@ -738,6 +747,20 @@ model scores event by event.
   [`run_events()`](https://jonpayneea.github.io/PDMS7/reference/event_states.md)
   : Rerun events on their own, from saved states
 
+## Catchment rainfall
+
+Catchment-average rain from gauges and radar, by Thiessen polygons,
+multiquadric interpolation or conditional merging.
+
+- [`merge_rainfall()`](https://jonpayneea.github.io/PDMS7/reference/merge_rainfall.md)
+  [`rainfall_cross_validation()`](https://jonpayneea.github.io/PDMS7/reference/merge_rainfall.md)
+  [`catchment_mask()`](https://jonpayneea.github.io/PDMS7/reference/merge_rainfall.md)
+  : Catchment rainfall from gauges and radar
+- [`rainfall_field()`](https://jonpayneea.github.io/PDMS7/reference/rainfall_field.md)
+  : One step's rainfall field on a grid
+- [`h19_radar()`](https://jonpayneea.github.io/PDMS7/reference/h19_radar.md)
+  : Gridded H19 radar for merging with gauges
+
 ## Recession analysis
 
 How fast flow falls against how high it is, and the groundwater store it
@@ -820,10 +843,14 @@ State correction and ARMA error prediction (Moore 2007, Eq. 28-42).
 
 ### Calibration
 
+- [Automatic calibration from start to
+  finish](https://jonpayneea.github.io/PDMS7/articles/calibration-journey.md):
 - [Calibration: multi-start, budgets and staged
   calibration](https://jonpayneea.github.io/PDMS7/articles/calibration.md):
 - [Getting the floods
   right](https://jonpayneea.github.io/PDMS7/articles/floods.md):
+- [Catchment rainfall from gauges and
+  radar](https://jonpayneea.github.io/PDMS7/articles/rainfall.md):
 - [Automatic calibration,
   explained](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.md):
 - [Scoring a simulation: from NSE to POD, FAR and

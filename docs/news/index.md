@@ -28,6 +28,40 @@
   median peak error on the largest validation events wins, then fewer
   parameters. Each step’s choice and reason is written to the log as a
   note. The choosing a structure article has a new section on it.
+- **Catchment rainfall from gauges and radar.**
+  [`merge_rainfall()`](https://jonpayneea.github.io/PDMS7/reference/merge_rainfall.md)
+  builds catchment-average rain by Thiessen polygons, multiquadric
+  interpolation of the gauges (Hardy, 1971), or conditional merging of
+  gauges and gridded radar (Sinclair and Pegram, 2005) with multiquadric
+  surfaces: the gauges set the level, the radar the storm’s shape
+  between them.
+  [`rainfall_cross_validation()`](https://jonpayneea.github.io/PDMS7/reference/merge_rainfall.md)
+  leaves out each gauge in turn and chooses the multiquadric shape
+  parameter;
+  [`catchment_mask()`](https://jonpayneea.github.io/PDMS7/reference/merge_rainfall.md)
+  finds the grid cells inside a catchment boundary. Radar can be passed
+  as a function returning one step’s grid, so a long record need not be
+  held in memory. On a synthetic storm field, conditional merging
+  matched the true catchment total within 1% with a correlation of 0.98,
+  against 0.78 for Thiessen.
+- [`rainfall_field()`](https://jonpayneea.github.io/PDMS7/reference/rainfall_field.md)
+  gives one step’s rain field on the grid, for mapping a storm.
+- **New article: “Catchment rainfall from gauges and radar”.** Why rain
+  is the main error, the three methods shown on a made-up storm (maps
+  and cross-sections), checks at the gauges, over the catchment and
+  through the river, and how to use H19 radar.
+- [`h19_radar()`](https://jonpayneea.github.io/PDMS7/reference/h19_radar.md)
+  reads gridded H19 radar from the archive’s daily NetCDF files (either
+  variable name, 2010 to 2019 or 2021 on), crops it to an extent and
+  hands
+  [`merge_rainfall()`](https://jonpayneea.github.io/PDMS7/reference/merge_rainfall.md)
+  one 15-minute grid at a time, loading each day once. `terra` and
+  `ncdf4` are suggested packages.
+- **New article: “Automatic calibration from start to finish”.** The
+  whole calibration in plain English, with flow diagrams: the record’s
+  windows, the search loop, choosing the structure, the four stages, the
+  checks and where each failure leads, the last steps and the log. A
+  small calibration runs live through every step.
 - **New article: “Getting the floods right”.** A plain-English walk
   through why a good score can hide bad floods, and the tools against
   it: finding and screening events, the acceptance checks, the events

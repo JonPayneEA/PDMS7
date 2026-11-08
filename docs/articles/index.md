@@ -29,10 +29,14 @@
 
 ### Calibration
 
+- [Automatic calibration from start to
+  finish](https://jonpayneea.github.io/PDMS7/articles/calibration-journey.md):
 - [Calibration: multi-start, budgets and staged
   calibration](https://jonpayneea.github.io/PDMS7/articles/calibration.md):
 - [Getting the floods
   right](https://jonpayneea.github.io/PDMS7/articles/floods.md):
+- [Catchment rainfall from gauges and
+  radar](https://jonpayneea.github.io/PDMS7/articles/rainfall.md):
 - [Automatic calibration,
   explained](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.md):
 - [Scoring a simulation: from NSE to POD, FAR and
