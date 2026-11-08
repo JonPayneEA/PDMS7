@@ -2,9 +2,15 @@
 % Please edit documentation in R/recession.R
 \name{plot_recession}
 \alias{plot_recession}
+\alias{plot.pdm_recession}
+\alias{autoplot.pdm_recession}
 \title{Plot a recession analysis}
 \usage{
 plot_recession(x, y = NULL, main = "Recession analysis")
+
+\method{plot}{pdm_recession}(x, ...)
+
+\method{autoplot}{pdm_recession}(object, ...)
 }
 \arguments{
 \item{x}{A result of \code{\link[=recession_analysis]{recession_analysis()}}.}
@@ -12,6 +18,11 @@ plot_recession(x, y = NULL, main = "Recession analysis")
 \item{y}{Optional second result to compare, drawn in orange.}
 
 \item{main}{Plot title.}
+
+\item{...}{For \code{autoplot()}: \code{y} and \code{main}, as for \code{plot_recession()}. For \code{plot()}: the
+same.}
+
+\item{object}{A result of \code{\link[=recession_analysis]{recession_analysis()}}.}
 }
 \value{
 \code{x}, invisibly.

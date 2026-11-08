@@ -191,8 +191,21 @@ reference:
   - fit_rain
   - rain_parameters
   - rain_statistics
+- title: Preparing data
+  desc: Read hydrometric exports, align them, convert units, fill gaps and check the result; each step is noted and recorded in the calibration log.
+  contents:
+  - read_hydro_series
+  - align_series
+  - convert_units
+  - fill_gaps
+  - zero_negatives
+  - check_inputs
+  - preparation_notes
 - title: Calibration
   contents:
+  - calibrate_project
+  - candidate_model
+  - event_run
   - calibrate_pdm
   - calibrate_staged
   - pdm_stages
@@ -244,6 +257,13 @@ reference:
   - merge_rainfall
   - rainfall_field
   - h19_radar
+- title: Standard visuals
+  desc: The house style (Okabe-Ito colours with fixed meanings), figure sizes for screens, reports, slides and journals, and the standard run plots in base R and ggplot2.
+  contents:
+  - pdm_colours
+  - theme_pdm
+  - pdm_save
+  - pdm_series
 - title: Recession analysis
   desc: How fast flow falls against how high it is, and the groundwater store it points to.
   contents:

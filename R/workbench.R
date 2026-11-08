@@ -114,17 +114,21 @@ workbench_try <- function(wb, changes) {
 #' @rdname event_workbench
 #' @export
 plot_workbench <- function(wb, trial = NULL, ncol = 2L) {
-  .check(inherits(wb, "pdm_workbench"), "wb must come from event_workbench()")
-  n <- nrow(wb$events)
-  old <- graphics::par(mfrow = c(ceiling(n / ncol), ncol), mar = c(2.2, 3.6, 2.2, 0.6),
-                       oma = c(0, 0, 1.6, 0))
-  on.exit(graphics::par(old), add = TRUE)
-  for (e in seq_len(n)) .plot_workbench_event(wb, trial, e)
-  label <- if (is.null(trial)) "" else
-    paste0("  |  orange: ", paste(names(trial$changes), signif(trial$changes, 3), sep = " = ",
-                                  collapse = ", "))
-  graphics::mtext(paste0("Entry ", wb$parent, " (blue)", label), outer = TRUE, cex = 0.85)
+  .draw_base(.workbench_spec(wb, trial, ncol))
   invisible(wb)
+}
+
+#' @rdname event_workbench
+#' @param x,object A workbench from `event_workbench()`.
+#' @param ... For `plot()` and `autoplot()`: `trial` and `ncol`, as for `plot_workbench()`.
+#' @export
+plot.pdm_workbench <- function(x, ...) plot_workbench(x, ...)
+
+#' @rdname event_workbench
+#' @exportS3Method ggplot2::autoplot
+autoplot.pdm_workbench <- function(object, ...) {
+  args <- list(...)
+  .draw_gg(.workbench_spec(object, args$trial, args$ncol %||% 2L))
 }
 
 #' @export
@@ -215,36 +219,48 @@ print.pdm_workbench <- function(x, ...) {
   }))
 }
 
-# One panel: rain hanging from the top, observed flow, the starting run and the trial, from the
-# start of the rain to the end of the event's tail.
-.plot_workbench_event <- function(wb, trial, e) {
+# One panel per event: rain hanging from the top, observed flow, the starting run and the
+# trial, from the start of the rain to the end of the event's tail.
+.workbench_spec <- function(wb, trial, ncol) {
+  .check(inherits(wb, "pdm_workbench"), "wb must come from event_workbench()")
+  parts <- lapply(seq_len(nrow(wb$events)), function(e) .workbench_panel(wb, trial, e))
+  changes <- if (is.null(trial)) "" else paste0(": ", paste(
+    names(trial$changes), signif(trial$changes, 3), sep = " = ", collapse = ", "
+  ))
+  list(
+    series = do.call(rbind, lapply(parts, `[[`, "series")),
+    rain = do.call(rbind, lapply(parts, `[[`, "rain")), rain_axis = FALSE,
+    panels = data.frame(panel = seq_along(parts), title = vapply(parts, `[[`, "", "title")),
+    ncol = ncol, xlab = "", ylab = "Flow (m3/s)", log = "",
+    title = paste0("Entry ", wb$parent, if (is.null(trial)) "" else " and trial", changes)
+  )
+}
+
+.workbench_panel <- function(wb, trial, e) {
   ev <- wb$events[e, ]
   rows <- seq.int(wb$saved$first[e], wb$saved$last[e])
   shown <- rows >= min(ev$rain_start, ev$flow_start) - round(12 / wb$model@dt)
   x <- if (is.null(wb$time)) rows[shown] else wb$time[rows[shown]]
-  obs <- wb$observed[rows[shown]]
-  base <- wb$base[[e]][shown]
-  tri <- if (is.null(trial)) NULL else trial$runs[[e]][shown]
-  top <- max(c(obs, base, tri), na.rm = TRUE)
-  graphics::plot(x, obs, type = "n", ylim = c(0, top * 1.35), xlab = "", ylab = "m3/s",
-                 las = 1, cex.axis = 0.8)
-  rain <- wb$forcing$rain[rows[shown]]
-  if (any(rain > 0)) {
-    scale <- 0.3 * top / max(rain)
-    graphics::rect(x, top * 1.35 - rain * scale, c(x[-1], x[length(x)]), top * 1.35,
-                   col = grDevices::adjustcolor(.pal[["blue"]], 0.35), border = NA)
-  }
-  graphics::points(x, obs, pch = 16, cex = 0.5, col = .pal[["grey"]])
-  graphics::lines(x, base, col = .pal[["blue"]], lwd = 1.5)
+  series <- rbind(
+    .layer(x, wb$observed[rows[shown]], "Observed", .pdm_roles[["observed"]], geom = "point",
+           lwd = 1.1, panel = e),
+    .layer(x, wb$base[[e]][shown], paste("Entry", wb$parent), .pdm_roles[["simulated"]],
+           panel = e),
+    if (!is.null(trial)) {
+      .layer(x, trial$runs[[e]][shown], "Trial", .pdm_roles[["alternative"]], panel = e)
+    }
+  )
+  step <- if (is.null(wb$time)) 1 else wb$model@dt * 3600
   s <- wb$scores[e, ]
   title <- sprintf("%s  peak %+.0f%%, %+.1f h",
                    if (is.null(wb$time)) paste("row", ev$peak_row) else
                      format(wb$time[ev$peak_row], "%d %b %Y"),
                    100 * s$peak_error, s$timing_error_h)
-  if (!is.null(tri)) {
-    graphics::lines(x, tri, col = .pal[["orange"]], lwd = 1.5)
+  if (!is.null(trial)) {
     t <- trial$scores[e, ]
     title <- sprintf("%s -> %+.0f%%, %+.1f h", title, 100 * t$peak_error, t$timing_error_h)
   }
-  graphics::title(title, cex.main = 0.85, font.main = 1)
+  list(series = series, title = title,
+       rain = .rain_layer(x - step, x, wb$forcing$rain[rows[shown]],
+                          max(series$y, na.rm = TRUE), panel = e))
 }

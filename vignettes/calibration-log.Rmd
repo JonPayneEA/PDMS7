@@ -177,7 +177,7 @@ The headline score weighs every time step alike, so a change that sharpens the f
 barely move it. `event_workbench()` gathers a run's largest events, ten unless you choose
 another number, screened for rises lost in the baseflow and gaps. `workbench_try()` reruns
 them with a change, in a fraction of a second, and `plot_workbench()` draws them before
-(blue) and after (orange), with each event's peak and timing errors in its title:
+(blue) and after (vermillion), with each event's peak and timing errors in its title:
 
 ```{r workbench, fig.height=6, fig.cap="The four largest calibration events of the automatic calibration, and the same with a one-hour time delay."}
 wb <- event_workbench(project, entry = auto$id, n = 4)

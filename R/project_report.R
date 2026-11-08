@@ -167,6 +167,13 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
                                  ". The soil store starts at ", card$soil_fraction,
                                  " of capacity."))
     ))
+    if (length(r$preparation)) {
+      prep <- do.call(rbind, lapply(r$preparation, as.data.frame))
+      out <- c(out, list(.blk_table(prep, paste(
+        "Preparation: what was done to the series before registration, as noted by the",
+        "preparation functions."
+      ))))
+    }
     out <- c(out, .rpt_held(r))
     if (length(card$thresholds)) {
       out <- c(out, list(.blk_table(.threshold_definitions(card), paste0(

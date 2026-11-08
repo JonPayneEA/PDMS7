@@ -4,6 +4,8 @@
 \alias{event_workbench}
 \alias{workbench_try}
 \alias{plot_workbench}
+\alias{plot.pdm_workbench}
+\alias{autoplot.pdm_workbench}
 \title{Events workbench}
 \usage{
 event_workbench(
@@ -17,6 +19,10 @@ event_workbench(
 workbench_try(wb, changes)
 
 plot_workbench(wb, trial = NULL, ncol = 2L)
+
+\method{plot}{pdm_workbench}(x, ...)
+
+\method{autoplot}{pdm_workbench}(object, ...)
 }
 \arguments{
 \item{project}{A calibration project folder.}
@@ -39,6 +45,10 @@ the latest model entry if there is none.}
 \item{trial}{A result of \code{workbench_try()} to draw beside the starting run.}
 
 \item{ncol}{Panels per row.}
+
+\item{x, object}{A workbench from \code{event_workbench()}.}
+
+\item{...}{For \code{plot()} and \code{autoplot()}: \code{trial} and \code{ncol}, as for \code{plot_workbench()}.}
 }
 \value{
 \code{event_workbench()}: a \code{pdm_workbench} list with the project path, the starting

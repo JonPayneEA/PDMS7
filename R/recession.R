@@ -250,35 +250,57 @@ recession_analysis <- function(flow, rain = NULL, dt = 1, time = NULL, aggregate
 #' # See recession_analysis().
 #' @export
 plot_recession <- function(x, y = NULL, main = "Recession analysis") {
+  .draw_base(.recession_spec(x, y, main))
+  invisible(x)
+}
+
+#' @rdname plot_recession
+#' @param object A result of [recession_analysis()].
+#' @param ... For `autoplot()`: `y` and `main`, as for `plot_recession()`. For `plot()`: the
+#'   same.
+#' @export
+plot.pdm_recession <- function(x, ...) plot_recession(x, ...)
+
+#' @rdname plot_recession
+#' @exportS3Method ggplot2::autoplot
+autoplot.pdm_recession <- function(object, ...) {
+  args <- list(...)
+  .draw_gg(.recession_spec(object, args$y, args$main %||% "Recession analysis"))
+}
+
+# The recession points (faint), the binned means, each fitted line, and dotted reference lines
+# with the slopes of the linear, cubic and exponential stores through the middle of the bins.
+.recession_spec <- function(x, y, main) {
   .check(inherits(x, "pdm_recession"), "x must come from recession_analysis()")
   .check(is.null(y) || inherits(y, "pdm_recession"), "y must come from recession_analysis()")
   all <- c(list(x), if (!is.null(y)) list(y))
-  q <- unlist(lapply(all, function(r) r$points$flow))
-  rate <- unlist(lapply(all, function(r) r$points$rate))
-  graphics::plot(q, rate, log = "xy", type = "n", xlab = "Flow Q (m3/s)",
-                 ylab = "Rate of fall -dQ/dt (m3/s per hour)", main = main, las = 1)
-  draw <- function(r, col, label) {
-    graphics::points(r$points$flow, r$points$rate, pch = 16, cex = 0.35,
-                     col = grDevices::adjustcolor(col, 0.25))
-    graphics::points(r$bins$flow, r$bins$rate, pch = 21, bg = col, col = "white", cex = 1.2)
-    graphics::abline(r$intercept, r$slope, col = col, lwd = 2, untf = FALSE)
-    sprintf("%s: slope %.2f (%.2f to %.2f)", label, r$slope, r$ci[1], r$ci[2])
-  }
-  # abline on log axes takes the line in log10 units; refit the intercept to base 10.
-  to10 <- function(r) {
-    r$intercept <- r$intercept / log(10)
-    r
-  }
-  labels <- draw(to10(x), "#236b83", if (is.null(y)) "observed" else "first")
-  if (!is.null(y)) labels <- c(labels, draw(to10(y), "#a26421", "second"))
+  roles <- c("observed", "simulated")[seq_along(all)]
+  names <- if (is.null(y)) "Observed" else c("First", "Second")
+  layers <- lapply(seq_along(all), function(i) {
+    r <- all[[i]]
+    col <- .pdm_roles[[roles[i]]]
+    q <- exp(seq(log(min(r$bins$flow)), log(max(r$bins$flow)), length.out = 20))
+    rbind(
+      .layer(r$points$flow, r$points$rate, paste0(".", names[i], " points"),
+             grDevices::adjustcolor(col, 0.25), geom = "point", lwd = 0.8),
+      .layer(r$bins$flow, r$bins$rate, paste0(".", names[i], " bins"), col, geom = "point",
+             lwd = 2.6),
+      .layer(q, exp(r$intercept) * q^r$slope,
+             sprintf("%s: slope %.2f (%.2f to %.2f)", names[i], r$slope, r$ci[1], r$ci[2]),
+             col, lwd = 2)
+    )
+  })
   mid <- exp(mean(log(x$bins$flow)))
   at <- x$bins$rate[which.min(abs(log(x$bins$flow) - log(mid)))]
-  for (s in c(linear = 1, cubic = 5 / 3, exponential = 2)) {
-    graphics::abline(log10(at) - s * log10(mid), s, lty = 3, col = "grey50")
-  }
-  graphics::legend("topleft", c(labels, "store slopes 1, 1.67, 2"), bty = "n", cex = 0.8,
-                   text.col = c("#236b83", if (!is.null(y)) "#a26421", "grey40"))
-  invisible(x)
+  q <- range(unlist(lapply(all, function(r) r$points$flow)))
+  q <- exp(seq(log(q[1]), log(q[2]), length.out = 20))
+  guide <- unlist(lapply(c(1, 5 / 3, 2), function(s) c(at * (q / mid)^s, NA)))
+  layers[[length(layers) + 1L]] <- .layer(
+    rep(c(q, NA), 3), guide, "Store slopes 1, 1.67, 2", .pdm_roles[["reference"]], lty = 3,
+    lwd = 1
+  )
+  list(series = do.call(rbind, layers), xlab = "Flow Q (m3/s)",
+       ylab = "Rate of fall -dQ/dt (m3/s per hour)", log = "xy", title = main)
 }
 
 #' @export

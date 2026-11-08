@@ -325,6 +325,7 @@ hindcast_scores <- function(hindcast, thresholds = NULL, response_time_h = NULL)
   first <- c("method", "lead_h", "lead_ratio", "n", "nse", "rmse", "mae", "bias", "skill")
   data.table::setcolorder(scores, c(first, setdiff(names(scores), first)))
   data.table::setorderv(scores, c("method", "lead_h"))
+  class(scores) <- c("pdm_hindcast_scores", class(scores))
   scores
 }
 
@@ -362,7 +363,7 @@ hindcast_scores <- function(hindcast, thresholds = NULL, response_time_h = NULL)
 #' @param ratio If `TRUE`, plot against lead time over time to peak instead of hours.
 #' @param methods Methods to show; default all.
 #' @param col Line colours, one per method.
-#' @param legend Legend position, as in [graphics::legend()].
+#' @param legend Kept so older code still runs; the legend now always sits below the plot.
 #' @param ylim Optional y-axis limits. Skill can be very negative at the shortest lead times,
 #'   which flattens the rest of the chart; `c(-1, 1)` is often clearer.
 #'
@@ -377,29 +378,45 @@ hindcast_scores <- function(hindcast, thresholds = NULL, response_time_h = NULL)
 #' @export
 plot_hindcast <- function(scores, metric = "skill", ratio = FALSE, methods = NULL,
                           col = NULL, ylim = NULL, legend = "bottomright") {
+  .draw_base(.hindcast_spec(scores, metric, ratio, methods, col, ylim))
+  invisible(scores)
+}
+
+#' @rdname plot_hindcast
+#' @param x,object A [hindcast_scores()] result.
+#' @param ... For `plot()` and `autoplot()`: the other arguments of `plot_hindcast()`.
+#' @export
+plot.pdm_hindcast_scores <- function(x, ...) plot_hindcast(x, ...)
+
+#' @rdname plot_hindcast
+#' @exportS3Method ggplot2::autoplot
+autoplot.pdm_hindcast_scores <- function(object, ...) {
+  a <- list(...)
+  .draw_gg(.hindcast_spec(object, a$metric %||% "skill", isTRUE(a$ratio), a$methods, a$col,
+                          a$ylim))
+}
+
+# One line per method against lead time, with a dashed zero line for skill.
+.hindcast_spec <- function(scores, metric, ratio, methods, col, ylim) {
   .check(is.data.frame(scores) && metric %in% names(scores),
          paste("scores has no column", metric))
   methods <- methods %||% unique(scores$method)
-  if (metric == "skill") {
-    methods <- setdiff(methods, "persistence")
-  }
-  col <- col %||% c("#444444", "#236b83", "#a26421", "#5b8c3a", "#8a3b6b", "#b23b3b",
-                    "#9aa7b0")[seq_along(methods)]
+  if (metric == "skill") methods <- setdiff(methods, "persistence")
+  col <- col %||% pdm_palette(min(length(methods), 8L))
+  col <- rep_len(col, length(methods))
   x <- if (ratio) scores$lead_ratio else scores$lead_h
   .check(!ratio || any(is.finite(x)), "scores have no lead_ratio")
   y <- scores[[metric]]
-  keep <- scores$method %in% methods
-  graphics::plot(range(x[keep], na.rm = TRUE), ylim %||% range(y[keep], na.rm = TRUE),
-                 type = "n",
-                 xlab = if (ratio) "Lead time / time to peak" else "Lead time (h)",
-                 ylab = metric)
-  if (metric == "skill") {
-    graphics::abline(h = 0, col = "#9aa7b0", lty = 2)
-  }
-  for (i in seq_along(methods)) {
+  series <- do.call(rbind, lapply(seq_along(methods), function(i) {
     rows <- scores$method == methods[i]
-    graphics::lines(x[rows], y[rows], col = col[i], lwd = 1.8)
-  }
-  graphics::legend(legend, methods, col = col, lwd = 1.8, bty = "n")
-  invisible(scores)
+    .layer(x[rows], y[rows], methods[i], col[i], lwd = 1.8)
+  }))
+  list(
+    series = series, ylim = ylim, log = "",
+    hlines = if (metric == "skill") {
+      data.frame(panel = 1L, y = 0, label = "", colour = .pdm_roles[["reference"]])
+    },
+    xlab = if (ratio) "Lead time / time to peak" else "Lead time (h)", ylab = metric,
+    title = paste("Hindcast", metric, "by lead time")
+  )
 }
