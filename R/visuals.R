@@ -197,6 +197,10 @@ pdm_save <- function(plot, file, preset = "screen", width = NULL, height = NULL,
 #   panels  data frame: panel, title (panel titles), or NULL for a single panel
 #   xlab, ylab, title, subtitle, log ("" or "y" or "xy"), ncol (panels per row), ylim
 #   legend  labels in legend order, or NULL for their order of appearance
+#   xlim    x range, or NULL for the data's
+#   zero    FALSE to let a linear y axis start where the data do, rather than at zero
+#   xticks, yticks  list(at, labels) for labelled positions, such as stages or parameter names
+# geom "open" draws hollow points, used for screened-out or secondary values.
 # Series are drawn in the order of their rows, so later rows sit on top.
 # A series label starting with "." is drawn but left out of the legend.
 
@@ -237,8 +241,8 @@ pdm_save <- function(plot, file, preset = "screen", width = NULL, height = NULL,
   layout <- if (length(panels) > 1L) c(ceiling(length(panels) / ncol), ncol) else c(1, 1)
   single <- length(panels) == 1L
   old <- .pdm_par(mfrow = layout, oma = c(if (single) 0 else 2.4, 0, if (single) 0 else 2, 0),
-                  mar = c(if (single) 5.2 else 2.6, if (grepl("y", spec$log %||% "")) 5.4 else 4.2,
-                          2.6, if (single) 4.2 else 1))
+                  mar = c(if (single) 5.2 else 2.6, .left_margin(spec), 2.6,
+                          if (single) 4.2 else 1))
   on.exit(graphics::par(old), add = TRUE)
   for (p in panels) .draw_base_panel(spec, p, single = length(panels) == 1L)
   if (length(panels) > 1L && !is.null(spec$title)) {
@@ -253,7 +257,7 @@ pdm_save <- function(plot, file, preset = "screen", width = NULL, height = NULL,
   hlines <- .panel_rows(spec$hlines, p)
   rain <- .panel_rows(spec$rain, p)
   log <- spec$log %||% ""
-  xlim <- range(s$x[is.finite(as.numeric(s$x))])
+  xlim <- spec$xlim %||% range(s$x[is.finite(as.numeric(s$x))])
   .base_frame(spec, p, single, xlim, .base_ylim(spec, s, hlines, rain))
   .draw_base_bands(.panel_rows(spec$bands, p), log)
   if (!is.null(rain)) .draw_base_rain(rain, axis = single && isTRUE(spec$rain_axis))
@@ -276,7 +280,7 @@ pdm_save <- function(plot, file, preset = "screen", width = NULL, height = NULL,
   ok <- is.finite(s$y) & (!grepl("y", log) | s$y > 0)
   ylim <- range(c(s$y[ok], hlines$y), na.rm = TRUE)
   if (!is.null(rain)) ylim[2] <- rain$top[1]
-  if (log == "") ylim[1] <- min(0, ylim[1])
+  if (log == "" && !isFALSE(spec$zero)) ylim[1] <- min(0, ylim[1])
   ylim
 }
 
@@ -284,16 +288,29 @@ pdm_save <- function(plot, file, preset = "screen", width = NULL, height = NULL,
 .base_frame <- function(spec, p, single, xlim, ylim) {
   log <- spec$log %||% ""
   title <- if (single) spec$title else spec$panels$title[spec$panels$panel == p]
+  custom <- c(grepl("x", log) || !is.null(spec$xticks), grepl("y", log) || !is.null(spec$yticks))
   graphics::plot(xlim, ylim, type = "n", log = log, xlab = if (single) spec$xlab else "",
-                 ylab = "", main = title %||% "",
-                 xaxt = if (grepl("x", log)) "n" else "s",
-                 yaxt = if (grepl("y", log)) "n" else "s")
-  for (side in which(c(grepl("x", log), grepl("y", log)))) {
-    at <- graphics::axTicks(side)
-    graphics::axis(side, at = at, labels = .plain_numbers(at))
-  }
+                 ylab = "", main = title %||% "", xaxt = if (custom[1]) "n" else "s",
+                 yaxt = if (custom[2]) "n" else "s")
+  for (side in which(custom)) .base_axis(side, list(spec$xticks, spec$yticks)[[side]])
   if (single || (p - 1L) %% (spec$ncol %||% 2L) == 0L) .base_ylab(spec$ylab)
   .base_grid(log)
+}
+
+# An axis with given labelled positions, or plain-number labels on a log axis.
+.base_axis <- function(side, ticks) {
+  if (is.null(ticks)) {
+    at <- graphics::axTicks(side)
+    return(graphics::axis(side, at = at, labels = .plain_numbers(at)))
+  }
+  graphics::axis(side, at = ticks$at, labels = ticks$labels, cex.axis = 0.75,
+                 las = if (side == 2) 1 else 0, tick = side == 1)
+}
+
+# Room on the left for the y labels: wider for log axes, wider still for named positions.
+.left_margin <- function(spec) {
+  if (!is.null(spec$yticks)) return(max(4.2, 0.45 * max(nchar(spec$yticks$labels)) + 1))
+  if (grepl("y", spec$log %||% "")) 5.4 else 4.2
 }
 
 .draw_base_bands <- function(bands, log) {
@@ -351,8 +368,9 @@ pdm_save <- function(plot, file, preset = "screen", width = NULL, height = NULL,
 .draw_base_series <- function(s) {
   for (label in unique(s$label)) {
     one <- s[s$label == label, ]
-    if (one$geom[1] == "point") {
-      graphics::points(one$x, one$y, pch = 16, cex = 0.45 * one$lwd[1], col = one$colour[1])
+    if (one$geom[1] %in% c("point", "open")) {
+      graphics::points(one$x, one$y, pch = if (one$geom[1] == "open") 1 else 16,
+                       cex = 0.45 * one$lwd[1], col = one$colour[1])
     } else {
       graphics::lines(one$x, one$y, col = one$colour[1], lty = one$lty[1], lwd = one$lwd[1],
                       type = if (one$geom[1] == "step") "s" else "l")
@@ -366,7 +384,7 @@ pdm_save <- function(plot, file, preset = "screen", width = NULL, height = NULL,
   bands <- if (is.null(spec$bands)) NULL else unique(spec$bands[, c("label", "fill")])
   labels <- c(keys$label, bands$label)
   if (!length(labels)) return(invisible())
-  point <- keys$geom == "point"
+  point <- keys$geom %in% c("point", "open")
   nb <- length(bands$label)
   graphics::par(fig = c(0, 1, 0, 1), oma = c(0, 0, 0, 0), mar = c(0.3, 0, 0, 0), new = TRUE)
   graphics::plot.new()
@@ -374,7 +392,8 @@ pdm_save <- function(plot, file, preset = "screen", width = NULL, height = NULL,
     "bottom", legend = paste0(labels, "    "), horiz = TRUE, bty = "n", cex = 0.8, xpd = NA,
     text.width = NA,
     col = c(keys$colour, bands$fill), lty = c(ifelse(point, NA, keys$lty), rep(NA, nb)),
-    lwd = c(keys$lwd, rep(NA, nb)), pch = c(ifelse(point, 16, NA), rep(15, nb)),
+    lwd = c(keys$lwd, rep(NA, nb)),
+    pch = c(ifelse(point, ifelse(keys$geom == "open", 1, 16), NA), rep(15, nb)),
     pt.cex = c(rep(1, nrow(keys)), rep(1.8, nb))
   )
 }
@@ -426,12 +445,19 @@ utils::globalVariables(c("x", "y", "xmin", "xmax", "label", "segment", "panel", 
     }
   }
   shown <- .legend_keys(spec)$label
+  # Both scales get the same limits and breaks, so their legends merge into one.
   g <- g + ggplot2::scale_colour_manual(values = stats::setNames(keys$colour, keys$label),
-                                        breaks = shown) +
-    ggplot2::scale_linetype_manual(values = stats::setNames(keys$lty, keys$label),
-                                   breaks = shown)
+                                        breaks = shown, limits = keys$label)
+  # The same breaks as the colour scale, so the two legends merge; none at all for a plot of
+  # points only, which has no line types to map.
+  if (any(keys$geom %in% c("line", "step"))) {
+    g <- g + ggplot2::scale_linetype_manual(values = stats::setNames(keys$lty, keys$label),
+                                            breaks = shown, limits = keys$label)
+  }
   g <- .gg_scales(g, spec)
-  if (!is.null(spec$ylim)) g <- g + ggplot2::coord_cartesian(ylim = spec$ylim)
+  if (!is.null(spec$ylim) || !is.null(spec$xlim)) {
+    g <- g + ggplot2::coord_cartesian(xlim = spec$xlim, ylim = spec$ylim)
+  }
   g + ggplot2::labs(x = spec$xlab, y = spec$ylab, title = spec$title, subtitle = spec$subtitle) +
     theme_pdm()
 }
@@ -440,9 +466,10 @@ utils::globalVariables(c("x", "y", "xmin", "xmax", "label", "segment", "panel", 
 .gg_series <- function(g, s) {
   for (label in unique(s$label)) {
     one <- s[s$label == label, ]
-    if (one$geom[1] == "point") {
+    if (one$geom[1] %in% c("point", "open")) {
       g <- g + ggplot2::geom_point(data = one, ggplot2::aes(x, y, colour = label),
-                                   size = 0.5 * one$lwd[1], shape = 16)
+                                   size = 0.5 * one$lwd[1],
+                                   shape = if (one$geom[1] == "open") 1 else 16)
     } else {
       g <- g + ggplot2::geom_line(
         data = one,
@@ -460,6 +487,9 @@ utils::globalVariables(c("x", "y", "xmin", "xmax", "label", "segment", "panel", 
   log_x <- grepl("x", spec$log %||% "")
   log_y <- grepl("y", spec$log %||% "")
   if (log_x) g <- g + ggplot2::scale_x_log10(labels = .plain_numbers)
+  if (!is.null(spec$xticks)) {
+    g <- g + ggplot2::scale_x_continuous(breaks = spec$xticks$at, labels = spec$xticks$labels)
+  }
   if (length(panels) > 1L) {
     titles <- stats::setNames(spec$panels$title, spec$panels$panel)
     g <- g + ggplot2::facet_wrap(ggplot2::vars(panel), scales = "free",
@@ -479,5 +509,19 @@ utils::globalVariables(c("x", "y", "xmin", "xmax", "label", "segment", "panel", 
                                    breaks = .rain_breaks(rain$depth))
     ))
   }
-  g + ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = c(0, 0.04)))
+  .gg_linear_y(g, spec)
+}
+
+# A linear y axis: named positions if given; otherwise flows start at zero, as in base R, and
+# scores and errors get a margin below.
+.gg_linear_y <- function(g, spec) {
+  if (!is.null(spec$yticks)) {
+    return(g + ggplot2::scale_y_continuous(breaks = spec$yticks$at,
+                                           labels = spec$yticks$labels))
+  }
+  y <- spec$series$y[is.finite(spec$series$y)]
+  floor <- !isFALSE(spec$zero) && length(y) && min(y) >= 0
+  if (floor) g <- g + ggplot2::expand_limits(y = 0)
+  below <- if (floor) 0 else 0.04
+  g + ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = c(below, 0.04)))
 }

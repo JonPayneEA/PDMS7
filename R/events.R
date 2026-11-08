@@ -409,7 +409,7 @@ find_events <- function(rain, flow, time = NULL, dt = 1, rain_min = NULL,
   attr(out, "rain_min") <- rain_min
   attr(out, "dt") <- dt
   attr(out, "baseflow") <- totals$baseflow
-  out
+  .as_events(out)
 }
 
 # The R reference for pdm_event_summary(): per event, rain depth, the peak's 0-based row, the
@@ -474,7 +474,7 @@ event_scores <- function(events, simulated, observed, dt = attr(events, "dt") %|
   out <- cbind(events, as.data.frame(scores))
   attributes(out)[c("response", "rain_min", "dt")] <- attributes(events)[c("response",
                                                                            "rain_min", "dt")]
-  out
+  .as_events(out)
 }
 
 # The R reference for pdm_event_scores(): one row of six scores per event.

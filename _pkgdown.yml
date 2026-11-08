@@ -264,6 +264,9 @@ reference:
   - theme_pdm
   - pdm_save
   - pdm_series
+  - calibration_path
+  - plot.pdm_calibration_checks
+  - plot.pdm_events
 - title: Recession analysis
   desc: How fast flow falls against how high it is, and the groundwater store it points to.
   contents:

@@ -77,7 +77,7 @@ calibration_checks <- function(project, entry = NULL, top = 20L, edge = 0.01, ra
   events <- scored$events
   summary <- do.call(rbind, lapply(c("calibration", "validation", "wettest", "outside"),
                                    function(period) .event_summary(events, period, top)))
-  structure(list(parameters = parameters, events = events, summary = summary,
+  structure(list(parameters = parameters, events = .as_events(events), summary = summary,
                  response_h = c(observed = scored$basin$response_observed_h,
                                 simulated = scored$basin$response_simulated_h)),
             class = "pdm_calibration_checks")
