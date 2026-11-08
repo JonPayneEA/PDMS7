@@ -1,3 +1,31 @@
+# pdmS7 0.14.0
+
+Standard visuals, part 1 of 4: the house style and the run diagnostics.
+
+- **House style.** Every standard plot uses the Okabe-Ito colours, which stay distinct with the
+  common forms of colour blindness, and gives each colour one meaning: observed flow black,
+  the model blue, rain sky blue, a second run or a change vermillion, the calibration and
+  validation windows light grey and light orange, thresholds dashed reddish purple.
+  `pdm_colours()` returns them by role for your own figures, and `pdm_palette()` gives a fixed
+  order for series of equal standing. The previous palette's green and red become almost
+  identical to a reader with red-green colour blindness.
+- **Base R and ggplot2.** Each standard plot builds one description of what to draw, and two
+  renderers draw it: `plot()` in base R and `autoplot()` in ggplot2, so the two always agree.
+  ggplot2 is a suggested package: `plot()` always works, and the `autoplot()` methods register
+  when ggplot2 is installed. `theme_pdm()` is the ggplot2 theme.
+- **Figure sizes.** `pdm_save()` writes PNG, PDF or SVG at standard sizes: `screen`, `report`
+  and `report_half` (A4), `slide` (16:9) and `journal_single` and `journal_double`.
+- **Run diagnostics.** `pdm_series()` gathers a simulation with its observed flow, rain,
+  windows, thresholds and an optional second run; `project_series()` builds it for any model
+  entry of a calibration project. `plot()` and `autoplot()` draw a hydrograph with rain hanging
+  from the top, flow duration curves, cumulative volume, or residuals with their 30-day
+  running mean, over the whole record, a window or any period.
+- **Restyled plots.** `plot_hindcast()`, `plot_recession()` and `plot_workbench()` use the
+  house style, and each gains `plot()` and `autoplot()` methods on its object.
+  `hindcast_scores()` now returns a `pdm_hindcast_scores` data.table so that they dispatch. The
+  workbench draws a trial in vermillion (it was orange) and observed flow in black;
+  `plot_hindcast()`'s `legend` argument is kept but the legend now sits below the plot.
+
 # pdmS7 0.13.0
 
 - **Events workbench.** `event_workbench()` gathers a run's `n` largest events (10 by

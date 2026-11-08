@@ -138,6 +138,6 @@
   output$wb_recession_plot <- shiny::renderPlot({
     shiny::req(rv$wb_recession)
     plot_recession(rv$wb_recession$observed, rv$wb_recession$simulated,
-                   main = "Recessions: observed (blue) and the model (orange)")
+                   main = "Recessions: observed (black) and the model (blue)")
   })
 }

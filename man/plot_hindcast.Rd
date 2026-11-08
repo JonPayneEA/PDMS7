@@ -2,6 +2,8 @@
 % Please edit documentation in R/hindcast.R
 \name{plot_hindcast}
 \alias{plot_hindcast}
+\alias{plot.pdm_hindcast_scores}
+\alias{autoplot.pdm_hindcast_scores}
 \title{Plot hindcast scores against lead time}
 \usage{
 plot_hindcast(
@@ -13,6 +15,10 @@ plot_hindcast(
   ylim = NULL,
   legend = "bottomright"
 )
+
+\method{plot}{pdm_hindcast_scores}(x, ...)
+
+\method{autoplot}{pdm_hindcast_scores}(object, ...)
 }
 \arguments{
 \item{scores}{A \code{\link[=hindcast_scores]{hindcast_scores()}} result.}
@@ -28,7 +34,11 @@ plot_hindcast(
 \item{ylim}{Optional y-axis limits. Skill can be very negative at the shortest lead times,
 which flattens the rest of the chart; \code{c(-1, 1)} is often clearer.}
 
-\item{legend}{Legend position, as in \code{\link[graphics:legend]{graphics::legend()}}.}
+\item{legend}{Kept so older code still runs; the legend now always sits below the plot.}
+
+\item{x, object}{A \code{\link[=hindcast_scores]{hindcast_scores()}} result.}
+
+\item{...}{For \code{plot()} and \code{autoplot()}: the other arguments of \code{plot_hindcast()}.}
 }
 \value{
 The scores, invisibly.

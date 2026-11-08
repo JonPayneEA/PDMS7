@@ -77,6 +77,30 @@ test_that("plot_workbench draws the events", {
   }, add = TRUE)
   expect_identical(plot_workbench(wb), wb)
   expect_identical(plot_workbench(wb, trial, ncol = 1), wb)
+  expect_identical(plot(wb, trial = trial), wb)
+  spec <- .workbench_spec(wb, trial, 2L)
+  expect_equal(nrow(spec$panels), 3)
+  expect_equal(unique(spec$series$label), c("Observed", "Entry 0003", "Trial"))
+  expect_false(spec$rain_axis)
+  skip_if_not_installed("ggplot2")
+  g <- ggplot2::autoplot(wb, trial = trial)
+  expect_s3_class(g, "ggplot")
+  expect_silent(ggplot2::ggplot_build(g))
+})
+
+# Guards: a project entry's series come from the registered data, with its windows, and a
+# second entry can be drawn against it
+test_that("project_series rebuilds a logged run for the standard plots", {
+  p <- workbench_project()
+  s <- project_series(p$folder)
+  expect_s3_class(s, "pdm_series")
+  expect_equal(s$observed, p$observed)
+  expect_equal(s$windows, list(calibration = c(500L, 3500L), validation = c(3501L, 4800L)))
+  expect_equal(unname(s$labels[["simulated"]]), "Entry 0003")
+  trial <- log_trial(p$folder, "0003", c(td = 2), "better", "Add the delay back")
+  both <- project_series(p$folder, entry = "0003", compare = trial$id)
+  expect_equal(unname(both$labels[["alternative"]]), paste("Entry", trial$id))
+  expect_false(isTRUE(all.equal(both$simulated, both$alternative)))
 })
 
 # Guards: the sliders cover the fast parameters, b and td, and only moved ones count as changes
