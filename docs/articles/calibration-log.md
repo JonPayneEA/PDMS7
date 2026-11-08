@@ -192,8 +192,8 @@ screened for rises lost in the baseflow and gaps.
 [`workbench_try()`](https://jonpayneea.github.io/PDMS7/reference/event_workbench.md)
 reruns them with a change, in a fraction of a second, and
 [`plot_workbench()`](https://jonpayneea.github.io/PDMS7/reference/event_workbench.md)
-draws them before (blue) and after (orange), with each event’s peak and
-timing errors in its title:
+draws them before (blue) and after (vermillion), with each event’s peak
+and timing errors in its title:
 
 ``` r
 wb <- event_workbench(project, entry = auto$id, n = 4)

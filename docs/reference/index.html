@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.13.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.15.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -670,6 +670,64 @@
         </dt>
         <dd>Rainfall statistics</dd>
       </dl></div><div class="section level2">
+      <h2 id="preparing-data">Preparing data<a class="anchor" aria-label="anchor" href="#preparing-data"></a></h2>
+
+      <div class="section-desc"><p>Read hydrometric exports, align them, convert units, fill gaps and check the result; each step is noted and recorded in the calibration log.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="read_hydro_series.html">read_hydro_series()</a></code>
+
+        </dt>
+        <dd>Read a hydrometric series from a CSV file</dd>
+
+        <dt>
+
+          <code><a href="align_series.html">align_series()</a></code>
+
+        </dt>
+        <dd>Put several series on one regular time step</dd>
+
+        <dt>
+
+          <code><a href="convert_units.html">convert_units()</a></code>
+
+        </dt>
+        <dd>Convert rain, evaporation or flow to the units pdmS7 uses</dd>
+
+        <dt>
+
+          <code><a href="fill_gaps.html">fill_gaps()</a></code>
+
+        </dt>
+        <dd>Fill gaps in rain or evaporation</dd>
+
+        <dt>
+
+          <code><a href="zero_negatives.html">zero_negatives()</a></code>
+
+        </dt>
+        <dd>Set negative values to zero</dd>
+
+        <dt>
+
+          <code><a href="check_inputs.html">check_inputs()</a></code>
+
+        </dt>
+        <dd>Check inputs before registering them</dd>
+
+        <dt>
+
+          <code><a href="preparation_notes.html">preparation_notes()</a></code>
+
+        </dt>
+        <dd>What was done to a series before registration</dd>
+      </dl></div><div class="section level2">
       <h2 id="calibration">Calibration<a class="anchor" aria-label="anchor" href="#calibration"></a></h2>
 
 
@@ -680,6 +738,27 @@
 
 
       <dl><dt>
+
+          <code><a href="calibrate_project.html">calibrate_project()</a></code>
+
+        </dt>
+        <dd>Calibrate a catchment from start to finish in one call</dd>
+
+        <dt>
+
+          <code><a href="candidate_model.html">candidate_model()</a></code>
+
+        </dt>
+        <dd>The model of a project's candidate</dd>
+
+        <dt>
+
+          <code><a href="event_run.html">event_run()</a></code> <code><a href="event_run.html">plot(<i>&lt;pdm_event_run&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Run a project's model over a separate event</dd>
+
+        <dt>
 
           <code><a href="calibrate_pdm.html">calibrate_pdm()</a></code>
 
@@ -848,7 +927,7 @@
 
         <dt>
 
-          <code><a href="event_workbench.html">event_workbench()</a></code> <code><a href="event_workbench.html">workbench_try()</a></code> <code><a href="event_workbench.html">plot_workbench()</a></code>
+          <code><a href="event_workbench.html">event_workbench()</a></code> <code><a href="event_workbench.html">workbench_try()</a></code> <code><a href="event_workbench.html">plot_workbench()</a></code> <code><a href="event_workbench.html">plot(<i>&lt;pdm_workbench&gt;</i>)</a></code> <code><a href="event_workbench.html">autoplot(<i>&lt;pdm_workbench&gt;</i>)</a></code>
 
         </dt>
         <dd>Events workbench</dd>
@@ -964,6 +1043,43 @@
         </dt>
         <dd>Gridded H19 radar for merging with gauges</dd>
       </dl></div><div class="section level2">
+      <h2 id="standard-visuals">Standard visuals<a class="anchor" aria-label="anchor" href="#standard-visuals"></a></h2>
+
+      <div class="section-desc"><p>The house style (Okabe-Ito colours with fixed meanings), figure sizes for screens, reports, slides and journals, and the standard run plots in base R and ggplot2.</p></div>
+
+      <dl></dl></div><div class="section level2">
+
+
+
+
+      <dl><dt>
+
+          <code><a href="pdm_colours.html">pdm_colours()</a></code> <code><a href="pdm_colours.html">pdm_palette()</a></code>
+
+        </dt>
+        <dd>The pdmS7 colours</dd>
+
+        <dt>
+
+          <code><a href="theme_pdm.html">theme_pdm()</a></code>
+
+        </dt>
+        <dd>The pdmS7 ggplot2 theme</dd>
+
+        <dt>
+
+          <code><a href="pdm_save.html">pdm_save()</a></code>
+
+        </dt>
+        <dd>Save a pdmS7 figure at a standard size</dd>
+
+        <dt>
+
+          <code><a href="pdm_series.html">pdm_series()</a></code> <code><a href="pdm_series.html">project_series()</a></code> <code><a href="pdm_series.html">plot(<i>&lt;pdm_series&gt;</i>)</a></code> <code><a href="pdm_series.html">autoplot(<i>&lt;pdm_series&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Series for the standard run plots</dd>
+      </dl></div><div class="section level2">
       <h2 id="recession-analysis">Recession analysis<a class="anchor" aria-label="anchor" href="#recession-analysis"></a></h2>
 
       <div class="section-desc"><p>How fast flow falls against how high it is, and the groundwater store it points to.</p></div>
@@ -982,7 +1098,7 @@
 
         <dt>
 
-          <code><a href="plot_recession.html">plot_recession()</a></code>
+          <code><a href="plot_recession.html">plot_recession()</a></code> <code><a href="plot_recession.html">plot(<i>&lt;pdm_recession&gt;</i>)</a></code> <code><a href="plot_recession.html">autoplot(<i>&lt;pdm_recession&gt;</i>)</a></code>
 
         </dt>
         <dd>Plot a recession analysis</dd>
@@ -1012,7 +1128,7 @@
 
         <dt>
 
-          <code><a href="plot_hindcast.html">plot_hindcast()</a></code>
+          <code><a href="plot_hindcast.html">plot_hindcast()</a></code> <code><a href="plot_hindcast.html">plot(<i>&lt;pdm_hindcast_scores&gt;</i>)</a></code> <code><a href="plot_hindcast.html">autoplot(<i>&lt;pdm_hindcast_scores&gt;</i>)</a></code>
 
         </dt>
         <dd>Plot hindcast scores against lead time</dd>

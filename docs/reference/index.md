@@ -182,8 +182,35 @@ method tests.
 - [`rain_statistics()`](https://jonpayneea.github.io/PDMS7/reference/rain_statistics.md)
   : Rainfall statistics
 
+## Preparing data
+
+Read hydrometric exports, align them, convert units, fill gaps and check
+the result; each step is noted and recorded in the calibration log.
+
+- [`read_hydro_series()`](https://jonpayneea.github.io/PDMS7/reference/read_hydro_series.md)
+  : Read a hydrometric series from a CSV file
+- [`align_series()`](https://jonpayneea.github.io/PDMS7/reference/align_series.md)
+  : Put several series on one regular time step
+- [`convert_units()`](https://jonpayneea.github.io/PDMS7/reference/convert_units.md)
+  : Convert rain, evaporation or flow to the units pdmS7 uses
+- [`fill_gaps()`](https://jonpayneea.github.io/PDMS7/reference/fill_gaps.md)
+  : Fill gaps in rain or evaporation
+- [`zero_negatives()`](https://jonpayneea.github.io/PDMS7/reference/zero_negatives.md)
+  : Set negative values to zero
+- [`check_inputs()`](https://jonpayneea.github.io/PDMS7/reference/check_inputs.md)
+  : Check inputs before registering them
+- [`preparation_notes()`](https://jonpayneea.github.io/PDMS7/reference/preparation_notes.md)
+  : What was done to a series before registration
+
 ## Calibration
 
+- [`calibrate_project()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_project.md)
+  : Calibrate a catchment from start to finish in one call
+- [`candidate_model()`](https://jonpayneea.github.io/PDMS7/reference/candidate_model.md)
+  : The model of a project's candidate
+- [`event_run()`](https://jonpayneea.github.io/PDMS7/reference/event_run.md)
+  [`plot(`*`<pdm_event_run>`*`)`](https://jonpayneea.github.io/PDMS7/reference/event_run.md)
+  : Run a project's model over a separate event
 - [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md)
   : Calibrate pdm
 - [`calibrate_staged()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_staged.md)
@@ -262,6 +289,8 @@ calibration.
 - [`event_workbench()`](https://jonpayneea.github.io/PDMS7/reference/event_workbench.md)
   [`workbench_try()`](https://jonpayneea.github.io/PDMS7/reference/event_workbench.md)
   [`plot_workbench()`](https://jonpayneea.github.io/PDMS7/reference/event_workbench.md)
+  [`plot(`*`<pdm_workbench>`*`)`](https://jonpayneea.github.io/PDMS7/reference/event_workbench.md)
+  [`autoplot(`*`<pdm_workbench>`*`)`](https://jonpayneea.github.io/PDMS7/reference/event_workbench.md)
   : Events workbench
 
 ## Run log
@@ -309,6 +338,25 @@ multiquadric interpolation or conditional merging.
 - [`h19_radar()`](https://jonpayneea.github.io/PDMS7/reference/h19_radar.md)
   : Gridded H19 radar for merging with gauges
 
+## Standard visuals
+
+The house style (Okabe-Ito colours with fixed meanings), figure sizes
+for screens, reports, slides and journals, and the standard run plots in
+base R and ggplot2.
+
+- [`pdm_colours()`](https://jonpayneea.github.io/PDMS7/reference/pdm_colours.md)
+  [`pdm_palette()`](https://jonpayneea.github.io/PDMS7/reference/pdm_colours.md)
+  : The pdmS7 colours
+- [`theme_pdm()`](https://jonpayneea.github.io/PDMS7/reference/theme_pdm.md)
+  : The pdmS7 ggplot2 theme
+- [`pdm_save()`](https://jonpayneea.github.io/PDMS7/reference/pdm_save.md)
+  : Save a pdmS7 figure at a standard size
+- [`pdm_series()`](https://jonpayneea.github.io/PDMS7/reference/pdm_series.md)
+  [`project_series()`](https://jonpayneea.github.io/PDMS7/reference/pdm_series.md)
+  [`plot(`*`<pdm_series>`*`)`](https://jonpayneea.github.io/PDMS7/reference/pdm_series.md)
+  [`autoplot(`*`<pdm_series>`*`)`](https://jonpayneea.github.io/PDMS7/reference/pdm_series.md)
+  : Series for the standard run plots
+
 ## Recession analysis
 
 How fast flow falls against how high it is, and the groundwater store it
@@ -318,6 +366,8 @@ points to.
   : Recession analysis: which groundwater store does the flow record
   point to?
 - [`plot_recession()`](https://jonpayneea.github.io/PDMS7/reference/plot_recession.md)
+  [`plot(`*`<pdm_recession>`*`)`](https://jonpayneea.github.io/PDMS7/reference/plot_recession.md)
+  [`autoplot(`*`<pdm_recession>`*`)`](https://jonpayneea.github.io/PDMS7/reference/plot_recession.md)
   : Plot a recession analysis
 
 ## Hindcasts and lead-time scores
@@ -330,6 +380,8 @@ persistence.
 - [`hindcast_scores()`](https://jonpayneea.github.io/PDMS7/reference/hindcast_scores.md)
   : Score a hindcast by lead time
 - [`plot_hindcast()`](https://jonpayneea.github.io/PDMS7/reference/plot_hindcast.md)
+  [`plot(`*`<pdm_hindcast_scores>`*`)`](https://jonpayneea.github.io/PDMS7/reference/plot_hindcast.md)
+  [`autoplot(`*`<pdm_hindcast_scores>`*`)`](https://jonpayneea.github.io/PDMS7/reference/plot_hindcast.md)
   : Plot hindcast scores against lead time
 - [`pdm_response_time()`](https://jonpayneea.github.io/PDMS7/reference/pdm_response_time.md)
   : Response time of a calibrated model

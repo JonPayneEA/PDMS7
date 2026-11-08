@@ -229,10 +229,89 @@ cat(readLines(file.path(folder, "forcing.csv"), n = 3), sep = "\n")
 #> 2024-01-01T00:30:00Z,1.4,0.025
 ```
 
+## The same steps with pdmS7’s functions
+
+Steps 3 to 7 recur for every catchment, and each script that rewrites
+them is a new chance to misread a time column or a unit. pdmS7 has a
+function for each, and each one notes what it did on the series it
+returns. When the data are registered,
+[`register_data()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
+writes those notes into the calibration log, so a reviewer sees, for
+example, that 412 steps of evaporation were interpolated.
+
+| Step                                                                                       | Function                                                                                   |
+|--------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------|
+| Read an export: split year/month/day columns, one time column, or a date and a time column | [`read_hydro_series()`](https://jonpayneea.github.io/PDMS7/reference/read_hydro_series.md) |
+| Put every series on one grid over the period they share                                    | [`align_series()`](https://jonpayneea.github.io/PDMS7/reference/align_series.md)           |
+| Convert units: mm per hour or day, l/s, megalitres a day                                   | [`convert_units()`](https://jonpayneea.github.io/PDMS7/reference/convert_units.md)         |
+| Fill rain and evaporation gaps by a named rule, or stop and list them                      | [`fill_gaps()`](https://jonpayneea.github.io/PDMS7/reference/fill_gaps.md)                 |
+| Set negative rain to zero                                                                  | [`zero_negatives()`](https://jonpayneea.github.io/PDMS7/reference/zero_negatives.md)       |
+| Check totals, gaps, negatives and the runoff ratio                                         | [`check_inputs()`](https://jonpayneea.github.io/PDMS7/reference/check_inputs.md)           |
+
+Here two exports in different layouts, one with a gap and one in litres
+a second, become registered data:
+
+``` r
+dir <- file.path(tempdir(), "exports")
+dir.create(dir, showWarnings = FALSE)
+t <- seq(as.POSIXct("2024-01-01", tz = "UTC"), by = 900, length.out = 24 * 4 * 30)
+set.seed(5)
+rain <- ifelse(runif(length(t)) < 0.04, rexp(length(t), 1.5), 0)
+rain[300:303] <- NA
+lt <- as.POSIXlt(t)
+write.csv(data.frame(year = lt$year + 1900, month = lt$mon + 1, day = lt$mday,
+                     hours = lt$hour, minutes = lt$min, rainfall = rain),
+          file.path(dir, "rain.csv"), row.names = FALSE, na = "")
+wet <- ifelse(is.na(rain), 0, rain)
+flow_ls <- 400 + as.numeric(stats::filter(wet, 0.995, method = "recursive")) * 60
+write.csv(data.frame(Timestamp = format(t, "%d/%m/%Y %H:%M"), Value = flow_ls),
+          file.path(dir, "flow.csv"), row.names = FALSE)
+
+raw <- list(rain = read_hydro_series(file.path(dir, "rain.csv")),
+            flow = read_hydro_series(file.path(dir, "flow.csv")))
+raw$flow
+#> Hydrometric series from flow.csv: 2880 rows, 2024-01-01 00:00 to 2024-01-30 23:45, step 15 min, 0 missing
+#> Columns used: time Timestamp, value Value
+grid <- align_series(rain = raw$rain, flow = raw$flow)
+forcing <- data.frame(
+  time = grid$time,
+  rain = zero_negatives(fill_gaps(grid$rain, "zero", grid$time, "rain"), "rain"),
+  pet = 0.02
+)
+flow <- convert_units(grid$flow, "ls", dt = 0.25, quantity = "flow")
+check_inputs(forcing, flow, area_km2 = 40, ranges = list(rain = c(0, 1e4), pet = c(0, 1e4),
+                                                         runoff_ratio = c(0.1, 0.9)))
+#> Input check: 0.1 years at 0.25 h steps
+#>   rain  0 missing, 0 negative, mean 0.02422, 849 mm a year
+#>   pet   0 missing, 0 negative, mean 0.02, 701 mm a year
+#>   flow  0 missing, 0 negative, mean 0.6734
+#>   Runoff is 63% of rain
+#> Preparation:
+#>   rain  read      rain.csv: 2880 rows, 2024-01-01 00:00 to 2024-01-30 23:45, step 15 min, value column rainfall
+#>   rain  aligned   on a 0.25 h grid, 2024-01-01 00:00 to 2024-01-30 23:45: 4 of 2880 steps missing
+#>   rain  gaps      rain: 4 missing steps in 1 gap, longest 2024-01-04 02:45 for 4 steps; zero, 4 filled, 0 left missing
+#>   flow  read      flow.csv: 2880 rows, 2024-01-01 00:00 to 2024-01-30 23:45, step 15 min, value column Value
+#>   flow  aligned   on a 0.25 h grid, 2024-01-01 00:00 to 2024-01-30 23:45: 0 of 2880 steps missing
+#>   flow  units     flow from ls to m3/s (x 0.001)
+#> Nothing implausible found
+```
+
+The check prints what each step did. The ranges are opened up here only
+because the example is a single month; for a real record keep the
+defaults, which suit the British Isles. A flag under **CHECK** usually
+means the wrong units or the wrong area.
+[`calibrate_project()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_project.md)
+then takes the prepared `forcing` and `flow` through registration,
+staged calibration, candidate, validation and test in one call, with
+every step in the log.
+
 ## The checklist
 
 Run these before every calibration. Each takes a minute and each has
 caught a real error somewhere.
+[`check_inputs()`](https://jonpayneea.github.io/PDMS7/reference/check_inputs.md)
+covers most of them in one call; the code below shows what it checks,
+for data prepared some other way.
 
 ``` r
 f <- data.table::fread("forcing.csv")

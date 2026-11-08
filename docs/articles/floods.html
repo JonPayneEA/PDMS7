@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.13.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.15.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -473,8 +473,8 @@ it.</p>
 gathers a run’s largest events, ten unless you choose another number.
 <code><a href="../reference/event_workbench.html">workbench_try()</a></code> reruns them with some parameters changed,
 and <code><a href="../reference/event_workbench.html">plot_workbench()</a></code> draws them before (blue) and after
-(orange), each with its peak and timing errors in its title. Here the
-standard calibration is given the time delay it lacked:</p>
+(vermillion), each with its peak and timing errors in its title. Here
+the standard calibration is given the time delay it lacked:</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">wb</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/event_workbench.html">event_workbench</a></span><span class="op">(</span><span class="va">project</span>, entry <span class="op">=</span> <span class="va">plain_fit</span><span class="op">$</span><span class="va">id</span>, n <span class="op">=</span> <span class="fl">6</span><span class="op">)</span></span>
 <span><span class="va">wb</span></span>
@@ -483,10 +483,10 @@ standard calibration is given the time delay it lacked:</p>
 <span><span class="va">fixed</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/event_workbench.html">workbench_try</a></span><span class="op">(</span><span class="va">wb</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>td <span class="op">=</span> <span class="fl">3</span>, surface.k1 <span class="op">=</span> <span class="fl">2</span>, surface.k2 <span class="op">=</span> <span class="fl">3</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/event_workbench.html">plot_workbench</a></span><span class="op">(</span><span class="va">wb</span>, <span class="va">fixed</span><span class="op">)</span></span></code></pre></div>
 <div class="figure">
-<img src="floods_files/figure-html/workbench-1.png" class="r-plt" alt="The six largest calibration events of the standard calibration (blue), and the same with a 3-hour delay and faster stores (orange). Bars at the top: rain." width="880"><p class="caption">
+<img src="floods_files/figure-html/workbench-1.png" class="r-plt" alt="The six largest calibration events of the standard calibration (blue), and the same with a 3-hour delay and faster stores (vermillion). Black dots: observed. Bars at the top: rain." width="880"><p class="caption">
 The six largest calibration events of the standard calibration (blue),
-and the same with a 3-hour delay and faster stores (orange). Bars at the
-top: rain.
+and the same with a 3-hour delay and faster stores (vermillion). Black
+dots: observed. Bars at the top: rain.
 </p>
 </div>
 <p>The timing is now right, but the peaks overshoot a little. The other

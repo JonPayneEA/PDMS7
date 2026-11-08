@@ -327,7 +327,7 @@ gathers a run’s largest events, ten unless you choose another number.
 [`workbench_try()`](https://jonpayneea.github.io/PDMS7/reference/event_workbench.md)
 reruns them with some parameters changed, and
 [`plot_workbench()`](https://jonpayneea.github.io/PDMS7/reference/event_workbench.md)
-draws them before (blue) and after (orange), each with its peak and
+draws them before (blue) and after (vermillion), each with its peak and
 timing errors in its title. Here the standard calibration is given the
 time delay it lacked:
 
@@ -341,12 +341,13 @@ plot_workbench(wb, fixed)
 ```
 
 ![The six largest calibration events of the standard calibration (blue),
-and the same with a 3-hour delay and faster stores (orange). Bars at the
-top: rain.](floods_files/figure-html/workbench-1.png)
+and the same with a 3-hour delay and faster stores (vermillion). Black
+dots: observed. Bars at the top:
+rain.](floods_files/figure-html/workbench-1.png)
 
 The six largest calibration events of the standard calibration (blue),
-and the same with a 3-hour delay and faster stores (orange). Bars at the
-top: rain.
+and the same with a 3-hour delay and faster stores (vermillion). Black
+dots: observed. Bars at the top: rain.
 
 The timing is now right, but the peaks overshoot a little. The other
 parameters were fitted around the old, slow stores, and changing the

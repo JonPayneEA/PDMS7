@@ -28,6 +28,12 @@ event_workbench(
 workbench_try(wb, changes)
 
 plot_workbench(wb, trial = NULL, ncol = 2L)
+
+# S3 method for class 'pdm_workbench'
+plot(x, ...)
+
+# S3 method for class 'pdm_workbench'
+autoplot(object, ...)
 ```
 
 ## Arguments
@@ -74,6 +80,15 @@ plot_workbench(wb, trial = NULL, ncol = 2L)
 - ncol:
 
   Panels per row.
+
+- x, object:
+
+  A workbench from `event_workbench()`.
+
+- ...:
+
+  For [`plot()`](https://rdrr.io/r/graphics/plot.default.html) and
+  `autoplot()`: `trial` and `ncol`, as for `plot_workbench()`.
 
 ## Value
 

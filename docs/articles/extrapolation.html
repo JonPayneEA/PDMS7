@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.13.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.15.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -256,14 +256,14 @@ here.</p>
 <span><span class="fu"><a href="../reference/calibration_log.html">start_calibration_project</a></span><span class="op">(</span><span class="va">project</span>, catchment <span class="op">=</span> <span class="st">"Wet Brook"</span>, gauge <span class="op">=</span> <span class="st">"00001"</span>,</span>
 <span>                          purpose <span class="op">=</span> <span class="st">"Flood forecasting"</span>, area_km2 <span class="op">=</span> <span class="fl">60</span>,</span>
 <span>                          owner <span class="op">=</span> <span class="st">"Area Manager"</span>, steward <span class="op">=</span> <span class="st">"Sam Steward"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; INFO [2026-11-07 21:39:17] Started calibration project wet-brook in /tmp/Rtmp1d6oem/wet-brook</span></span>
+<span><span class="co">#&gt; INFO [2026-11-08 16:21:31] Started calibration project wet-brook in /tmp/RtmpBrpm32/wet-brook</span></span>
 <span><span class="va">reg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calibration_log.html">register_data</a></span><span class="op">(</span><span class="va">project</span>, <span class="va">forcing</span>, <span class="va">observed</span>,</span>
 <span>                     calibration <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"2011-01-01"</span>, <span class="st">"2016-09-30"</span><span class="op">)</span>,</span>
 <span>                     validation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"2016-10-01"</span>, <span class="st">"2019-09-30"</span><span class="op">)</span>,</span>
 <span>                     test <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"2019-10-01"</span>, <span class="st">"2020-09-27"</span><span class="op">)</span>,</span>
 <span>                     highest_gauged_m3s <span class="op">=</span> <span class="va">river</span><span class="op">$</span><span class="va">highest_gauged_m3s</span>,</span>
 <span>                     reasoning <span class="op">=</span> <span class="st">"Ten years; rating checked to 11 m3/s."</span><span class="op">)</span></span>
-<span><span class="co">#&gt; INFO [2026-11-07 21:39:17] Registered data 0002: 3650 rows</span></span>
+<span><span class="co">#&gt; INFO [2026-11-08 16:21:31] Registered data 0002: 3650 rows</span></span>
 <span><span class="va">check</span> <span class="op">&lt;-</span> <span class="va">reg</span><span class="op">$</span><span class="va">rating_check</span><span class="op">$</span><span class="va">windows</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>window <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">check</span><span class="op">)</span>, steps_above <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">check</span>, <span class="va">`[[`</span>, <span class="st">"steps_above"</span><span class="op">)</span>,</span>
 <span>           highest_m3s <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">check</span>, <span class="va">`[[`</span>, <span class="st">"highest_m3s"</span><span class="op">)</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
@@ -287,7 +287,7 @@ standard starting point.</p>
 <span><span class="va">start</span><span class="op">$</span><span class="va">dt</span> <span class="op">&lt;-</span> <span class="fl">24</span></span>
 <span><span class="va">start</span><span class="op">$</span><span class="va">area_km2</span> <span class="op">&lt;-</span> <span class="fl">60</span></span>
 <span><span class="fu"><a href="../reference/calibration_log.html">select_structure</a></span><span class="op">(</span><span class="va">project</span>, <span class="va">start</span>, <span class="st">"Standard structure."</span><span class="op">)</span></span>
-<span><span class="co">#&gt; INFO [2026-11-07 21:39:17] Structure 0003: nse 0.4081</span></span>
+<span><span class="co">#&gt; INFO [2026-11-08 16:21:31] Structure 0003: nse 0.4081</span></span>
 <span><span class="va">b</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calibration_bounds.html">calibration_bounds</a></span><span class="op">(</span><span class="va">start</span><span class="op">)</span></span>
 <span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calibration_log.html">log_auto_calibration</a></span><span class="op">(</span></span>
 <span>  <span class="va">project</span>, parent <span class="op">=</span> <span class="fl">3</span>, lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="va">b</span><span class="op">$</span><span class="va">lower</span>, <span class="va">b</span><span class="op">$</span><span class="va">path</span><span class="op">)</span>, upper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="va">b</span><span class="op">$</span><span class="va">upper</span>, <span class="va">b</span><span class="op">$</span><span class="va">path</span><span class="op">)</span>,</span>
@@ -298,7 +298,7 @@ standard starting point.</p>
 <span><span class="co">#&gt; mm of soil storage, more than the store's capacity of 203 mm; the soil is</span></span>
 <span><span class="co">#&gt; capped and the run starts out of balance. Start at a lower flow or a smaller</span></span>
 <span><span class="co">#&gt; baseflow_fraction, or use start = "soil".</span></span>
-<span><span class="co">#&gt; INFO [2026-11-07 21:39:34] Calibration 0004: nse 0.9927</span></span>
+<span><span class="co">#&gt; INFO [2026-11-08 16:21:46] Calibration 0004: nse 0.9927</span></span>
 <span><span class="va">good</span> <span class="op">&lt;-</span> <span class="va">fit</span><span class="op">$</span><span class="va">equally_good</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>nse <span class="op">=</span> <span class="va">fit</span><span class="op">$</span><span class="va">scores</span><span class="op">$</span><span class="va">nse</span>, trials_within_tolerance <span class="op">=</span> <span class="va">good</span><span class="op">$</span><span class="va">within</span>, sets_kept <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">good</span><span class="op">$</span><span class="va">sets</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;                     nse trials_within_tolerance               sets_kept </span></span>
@@ -342,10 +342,10 @@ the held-back years.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/calibration_log.html">propose_candidate</a></span><span class="op">(</span><span class="va">project</span>, <span class="va">fit</span><span class="op">$</span><span class="va">id</span>, <span class="st">"Best automatic fit."</span><span class="op">)</span></span>
 <span><span class="va">validation</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calibration_log.html">validate_candidate</a></span><span class="op">(</span><span class="va">project</span>, <span class="st">"Validation holds up."</span><span class="op">)</span></span>
-<span><span class="co">#&gt; INFO [2026-11-07 21:39:34] Validation 0006: nse 0.992</span></span>
+<span><span class="co">#&gt; INFO [2026-11-08 16:21:46] Validation 0006: nse 0.992</span></span>
 <span><span class="va">test</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calibration_log.html">test_candidate</a></span><span class="op">(</span><span class="va">project</span>, <span class="st">"Final check, including the wettest years."</span><span class="op">)</span></span>
-<span><span class="co">#&gt; INFO [2026-11-07 21:39:35] Test 0007: nse 0.9926</span></span>
-<span><span class="co">#&gt; INFO [2026-11-07 21:39:35] Wettest years 0007: nse 0.9589</span></span>
+<span><span class="co">#&gt; INFO [2026-11-08 16:21:47] Test 0007: nse 0.9926</span></span>
+<span><span class="co">#&gt; INFO [2026-11-08 16:21:47] Wettest years 0007: nse 0.9589</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>validation <span class="op">=</span> <span class="va">validation</span><span class="op">$</span><span class="va">validation_scores</span><span class="op">$</span><span class="va">nse</span>, test_window <span class="op">=</span> <span class="va">test</span><span class="op">$</span><span class="va">test_scores</span><span class="op">$</span><span class="va">nse</span>,</span>
 <span>  wettest_years <span class="op">=</span> <span class="va">test</span><span class="op">$</span><span class="va">wettest</span><span class="op">$</span><span class="va">scores</span><span class="op">$</span><span class="va">nse</span><span class="op">)</span></span>
 <span><span class="co">#&gt;    validation   test_window wettest_years </span></span>

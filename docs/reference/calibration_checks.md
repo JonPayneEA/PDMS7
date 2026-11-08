@@ -54,10 +54,11 @@ calibration_checks(
 
 ## Value
 
-A list of three data frames and the response times. `parameters`:
-`path`, `value`, `lower`, `upper`, `scale` and `at_bound` (`"lower"`,
-`"upper"` or `NA`). `events`: every event with its `period` and the
-columns of
+A `pdm_calibration_checks` list of three data frames and the response
+times; printing it shows the parameters at a bound and the event
+summary. `parameters`: `path`, `value`, `lower`, `upper`, `scale` and
+`at_bound` (`"lower"`, `"upper"` or `NA`). `events`: every event with
+its `period` and the columns of
 [`event_scores()`](https://jonpayneea.github.io/PDMS7/reference/event_scores.md).
 `summary`: one row per window with `events` (the number summarised),
 `median_peak_error`, `median_timing_error_h`, `share_peak_within_20pct`

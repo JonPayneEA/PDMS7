@@ -1,5 +1,113 @@
 # Changelog
 
+## pdmS7 0.15.0
+
+The helper functions of the Beggearn Huish calibration script, tested
+and in the package.
+
+- **Data preparation.**
+  [`read_hydro_series()`](https://jonpayneea.github.io/PDMS7/reference/read_hydro_series.md)
+  reads hydrometric exports: split year, month and day columns in any of
+  their spellings, one time column in the common formats, or a date and
+  a time column, in any time zone; it refuses a file whose timestamps
+  repeat.
+  [`align_series()`](https://jonpayneea.github.io/PDMS7/reference/align_series.md)
+  puts several series on one grid over the period they share.
+  [`convert_units()`](https://jonpayneea.github.io/PDMS7/reference/convert_units.md)
+  converts mm per hour or day, metres, litres a second and megalitres a
+  day, and with `"auto"` works the unit out from plausible annual
+  totals.
+  [`fill_gaps()`](https://jonpayneea.github.io/PDMS7/reference/fill_gaps.md)
+  fills by a named rule (stop, zero, interpolate up to a longest gap,
+  none) and
+  [`zero_negatives()`](https://jonpayneea.github.io/PDMS7/reference/zero_negatives.md)
+  sets negative values to zero.
+  [`check_inputs()`](https://jonpayneea.github.io/PDMS7/reference/check_inputs.md)
+  reports the period, gaps, negatives, annual totals and runoff ratio,
+  and flags anything implausible.
+- **Preparation in the log.** Each of those functions notes what it did
+  on the series it returns
+  ([`preparation_notes()`](https://jonpayneea.github.io/PDMS7/reference/preparation_notes.md)),
+  and
+  [`register_data()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
+  writes the notes into the registration entry; the report shows them in
+  its Data section. Data registered without notes register exactly as
+  before.
+- **[`calibrate_project()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_project.md)**
+  runs a whole logged calibration in one call: project, registration,
+  structure, staged calibration, candidate, validation when a window is
+  registered and test when one is. A finished project is left as it is;
+  an unfinished one is moved aside.
+- **[`candidate_model()`](https://jonpayneea.github.io/PDMS7/reference/candidate_model.md)**
+  returns the model of a project’s candidate.
+- **[`event_run()`](https://jonpayneea.github.io/PDMS7/reference/event_run.md)**
+  runs a project’s model over a separate event file: from the record’s
+  own state when the event lies inside the registered record, otherwise
+  from steady state at its first flow, with missing evaporation taken
+  from the record. It prints the event’s scores and
+  [`plot()`](https://rdrr.io/r/graphics/plot.default.html) draws its
+  hydrograph.
+- **[`calibration_checks()`](https://jonpayneea.github.io/PDMS7/reference/calibration_checks.md)**
+  returns a `pdm_calibration_checks` list whose print method shows the
+  parameters at a bound and the largest events in each window.
+- **Article.** The data preparation article has a new section running
+  the same steps with these functions.
+
+## pdmS7 0.14.0
+
+Standard visuals, part 1 of 4: the house style and the run diagnostics.
+
+- **House style.** Every standard plot uses the Okabe-Ito colours, which
+  stay distinct with the common forms of colour blindness, and gives
+  each colour one meaning: observed flow black, the model blue, rain sky
+  blue, a second run or a change vermillion, the calibration and
+  validation windows light grey and light orange, thresholds dashed
+  reddish purple.
+  [`pdm_colours()`](https://jonpayneea.github.io/PDMS7/reference/pdm_colours.md)
+  returns them by role for your own figures, and
+  [`pdm_palette()`](https://jonpayneea.github.io/PDMS7/reference/pdm_colours.md)
+  gives a fixed order for series of equal standing. The previous
+  palette’s green and red become almost identical to a reader with
+  red-green colour blindness.
+- **Base R and ggplot2.** Each standard plot builds one description of
+  what to draw, and two renderers draw it:
+  [`plot()`](https://rdrr.io/r/graphics/plot.default.html) in base R and
+  `autoplot()` in ggplot2, so the two always agree. ggplot2 is a
+  suggested package:
+  [`plot()`](https://rdrr.io/r/graphics/plot.default.html) always works,
+  and the `autoplot()` methods register when ggplot2 is installed.
+  [`theme_pdm()`](https://jonpayneea.github.io/PDMS7/reference/theme_pdm.md)
+  is the ggplot2 theme.
+- **Figure sizes.**
+  [`pdm_save()`](https://jonpayneea.github.io/PDMS7/reference/pdm_save.md)
+  writes PNG, PDF or SVG at standard sizes: `screen`, `report` and
+  `report_half` (A4), `slide` (16:9) and `journal_single` and
+  `journal_double`.
+- **Run diagnostics.**
+  [`pdm_series()`](https://jonpayneea.github.io/PDMS7/reference/pdm_series.md)
+  gathers a simulation with its observed flow, rain, windows, thresholds
+  and an optional second run;
+  [`project_series()`](https://jonpayneea.github.io/PDMS7/reference/pdm_series.md)
+  builds it for any model entry of a calibration project.
+  [`plot()`](https://rdrr.io/r/graphics/plot.default.html) and
+  `autoplot()` draw a hydrograph with rain hanging from the top, flow
+  duration curves, cumulative volume, or residuals with their 30-day
+  running mean, over the whole record, a window or any period.
+- **Restyled plots.**
+  [`plot_hindcast()`](https://jonpayneea.github.io/PDMS7/reference/plot_hindcast.md),
+  [`plot_recession()`](https://jonpayneea.github.io/PDMS7/reference/plot_recession.md)
+  and
+  [`plot_workbench()`](https://jonpayneea.github.io/PDMS7/reference/event_workbench.md)
+  use the house style, and each gains
+  [`plot()`](https://rdrr.io/r/graphics/plot.default.html) and
+  `autoplot()` methods on its object.
+  [`hindcast_scores()`](https://jonpayneea.github.io/PDMS7/reference/hindcast_scores.md)
+  now returns a `pdm_hindcast_scores` data.table so that they dispatch.
+  The workbench draws a trial in vermillion (it was orange) and observed
+  flow in black;
+  [`plot_hindcast()`](https://jonpayneea.github.io/PDMS7/reference/plot_hindcast.md)’s
+  `legend` argument is kept but the legend now sits below the plot.
+
 ## pdmS7 0.13.0
 
 - **Events workbench.**
