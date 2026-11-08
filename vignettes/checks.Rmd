@@ -1,0 +1,269 @@
+---
+title: "Checking the data and the events"
+author: "pdmS7 documentation"
+vignette: >
+  %\VignetteIndexEntry{Checking the data and the events}
+  %\VignetteEngine{knitr::knitr}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+library(pdmS7)
+knitr::opts_chunk$set(
+  error = FALSE, collapse = TRUE, comment = "#>", fig.width = 8,
+  fig.height = 4.2, dpi = if (nzchar(Sys.getenv("IN_PKGDOWN"))) 110 else 60
+)
+logger::log_threshold(logger::WARN, namespace = "pdmS7")
+pct <- function(x) sprintf("%.0f%%", 100 * x)
+```
+
+A calibration fits whatever it is given. If the rain gauges missed a storm, the search bends
+the model to make a flood out of no rain; if the area is wrong, it bends the water balance;
+if a peak lies above the highest gauging, it fits a guess. None of these shows in the score.
+They show only if you look for them, before and after calibrating.
+
+This article walks through every check pdmS7 offers, in the order to run them: what each
+measures, what a failure looks like, and what to do about it. It uses one record throughout,
+and a copy of it with faults put in on purpose, so that each check can be seen to fire.
+
+| When | Check | Asks | Function |
+|---|---|---|---|
+| Before registering | Annual totals | Is the rain and evaporation plausible for the place? | `check_inputs()` |
+| Before registering | Runoff ratio | Does less water leave than falls? | `check_inputs()` |
+| Before calibrating | Event balance | Did each event shed less quick flow than its rain? | `find_events()`, `plot()` |
+| Before calibrating | Event screening | Which events are too small, gappy or doubtful to judge by? | `screen_events()` |
+| After calibrating | Parameters | Did the search press against a limit? | `calibration_checks()` |
+| After calibrating | Peaks and timing | Are the largest floods the right size, at the right time? | `calibration_checks()` |
+| After calibrating | The stages | Did each stage do its job, and did the starts agree? | `calibration_path()` |
+
+# The record
+
+Three years of hourly rain over a 25 km^2^ catchment, and the flow of a model of it with
+measurement error added. This is the record as it should be.
+
+```{r record}
+rain <- synthetic_rain("2021-01-01", years = 3, dt = 1, seed = 11)
+forcing <- data.frame(time = rain$time, rain = rain$rain, pet = rain$pet)
+truth <- pdm_presets("standard")
+truth$area_km2 <- 25
+truth$td <- 1
+model <- pdm_from_config(truth)
+set.seed(11)
+flow <- run_pdm(model, forcing, initial_state_from_flow(model, 0.4, 0.7))$output$q_m3s *
+  exp(rnorm(nrow(forcing), 0, 0.08))
+```
+
+# Before registering: the whole record
+
+The first check looks at the record as a whole. Rain and evaporation should add up to
+plausible annual totals for the place, and the flow, spread over the catchment, should come
+to less than the rain: some of what falls evaporates. The share that runs off, the runoff
+ratio, is about 0.2 in the dry south-east of England and 0.8 or more in the wet north and
+west. A ratio above one means the rain is too low, the flow too high, or the area wrong.
+
+```{r inputs}
+check_inputs(forcing, flow, area_km2 = 25)
+```
+
+Here everything is plausible. Now the same record with the area mistyped as 2.5 km^2^, the
+kind of slip that happens when copying from a catchment descriptor:
+
+```{r inputs-bad}
+check_inputs(forcing, flow, area_km2 = 2.5)
+```
+
+The water balance is impossible, and the check says so before any calibration is spent on it.
+A model given this area would need ten times the rain it has; the search would push the
+rainfall factor to its limit and still fall short.
+
+The check also lists what was done to each series, when it was prepared with pdmS7's
+preparation functions (see [Getting started with data](data-preparation.html)), so a gap
+filled with zeros or a unit converted on a guess is in plain sight.
+
+# Before calibrating: event by event
+
+The record can balance overall and still be wrong for single storms: a gauge that missed a
+storm, a radar outage, a flow record with a step in it. `find_events()` finds the storms and
+their responses in the record, and for each one measures the rain that fell and the quick
+flow it produced: the flow above the slow baseflow line, from the rise to the end of the
+recession, as depth over the catchment.
+
+An event cannot shed more quick flow than the rain that fell. Its runoff ratio, quick flow
+over rain, is usually well below one: some rain wets the soil, some reaches groundwater.
+
+```{r events}
+events <- screen_events(find_events(forcing$rain, flow, forcing$time, dt = 1, area_km2 = 25),
+                        flow)
+nrow(events)
+summary(events$runoff_ratio)
+```
+
+```{r balance, fig.cap="Each event's rain against its quick flow. Dashed: a runoff ratio of one, the limit. Grey lines: ratios of 0.5 and 0.1. Hollow: events set aside by screening."}
+plot(events)
+```
+
+The events lie in a band below the limit, the larger storms shedding a larger share, as wetter
+soil lets more run off. Now the same record with the rain gauge catching only a twentieth of the
+largest storm, as when a funnel blocks or a logger fails part way through:
+
+```{r balance-bad, fig.cap="The same record with most of the rain missing for the largest storm. Its event now lies above the limit."}
+biggest <- events[which.max(events$peak_flow), ]
+storm <- biggest$rain_start:biggest$rain_end
+broken <- forcing
+broken$rain[storm] <- broken$rain[storm] * 0.05
+bad_events <- screen_events(find_events(broken$rain, flow, broken$time, dt = 1,
+                                        area_km2 = 25), flow)
+plot(bad_events)
+```
+
+The flood is still in the flow, but nearly all the rain that caused it is gone, so its event
+jumps above the limit. The screening flags it, and the events stage and the acceptance checks leave it
+out, so the search does not learn to make floods from nothing:
+
+```{r flags}
+flagged <- bad_events[grepl("quickflow_above_rain", bad_events$flags), ]
+flagged[, c("rain_start_time", "rain_mm", "quickflow_mm", "runoff_ratio", "use")]
+```
+
+A gauge that recorded nothing at all for a storm is caught differently: with no rain there is
+no event to find, so the flood shows up instead as a rise in the flow with no event around it,
+and as a dry spell in the rain record during a wet month. The hydrograph,
+`plot(project_series(project))`, shows both.
+
+Screening sets aside four kinds of event. Three are excluded from scoring by default; the
+fourth is only marked:
+
+| Flag | Means | Excluded by default |
+|---|---|---|
+| `quickflow_above_rain` | More quick flow than rain: the rain record must be wrong for this event | Yes |
+| `small_rise` | The peak rises less than a fifth of the baseflow beneath it, lost in the baseflow | Yes |
+| `gaps` | Over a tenth of the event's flow is missing | Yes |
+| `above_gauging` | The peak lies above the highest gauged flow, so it rests on an extrapolated rating | No, only marked |
+
+In a catchment with a high baseflow, many small storms barely lift the river. They are the
+hollow points at the bottom left of the balance plot, and setting them aside stops the search
+from fitting noise. The threshold, `min_rise`, can be raised or lowered.
+
+**Events far below the rest** are the other warning. Rain the gauges recorded but the river
+did not feel can be a gauge outside the catchment catching a storm that missed it, or a
+heavy shower over one gauge given too much weight. The rainfall article, [Catchment rainfall
+from gauges and radar](rainfall.html), shows how to weigh gauges and radar so that each
+storm's rain is right.
+
+# After calibrating: the checks a score hides
+
+A calibration run end to end, as [Automatic calibration from start to
+finish](calibration-journey.html) describes, here in one call:
+
+```{r calibrate, results="hide"}
+options(pdmS7.user = "A Hydrologist", pdmS7.role = "custodian")
+project <- file.path(tempdir(), "checks-brook")
+unlink(project, recursive = TRUE)
+start <- pdm_presets("standard")
+start$area_km2 <- 25
+calibrate_project(project, forcing, flow, area_km2 = 25,
+                  calibration = c("2021-04-01", "2022-12-31 23:00"),
+                  validation = c("2023-01-01", "2023-12-31 23:00"), structure = start,
+                  starts = 2L, control = list(maxit = 15L), wettest_years = 0)
+```
+
+```{r checks}
+checks <- calibration_checks(project, top = 10)
+checks
+```
+
+## Parameters at a limit
+
+```{r bounds, fig.height=3.6, fig.cap="Where each parameter ended within its search range, on the scale the search used. One at either end would be flagged."}
+plot(checks)
+```
+
+A parameter pressed against the end of its range is the clearest warning a calibration gives.
+The search wanted to go further than any sensible value, nearly always to make up for
+something else: rain that is too low, an area that is wrong, a structure that cannot do what
+the catchment does. Widening the range lets the fault hide better; finding it is the cure.
+A lower bound of zero, such as no time delay, is not flagged: zero is a value, not a limit.
+
+```{r near-edge, include=FALSE}
+p <- checks$parameters
+place <- ifelse(p$scale %in% "log", log(p$value / p$lower) / log(p$upper / p$lower),
+                (p$value - p$lower) / (p$upper - p$lower))
+nearest <- which.max(pmax(place, 1 - place))
+```
+
+Nothing is flagged here, but `r p$path[nearest]` ends `r pct(max(place[nearest], 1 - place[nearest]))`
+of the way along its range, close enough to its end to deserve a second look. A parameter
+that drifts to the edge without touching it often has little effect on the flow: the search
+moved it because nothing pulled it back. [What limits automatic
+calibration](calibration-study.html) shows which parameters a record can and cannot pin down;
+the recharge and groundwater constants are the usual drifters.
+
+## Peaks and timing
+
+```{r peaks, fig.cap="Simulated against observed peaks of every event, by window. Dashed: 20% either side."}
+plot(checks, type = "peaks")
+```
+
+```{r timing, fig.cap="How late each simulated peak comes, against its size."}
+plot(checks, type = "timing")
+```
+
+```{r peak-error, include=FALSE}
+big <- checks$events[checks$events$use %in% TRUE, ]
+median_peak <- stats::median(big$simulated_peak / big$observed_peak - 1, na.rm = TRUE)
+```
+
+The score over the whole record is dominated by the many hours of ordinary flow. These two
+plots look only at the floods. Here the peaks run `r pct(abs(median_peak))`
+`r if (median_peak < 0) "low" else "high"` in the median, across every window, while NSE is
+above 0.97: a short calibration that has the timing right and the size slightly wrong, which
+is just what the events stage is for. Peaks consistently low, or consistently late, outweigh a good
+score: see [Getting the floods right](floods.html) for what to do about them, from the events
+stage to adjusting the largest floods by eye.
+
+## The stages
+
+```{r stages, fig.height=3.6, fig.cap="The scores after each stage of the calibration."}
+path <- calibration_path(project)
+path
+plot(path)
+```
+
+Each stage has its own job. The first should settle the water balance and the low flows (log
+NSE); the second should lift the floods (NSE) with the balance held; the polish should move
+little. A first stage that leaves log NSE poor means the slow stores cannot match the
+record: look again at the area, the evaporation and the recharge rule. `plot(path, type =
+"starts")` shows each start's result: starts that end far apart mean the search has more than
+one valley, and more starts are worth their cost.
+
+```{r windows, fig.height=3.4, fig.cap="The candidate's scores in each window."}
+plot(path, type = "windows")
+```
+
+A large fall from the calibration window to validation means the model has learnt the
+calibration years rather than the catchment. Some fall is normal; a fall of a tenth or more
+in NSE deserves a look at what changed between the windows.
+
+# The order of work
+
+1. **Prepare and check the record** with `check_inputs()`. Fix any flag before going on: a
+   calibration cannot repair a wrong area or a misread unit.
+2. **Look at the events** with `plot(events)`. Points above the limit are storms the rain
+   missed; screening sets them aside, but several from one gauge mean the gauge needs a look.
+3. **Calibrate**, with `calibrate_project()` or step by step.
+4. **Run the checks**: `plot(calibration_checks(project))` for the parameters, then the peaks
+   and timing; `plot(calibration_path(project))` for the stages.
+5. **Act on what they show** before proposing the candidate: each failure points back to the
+   data, the structure or the stages, as the [overview](calibration-journey.html#step-5-the-checks)
+   shows.
+
+Every plot here also draws in ggplot2: replace `plot()` with `ggplot2::autoplot()` to get a
+ggplot to change or combine. `pdm_save()` writes any of them at report, slide or journal size.
+
+```{r cleanup, include=FALSE}
+# Articles are built one after another in one R session: leave nothing behind.
+unlink(project, recursive = TRUE)
+rm(list = c("rain", "forcing", "truth", "model", "flow", "events", "biggest", "storm",
+            "broken", "bad_events", "flagged", "project", "start", "checks", "p", "place",
+            "nearest", "big", "median_peak", "path", "pct"))
+```

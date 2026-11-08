@@ -18,6 +18,10 @@ Standard visuals, part 2 of 4: calibration and event plots.
   order: each stage's scores, every start's result, and the candidate's scores in each window.
   It prints a summary, and `plot()` and `autoplot()` draw the scores after each stage, each
   start's objective, and the candidate in each window.
+- **New article: "Checking the data and the events".** Every check in the order to run
+  them: annual totals and the runoff ratio, each event's rain against its quick flow,
+  screening, parameters at a limit, peaks and timing, and the stages. A copy of the record with
+  a mistyped area and an under-recording rain gauge shows each check firing.
 - **Renderer.** Hollow points, labelled axis positions, an x range, and score plots whose
   axis need not start at zero; the ggplot2 legends of mixed point and line plots merge.
 
