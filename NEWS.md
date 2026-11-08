@@ -1,3 +1,18 @@
+# pdmS7 0.17.1
+
+- **New article, "Tailoring calibration to the largest events in the app".** It follows one
+  project through the Events tab of `calibration_app()`, with screenshots: loading the largest
+  events, reading their peak and timing errors, moving the surface stores and the time delay,
+  saving the setting as a trial with a verdict and reasons, checking the recessions, refitting
+  the other parameters from the trial on the Trial tab, and proposing and validating the
+  result. The scripts that build the project and take the screenshots are in
+  `tools/app-screenshots`.
+- **Events tab fix.** A slider rounds the run's value to its step, so `b` = 0.439941 showed as
+  0.44. The tab took that rounding for a change: it reran the whole record, as for any change
+  to `b`, and a saved trial recorded a change to `b` nobody made. A slider now counts as moved
+  only when it is more than half a step from the run's value. The event plots are also drawn
+  at a higher resolution, so their labels can be read.
+
 # pdmS7 0.17.0
 
 - **`water_balance()`** checks the water balance before calibrating, for the whole record and

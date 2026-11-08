@@ -6,6 +6,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-07
 # Modified:     2026-11-07 - First version
+#               2026-11-08 - Sliders snapped to their step no longer count as moved
 # Tier:         3
 # Inputs:       Shiny inputs; the open project
 # Outputs:      Event plots, scores, recession check; trial entries
@@ -30,10 +31,13 @@
 }
 
 # The slider values that differ from the run's, as changes for workbench_try() and log_trial().
+# A slider snaps the run's value to its step (b = 0.439941 shows as 0.44), so a slider counts as
+# moved only when it is more than half a step from the run's value; an untouched slider then
+# neither forces a rerun nor writes a change nobody made.
 .wb_changes <- function(specs, values) {
   values <- unlist(values[specs$path])
   if (is.null(values) || length(values) != nrow(specs)) return(NULL)
-  moved <- abs(values - specs$value) > 1e-12
+  moved <- abs(values - specs$value) > specs$step / 2 + 1e-12
   if (!any(moved)) return(NULL)
   stats::setNames(values[moved], specs$path[moved])
 }
@@ -113,7 +117,7 @@
   output$wb_plot <- shiny::renderPlot({
     shiny::req(rv$wb)
     plot_workbench(rv$wb, trial())
-  })
+  }, res = 96)
   output$wb_table <- shiny::renderTable({
     shiny::req(rv$wb)
     .wb_summary_table(rv$wb, trial())

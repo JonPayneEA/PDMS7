@@ -65,6 +65,7 @@ articles:
   - checks
   - calibration
   - floods
+  - app-events
   - rainfall
   - auto-calibration
   - scoring
