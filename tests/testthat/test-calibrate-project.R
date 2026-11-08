@@ -91,3 +91,34 @@ test_that("event_run starts warm inside the record and steady outside it", {
   expect_identical(plot(outside), outside)
   expect_error(event_run(p$folder, data.frame(time = later, rain = 0)), "needs observed flow")
 })
+
+# Guards: the calibration path lists the stages in order with their scores and starts, and the
+# candidate's windows; the checks and the path draw in both engines
+test_that("calibration_path and the checks plots", {
+  p <- calibrated()
+  path <- calibration_path(p$folder)
+  expect_s3_class(path, "pdm_calibration_path")
+  expect_equal(nrow(path$stages), 3)
+  expect_equal(path$stages$step, 1:3)
+  expect_true(all(path$starts$best))
+  expect_setequal(unique(path$windows$window), c("calibration", "validation"))
+  expect_output(print(path), "Candidate NSE by window")
+  checks <- calibration_checks(p$folder, top = 3)
+  bounds <- .bounds_spec(checks)
+  expect_equal(length(bounds$yticks$at), nrow(checks$parameters))
+  inside <- bounds$series[bounds$series$geom == "point", ]
+  expect_true(all(inside$x >= 0 & inside$x <= 1))
+  grDevices::pdf(NULL)
+  on.exit(grDevices::dev.off(), add = TRUE)
+  for (type in c("stages", "starts", "windows")) expect_identical(plot(path, type = type), path)
+  for (type in c("bounds", "peaks", "timing", "balance")) {
+    expect_identical(plot(checks, type = type), checks)
+  }
+  skip_if_not_installed("ggplot2")
+  for (type in c("stages", "starts", "windows")) {
+    expect_silent(ggplot2::ggplot_build(ggplot2::autoplot(path, type = type)))
+  }
+  for (type in c("bounds", "peaks", "timing", "balance")) {
+    expect_silent(ggplot2::ggplot_build(ggplot2::autoplot(checks, type = type)))
+  }
+})

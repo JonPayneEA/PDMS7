@@ -1,3 +1,30 @@
+# pdmS7 0.16.0
+
+Standard visuals, part 2 of 4: calibration and event plots.
+
+- **Event plots.** Event tables from `find_events()`, `screen_events()`, `event_scores()` and
+  `calibration_checks()` now carry the class `pdm_events`, and `plot()` and `autoplot()` draw
+  three standard plots:
+  - `balance`: each event's rain against its quick flow on log scales, with a dashed line at
+    the runoff-ratio limit and grey lines at 0.5 and 0.1. An event above the limit shed more
+    quick flow than the rain that fell, so the rain, the area or the flow is wrong for it.
+  - `peaks`: simulated against observed peaks, with the 1:1 line and a 20% band.
+  - `timing`: each peak's timing error against its size.
+  Screened events are drawn hollow; events from `calibration_checks()` are coloured by window.
+- **Checks plots.** `plot()` and `autoplot()` on `calibration_checks()` draw where each
+  parameter sits within its search range, on the scale the search used, with any at a bound
+  flagged; or the project's events as above.
+- **The calibration path.** `calibration_path()` gathers a project's automatic calibrations in
+  order: each stage's scores, every start's result, and the candidate's scores in each window.
+  It prints a summary, and `plot()` and `autoplot()` draw the scores after each stage, each
+  start's objective, and the candidate in each window.
+- **New article: "Checking the data and the events".** Every check in the order to run
+  them: annual totals and the runoff ratio, each event's rain against its quick flow,
+  screening, parameters at a limit, peaks and timing, and the stages. A copy of the record with
+  a mistyped area and an under-recording rain gauge shows each check firing.
+- **Renderer.** Hollow points, labelled axis positions, an x range, and score plots whose
+  axis need not start at zero; the ggplot2 legends of mixed point and line plots merge.
+
 # pdmS7 0.15.0
 
 The helper functions of the Beggearn Huish calibration script, tested and in the package.

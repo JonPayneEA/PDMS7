@@ -105,5 +105,5 @@ screen_events <- function(events, observed, min_rise = 0.2, max_ratio = 1, max_g
     character(0)
   }
   events$use <- if (nrow(events)) !apply(flags[, exclude, drop = FALSE], 1L, any) else logical(0)
-  events
+  .as_events(events)
 }
