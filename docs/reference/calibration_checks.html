@@ -13,7 +13,7 @@ the headline score hides."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.13.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.15.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -156,7 +156,8 @@ they name one; <code>NULL</code> summarises every event.</p></dd>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A list of three data frames and the response times. <code>parameters</code>: <code>path</code>, <code>value</code>,
+    <p>A <code>pdm_calibration_checks</code> list of three data frames and the response times; printing it
+shows the parameters at a bound and the event summary. <code>parameters</code>: <code>path</code>, <code>value</code>,
 <code>lower</code>, <code>upper</code>, <code>scale</code> and <code>at_bound</code> (<code>"lower"</code>, <code>"upper"</code> or <code>NA</code>). <code>events</code>: every
 event with its <code>period</code> and the columns of <code><a href="event_scores.html">event_scores()</a></code>. <code>summary</code>: one row per window
 with <code>events</code> (the number summarised), <code>median_peak_error</code>, <code>median_timing_error_h</code>,

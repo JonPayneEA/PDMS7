@@ -19,7 +19,7 @@ accept as a logged trial."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.13.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.15.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -131,7 +131,13 @@ accept as a logged trial.</p>
 <span></span>
 <span><span class="fu">workbench_try</span><span class="op">(</span><span class="va">wb</span>, <span class="va">changes</span><span class="op">)</span></span>
 <span></span>
-<span><span class="fu">plot_workbench</span><span class="op">(</span><span class="va">wb</span>, trial <span class="op">=</span> <span class="cn">NULL</span>, ncol <span class="op">=</span> <span class="fl">2L</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">plot_workbench</span><span class="op">(</span><span class="va">wb</span>, trial <span class="op">=</span> <span class="cn">NULL</span>, ncol <span class="op">=</span> <span class="fl">2L</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for class 'pdm_workbench'</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">...</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># S3 method for class 'pdm_workbench'</span></span>
+<span><span class="fu">autoplot</span><span class="op">(</span><span class="va">object</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -175,6 +181,14 @@ the latest model entry if there is none.</p></dd>
 
 <dt id="arg-ncol">ncol<a class="anchor" aria-label="anchor" href="#arg-ncol"></a></dt>
 <dd><p>Panels per row.</p></dd>
+
+
+<dt id="arg-x-object">x, object<a class="anchor" aria-label="anchor" href="#arg-x-object"></a></dt>
+<dd><p>A workbench from <code>event_workbench()</code>.</p></dd>
+
+
+<dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
+<dd><p>For <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> and <code>autoplot()</code>: <code>trial</code> and <code>ncol</code>, as for <code>plot_workbench()</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">

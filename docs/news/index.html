@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.13.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.15.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -96,6 +96,38 @@
       <small>Source: <a href="https://github.com/JonPayneEA/PDMS7/blob/HEAD/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.15.0" id="pdms7-0150">pdmS7 0.15.0<a class="anchor" aria-label="anchor" href="#pdms7-0150"></a></h2>
+<p>The helper functions of the Beggearn Huish calibration script, tested and in the package.</p>
+<ul><li>
+<strong>Data preparation.</strong> <code><a href="../reference/read_hydro_series.html">read_hydro_series()</a></code> reads hydrometric exports: split year, month and day columns in any of their spellings, one time column in the common formats, or a date and a time column, in any time zone; it refuses a file whose timestamps repeat. <code><a href="../reference/align_series.html">align_series()</a></code> puts several series on one grid over the period they share. <code><a href="../reference/convert_units.html">convert_units()</a></code> converts mm per hour or day, metres, litres a second and megalitres a day, and with <code>"auto"</code> works the unit out from plausible annual totals. <code><a href="../reference/fill_gaps.html">fill_gaps()</a></code> fills by a named rule (stop, zero, interpolate up to a longest gap, none) and <code><a href="../reference/zero_negatives.html">zero_negatives()</a></code> sets negative values to zero. <code><a href="../reference/check_inputs.html">check_inputs()</a></code> reports the period, gaps, negatives, annual totals and runoff ratio, and flags anything implausible.</li>
+<li>
+<strong>Preparation in the log.</strong> Each of those functions notes what it did on the series it returns (<code><a href="../reference/preparation_notes.html">preparation_notes()</a></code>), and <code><a href="../reference/calibration_log.html">register_data()</a></code> writes the notes into the registration entry; the report shows them in its Data section. Data registered without notes register exactly as before.</li>
+<li>
+<strong><code><a href="../reference/calibrate_project.html">calibrate_project()</a></code></strong> runs a whole logged calibration in one call: project, registration, structure, staged calibration, candidate, validation when a window is registered and test when one is. A finished project is left as it is; an unfinished one is moved aside.</li>
+<li>
+<strong><code><a href="../reference/candidate_model.html">candidate_model()</a></code></strong> returns the model of a project’s candidate.</li>
+<li>
+<strong><code><a href="../reference/event_run.html">event_run()</a></code></strong> runs a project’s model over a separate event file: from the record’s own state when the event lies inside the registered record, otherwise from steady state at its first flow, with missing evaporation taken from the record. It prints the event’s scores and <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> draws its hydrograph.</li>
+<li>
+<strong><code><a href="../reference/calibration_checks.html">calibration_checks()</a></code></strong> returns a <code>pdm_calibration_checks</code> list whose print method shows the parameters at a bound and the largest events in each window.</li>
+<li>
+<strong>Article.</strong> The data preparation article has a new section running the same steps with these functions.</li>
+</ul></div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.14.0" id="pdms7-0140">pdmS7 0.14.0<a class="anchor" aria-label="anchor" href="#pdms7-0140"></a></h2>
+<p>Standard visuals, part 1 of 4: the house style and the run diagnostics.</p>
+<ul><li>
+<strong>House style.</strong> Every standard plot uses the Okabe-Ito colours, which stay distinct with the common forms of colour blindness, and gives each colour one meaning: observed flow black, the model blue, rain sky blue, a second run or a change vermillion, the calibration and validation windows light grey and light orange, thresholds dashed reddish purple. <code><a href="../reference/pdm_colours.html">pdm_colours()</a></code> returns them by role for your own figures, and <code><a href="../reference/pdm_colours.html">pdm_palette()</a></code> gives a fixed order for series of equal standing. The previous palette’s green and red become almost identical to a reader with red-green colour blindness.</li>
+<li>
+<strong>Base R and ggplot2.</strong> Each standard plot builds one description of what to draw, and two renderers draw it: <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> in base R and <code>autoplot()</code> in ggplot2, so the two always agree. ggplot2 is a suggested package: <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> always works, and the <code>autoplot()</code> methods register when ggplot2 is installed. <code><a href="../reference/theme_pdm.html">theme_pdm()</a></code> is the ggplot2 theme.</li>
+<li>
+<strong>Figure sizes.</strong> <code><a href="../reference/pdm_save.html">pdm_save()</a></code> writes PNG, PDF or SVG at standard sizes: <code>screen</code>, <code>report</code> and <code>report_half</code> (A4), <code>slide</code> (16:9) and <code>journal_single</code> and <code>journal_double</code>.</li>
+<li>
+<strong>Run diagnostics.</strong> <code><a href="../reference/pdm_series.html">pdm_series()</a></code> gathers a simulation with its observed flow, rain, windows, thresholds and an optional second run; <code><a href="../reference/pdm_series.html">project_series()</a></code> builds it for any model entry of a calibration project. <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> and <code>autoplot()</code> draw a hydrograph with rain hanging from the top, flow duration curves, cumulative volume, or residuals with their 30-day running mean, over the whole record, a window or any period.</li>
+<li>
+<strong>Restyled plots.</strong> <code><a href="../reference/plot_hindcast.html">plot_hindcast()</a></code>, <code><a href="../reference/plot_recession.html">plot_recession()</a></code> and <code><a href="../reference/event_workbench.html">plot_workbench()</a></code> use the house style, and each gains <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> and <code>autoplot()</code> methods on its object. <code><a href="../reference/hindcast_scores.html">hindcast_scores()</a></code> now returns a <code>pdm_hindcast_scores</code> data.table so that they dispatch. The workbench draws a trial in vermillion (it was orange) and observed flow in black; <code><a href="../reference/plot_hindcast.html">plot_hindcast()</a></code>’s <code>legend</code> argument is kept but the legend now sits below the plot.</li>
+</ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.13.0" id="pdms7-0130">pdmS7 0.13.0<a class="anchor" aria-label="anchor" href="#pdms7-0130"></a></h2>
 <ul><li>

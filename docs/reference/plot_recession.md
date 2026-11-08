@@ -9,6 +9,12 @@ such as one of simulated flow, is drawn over the first.
 
 ``` r
 plot_recession(x, y = NULL, main = "Recession analysis")
+
+# S3 method for class 'pdm_recession'
+plot(x, ...)
+
+# S3 method for class 'pdm_recession'
+autoplot(object, ...)
 ```
 
 ## Arguments
@@ -25,6 +31,16 @@ plot_recession(x, y = NULL, main = "Recession analysis")
 - main:
 
   Plot title.
+
+- ...:
+
+  For `autoplot()`: `y` and `main`, as for `plot_recession()`. For
+  [`plot()`](https://rdrr.io/r/graphics/plot.default.html): the same.
+
+- object:
+
+  A result of
+  [`recession_analysis()`](https://jonpayneea.github.io/PDMS7/reference/recession_analysis.md).
 
 ## Value
 

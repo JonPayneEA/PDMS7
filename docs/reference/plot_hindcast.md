@@ -14,6 +14,12 @@ plot_hindcast(
   ylim = NULL,
   legend = "bottomright"
 )
+
+# S3 method for class 'pdm_hindcast_scores'
+plot(x, ...)
+
+# S3 method for class 'pdm_hindcast_scores'
+autoplot(object, ...)
 ```
 
 ## Arguments
@@ -48,8 +54,19 @@ plot_hindcast(
 
 - legend:
 
-  Legend position, as in
-  [`graphics::legend()`](https://rdrr.io/r/graphics/legend.html).
+  Kept so older code still runs; the legend now always sits below the
+  plot.
+
+- x, object:
+
+  A
+  [`hindcast_scores()`](https://jonpayneea.github.io/PDMS7/reference/hindcast_scores.md)
+  result.
+
+- ...:
+
+  For [`plot()`](https://rdrr.io/r/graphics/plot.default.html) and
+  `autoplot()`: the other arguments of `plot_hindcast()`.
 
 ## Value
 

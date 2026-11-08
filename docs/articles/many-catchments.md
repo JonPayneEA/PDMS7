@@ -126,7 +126,7 @@ one_run <- system.time(
 c(seconds_per_run = signif(one_run, 2),
   estimated_minutes_for_8 = round(8 * 1500 * one_run / 60, 1))
 #>         seconds_per_run estimated_minutes_for_8 
-#>                  0.0062                  1.2000
+#>                  0.0034                  0.7000
 ```
 
 For a real batch, measure on a few catchments first; see the pilot
@@ -150,9 +150,9 @@ part <- do.call(calibrate_batch, c(list(basins, results, only = c("B01", "B02", 
 part
 #>     basin  state     step seconds message
 #>    <char> <char>   <char>   <num>  <char>
-#> 1:    B01   done complete     6.0        
-#> 2:    B02   done complete     4.3        
-#> 3:    B03   done complete     5.6
+#> 1:    B01   done complete     5.3        
+#> 2:    B02   done complete     3.6        
+#> 3:    B03   done complete     4.7
 ```
 
 Suppose the computer was switched off at this point, after three
@@ -170,11 +170,11 @@ status
 #> 1:    B01   done complete     0.0        
 #> 2:    B02   done complete     0.0        
 #> 3:    B03   done complete     0.0        
-#> 4:    B04   done complete     6.5        
-#> 5:    B05   done complete     5.5        
-#> 6:    B06   done complete     6.7        
-#> 7:    B07   done complete     4.7        
-#> 8:    B08   done complete     5.4
+#> 4:    B04   done complete     5.5        
+#> 5:    B05   done complete     5.1        
+#> 6:    B06   done complete     5.4        
+#> 7:    B07   done complete     3.8        
+#> 8:    B08   done complete     5.2
 ```
 
 The three finished catchments took a moment each: the batch read their
@@ -218,11 +218,11 @@ status
 #> 1:    B01   done complete     0.0        
 #> 2:    B02   done complete     0.0        
 #> 3:    B03   done complete     0.0        
-#> 4:    B04   done complete     6.5        
-#> 5:    B05   done complete     5.5        
+#> 4:    B04   done complete     5.5        
+#> 5:    B05   done complete     5.1        
 #> 6:    B06   done complete     0.0        
-#> 7:    B07   done complete     4.7        
-#> 8:    B08   done complete     5.4
+#> 7:    B07   done complete     3.8        
+#> 8:    B08   done complete     5.2
 ```
 
 The failed attempt is still on record in B06’s project, followed by the
