@@ -60,7 +60,8 @@ flow_canvas()
 top <- 0.74
 bottom <- 0.36
 xs <- c(0.1, 0.3, 0.5, 0.7, 0.9)
-steps_top <- c("1. Register\nthe data", "2. Look at\nthe events", "3. Choose the\nstructure",
+steps_top <- c("1. Prepare and\nregister data", "2. Check data\nand events",
+               "3. Choose the\nstructure",
                "4. Calibrate\nin stages", "5. Run the\nchecks")
 steps_bottom <- c("10. Sign-off", "9. Test on the\nwettest years", "8. Validate on\nunseen years",
                   "7. Propose the\ncandidate", "6. Look at the\nfloods yourself")
@@ -82,11 +83,11 @@ text(0.7, top + 0.15, "if the checks fail, go back", pos = 3, cex = 0.72, col = 
 
 | Step | What happens | In pdmS7 |
 |---|---|---|
-| 1. Register the data | Rain, evaporation and flow are stored in the project, with the years for warming up, calibrating and validating | `start_calibration_project()`, `register_data()` |
-| 2. Look at the events | The floods are found in the record, and the doubtful ones set aside | `find_events()`, `screen_events()` |
+| 1. Prepare and register the data | Rain, evaporation and flow are read, put on one time step, converted and gap-filled, then stored in the project with the years for warming up, calibrating and validating | `read_hydro_series()`, `align_series()`, `convert_units()`, `fill_gaps()`, `register_data()` |
+| 2. Check the data and the events | The record's totals and runoff ratio, then each flood's rain against its quick flow; doubtful events are set aside | `check_inputs()`, `find_events()`, `screen_events()`, `plot(events)` |
 | 3. Choose the structure | Which version of the model to fit: its soil store, recharge and groundwater store | `select_structure()`, `recommend_structure()` |
 | 4. Calibrate in stages | The search for parameters, one group at a time | `pdm_stages()`, `log_staged_calibration()` |
-| 5. Run the checks | Warning signs the score hides: parameters at their limits, floods late or low | `calibration_checks()` |
+| 5. Run the checks | Warning signs the score hides: parameters at their limits, floods late or low | `calibration_checks()`, `calibration_path()`, `plot()` |
 | 6. Look at the floods | The largest events side by side, adjusted by eye if need be | `event_workbench()`, the app's Events tab |
 | 7. Propose | The chosen calibration is put forward, with the reasons | `propose_candidate()` |
 | 8. Validate | The candidate is scored on years no calibration saw | `validate_candidate()` |
@@ -98,9 +99,33 @@ back to the structure, the stages or the rain.
 
 # Step 1: the data and the years
 
-A calibration needs rain, potential evaporation and measured flow on the same time steps. Once
-registered, the data are copied into the project and fingerprinted, so that later steps can
-prove which data they used.
+A calibration needs rain, potential evaporation and measured flow on the same time steps. The
+files rarely arrive that way: in different layouts, at different steps, in different units,
+with gaps. pdmS7 has a function for each step of getting them right, and each one notes what it
+did:
+
+```{r prepare, echo=FALSE, fig.height=2.3, fig.cap="Preparing the record. Each step notes what it did; registration writes the notes into the log."}
+flow_canvas()
+xs <- seq(0.08, 0.92, length.out = 6)
+labels <- c("Read the\nexports", "Put on one\ntime step", "Convert\nunits",
+            "Fill rain\nand PET gaps",
+            "Check totals\nand ratio", "Register")
+funs <- c("read_hydro_series()", "align_series()", "convert_units()", "fill_gaps()",
+          "check_inputs()", "register_data()")
+for (i in 1:6) {
+  flow_box(xs[i], 0.62, labels[i], col = if (i == 6) "green" else "blue", w = 0.14, h = 0.3,
+           cex = 0.7)
+  text(xs[i], 0.36, funs[i], cex = 0.62, family = "mono", col = flow_pal[["dark"]])
+}
+for (i in 1:5) flow_arrow(xs[i] + 0.07, 0.62, xs[i + 1] - 0.07, 0.62)
+text(0.5, 0.12, "every step noted on the series; the notes go into the registration entry",
+     cex = 0.75, col = flow_pal[["dark"]])
+```
+
+Once registered, the data are copied into the project and fingerprinted, so that later steps can
+prove which data they used, and the preparation notes travel with them into the log. See
+[Getting started with data](data-preparation.html) for the steps, and [Checking the data and
+the events](checks.html) for what to look at before calibrating.
 
 The record is then divided:
 
@@ -296,6 +321,11 @@ flow_arrow(0.51, 0.3, 0.65, 0.3, "no", pos = 3)
 - **Validation against calibration.** Some fall in score on unseen years is normal. A large
   fall means the model has learned the calibration years rather than the catchment.
 
+Each check has a standard plot: `plot(calibration_checks(project))` shows where every parameter
+sits within its range, with `type = "peaks"` or `"timing"` for the floods, and
+`plot(calibration_path(project))` shows the scores after each stage. [Checking the data and the
+events](checks.html) walks through them on a record with faults put in on purpose.
+
 # Step 6: looking at the floods yourself
 
 Scores summarise; they do not show. The events workbench draws the largest floods side by
@@ -395,6 +425,34 @@ behind them are not unique. This is why the checks look
 at the floods themselves, and why [What limits automatic calibration](calibration-study.html)
 matters before reading too much into any one value.
 
+# All of this in one call
+
+The steps above can be run one at a time, as here, or in one call. `calibrate_project()` starts
+the project, registers the data, selects the structure, runs the stages, proposes the last stage
+as the candidate, validates it, and tests it when test years are registered. Every step is still
+its own entry in the log, exactly as if made by hand:
+
+```{r one-call, eval=FALSE}
+calibrate_project(project, forcing, observed, area_km2 = 30,
+                  calibration = c("2021-01-01", "2022-03-31 23:00"),
+                  validation = c("2022-04-01", "2022-09-30 23:00"), structure = start,
+                  stages = pdm_stages(start, events = TRUE), wettest_years = 0)
+```
+
+Then the checks, as plots:
+
+```{r one-call-path, fig.height=3.4, fig.cap="The scores after each stage of the calibration above."}
+plot(calibration_path(project))
+```
+
+```{r one-call-bounds, fig.height=3.6, fig.cap="Where each parameter of the candidate ended within its search range."}
+plot(calibration_checks(project, top = 5))
+```
+
+Run it again with the same folder and it leaves a finished project alone, so a script that
+calibrates many weightings or catchments can be rerun after an interruption without repeating
+the work.
+
 # Many catchments at once
 
 The same journey can be run over many catchments with `calibrate_batch()`, which runs each
@@ -407,6 +465,8 @@ catchments](many-catchments.html).
 
 | To learn about | Read |
 |---|---|
+| Preparing the data | [Getting started with data](data-preparation.html) |
+| Every check, before and after calibrating | [Checking the data and the events](checks.html) |
 | How the search works, bounds, scores, starts | [Automatic calibration, explained](auto-calibration.html) |
 | Why a good score can hide bad floods | [Getting the floods right](floods.html) |
 | The rain the model is given | [Catchment rainfall from gauges and radar](rainfall.html) |

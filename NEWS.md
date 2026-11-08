@@ -18,6 +18,10 @@ Standard visuals, part 2 of 4: calibration and event plots.
   order: each stage's scores, every start's result, and the candidate's scores in each window.
   It prints a summary, and `plot()` and `autoplot()` draw the scores after each stage, each
   start's objective, and the candidate in each window.
+- **"Automatic calibration from start to finish" updated.** Step 1 is now preparing and
+  registering the data, with a flow diagram of the preparation functions; step 2 checks the data
+  and the events; step 5 shows the check plots; a new section runs the same calibration in one
+  call with `calibrate_project()` and plots its stages and parameters.
 - **New article: "Checking the data and the events".** Every check in the order to run
   them: annual totals and the runoff ratio, each event's rain against its quick flow,
   screening, parameters at a limit, peaks and timing, and the stages. A copy of the record with
