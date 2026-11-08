@@ -426,7 +426,7 @@ zero_negatives <- function(x, label = "series") {
 #' @examples
 #' n <- 24 * 365
 #' forcing <- data.frame(rain = rep(c(0, 0, 0, 0.9), n / 4), pet = 0.06)
-#' check_inputs(forcing, observed = rep(0.4, n), area_km2 = 20)
+#' check_inputs(forcing, observed = rep(0.4, n), area_km2 = 20, dt = 1)
 #' @seealso [preparation_notes()], [register_data()]
 #' @export
 check_inputs <- function(forcing, observed = NULL, area_km2 = NULL, dt = NULL,

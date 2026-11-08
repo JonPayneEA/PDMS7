@@ -39,7 +39,7 @@ fill flow for scoring.
    \code{rule} \tab Does \cr
    \code{stop} \tab refuses, listing the five longest gaps, so you infill them yourself \cr
    \code{zero} \tab sets missing steps to zero, for rain where a gap is known to be dry \cr
-   \code{interpolate} \tab joins the values either side with a straight line; gaps longer than \code{max_gap_h} are left missing \cr
+   \code{interpolate} \tab joins the values either side; gaps over \code{max_gap_h} stay missing \cr
    \code{none} \tab leaves gaps, and notes how many there are \cr
 }
 
