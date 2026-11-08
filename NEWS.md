@@ -1,3 +1,23 @@
+# pdmS7 0.17.0
+
+- **`water_balance()`** checks the water balance before calibrating, for the whole record and
+  for each water year (from October). Over a year a catchment stores little, so its loss, rain
+  minus flow, is mostly evaporation, and two limits follow: flow cannot exceed rain, and the
+  loss cannot much exceed the potential evaporation. Years beyond either limit are flagged, and
+  so are years whose runoff ratio stands apart from the rest. A lasting change, such as a new
+  rating from one year on, can leave no single year apart, so the years are also split at each
+  boundary in turn and the largest change in the mean runoff ratio is flagged when it exceeds
+  25%; years already flagged on their own are left out of that test, so one bad year is not
+  mistaken for a change. Steps with missing flow are left out of all three totals, and part
+  years are reported but not judged. It also returns a double-mass curve and the baseflow
+  index. `plot()` and `autoplot()` draw each year against the Budyko limits and Fu's curve,
+  the ratios year by year, and the double-mass curve.
+- **The checks article** has a new section, "Year by year: the water balance", in which a new
+  rating from one year on is found by the change test and seen in the double-mass curve. Its
+  record now covers five whole water years, and its text on flagged parameters and peak
+  errors is written from the results rather than fixed, so it stays true if the example
+  changes.
+
 # pdmS7 0.16.0
 
 Standard visuals, part 2 of 4: calibration and event plots.

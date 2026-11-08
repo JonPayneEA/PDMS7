@@ -201,6 +201,7 @@ reference:
   - fill_gaps
   - zero_negatives
   - check_inputs
+  - water_balance
   - preparation_notes
 - title: Calibration
   contents:
