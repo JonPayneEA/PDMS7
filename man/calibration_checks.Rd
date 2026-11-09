@@ -35,7 +35,9 @@ A \code{pdm_calibration_checks} list of three data frames and the response times
 shows the parameters at a bound and the event summary. \code{parameters}: \code{path}, \code{value},
 \code{lower}, \code{upper}, \code{scale} and \code{at_bound} (\code{"lower"}, \code{"upper"} or \code{NA}). \code{events}: every
 event with its \code{period} and the columns of \code{\link[=event_scores]{event_scores()}}. \code{summary}: one row per window
-with \code{events} (the number summarised), \code{median_peak_error}, \code{median_timing_error_h},
+with \code{events} (the number summarised), \code{median_peak_error}, \code{median_abs_peak_error} (the
+median size of the peak errors, so that errors of -50\% and +50\% do not cancel),
+\code{median_timing_error_h},
 \code{share_peak_within_20pct} and \code{median_event_nse}, and \code{screened_out}, the events of that
 window the screen left out. \code{response_h}: the response times
 estimated from the observed and the simulated flow.

@@ -219,3 +219,13 @@ test_that("unstable default-family AR sets are refused", {
   )
   expect_named(hc$ar, "ea_2024")
 })
+
+# Guards: a window with a gap gets no forecast origins inside the gap
+test_that("forecast origins stay inside the window", {
+  window <- c(100:120, 200:220)
+  origins <- .hindcast_origins(window, 1000, 1)
+  expect_true(all(origins %in% window))
+  expect_false(any(origins > 120 & origins < 200))
+  expect_equal(.hindcast_origins(100:220, 1000, 6), seq.int(100L, 219L, by = 6L))
+  expect_true(all(.hindcast_origins(window, 1000, 6) %in% window))
+})

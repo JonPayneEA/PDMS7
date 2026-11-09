@@ -6,6 +6,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-06
 # Modified:     2026-11-06 - First version
+#               2026-11-09 - Summary adds median_abs_peak_error
 # Tier:         3
 # Inputs:       A calibration project and one of its model entries
 # Outputs:      Tables of parameters, events and a summary by window
@@ -46,7 +47,9 @@
 #'   shows the parameters at a bound and the event summary. `parameters`: `path`, `value`,
 #'   `lower`, `upper`, `scale` and `at_bound` (`"lower"`, `"upper"` or `NA`). `events`: every
 #'   event with its `period` and the columns of [event_scores()]. `summary`: one row per window
-#'   with `events` (the number summarised), `median_peak_error`, `median_timing_error_h`,
+#'   with `events` (the number summarised), `median_peak_error`, `median_abs_peak_error` (the
+#'   median size of the peak errors, so that errors of -50% and +50% do not cancel),
+#'   `median_timing_error_h`,
 #'   `share_peak_within_20pct` and `median_event_nse`, and `screened_out`, the events of that
 #'   window the screen left out. `response_h`: the response times
 #'   estimated from the observed and the simulated flow.
@@ -136,6 +139,7 @@ calibration_checks <- function(project, entry = NULL, top = 20L, edge = 0.01, ra
   e <- e[order(-e$observed_peak), ][seq_len(min(top, nrow(e))), ]
   data.frame(period = period, events = nrow(e),
              median_peak_error = stats::median(e$peak_error),
+             median_abs_peak_error = stats::median(abs(e$peak_error)),
              median_timing_error_h = stats::median(e$timing_error_h),
              share_peak_within_20pct = mean(abs(e$peak_error) <= 0.2),
              median_event_nse = stats::median(e$nse, na.rm = TRUE),

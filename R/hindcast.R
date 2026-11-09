@@ -5,6 +5,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-01
 # Modified:     2026-11-01 - Add pdm_hindcast(), hindcast_scores(), plot_hindcast()
+#               2026-11-09 - Forecast origins only at rows of the window, not in its gaps
 # Tier:         3
 # Inputs:       A FlodePdmModel; forcing (mm per step); observed flow (m3/s)
 # Outputs:      data.table of forecasts by origin, lead and method; scores by lead
@@ -158,8 +159,10 @@ pdm_hindcast <- function(model, forcing, observed, state = NULL, window = NULL, 
   .check(is.numeric(window) && all(window >= 1 & window <= n), "window must be row numbers")
   last <- min(max(window), n) - 1L
   .check(min(window) <= last, "No forecast origins fit in the window")
+  # Every `every` steps from the window's first row, keeping only rows of the window itself: a
+  # window with gaps (held-back years, bad periods) gets no origins inside them.
   origins <- as.integer(seq.int(min(window), last, by = every))
-  origins <- origins[origins >= 3L & origins + 1L <= n]
+  origins <- origins[origins %in% window & origins >= 3L & origins + 1L <= n]
   .check(length(origins) > 0, "No forecast origins fit in the window")
   origins
 }

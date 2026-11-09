@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.17.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.18.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -98,6 +98,27 @@
       <small>Source: <a href="https://github.com/JonPayneEA/PDMS7/blob/HEAD/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.18.1" id="pdms7-0181">pdmS7 0.18.1<a class="anchor" aria-label="anchor" href="#pdms7-0181"></a></h2>
+<p>Fixes from a review of 0.18.0.</p>
+<ul><li>
+<strong><code><a href="../reference/calibrate_project.html">calibrate_project()</a></code> without a validation window</strong> now stops before the search when test years are registered, or the wettest years are held back (the default on a long record). The test scores a validated candidate, so before it failed only after the whole calibration had run. Give <code>validation</code>, or <code>wettest_years = 0</code>.</li>
+<li>
+<strong>A rerun of <code><a href="../reference/calibrate_project.html">calibrate_project()</a></code></strong> on a project that has a candidate now finishes whichever of the validation, the test and (with <code>report = TRUE</code>) the report are missing, instead of returning at once. A run interrupted after proposing its candidate can be finished, and a report added later.</li>
+<li>
+<strong><code><a href="../reference/recommend_structure.html">recommend_structure()</a></code></strong> broke ties on the size of the median peak error, so errors of -50% and +50% cancelled to a perfect zero and beat a structure steadily within 10%. It now takes the median of the absolute errors. <code><a href="../reference/calibration_checks.html">calibration_checks()</a></code> reports it in its summary as <code>median_abs_peak_error</code>.</li>
+<li>
+<strong><code><a href="../reference/pdm_hindcast.html">pdm_hindcast()</a></code></strong> spread its forecast origins from the first to the last row of the window, so a window with gaps, such as one leaving out held-back years, was forecast inside them too. Origins now fall only on rows of the window.</li>
+</ul></div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.18.0" id="pdms7-0180">pdmS7 0.18.0<a class="anchor" aria-label="anchor" href="#pdms7-0180"></a></h2>
+<ul><li>
+<strong><code>calibrate_project(recommend = TRUE)</code></strong> chooses the structure before calibrating. The structure given is the starting point; <code><a href="../reference/recommend_structure.html">recommend_structure()</a></code> then chooses the recharge rule, the soil store distribution and the groundwater store in turn, each by a structure comparison on the record, and the stages start from the calibration of the structure it recommends. Every comparison and every choice, with its reason, is in the project’s log. It needs a validation window and costs one calibration per option compared.</li>
+<li>
+<strong><code>stages</code> and <code>bounds</code> of <code><a href="../reference/calibrate_project.html">calibrate_project()</a></code></strong> may be functions of a configuration, such as <code>function(config) pdm_stages(config, events = TRUE)</code>, so that they suit whichever structure is chosen. New <code>overrides</code> and <code>exclude</code> arguments set the search ranges for the default stages and bounds and for every structure compared.</li>
+<li>
+<strong><code><a href="../reference/recommend_structure.html">recommend_structure()</a></code></strong> gains <code>overrides</code> and <code>exclude</code>, passed to <code><a href="../reference/compare_structures.html">compare_structures()</a></code>.</li>
+</ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.17.1" id="pdms7-0171">pdmS7 0.17.1<a class="anchor" aria-label="anchor" href="#pdms7-0171"></a></h2>
 <ul><li>

@@ -7,7 +7,9 @@
 # Created:      2026-11-08
 # Modified:     2026-11-08 - First version, from the Beggearn Huish calibration script
 #               2026-11-09 - recommend: choose the structure with recommend_structure() first;
-#                            stages and bounds may be functions of the chosen structure
+#                            stages and bounds may be functions of the chosen structure;
+#                            held-back years without a validation window refused before the
+#                            search; a rerun finishes the validation, test and report
 # Tier:         3
 # Inputs:       Forcing and observed flow; a calibration project
 # Outputs:      A logged calibration project; models, check readouts and event runs
@@ -34,10 +36,17 @@
 #' as functions of a configuration, such as
 #' `function(config) pdm_stages(config, events = TRUE)`, or leave them `NULL`.
 #'
-#' **Existing projects.** A project that already has a candidate is left as it is, and its
-#' summary returned: delete the folder to calibrate again. An unfinished one, from a run that
-#' stopped, is renamed `<project>_unfinished_<time>` (its log kept) and the calibration starts
-#' afresh.
+#' **Test years need a validation window.** The test scores a validated candidate, so a record
+#' with test years, or long enough for the wettest years to be held back (the default), needs a
+#' validation window. Without one the call stops after registering the data and before the
+#' search; give `validation`, or `wettest_years = 0`.
+#'
+#' **Existing projects.** A project that already has a candidate keeps it: a rerun only does
+#' whichever of the validation, the test and (with `report = TRUE`) the report are still
+#' missing, so a run that stopped after proposing the candidate can be finished, and a report
+#' added later. Delete the folder to calibrate again. A project without a candidate, from a run
+#' that stopped earlier, is renamed `<project>_unfinished_<time>` (its log kept) and the
+#' calibration starts afresh.
 #'
 #' Declare who you are first (`options(pdmS7.user = ..., pdmS7.role = "custodian")`).
 #'
@@ -94,12 +103,18 @@ calibrate_project <- function(project, forcing, observed, area_km2, calibration,
   .check(!recommend || !is.null(validation),
          "recommend = TRUE needs a validation window: structures are chosen on it")
   existing <- .existing_project(project)
-  if (!is.null(existing)) return(invisible(existing))
+  if (!is.null(existing)) return(invisible(.finish_project(project, report)))
   structure <- structure %||% .default_structure(forcing, area_km2)
   start_calibration_project(project, catchment, gauge, purpose, area_km2, owner %||% user,
                             steward %||% user)
   register_data(project, forcing, observed, calibration = calibration, validation = validation,
                 ...)
+  # The test scores a validated candidate: refuse now, not after the search.
+  card <- .registration(.read_entries(.project_path(project)))$scorecard
+  .check(!.has_test(card) || !is.null(card$validation),
+         paste("Test years are registered (test, or the wettest years held back) but no",
+               "validation window; the test needs a validated candidate. Give validation,",
+               "or wettest_years = 0"))
   if (recommend) {
     select_structure(project, structure, "Starting structure for the structure recommendation.")
     chosen <- recommend_structure(
@@ -122,13 +137,34 @@ calibrate_project <- function(project, forcing, observed, area_km2, calibration,
                                  starts = starts, seed = seed, control = control,
                                  method = method)
   propose_candidate(project, fits[[length(fits)]]$id, "Final stage of the staged calibration.")
-  card <- .registration(.read_entries(.project_path(project)))$scorecard
-  if (!is.null(card$validation)) validate_candidate(project, "Validation window.")
-  if (!is.null(card$test) || length(.held_rows(card))) {
+  invisible(.finish_project(project, report))
+}
+
+# The steps after the candidate, each done only if still missing: validation when a window is
+# registered, the test when test years are, and the report when asked for. Returns the
+# project's summary.
+.finish_project <- function(project, report) {
+  path <- .project_path(project)
+  state <- function() {
+    entries <- .read_entries(path)
+    list(entries = entries, card = .registration(entries)$scorecard,
+         candidate = .latest(entries, "candidate"))
+  }
+  s <- state()
+  validation <- .latest(s$entries, "validation")
+  if (!is.null(s$card$validation) &&
+        (is.null(validation) || !identical(validation$candidate, s$candidate$id))) {
+    validate_candidate(project, "Validation window.")
+    s <- state()
+  }
+  if (.has_test(s$card) && !is.null(s$card$validation) &&
+        is.null(.candidate_test(s$entries, s$candidate))) {
     test_candidate(project, "Held-back test years.")
   }
-  if (isTRUE(report)) build_report(project)
-  invisible(read_projects(project))
+  if (isTRUE(report) && !file.exists(file.path(project, "report", "report.html"))) {
+    build_report(project)
+  }
+  read_projects(project)
 }
 
 # A finished project's summary, or NULL after moving an unfinished one aside.
@@ -136,7 +172,7 @@ calibrate_project <- function(project, forcing, observed, area_km2, calibration,
   if (!dir.exists(project) || !length(list.files(project))) return(NULL)
   summary <- tryCatch(read_projects(project), error = function(e) NULL)
   if (!is.null(summary) && !is.na(summary$candidate)) {
-    message("Project ", project, " already has a candidate; left as it is")
+    message("Project ", project, " already has a candidate; finishing any missing steps")
     return(summary)
   }
   moved <- paste0(project, "_unfinished_", format(Sys.time(), "%Y%m%dT%H%M%S"))
