@@ -31,10 +31,14 @@
 
 - [Automatic calibration from start to
   finish](https://jonpayneea.github.io/PDMS7/articles/calibration-journey.md):
+- [Checking the data and the
+  events](https://jonpayneea.github.io/PDMS7/articles/checks.md):
 - [Calibration: multi-start, budgets and staged
   calibration](https://jonpayneea.github.io/PDMS7/articles/calibration.md):
 - [Getting the floods
   right](https://jonpayneea.github.io/PDMS7/articles/floods.md):
+- [Tailoring calibration to the largest events in the
+  app](https://jonpayneea.github.io/PDMS7/articles/app-events.md):
 - [Catchment rainfall from gauges and
   radar](https://jonpayneea.github.io/PDMS7/articles/rainfall.md):
 - [Automatic calibration,

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.15.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.17.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -36,8 +36,10 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Calibration</h6></li>
     <li><a class="dropdown-item" href="../articles/calibration-journey.html">Automatic calibration from start to finish</a></li>
+    <li><a class="dropdown-item" href="../articles/checks.html">Checking the data and the events</a></li>
     <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: multi-start, budgets and staged calibration</a></li>
     <li><a class="dropdown-item" href="../articles/floods.html">Getting the floods right</a></li>
+    <li><a class="dropdown-item" href="../articles/app-events.html">Tailoring calibration to the largest events in the app</a></li>
     <li><a class="dropdown-item" href="../articles/rainfall.html">Catchment rainfall from gauges and radar</a></li>
     <li><a class="dropdown-item" href="../articles/auto-calibration.html">Automatic calibration, explained</a></li>
     <li><a class="dropdown-item" href="../articles/scoring.html">Scoring a simulation: from NSE to POD, FAR and CSI</a></li>
@@ -96,6 +98,43 @@
       <small>Source: <a href="https://github.com/JonPayneEA/PDMS7/blob/HEAD/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.17.1" id="pdms7-0171">pdmS7 0.17.1<a class="anchor" aria-label="anchor" href="#pdms7-0171"></a></h2>
+<ul><li>
+<strong>New article, “Tailoring calibration to the largest events in the app”.</strong> It follows one project through the Events tab of <code><a href="../reference/calibration_app.html">calibration_app()</a></code>, with screenshots: loading the largest events, reading their peak and timing errors, moving the surface stores and the time delay, saving the setting as a trial with a verdict and reasons, checking the recessions, refitting the other parameters from the trial on the Trial tab, and proposing and validating the result. The scripts that build the project and take the screenshots are in <code>tools/app-screenshots</code>.</li>
+<li>
+<strong>Events tab fix.</strong> A slider rounds the run’s value to its step, so <code>b</code> = 0.439941 showed as 0.44. The tab took that rounding for a change: it reran the whole record, as for any change to <code>b</code>, and a saved trial recorded a change to <code>b</code> nobody made. A slider now counts as moved only when it is more than half a step from the run’s value. The event plots are also drawn at a higher resolution, so their labels can be read.</li>
+</ul></div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.17.0" id="pdms7-0170">pdmS7 0.17.0<a class="anchor" aria-label="anchor" href="#pdms7-0170"></a></h2>
+<ul><li>
+<strong><code><a href="../reference/water_balance.html">water_balance()</a></code></strong> checks the water balance before calibrating, for the whole record and for each water year (from October). Over a year a catchment stores little, so its loss, rain minus flow, is mostly evaporation, and two limits follow: flow cannot exceed rain, and the loss cannot much exceed the potential evaporation. Years beyond either limit are flagged, and so are years whose runoff ratio stands apart from the rest. A lasting change, such as a new rating from one year on, can leave no single year apart, so the years are also split at each boundary in turn and the largest change in the mean runoff ratio is flagged when it exceeds 25%; years already flagged on their own are left out of that test, so one bad year is not mistaken for a change. Steps with missing flow are left out of all three totals, and part years are reported but not judged. It also returns a double-mass curve and the baseflow index. <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> and <code>autoplot()</code> draw each year against the Budyko limits and Fu’s curve, the ratios year by year, and the double-mass curve.</li>
+<li>
+<strong>The checks article</strong> has a new section, “Year by year: the water balance”, in which a new rating from one year on is found by the change test and seen in the double-mass curve. Its record now covers five whole water years, and its text on flagged parameters and peak errors is written from the results rather than fixed, so it stays true if the example changes.</li>
+</ul></div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.16.0" id="pdms7-0160">pdmS7 0.16.0<a class="anchor" aria-label="anchor" href="#pdms7-0160"></a></h2>
+<p>Standard visuals, part 2 of 4: calibration and event plots.</p>
+<ul><li>
+<strong>Event plots.</strong> Event tables from <code><a href="../reference/find_events.html">find_events()</a></code>, <code><a href="../reference/screen_events.html">screen_events()</a></code>, <code><a href="../reference/event_scores.html">event_scores()</a></code> and <code><a href="../reference/calibration_checks.html">calibration_checks()</a></code> now carry the class <code>pdm_events</code>, and <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> and <code>autoplot()</code> draw three standard plots:
+<ul><li>
+<code>balance</code>: each event’s rain against its quick flow on log scales, with a dashed line at the runoff-ratio limit and grey lines at 0.5 and 0.1. An event above the limit shed more quick flow than the rain that fell, so the rain, the area or the flow is wrong for it.</li>
+<li>
+<code>peaks</code>: simulated against observed peaks, with the 1:1 line and a 20% band.</li>
+<li>
+<code>timing</code>: each peak’s timing error against its size. Screened events are drawn hollow; events from <code><a href="../reference/calibration_checks.html">calibration_checks()</a></code> are coloured by window.</li>
+</ul></li>
+<li>
+<strong>Checks plots.</strong> <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> and <code>autoplot()</code> on <code><a href="../reference/calibration_checks.html">calibration_checks()</a></code> draw where each parameter sits within its search range, on the scale the search used, with any at a bound flagged; or the project’s events as above.</li>
+<li>
+<strong>The calibration path.</strong> <code><a href="../reference/calibration_path.html">calibration_path()</a></code> gathers a project’s automatic calibrations in order: each stage’s scores, every start’s result, and the candidate’s scores in each window. It prints a summary, and <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> and <code>autoplot()</code> draw the scores after each stage, each start’s objective, and the candidate in each window.</li>
+<li>
+<strong>“Automatic calibration from start to finish” updated.</strong> Step 1 is now preparing and registering the data, with a flow diagram of the preparation functions; step 2 checks the data and the events; step 5 shows the check plots; a new section runs the same calibration in one call with <code><a href="../reference/calibrate_project.html">calibrate_project()</a></code> and plots its stages and parameters.</li>
+<li>
+<strong>New article: “Checking the data and the events”.</strong> Every check in the order to run them: annual totals and the runoff ratio, each event’s rain against its quick flow, screening, parameters at a limit, peaks and timing, and the stages. A copy of the record with a mistyped area and an under-recording rain gauge shows each check firing.</li>
+<li>
+<strong>Renderer.</strong> Hollow points, labelled axis positions, an x range, and score plots whose axis need not start at zero; the ggplot2 legends of mixed point and line plots merge.</li>
+</ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.15.0" id="pdms7-0150">pdmS7 0.15.0<a class="anchor" aria-label="anchor" href="#pdms7-0150"></a></h2>
 <p>The helper functions of the Beggearn Huish calibration script, tested and in the package.</p>

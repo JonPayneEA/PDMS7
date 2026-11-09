@@ -19,18 +19,18 @@ project log.](calibration-journey_files/figure-html/overview-1.png)
 A calibration from start to finish. Every step writes an entry to the
 project log.
 
-| Step                     | What happens                                                                                                    | In pdmS7                                                                                                                                                                                |
-|--------------------------|-----------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| 1\. Register the data    | Rain, evaporation and flow are stored in the project, with the years for warming up, calibrating and validating | [`start_calibration_project()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md), [`register_data()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)  |
-| 2\. Look at the events   | The floods are found in the record, and the doubtful ones set aside                                             | [`find_events()`](https://jonpayneea.github.io/PDMS7/reference/find_events.md), [`screen_events()`](https://jonpayneea.github.io/PDMS7/reference/screen_events.md)                      |
-| 3\. Choose the structure | Which version of the model to fit: its soil store, recharge and groundwater store                               | [`select_structure()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md), [`recommend_structure()`](https://jonpayneea.github.io/PDMS7/reference/recommend_structure.md) |
-| 4\. Calibrate in stages  | The search for parameters, one group at a time                                                                  | [`pdm_stages()`](https://jonpayneea.github.io/PDMS7/reference/pdm_stages.md), [`log_staged_calibration()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_staged.md)            |
-| 5\. Run the checks       | Warning signs the score hides: parameters at their limits, floods late or low                                   | [`calibration_checks()`](https://jonpayneea.github.io/PDMS7/reference/calibration_checks.md)                                                                                            |
-| 6\. Look at the floods   | The largest events side by side, adjusted by eye if need be                                                     | [`event_workbench()`](https://jonpayneea.github.io/PDMS7/reference/event_workbench.md), the app’s Events tab                                                                            |
-| 7\. Propose              | The chosen calibration is put forward, with the reasons                                                         | [`propose_candidate()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)                                                                                                |
-| 8\. Validate             | The candidate is scored on years no calibration saw                                                             | [`validate_candidate()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)                                                                                               |
-| 9\. Test                 | The wettest years, held back from the start, are revealed                                                       | [`test_candidate()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)                                                                                                   |
-| 10\. Sign-off            | A Steward reviews the log and signs                                                                             | [`sign_off_project()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)                                                                                                 |
+| Step                              | What happens                                                                                                                                                              | In pdmS7                                                                                                                                                                                                                                                                                                                                                                                                                           |
+|-----------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 1\. Prepare and register the data | Rain, evaporation and flow are read, put on one time step, converted and gap-filled, then stored in the project with the years for warming up, calibrating and validating | [`read_hydro_series()`](https://jonpayneea.github.io/PDMS7/reference/read_hydro_series.md), [`align_series()`](https://jonpayneea.github.io/PDMS7/reference/align_series.md), [`convert_units()`](https://jonpayneea.github.io/PDMS7/reference/convert_units.md), [`fill_gaps()`](https://jonpayneea.github.io/PDMS7/reference/fill_gaps.md), [`register_data()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md) |
+| 2\. Check the data and the events | The record’s totals and runoff ratio, then each flood’s rain against its quick flow; doubtful events are set aside                                                        | [`check_inputs()`](https://jonpayneea.github.io/PDMS7/reference/check_inputs.md), [`find_events()`](https://jonpayneea.github.io/PDMS7/reference/find_events.md), [`screen_events()`](https://jonpayneea.github.io/PDMS7/reference/screen_events.md), `plot(events)`                                                                                                                                                               |
+| 3\. Choose the structure          | Which version of the model to fit: its soil store, recharge and groundwater store                                                                                         | [`select_structure()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md), [`recommend_structure()`](https://jonpayneea.github.io/PDMS7/reference/recommend_structure.md)                                                                                                                                                                                                                                            |
+| 4\. Calibrate in stages           | The search for parameters, one group at a time                                                                                                                            | [`pdm_stages()`](https://jonpayneea.github.io/PDMS7/reference/pdm_stages.md), [`log_staged_calibration()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_staged.md)                                                                                                                                                                                                                                                       |
+| 5\. Run the checks                | Warning signs the score hides: parameters at their limits, floods late or low                                                                                             | [`calibration_checks()`](https://jonpayneea.github.io/PDMS7/reference/calibration_checks.md), [`calibration_path()`](https://jonpayneea.github.io/PDMS7/reference/calibration_path.md), [`plot()`](https://rdrr.io/r/graphics/plot.default.html)                                                                                                                                                                                   |
+| 6\. Look at the floods            | The largest events side by side, adjusted by eye if need be                                                                                                               | [`event_workbench()`](https://jonpayneea.github.io/PDMS7/reference/event_workbench.md), the app’s Events tab                                                                                                                                                                                                                                                                                                                       |
+| 7\. Propose                       | The chosen calibration is put forward, with the reasons                                                                                                                   | [`propose_candidate()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)                                                                                                                                                                                                                                                                                                                                           |
+| 8\. Validate                      | The candidate is scored on years no calibration saw                                                                                                                       | [`validate_candidate()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)                                                                                                                                                                                                                                                                                                                                          |
+| 9\. Test                          | The wettest years, held back from the start, are revealed                                                                                                                 | [`test_candidate()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)                                                                                                                                                                                                                                                                                                                                              |
+| 10\. Sign-off                     | A Steward reviews the log and signs                                                                                                                                       | [`sign_off_project()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)                                                                                                                                                                                                                                                                                                                                            |
 
 Steps 3 to 6 often go round more than once: the checks find a problem,
 and the hydrologist goes back to the structure, the stages or the rain.
@@ -38,8 +38,24 @@ and the hydrologist goes back to the structure, the stages or the rain.
 ## Step 1: the data and the years
 
 A calibration needs rain, potential evaporation and measured flow on the
-same time steps. Once registered, the data are copied into the project
-and fingerprinted, so that later steps can prove which data they used.
+same time steps. The files rarely arrive that way: in different layouts,
+at different steps, in different units, with gaps. pdmS7 has a function
+for each step of getting them right, and each one notes what it did:
+
+![Preparing the record. Each step notes what it did; registration writes
+the notes into the
+log.](calibration-journey_files/figure-html/prepare-1.png)
+
+Preparing the record. Each step notes what it did; registration writes
+the notes into the log.
+
+Once registered, the data are copied into the project and fingerprinted,
+so that later steps can prove which data they used, and the preparation
+notes travel with them into the log. See [Getting started with
+data](https://jonpayneea.github.io/PDMS7/articles/data-preparation.md)
+for the steps, and [Checking the data and the
+events](https://jonpayneea.github.io/PDMS7/articles/checks.md) for what
+to look at before calibrating.
 
 The record is then divided:
 
@@ -175,6 +191,13 @@ different step.
   is normal. A large fall means the model has learned the calibration
   years rather than the catchment.
 
+Each check has a standard plot: `plot(calibration_checks(project))`
+shows where every parameter sits within its range, with `type = "peaks"`
+or `"timing"` for the floods, and `plot(calibration_path(project))`
+shows the scores after each stage. [Checking the data and the
+events](https://jonpayneea.github.io/PDMS7/articles/checks.md) walks
+through them on a record with faults put in on purpose.
+
 ## Step 6: looking at the floods yourself
 
 Scores summarise; they do not show. The events workbench draws the
@@ -290,6 +313,46 @@ limits automatic
 calibration](https://jonpayneea.github.io/PDMS7/articles/calibration-study.md)
 matters before reading too much into any one value.
 
+## All of this in one call
+
+The steps above can be run one at a time, as here, or in one call.
+[`calibrate_project()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_project.md)
+starts the project, registers the data, selects the structure, runs the
+stages, proposes the last stage as the candidate, validates it, and
+tests it when test years are registered. Every step is still its own
+entry in the log, exactly as if made by hand:
+
+``` r
+calibrate_project(project, forcing, observed, area_km2 = 30,
+                  calibration = c("2021-01-01", "2022-03-31 23:00"),
+                  validation = c("2022-04-01", "2022-09-30 23:00"), structure = start,
+                  stages = pdm_stages(start, events = TRUE), wettest_years = 0)
+```
+
+Then the checks, as plots:
+
+``` r
+plot(calibration_path(project))
+```
+
+![The scores after each stage of the calibration
+above.](calibration-journey_files/figure-html/one-call-path-1.png)
+
+The scores after each stage of the calibration above.
+
+``` r
+plot(calibration_checks(project, top = 5))
+```
+
+![Where each parameter of the candidate ended within its search
+range.](calibration-journey_files/figure-html/one-call-bounds-1.png)
+
+Where each parameter of the candidate ended within its search range.
+
+Run it again with the same folder and it leaves a finished project
+alone, so a script that calibrates many weightings or catchments can be
+rerun after an interruption without repeating the work.
+
 ## Many catchments at once
 
 The same journey can be run over many catchments with
@@ -305,6 +368,8 @@ catchments](https://jonpayneea.github.io/PDMS7/articles/many-catchments.md).
 
 | To learn about                               | Read                                                                                                  |
 |----------------------------------------------|-------------------------------------------------------------------------------------------------------|
+| Preparing the data                           | [Getting started with data](https://jonpayneea.github.io/PDMS7/articles/data-preparation.md)          |
+| Every check, before and after calibrating    | [Checking the data and the events](https://jonpayneea.github.io/PDMS7/articles/checks.md)             |
 | How the search works, bounds, scores, starts | [Automatic calibration, explained](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.md)   |
 | Why a good score can hide bad floods         | [Getting the floods right](https://jonpayneea.github.io/PDMS7/articles/floods.md)                     |
 | The rain the model is given                  | [Catchment rainfall from gauges and radar](https://jonpayneea.github.io/PDMS7/articles/rainfall.md)   |

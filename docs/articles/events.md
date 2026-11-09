@@ -141,7 +141,7 @@ found$basins[, c("basin", "response_observed_h", "response_simulated_h", "events
 #> 8                         0
 ```
 
-Finding and scoring 1460 events across 8 basins took 1.3 seconds. In
+Finding and scoring 1460 events across 8 basins took 1.5 seconds. In
 every basin the response time of the calibrated model matches the
 response time of the record: the models respond as fast as the
 catchments do.
@@ -250,13 +250,13 @@ c(steps = length(rain), windows = nrow(fast$curve), compiled_s = round(compiled,
   r_s = round(reference, 1), same_answer = fast$response_h == slow$response_h,
   find_events_s = round(all_events, 2), events = nrow(quarter_events))
 #>         steps       windows    compiled_s           r_s   same_answer 
-#>     350400.00        600.00          0.49         17.00          1.00 
+#>     350400.00        600.00          0.46         19.40          1.00 
 #> find_events_s        events 
-#>          0.52        842.00
+#>          0.50        842.00
 ```
 
-The compiled search took 0.49 seconds against 17.0 in R, with the same
-answer, and finding all 842 events took 0.52 seconds in all. A batch of
+The compiled search took 0.46 seconds against 19.4 in R, with the same
+answer, and finding all 842 events took 0.50 seconds in all. A batch of
 hundreds of basins at 15 minutes is a matter of minutes.
 
 ## Limits

@@ -374,7 +374,10 @@ year, move the surface stores, the time delay or `b`, and the events
 redraw. When you have a setting you believe, **Save as trial** writes it
 to the project log with your verdict and your reasons, exactly as a
 trial on the main Trial tab is written. A reviewer later sees what you
-changed, what it did, and why you kept it.
+changed, what it did, and why you kept it. [Tailoring calibration to the
+largest events in the
+app](https://jonpayneea.github.io/PDMS7/articles/app-events.md) walks
+through it step by step, with screenshots.
 
 ## Is the structure right?
 

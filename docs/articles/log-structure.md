@@ -77,17 +77,17 @@ cat(readLines(file.path(project, "entries", "0004-trial.yml")), sep = "\n")
 #> format: 1
 #> id: '0004'
 #> type: trial
-#> timestamp: '2026-11-08T16:27:44Z'
+#> timestamp: '2026-11-09T00:10:03Z'
 #> author:
 #>   name: Ann Hydrologist
 #>   role: custodian
 #>   login: root
 #> software:
-#>   pdmS7: 0.15.0
+#>   pdmS7: 0.17.1
 #>   r: 4.3.3
 #>   platform: x86_64-pc-linux-gnu
 #>   engine: c
-#> previous: c18810da81bdf8172a90d68bc69aae2c
+#> previous: 95ebc58dd28fcbc1d73d2c3083a26426
 #> registration: '0002'
 #> parent: '0003'
 #> changes:

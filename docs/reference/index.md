@@ -199,6 +199,10 @@ the result; each step is noted and recorded in the calibration log.
   : Set negative values to zero
 - [`check_inputs()`](https://jonpayneea.github.io/PDMS7/reference/check_inputs.md)
   : Check inputs before registering them
+- [`water_balance()`](https://jonpayneea.github.io/PDMS7/reference/water_balance.md)
+  [`plot(`*`<pdm_water_balance>`*`)`](https://jonpayneea.github.io/PDMS7/reference/water_balance.md)
+  [`autoplot(`*`<pdm_water_balance>`*`)`](https://jonpayneea.github.io/PDMS7/reference/water_balance.md)
+  : Check the water balance before calibrating
 - [`preparation_notes()`](https://jonpayneea.github.io/PDMS7/reference/preparation_notes.md)
   : What was done to a series before registration
 
@@ -356,6 +360,16 @@ base R and ggplot2.
   [`plot(`*`<pdm_series>`*`)`](https://jonpayneea.github.io/PDMS7/reference/pdm_series.md)
   [`autoplot(`*`<pdm_series>`*`)`](https://jonpayneea.github.io/PDMS7/reference/pdm_series.md)
   : Series for the standard run plots
+- [`calibration_path()`](https://jonpayneea.github.io/PDMS7/reference/calibration_path.md)
+  [`plot(`*`<pdm_calibration_path>`*`)`](https://jonpayneea.github.io/PDMS7/reference/calibration_path.md)
+  [`autoplot(`*`<pdm_calibration_path>`*`)`](https://jonpayneea.github.io/PDMS7/reference/calibration_path.md)
+  : The path of a calibration through its stages
+- [`plot(`*`<pdm_calibration_checks>`*`)`](https://jonpayneea.github.io/PDMS7/reference/plot.pdm_calibration_checks.md)
+  [`autoplot(`*`<pdm_calibration_checks>`*`)`](https://jonpayneea.github.io/PDMS7/reference/plot.pdm_calibration_checks.md)
+  : Plot the acceptance checks of a calibration
+- [`plot(`*`<pdm_events>`*`)`](https://jonpayneea.github.io/PDMS7/reference/plot.pdm_events.md)
+  [`autoplot(`*`<pdm_events>`*`)`](https://jonpayneea.github.io/PDMS7/reference/plot.pdm_events.md)
+  : Plot a table of events
 
 ## Recession analysis
 

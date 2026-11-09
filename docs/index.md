@@ -90,6 +90,10 @@ Calibration:
   finish](https://jonpayneea.github.io/PDMS7/articles/calibration-journey.html):
   the whole journey in plain English, from the data to sign-off, with
   flow diagrams of each step and a small calibration run live
+- [Checking the data and the
+  events](https://jonpayneea.github.io/PDMS7/articles/checks.html):
+  every check before and after calibrating, in the order to run them,
+  with a broken record to show each one firing
 - [Calibration: multi-start, budgets and staged
   calibration](https://jonpayneea.github.io/PDMS7/articles/calibration.html)
 - [Automatic calibration,

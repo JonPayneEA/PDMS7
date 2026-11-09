@@ -20,7 +20,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.15.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.17.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -51,8 +51,10 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Calibration</h6></li>
     <li><a class="dropdown-item" href="../articles/calibration-journey.html">Automatic calibration from start to finish</a></li>
+    <li><a class="dropdown-item" href="../articles/checks.html">Checking the data and the events</a></li>
     <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: multi-start, budgets and staged calibration</a></li>
     <li><a class="dropdown-item" href="../articles/floods.html">Getting the floods right</a></li>
+    <li><a class="dropdown-item" href="../articles/app-events.html">Tailoring calibration to the largest events in the app</a></li>
     <li><a class="dropdown-item" href="../articles/rainfall.html">Catchment rainfall from gauges and radar</a></li>
     <li><a class="dropdown-item" href="../articles/auto-calibration.html">Automatic calibration, explained</a></li>
     <li><a class="dropdown-item" href="../articles/scoring.html">Scoring a simulation: from NSE to POD, FAR and CSI</a></li>
@@ -160,20 +162,23 @@ project log.
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td>1. Register the data</td>
-<td>Rain, evaporation and flow are stored in the project, with the years
-for warming up, calibrating and validating</td>
+<td>1. Prepare and register the data</td>
+<td>Rain, evaporation and flow are read, put on one time step, converted
+and gap-filled, then stored in the project with the years for warming
+up, calibrating and validating</td>
 <td>
-<code><a href="../reference/calibration_log.html">start_calibration_project()</a></code>,
+<code><a href="../reference/read_hydro_series.html">read_hydro_series()</a></code>, <code><a href="../reference/align_series.html">align_series()</a></code>,
+<code><a href="../reference/convert_units.html">convert_units()</a></code>, <code><a href="../reference/fill_gaps.html">fill_gaps()</a></code>,
 <code><a href="../reference/calibration_log.html">register_data()</a></code>
 </td>
 </tr>
 <tr class="even">
-<td>2. Look at the events</td>
-<td>The floods are found in the record, and the doubtful ones set
-aside</td>
+<td>2. Check the data and the events</td>
+<td>The record’s totals and runoff ratio, then each flood’s rain against
+its quick flow; doubtful events are set aside</td>
 <td>
-<code><a href="../reference/find_events.html">find_events()</a></code>, <code><a href="../reference/screen_events.html">screen_events()</a></code>
+<code><a href="../reference/check_inputs.html">check_inputs()</a></code>, <code><a href="../reference/find_events.html">find_events()</a></code>,
+<code><a href="../reference/screen_events.html">screen_events()</a></code>, <code>plot(events)</code>
 </td>
 </tr>
 <tr class="odd">
@@ -197,7 +202,10 @@ groundwater store</td>
 <td>5. Run the checks</td>
 <td>Warning signs the score hides: parameters at their limits, floods
 late or low</td>
-<td><code><a href="../reference/calibration_checks.html">calibration_checks()</a></code></td>
+<td>
+<code><a href="../reference/calibration_checks.html">calibration_checks()</a></code>, <code><a href="../reference/calibration_path.html">calibration_path()</a></code>,
+<code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code>
+</td>
 </tr>
 <tr class="even">
 <td>6. Look at the floods</td>
@@ -235,9 +243,21 @@ the rain.</p>
 <h2 id="step-1-the-data-and-the-years">Step 1: the data and the years<a class="anchor" aria-label="anchor" href="#step-1-the-data-and-the-years"></a>
 </h2>
 <p>A calibration needs rain, potential evaporation and measured flow on
-the same time steps. Once registered, the data are copied into the
-project and fingerprinted, so that later steps can prove which data they
-used.</p>
+the same time steps. The files rarely arrive that way: in different
+layouts, at different steps, in different units, with gaps. pdmS7 has a
+function for each step of getting them right, and each one notes what it
+did:</p>
+<div class="figure">
+<img src="calibration-journey_files/figure-html/prepare-1.png" class="r-plt" alt="Preparing the record. Each step notes what it did; registration writes the notes into the log." width="880"><p class="caption">
+Preparing the record. Each step notes what it did; registration writes
+the notes into the log.
+</p>
+</div>
+<p>Once registered, the data are copied into the project and
+fingerprinted, so that later steps can prove which data they used, and
+the preparation notes travel with them into the log. See <a href="data-preparation.html">Getting started with data</a> for the
+steps, and <a href="checks.html">Checking the data and the events</a>
+for what to look at before calibrating.</p>
 <p>The record is then divided:</p>
 <div class="figure">
 <img src="calibration-journey_files/figure-html/timeline-1.png" class="r-plt" alt="How the record is divided. The wettest years are held back from calibration and validation, and revealed only at the end." width="880"><p class="caption">
@@ -386,6 +406,13 @@ first.</li>
 on unseen years is normal. A large fall means the model has learned the
 calibration years rather than the catchment.</li>
 </ul>
+<p>Each check has a standard plot:
+<code>plot(calibration_checks(project))</code> shows where every
+parameter sits within its range, with <code>type = "peaks"</code> or
+<code>"timing"</code> for the floods, and
+<code>plot(calibration_path(project))</code> shows the scores after each
+stage. <a href="checks.html">Checking the data and the events</a> walks
+through them on a record with faults put in on purpose.</p>
 </div>
 <div class="section level2">
 <h2 id="step-6-looking-at-the-floods-yourself">Step 6: looking at the floods yourself<a class="anchor" aria-label="anchor" href="#step-6-looking-at-the-floods-yourself"></a>
@@ -497,6 +524,39 @@ This is why the checks look at the floods themselves, and why <a href="calibrati
 matters before reading too much into any one value.</p>
 </div>
 <div class="section level2">
+<h2 id="all-of-this-in-one-call">All of this in one call<a class="anchor" aria-label="anchor" href="#all-of-this-in-one-call"></a>
+</h2>
+<p>The steps above can be run one at a time, as here, or in one call.
+<code><a href="../reference/calibrate_project.html">calibrate_project()</a></code> starts the project, registers the data,
+selects the structure, runs the stages, proposes the last stage as the
+candidate, validates it, and tests it when test years are registered.
+Every step is still its own entry in the log, exactly as if made by
+hand:</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/calibrate_project.html">calibrate_project</a></span><span class="op">(</span><span class="va">project</span>, <span class="va">forcing</span>, <span class="va">observed</span>, area_km2 <span class="op">=</span> <span class="fl">30</span>,</span>
+<span>                  calibration <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"2021-01-01"</span>, <span class="st">"2022-03-31 23:00"</span><span class="op">)</span>,</span>
+<span>                  validation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"2022-04-01"</span>, <span class="st">"2022-09-30 23:00"</span><span class="op">)</span>, structure <span class="op">=</span> <span class="va">start</span>,</span>
+<span>                  stages <span class="op">=</span> <span class="fu"><a href="../reference/pdm_stages.html">pdm_stages</a></span><span class="op">(</span><span class="va">start</span>, events <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>, wettest_years <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span></code></pre></div>
+<p>Then the checks, as plots:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="../reference/calibration_path.html">calibration_path</a></span><span class="op">(</span><span class="va">project</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<div class="figure">
+<img src="calibration-journey_files/figure-html/one-call-path-1.png" class="r-plt" alt="The scores after each stage of the calibration above." width="880"><p class="caption">
+The scores after each stage of the calibration above.
+</p>
+</div>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="fu"><a href="../reference/calibration_checks.html">calibration_checks</a></span><span class="op">(</span><span class="va">project</span>, top <span class="op">=</span> <span class="fl">5</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<div class="figure">
+<img src="calibration-journey_files/figure-html/one-call-bounds-1.png" class="r-plt" alt="Where each parameter of the candidate ended within its search range." width="880"><p class="caption">
+Where each parameter of the candidate ended within its search range.
+</p>
+</div>
+<p>Run it again with the same folder and it leaves a finished project
+alone, so a script that calibrates many weightings or catchments can be
+rerun after an interruption without repeating the work.</p>
+</div>
+<div class="section level2">
 <h2 id="many-catchments-at-once">Many catchments at once<a class="anchor" aria-label="anchor" href="#many-catchments-at-once"></a>
 </h2>
 <p>The same journey can be run over many catchments with
@@ -520,6 +580,14 @@ catchments</a>.</p>
 <th>Read</th>
 </tr></thead>
 <tbody>
+<tr class="odd">
+<td>Preparing the data</td>
+<td><a href="data-preparation.html">Getting started with data</a></td>
+</tr>
+<tr class="even">
+<td>Every check, before and after calibrating</td>
+<td><a href="checks.html">Checking the data and the events</a></td>
+</tr>
 <tr class="odd">
 <td>How the search works, bounds, scores, starts</td>
 <td><a href="auto-calibration.html">Automatic calibration,
