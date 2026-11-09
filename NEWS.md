@@ -1,3 +1,18 @@
+# pdmS7 0.18.0
+
+- **`calibrate_project(recommend = TRUE)`** chooses the structure before calibrating. The
+  structure given is the starting point; `recommend_structure()` then chooses the recharge
+  rule, the soil store distribution and the groundwater store in turn, each by a structure
+  comparison on the record, and the stages start from the calibration of the structure it
+  recommends. Every comparison and every choice, with its reason, is in the project's log. It
+  needs a validation window and costs one calibration per option compared.
+- **`stages` and `bounds` of `calibrate_project()`** may be functions of a configuration, such
+  as `function(config) pdm_stages(config, events = TRUE)`, so that they suit whichever
+  structure is chosen. New `overrides` and `exclude` arguments set the search ranges for the
+  default stages and bounds and for every structure compared.
+- **`recommend_structure()`** gains `overrides` and `exclude`, passed to
+  `compare_structures()`.
+
 # pdmS7 0.17.1
 
 - **New article, "Tailoring calibration to the largest events in the app".** It follows one

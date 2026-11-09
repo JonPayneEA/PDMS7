@@ -6,6 +6,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-07
 # Modified:     2026-11-07 - First version
+#               2026-11-09 - overrides and exclude passed to compare_structures()
 # Tier:         3
 # Inputs:       A calibration project with registered calibration and validation windows
 # Outputs:      The recommended configuration, a table per step, and a note in the log
@@ -44,6 +45,8 @@
 #'   tolerance (0.02 unless registered otherwise).
 #' @param n_events Largest validation events used to break ties.
 #' @param starts,seed,control,method,cores Passed to [compare_structures()].
+#' @param overrides,exclude Passed to [compare_structures()], and so to [calibration_bounds()]
+#'   for every structure compared; an override must name a parameter every structure has.
 #' @param reasoning Why the recommendation is being made; recorded with every comparison.
 #' @param note Write each step's choice and reason to the log as a note.
 #'
@@ -63,7 +66,7 @@ recommend_structure <- function(project,
                                 components = c("recharge", "distribution", "groundwater"),
                                 tolerance = NULL, n_events = 10L, starts = 2L, seed = 1,
                                 control = list(maxit = 100), method = "lbfgsb", cores = 1L,
-                                reasoning, note = TRUE) {
+                                overrides = NULL, exclude = NULL, reasoning, note = TRUE) {
   .check(is.character(components) && length(components) > 0 &&
            all(components %in% names(.component_options())) && !anyDuplicated(components),
          "components must be among recharge, distribution and groundwater")
@@ -79,7 +82,8 @@ recommend_structure <- function(project,
   entry <- NULL
   for (component in components) {
     options <- .component_variants(base, component)
-    table <- compare_structures(path, options, starts = starts, seed = seed, control = control,
+    table <- compare_structures(path, options, overrides = overrides, exclude = exclude,
+                                starts = starts, seed = seed, control = control,
                                 method = method, cores = cores,
                                 reasoning = paste0(reasoning, " Structure step: ", component, "."))
     step <- .structure_step(path, table, component, .component_type(base, component), tolerance,

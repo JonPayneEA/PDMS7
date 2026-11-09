@@ -14,6 +14,10 @@ calibrate_project(
   structure = NULL,
   stages = NULL,
   bounds = NULL,
+  recommend = FALSE,
+  overrides = NULL,
+  exclude = NULL,
+  cores = 1L,
   starts = 2L,
   seed = 1L,
   control = list(maxit = 40L),
@@ -40,13 +44,24 @@ calibrate_project(
 \item{calibration, validation}{Windows, as for \code{\link[=register_data]{register_data()}}.}
 
 \item{structure}{Model configuration; by default the standard preset at the step of
-\code{forcing}.}
+\code{forcing}. With \code{recommend = TRUE}, the structure the recommendation starts from.}
 
-\item{stages}{Stages from \code{\link[=pdm_stages]{pdm_stages()}}; by default \code{pdm_stages(structure)}.}
+\item{stages}{Stages from \code{\link[=pdm_stages]{pdm_stages()}}, or a function of the configuration that returns
+them; by default \code{pdm_stages(structure, overrides, exclude)}.}
 
-\item{bounds}{Search ranges from \code{\link[=calibration_bounds]{calibration_bounds()}}; by default the standard ones.}
+\item{bounds}{Search ranges from \code{\link[=calibration_bounds]{calibration_bounds()}}, or a function of the configuration
+that returns them; by default \code{calibration_bounds(structure, overrides, exclude)}.}
 
-\item{starts, seed, control, method}{Passed to \code{\link[=log_staged_calibration]{log_staged_calibration()}}.}
+\item{recommend}{Choose the recharge rule, soil store distribution and groundwater store
+with \code{\link[=recommend_structure]{recommend_structure()}} before the stages.}
+
+\item{overrides, exclude}{Passed to \code{\link[=calibration_bounds]{calibration_bounds()}} for the default stages and bounds
+and, with \code{recommend = TRUE}, for every structure compared.}
+
+\item{cores}{Cores for the structure comparisons, with \code{recommend = TRUE}.}
+
+\item{starts, seed, control, method}{Passed to \code{\link[=log_staged_calibration]{log_staged_calibration()}} and, with
+\code{recommend = TRUE}, to \code{\link[=recommend_structure]{recommend_structure()}}.}
 
 \item{catchment, gauge, purpose, owner, steward}{Passed to \code{\link[=start_calibration_project]{start_calibration_project()}}; the
 owner and steward default to the user declared.}
@@ -62,12 +77,22 @@ The project's row of \code{\link[=read_projects]{read_projects()}}, invisibly.
 \description{
 Runs the whole logged calibration of \href{https://jonpayneea.github.io/PDMS7/articles/calibration-journey.html}{Automatic calibration from start to finish} for one set of
 prepared data: \code{\link[=start_calibration_project]{start_calibration_project()}}, \code{\link[=register_data]{register_data()}}, \code{\link[=select_structure]{select_structure()}},
-\code{\link[=log_staged_calibration]{log_staged_calibration()}}, \code{\link[=propose_candidate]{propose_candidate()}} (the last stage), \code{\link[=validate_candidate]{validate_candidate()}}
-when a validation window is registered, and \code{\link[=test_candidate]{test_candidate()}} when a test window or wettest
-years are. Each
-step is an entry in the project's log, as if made by hand.
+\code{\link[=recommend_structure]{recommend_structure()}} when \code{recommend = TRUE}, \code{\link[=log_staged_calibration]{log_staged_calibration()}},
+\code{\link[=propose_candidate]{propose_candidate()}} (the last stage), \code{\link[=validate_candidate]{validate_candidate()}} when a validation window is
+registered, and \code{\link[=test_candidate]{test_candidate()}} when a test window or wettest years are. Each step is an
+entry in the project's log, as if made by hand.
 }
 \details{
+\strong{Choosing the structure.} With \code{recommend = TRUE}, \code{structure} is only the starting
+point. \code{\link[=recommend_structure]{recommend_structure()}} then chooses the recharge rule, the soil store distribution
+and the groundwater store in turn, each by a structure comparison on this record, and the
+stages start from the calibration of the structure it recommends. Each comparison and each
+choice, with its reason, is in the log. It needs a validation window, since the choice is
+made on validation scores, and it costs one calibration per option compared: twelve in all.
+The stages then need to suit whichever structure is chosen, so give \code{stages} and \code{bounds}
+as functions of a configuration, such as
+\code{function(config) pdm_stages(config, events = TRUE)}, or leave them \code{NULL}.
+
 \strong{Existing projects.} A project that already has a candidate is left as it is, and its
 summary returned: delete the folder to calibrate again. An unfinished one, from a run that
 stopped, is renamed \verb{<project>_unfinished_<time>} (its log kept) and the calibration starts
@@ -82,6 +107,11 @@ calibrate_project("projects/beggearn_huish", forcing, flow, area_km2 = 36.7,
                   calibration = c("2010-10-01", "2019-09-30 23:45"),
                   validation = c("2019-10-01", "2025-06-30 23:45"),
                   stages = pdm_stages(structure, events = TRUE))
+# Choose the structure on this record first, then run the stages on it
+calibrate_project("projects/beggearn_huish", forcing, flow, area_km2 = 36.7,
+                  calibration = c("2010-10-01", "2019-09-30 23:45"),
+                  validation = c("2019-10-01", "2025-06-30 23:45"), recommend = TRUE,
+                  stages = function(config) pdm_stages(config, events = TRUE))
 }
 }
 \seealso{
