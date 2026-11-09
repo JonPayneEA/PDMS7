@@ -1,3 +1,23 @@
+# pdmS7 0.18.1
+
+Fixes from a review of 0.18.0.
+
+- **`calibrate_project()` without a validation window** now stops before the search when test
+  years are registered, or the wettest years are held back (the default on a long record). The
+  test scores a validated candidate, so before it failed only after the whole calibration had
+  run. Give `validation`, or `wettest_years = 0`.
+- **A rerun of `calibrate_project()`** on a project that has a candidate now finishes whichever
+  of the validation, the test and (with `report = TRUE`) the report are missing, instead of
+  returning at once. A run interrupted after proposing its candidate can be finished, and a
+  report added later.
+- **`recommend_structure()`** broke ties on the size of the median peak error, so errors of
+  -50% and +50% cancelled to a perfect zero and beat a structure steadily within 10%. It now
+  takes the median of the absolute errors. `calibration_checks()` reports it in its summary as
+  `median_abs_peak_error`.
+- **`pdm_hindcast()`** spread its forecast origins from the first to the last row of the
+  window, so a window with gaps, such as one leaving out held-back years, was forecast inside
+  them too. Origins now fall only on rows of the window.
+
 # pdmS7 0.18.0
 
 - **`calibrate_project(recommend = TRUE)`** chooses the structure before calibrating. The

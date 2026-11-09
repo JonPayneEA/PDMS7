@@ -73,3 +73,15 @@ test_that("recommend_structure chooses and logs a note per step", {
   expect_error(recommend_structure(p$folder, components = "routing", reasoning = "x"),
                "components")
 })
+
+# Guards: peak errors of -50% and +50% do not cancel; the tie-break uses their size
+test_that("the event summary gives the median size of the peak errors", {
+  events <- data.frame(period = "validation", use = TRUE, observed_peak = 4:1,
+                       peak_error = c(-0.5, 0.5, -0.5, 0.5), timing_error_h = 0, nse = 0.8)
+  s <- .event_summary(events, "validation", top = 4)
+  expect_equal(s$median_peak_error, 0)
+  expect_equal(s$median_abs_peak_error, 0.5)
+  steady <- transform(events, peak_error = c(-0.1, 0.1, -0.1, 0.1))
+  expect_lt(.event_summary(steady, "validation", 4)$median_abs_peak_error,
+            s$median_abs_peak_error)
+})

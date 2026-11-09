@@ -6,7 +6,8 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-07
 # Modified:     2026-11-07 - First version
-#               2026-11-09 - overrides and exclude passed to compare_structures()
+#               2026-11-09 - overrides and exclude passed to compare_structures(); ties
+#                            broken on the median of the absolute peak errors
 # Tier:         3
 # Inputs:       A calibration project with registered calibration and validation windows
 # Outputs:      The recommended configuration, a table per step, and a note in the log
@@ -172,7 +173,8 @@ print.pdm_structure_recommendation <- function(x, ...) {
   table$median_abs_peak_error <- vapply(table$calibration_entry, function(id) {
     s <- tryCatch(calibration_checks(path, id, top = n_events)$summary, error = function(e) NULL)
     row <- if (is.null(s)) NULL else s[s$period == "validation", ]
-    if (is.null(row) || !nrow(row)) NA_real_ else abs(row$median_peak_error)
+    # The median size of the errors: -50% and +50% must not cancel to a perfect zero.
+    if (is.null(row) || !nrow(row)) NA_real_ else row$median_abs_peak_error
   }, numeric(1))
   choice <- .choose_structure(table, incumbent, tolerance, .headline_direction(headline))
   table$equally_good <- table$structure %in% choice$equally_good

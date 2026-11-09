@@ -93,10 +93,17 @@ The stages then need to suit whichever structure is chosen, so give \code{stages
 as functions of a configuration, such as
 \code{function(config) pdm_stages(config, events = TRUE)}, or leave them \code{NULL}.
 
-\strong{Existing projects.} A project that already has a candidate is left as it is, and its
-summary returned: delete the folder to calibrate again. An unfinished one, from a run that
-stopped, is renamed \verb{<project>_unfinished_<time>} (its log kept) and the calibration starts
-afresh.
+\strong{Test years need a validation window.} The test scores a validated candidate, so a record
+with test years, or long enough for the wettest years to be held back (the default), needs a
+validation window. Without one the call stops after registering the data and before the
+search; give \code{validation}, or \code{wettest_years = 0}.
+
+\strong{Existing projects.} A project that already has a candidate keeps it: a rerun only does
+whichever of the validation, the test and (with \code{report = TRUE}) the report are still
+missing, so a run that stopped after proposing the candidate can be finished, and a report
+added later. Delete the folder to calibrate again. A project without a candidate, from a run
+that stopped earlier, is renamed \verb{<project>_unfinished_<time>} (its log kept) and the
+calibration starts afresh.
 
 Declare who you are first (\code{options(pdmS7.user = ..., pdmS7.role = "custodian")}).
 }

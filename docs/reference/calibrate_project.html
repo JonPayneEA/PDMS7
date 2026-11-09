@@ -17,7 +17,7 @@ entry in the project's log, as if made by hand."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.18.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.18.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -236,10 +236,16 @@ made on validation scores, and it costs one calibration per option compared: twe
 The stages then need to suit whichever structure is chosen, so give <code>stages</code> and <code>bounds</code>
 as functions of a configuration, such as
 <code>function(config) pdm_stages(config, events = TRUE)</code>, or leave them <code>NULL</code>.</p>
-<p><strong>Existing projects.</strong> A project that already has a candidate is left as it is, and its
-summary returned: delete the folder to calibrate again. An unfinished one, from a run that
-stopped, is renamed <code>&lt;project&gt;_unfinished_&lt;time&gt;</code> (its log kept) and the calibration starts
-afresh.</p>
+<p><strong>Test years need a validation window.</strong> The test scores a validated candidate, so a record
+with test years, or long enough for the wettest years to be held back (the default), needs a
+validation window. Without one the call stops after registering the data and before the
+search; give <code>validation</code>, or <code>wettest_years = 0</code>.</p>
+<p><strong>Existing projects.</strong> A project that already has a candidate keeps it: a rerun only does
+whichever of the validation, the test and (with <code>report = TRUE</code>) the report are still
+missing, so a run that stopped after proposing the candidate can be finished, and a report
+added later. Delete the folder to calibrate again. A project without a candidate, from a run
+that stopped earlier, is renamed <code>&lt;project&gt;_unfinished_&lt;time&gt;</code> (its log kept) and the
+calibration starts afresh.</p>
 <p>Declare who you are first (<code>options(pdmS7.user = ..., pdmS7.role = "custodian")</code>).</p>
     </div>
     <div class="section level2">

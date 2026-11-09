@@ -156,3 +156,49 @@ test_that("calibrate_project can choose the structure first", {
   expect_error(calibrate_project(file.path(dirname(folder), "nov"), d$forcing, d$observed, 20,
                                  c(121, 700), recommend = TRUE), "validation window")
 })
+
+# Guards: test years without a validation window are refused before the search, not after it
+test_that("calibrate_project refuses test years without validation before searching", {
+  folder <- file.path(tempfile("novalid-"), "brook")
+  on.exit(unlink(dirname(folder), recursive = TRUE), add = TRUE)
+  d <- log_data() # nolint: object_usage_linter. Helper from helper-calibration.R.
+  as_person("Ann Custodian", "custodian", "ann") # nolint: object_usage_linter.
+  expect_error(
+    calibrate_project(folder, d$forcing, d$observed, area_km2 = 20, calibration = c(121, 700),
+                      test = c(701, 960), structure = d$truth, starts = 1L,
+                      control = list(maxit = 2L), wettest_years = 0),
+    "no validation window"
+  )
+  expect_false("auto_calibration" %in% read_project(folder)$entries$type)
+})
+
+# Guards: a run interrupted after the candidate is finished by a rerun, report included
+test_that("calibrate_project finishes the missing steps of an interrupted run", {
+  folder <- file.path(tempfile("resume-"), "brook")
+  on.exit(unlink(dirname(folder), recursive = TRUE), add = TRUE)
+  d <- log_data() # nolint: object_usage_linter. Helper from helper-calibration.R.
+  as_person("Ann Custodian", "custodian", "ann") # nolint: object_usage_linter.
+  run <- function() {
+    suppressWarnings(calibrate_project(
+      folder, d$forcing, d$observed, area_km2 = 20, calibration = c(121, 700),
+      validation = c("2021-01-31", "2021-02-09 23:00"), structure = d$truth, starts = 1L,
+      control = list(maxit = 2L), wettest_years = 0, report = TRUE
+    ))
+  }
+  local({
+    local_mocked_bindings(validate_candidate = function(...) stop("interrupted"))
+    expect_error(run(), "interrupted")
+  })
+  types <- read_project(folder)$entries$type
+  expect_equal(utils::tail(types, 1), "candidate")
+  expect_message(summary <- run(), "finishing any missing steps")
+  types <- read_project(folder)$entries$type
+  expect_equal(sum(types == "candidate"), 1)
+  expect_equal(utils::tail(types, 1), "validation")
+  expect_true(file.exists(file.path(folder, "report", "report.html")))
+  expect_false(is.na(summary$validation_score))
+  # Nothing left to do: a third run adds no entries
+  before <- length(types)
+  expect_message(run(), "finishing any missing steps")
+  expect_length(read_project(folder)$entries$type, before)
+})
