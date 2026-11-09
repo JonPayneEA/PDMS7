@@ -122,3 +122,37 @@ test_that("calibration_path and the checks plots", {
     expect_silent(ggplot2::ggplot_build(ggplot2::autoplot(checks, type = type)))
   }
 })
+
+# Guards: recommend = TRUE chooses the structure first, logs each choice, and runs the stages
+# from the recommended calibration, with stages built for the chosen structure
+test_that("calibrate_project can choose the structure first", {
+  folder <- file.path(tempfile("recommend-"), "brook")
+  on.exit(unlink(dirname(folder), recursive = TRUE), add = TRUE)
+  d <- log_data() # nolint: object_usage_linter. Helper from helper-calibration.R.
+  as_person("Ann Custodian", "custodian", "ann") # nolint: object_usage_linter.
+  built_for <- NULL
+  stages <- function(config) {
+    built_for <<- config
+    pdm_stages(config, polish = FALSE)
+  }
+  suppressWarnings(calibrate_project(
+    folder, d$forcing, d$observed, area_km2 = 20, calibration = c(121, 700),
+    validation = c("2021-01-31", "2021-02-09 23:00"), structure = d$truth, recommend = TRUE,
+    stages = stages, overrides = list(surface.k1 = c(0.5, 12)), starts = 1L,
+    control = list(maxit = 2L), wettest_years = 0, reasoning = "Synthetic record."
+  ))
+  entries <- read_project(folder)$entries
+  notes <- vapply(Filter(function(e) e$type == "note", .read_entries(.project_path(folder))),
+                  function(e) e$text, character(1))
+  expect_length(grep("^Structure recommendation", notes), 3)
+  # The latest comparison is the last step, the groundwater store
+  comparisons <- structure_comparison(folder)
+  expect_setequal(comparisons$structure, c("cubic", "quadratic", "linear", "exponential"))
+  stage_fits <- entries[entries$type == "auto_calibration", ]
+  first_stage <- read_entry(folder, utils::tail(stage_fits$id, 2)[1])
+  expect_true(first_stage$parent %in% comparisons$calibration_entry)
+  expect_false(is.null(built_for))
+  expect_equal(utils::tail(entries$type, 2), c("candidate", "validation"))
+  expect_error(calibrate_project(file.path(dirname(folder), "nov"), d$forcing, d$observed, 20,
+                                 c(121, 700), recommend = TRUE), "validation window")
+})

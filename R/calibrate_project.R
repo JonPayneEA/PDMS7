@@ -6,6 +6,8 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-08
 # Modified:     2026-11-08 - First version, from the Beggearn Huish calibration script
+#               2026-11-09 - recommend: choose the structure with recommend_structure() first;
+#                            stages and bounds may be functions of the chosen structure
 # Tier:         3
 # Inputs:       Forcing and observed flow; a calibration project
 # Outputs:      A logged calibration project; models, check readouts and event runs
@@ -17,10 +19,20 @@
 #' Runs the whole logged calibration of [Automatic calibration from start to
 #' finish](https://jonpayneea.github.io/PDMS7/articles/calibration-journey.html) for one set of
 #' prepared data: [start_calibration_project()], [register_data()], [select_structure()],
-#' [log_staged_calibration()], [propose_candidate()] (the last stage), [validate_candidate()]
-#' when a validation window is registered, and [test_candidate()] when a test window or wettest
-#' years are. Each
-#' step is an entry in the project's log, as if made by hand.
+#' [recommend_structure()] when `recommend = TRUE`, [log_staged_calibration()],
+#' [propose_candidate()] (the last stage), [validate_candidate()] when a validation window is
+#' registered, and [test_candidate()] when a test window or wettest years are. Each step is an
+#' entry in the project's log, as if made by hand.
+#'
+#' **Choosing the structure.** With `recommend = TRUE`, `structure` is only the starting
+#' point. [recommend_structure()] then chooses the recharge rule, the soil store distribution
+#' and the groundwater store in turn, each by a structure comparison on this record, and the
+#' stages start from the calibration of the structure it recommends. Each comparison and each
+#' choice, with its reason, is in the log. It needs a validation window, since the choice is
+#' made on validation scores, and it costs one calibration per option compared: twelve in all.
+#' The stages then need to suit whichever structure is chosen, so give `stages` and `bounds`
+#' as functions of a configuration, such as
+#' `function(config) pdm_stages(config, events = TRUE)`, or leave them `NULL`.
 #'
 #' **Existing projects.** A project that already has a candidate is left as it is, and its
 #' summary returned: delete the folder to calibrate again. An unfinished one, from a run that
@@ -36,10 +48,18 @@
 #' @param area_km2 Catchment area.
 #' @param calibration,validation Windows, as for [register_data()].
 #' @param structure Model configuration; by default the standard preset at the step of
-#'   `forcing`.
-#' @param stages Stages from [pdm_stages()]; by default `pdm_stages(structure)`.
-#' @param bounds Search ranges from [calibration_bounds()]; by default the standard ones.
-#' @param starts,seed,control,method Passed to [log_staged_calibration()].
+#'   `forcing`. With `recommend = TRUE`, the structure the recommendation starts from.
+#' @param stages Stages from [pdm_stages()], or a function of the configuration that returns
+#'   them; by default `pdm_stages(structure, overrides, exclude)`.
+#' @param bounds Search ranges from [calibration_bounds()], or a function of the configuration
+#'   that returns them; by default `calibration_bounds(structure, overrides, exclude)`.
+#' @param recommend Choose the recharge rule, soil store distribution and groundwater store
+#'   with [recommend_structure()] before the stages.
+#' @param overrides,exclude Passed to [calibration_bounds()] for the default stages and bounds
+#'   and, with `recommend = TRUE`, for every structure compared.
+#' @param cores Cores for the structure comparisons, with `recommend = TRUE`.
+#' @param starts,seed,control,method Passed to [log_staged_calibration()] and, with
+#'   `recommend = TRUE`, to [recommend_structure()].
 #' @param catchment,gauge,purpose,owner,steward Passed to [start_calibration_project()]; the
 #'   owner and steward default to the user declared.
 #' @param report If `TRUE`, build the report with [build_report()] at the end.
@@ -53,17 +73,26 @@
 #'                   calibration = c("2010-10-01", "2019-09-30 23:45"),
 #'                   validation = c("2019-10-01", "2025-06-30 23:45"),
 #'                   stages = pdm_stages(structure, events = TRUE))
+#' # Choose the structure on this record first, then run the stages on it
+#' calibrate_project("projects/beggearn_huish", forcing, flow, area_km2 = 36.7,
+#'                   calibration = c("2010-10-01", "2019-09-30 23:45"),
+#'                   validation = c("2019-10-01", "2025-06-30 23:45"), recommend = TRUE,
+#'                   stages = function(config) pdm_stages(config, events = TRUE))
 #' }
 #' @seealso [calibrate_batch()] for many catchments laid out in folders.
 #' @export
 calibrate_project <- function(project, forcing, observed, area_km2, calibration,
                               validation = NULL, structure = NULL, stages = NULL, bounds = NULL,
+                              recommend = FALSE, overrides = NULL, exclude = NULL, cores = 1L,
                               starts = 2L, seed = 1L, control = list(maxit = 40L),
                               method = "lbfgsb", catchment = basename(project),
                               gauge = catchment, purpose = "PDM calibration", owner = NULL,
                               steward = NULL, report = FALSE, ...) {
   user <- .identity("custodian")$name
   .check(is.character(project) && length(project) == 1L, "project must be a folder path")
+  .check(isTRUE(recommend) || isFALSE(recommend), "recommend must be TRUE or FALSE")
+  .check(!recommend || !is.null(validation),
+         "recommend = TRUE needs a validation window: structures are chosen on it")
   existing <- .existing_project(project)
   if (!is.null(existing)) return(invisible(existing))
   structure <- structure %||% .default_structure(forcing, area_km2)
@@ -71,9 +100,25 @@ calibrate_project <- function(project, forcing, observed, area_km2, calibration,
                             steward %||% user)
   register_data(project, forcing, observed, calibration = calibration, validation = validation,
                 ...)
-  node <- select_structure(project, structure, "Structure for the automatic calibration.")
-  fits <- log_staged_calibration(project, node$id, "Staged automatic calibration.",
-                                 stages = stages %||% pdm_stages(structure), bounds = bounds,
+  if (recommend) {
+    select_structure(project, structure, "Starting structure for the structure recommendation.")
+    chosen <- recommend_structure(
+      project, starts = starts, seed = seed, control = control, method = method, cores = cores,
+      overrides = overrides, exclude = exclude,
+      reasoning = "Automatic calibration: structure chosen on this record."
+    )
+    parent <- chosen$entry
+    structure <- chosen$configuration
+  } else {
+    parent <- select_structure(project, structure, "Structure for the automatic calibration.")$id
+  }
+  # Stages and bounds suit the structure the stages start from, chosen or given.
+  for_structure <- function(x, default) {
+    if (is.function(x)) x(structure) else x %||% default(structure, overrides, exclude)
+  }
+  fits <- log_staged_calibration(project, parent, "Staged automatic calibration.",
+                                 stages = for_structure(stages, pdm_stages),
+                                 bounds = for_structure(bounds, calibration_bounds),
                                  starts = starts, seed = seed, control = control,
                                  method = method)
   propose_candidate(project, fits[[length(fits)]]$id, "Final stage of the staged calibration.")

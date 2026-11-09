@@ -14,6 +14,8 @@ recommend_structure(
   control = list(maxit = 100),
   method = "lbfgsb",
   cores = 1L,
+  overrides = NULL,
+  exclude = NULL,
   reasoning,
   note = TRUE
 )
@@ -30,6 +32,9 @@ tolerance (0.02 unless registered otherwise).}
 \item{n_events}{Largest validation events used to break ties.}
 
 \item{starts, seed, control, method, cores}{Passed to \code{\link[=compare_structures]{compare_structures()}}.}
+
+\item{overrides, exclude}{Passed to \code{\link[=compare_structures]{compare_structures()}}, and so to \code{\link[=calibration_bounds]{calibration_bounds()}}
+for every structure compared; an override must name a parameter every structure has.}
 
 \item{reasoning}{Why the recommendation is being made; recorded with every comparison.}
 
