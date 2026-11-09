@@ -9,7 +9,7 @@ comparison (compare_structures()) on the project's own data, and writes down why
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.17.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.18.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -118,6 +118,8 @@ comparison (<code><a href="compare_structures.html">compare_structures()</a></co
 <span>  control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>maxit <span class="op">=</span> <span class="fl">100</span><span class="op">)</span>,</span>
 <span>  method <span class="op">=</span> <span class="st">"lbfgsb"</span>,</span>
 <span>  cores <span class="op">=</span> <span class="fl">1L</span>,</span>
+<span>  overrides <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  exclude <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  <span class="va">reasoning</span>,</span>
 <span>  note <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -147,6 +149,11 @@ tolerance (0.02 unless registered otherwise).</p></dd>
 
 <dt id="arg-starts-seed-control-method-cores">starts, seed, control, method, cores<a class="anchor" aria-label="anchor" href="#arg-starts-seed-control-method-cores"></a></dt>
 <dd><p>Passed to <code><a href="compare_structures.html">compare_structures()</a></code>.</p></dd>
+
+
+<dt id="arg-overrides-exclude">overrides, exclude<a class="anchor" aria-label="anchor" href="#arg-overrides-exclude"></a></dt>
+<dd><p>Passed to <code><a href="compare_structures.html">compare_structures()</a></code>, and so to <code><a href="calibration_bounds.html">calibration_bounds()</a></code>
+for every structure compared; an override must name a parameter every structure has.</p></dd>
 
 
 <dt id="arg-reasoning">reasoning<a class="anchor" aria-label="anchor" href="#arg-reasoning"></a></dt>
