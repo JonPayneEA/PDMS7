@@ -1,5 +1,105 @@
 # Changelog
 
+## pdmS7 0.17.1
+
+- **New article, “Tailoring calibration to the largest events in the
+  app”.** It follows one project through the Events tab of
+  [`calibration_app()`](https://jonpayneea.github.io/PDMS7/reference/calibration_app.md),
+  with screenshots: loading the largest events, reading their peak and
+  timing errors, moving the surface stores and the time delay, saving
+  the setting as a trial with a verdict and reasons, checking the
+  recessions, refitting the other parameters from the trial on the Trial
+  tab, and proposing and validating the result. The scripts that build
+  the project and take the screenshots are in `tools/app-screenshots`.
+- **Events tab fix.** A slider rounds the run’s value to its step, so
+  `b` = 0.439941 showed as 0.44. The tab took that rounding for a
+  change: it reran the whole record, as for any change to `b`, and a
+  saved trial recorded a change to `b` nobody made. A slider now counts
+  as moved only when it is more than half a step from the run’s value.
+  The event plots are also drawn at a higher resolution, so their labels
+  can be read.
+
+## pdmS7 0.17.0
+
+- **[`water_balance()`](https://jonpayneea.github.io/PDMS7/reference/water_balance.md)**
+  checks the water balance before calibrating, for the whole record and
+  for each water year (from October). Over a year a catchment stores
+  little, so its loss, rain minus flow, is mostly evaporation, and two
+  limits follow: flow cannot exceed rain, and the loss cannot much
+  exceed the potential evaporation. Years beyond either limit are
+  flagged, and so are years whose runoff ratio stands apart from the
+  rest. A lasting change, such as a new rating from one year on, can
+  leave no single year apart, so the years are also split at each
+  boundary in turn and the largest change in the mean runoff ratio is
+  flagged when it exceeds 25%; years already flagged on their own are
+  left out of that test, so one bad year is not mistaken for a change.
+  Steps with missing flow are left out of all three totals, and part
+  years are reported but not judged. It also returns a double-mass curve
+  and the baseflow index.
+  [`plot()`](https://rdrr.io/r/graphics/plot.default.html) and
+  `autoplot()` draw each year against the Budyko limits and Fu’s curve,
+  the ratios year by year, and the double-mass curve.
+- **The checks article** has a new section, “Year by year: the water
+  balance”, in which a new rating from one year on is found by the
+  change test and seen in the double-mass curve. Its record now covers
+  five whole water years, and its text on flagged parameters and peak
+  errors is written from the results rather than fixed, so it stays true
+  if the example changes.
+
+## pdmS7 0.16.0
+
+Standard visuals, part 2 of 4: calibration and event plots.
+
+- **Event plots.** Event tables from
+  [`find_events()`](https://jonpayneea.github.io/PDMS7/reference/find_events.md),
+  [`screen_events()`](https://jonpayneea.github.io/PDMS7/reference/screen_events.md),
+  [`event_scores()`](https://jonpayneea.github.io/PDMS7/reference/event_scores.md)
+  and
+  [`calibration_checks()`](https://jonpayneea.github.io/PDMS7/reference/calibration_checks.md)
+  now carry the class `pdm_events`, and
+  [`plot()`](https://rdrr.io/r/graphics/plot.default.html) and
+  `autoplot()` draw three standard plots:
+  - `balance`: each event’s rain against its quick flow on log scales,
+    with a dashed line at the runoff-ratio limit and grey lines at 0.5
+    and 0.1. An event above the limit shed more quick flow than the rain
+    that fell, so the rain, the area or the flow is wrong for it.
+  - `peaks`: simulated against observed peaks, with the 1:1 line and a
+    20% band.
+  - `timing`: each peak’s timing error against its size. Screened events
+    are drawn hollow; events from
+    [`calibration_checks()`](https://jonpayneea.github.io/PDMS7/reference/calibration_checks.md)
+    are coloured by window.
+- **Checks plots.**
+  [`plot()`](https://rdrr.io/r/graphics/plot.default.html) and
+  `autoplot()` on
+  [`calibration_checks()`](https://jonpayneea.github.io/PDMS7/reference/calibration_checks.md)
+  draw where each parameter sits within its search range, on the scale
+  the search used, with any at a bound flagged; or the project’s events
+  as above.
+- **The calibration path.**
+  [`calibration_path()`](https://jonpayneea.github.io/PDMS7/reference/calibration_path.md)
+  gathers a project’s automatic calibrations in order: each stage’s
+  scores, every start’s result, and the candidate’s scores in each
+  window. It prints a summary, and
+  [`plot()`](https://rdrr.io/r/graphics/plot.default.html) and
+  `autoplot()` draw the scores after each stage, each start’s objective,
+  and the candidate in each window.
+- **“Automatic calibration from start to finish” updated.** Step 1 is
+  now preparing and registering the data, with a flow diagram of the
+  preparation functions; step 2 checks the data and the events; step 5
+  shows the check plots; a new section runs the same calibration in one
+  call with
+  [`calibrate_project()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_project.md)
+  and plots its stages and parameters.
+- **New article: “Checking the data and the events”.** Every check in
+  the order to run them: annual totals and the runoff ratio, each
+  event’s rain against its quick flow, screening, parameters at a limit,
+  peaks and timing, and the stages. A copy of the record with a mistyped
+  area and an under-recording rain gauge shows each check firing.
+- **Renderer.** Hollow points, labelled axis positions, an x range, and
+  score plots whose axis need not start at zero; the ggplot2 legends of
+  mixed point and line plots merge.
+
 ## pdmS7 0.15.0
 
 The helper functions of the Beggearn Huish calibration script, tested

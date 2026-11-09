@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.15.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.17.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -36,8 +36,10 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Calibration</h6></li>
     <li><a class="dropdown-item" href="../articles/calibration-journey.html">Automatic calibration from start to finish</a></li>
+    <li><a class="dropdown-item" href="../articles/checks.html">Checking the data and the events</a></li>
     <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: multi-start, budgets and staged calibration</a></li>
     <li><a class="dropdown-item" href="../articles/floods.html">Getting the floods right</a></li>
+    <li><a class="dropdown-item" href="../articles/app-events.html">Tailoring calibration to the largest events in the app</a></li>
     <li><a class="dropdown-item" href="../articles/rainfall.html">Catchment rainfall from gauges and radar</a></li>
     <li><a class="dropdown-item" href="../articles/auto-calibration.html">Automatic calibration, explained</a></li>
     <li><a class="dropdown-item" href="../articles/scoring.html">Scoring a simulation: from NSE to POD, FAR and CSI</a></li>
@@ -723,6 +725,13 @@
 
         <dt>
 
+          <code><a href="water_balance.html">water_balance()</a></code> <code><a href="water_balance.html">plot(<i>&lt;pdm_water_balance&gt;</i>)</a></code> <code><a href="water_balance.html">autoplot(<i>&lt;pdm_water_balance&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Check the water balance before calibrating</dd>
+
+        <dt>
+
           <code><a href="preparation_notes.html">preparation_notes()</a></code>
 
         </dt>
@@ -1079,6 +1088,27 @@
 
         </dt>
         <dd>Series for the standard run plots</dd>
+
+        <dt>
+
+          <code><a href="calibration_path.html">calibration_path()</a></code> <code><a href="calibration_path.html">plot(<i>&lt;pdm_calibration_path&gt;</i>)</a></code> <code><a href="calibration_path.html">autoplot(<i>&lt;pdm_calibration_path&gt;</i>)</a></code>
+
+        </dt>
+        <dd>The path of a calibration through its stages</dd>
+
+        <dt>
+
+          <code><a href="plot.pdm_calibration_checks.html">plot(<i>&lt;pdm_calibration_checks&gt;</i>)</a></code> <code><a href="plot.pdm_calibration_checks.html">autoplot(<i>&lt;pdm_calibration_checks&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Plot the acceptance checks of a calibration</dd>
+
+        <dt>
+
+          <code><a href="plot.pdm_events.html">plot(<i>&lt;pdm_events&gt;</i>)</a></code> <code><a href="plot.pdm_events.html">autoplot(<i>&lt;pdm_events&gt;</i>)</a></code>
+
+        </dt>
+        <dd>Plot a table of events</dd>
       </dl></div><div class="section level2">
       <h2 id="recession-analysis">Recession analysis<a class="anchor" aria-label="anchor" href="#recession-analysis"></a></h2>
 

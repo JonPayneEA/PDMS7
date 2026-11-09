@@ -1,12 +1,14 @@
 <urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
 <url><loc>https://jonpayneea.github.io/PDMS7/404.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/LICENSE-text.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/articles/app-events.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/ar-error-correction.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/auto-calibration.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/calibration-journey.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/calibration-log.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/calibration-study.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/calibration.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/articles/checks.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/choosing-structure.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/compiled-core.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/articles/data-preparation.html</loc></url>
@@ -93,6 +95,7 @@
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/calibration_bounds.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/calibration_checks.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/calibration_log.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/calibration_path.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/candidate_model.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/capacity_cdf.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/capacity_from_storage.html</loc></url>
@@ -139,6 +142,8 @@
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/pdm_stages.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/pdm_step.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/pdm_threshold_scores.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/plot.pdm_calibration_checks.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/plot.pdm_events.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/plot_hindcast.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/plot_recession.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/power_routing.html</loc></url>
@@ -175,6 +180,7 @@
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/transfer_coefficients.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/update_forecast.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/verify_project.html</loc></url>
+<url><loc>https://jonpayneea.github.io/PDMS7/reference/water_balance.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/wettest_years.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/write_pdm_config.html</loc></url>
 <url><loc>https://jonpayneea.github.io/PDMS7/reference/zero_negatives.html</loc></url>

@@ -90,6 +90,10 @@ Calibration:
   finish](https://jonpayneea.github.io/PDMS7/articles/calibration-journey.html):
   the whole journey in plain English, from the data to sign-off, with
   flow diagrams of each step and a small calibration run live
+- [Checking the data and the
+  events](https://jonpayneea.github.io/PDMS7/articles/checks.html):
+  every check before and after calibrating, in the order to run them,
+  with a broken record to show each one firing
 - [Calibration: multi-start, budgets and staged
   calibration](https://jonpayneea.github.io/PDMS7/articles/calibration.html)
 - [Automatic calibration,
@@ -651,6 +655,10 @@ the result; each step is noted and recorded in the calibration log.
   : Set negative values to zero
 - [`check_inputs()`](https://jonpayneea.github.io/PDMS7/reference/check_inputs.md)
   : Check inputs before registering them
+- [`water_balance()`](https://jonpayneea.github.io/PDMS7/reference/water_balance.md)
+  [`plot(`*`<pdm_water_balance>`*`)`](https://jonpayneea.github.io/PDMS7/reference/water_balance.md)
+  [`autoplot(`*`<pdm_water_balance>`*`)`](https://jonpayneea.github.io/PDMS7/reference/water_balance.md)
+  : Check the water balance before calibrating
 - [`preparation_notes()`](https://jonpayneea.github.io/PDMS7/reference/preparation_notes.md)
   : What was done to a series before registration
 
@@ -808,6 +816,16 @@ base R and ggplot2.
   [`plot(`*`<pdm_series>`*`)`](https://jonpayneea.github.io/PDMS7/reference/pdm_series.md)
   [`autoplot(`*`<pdm_series>`*`)`](https://jonpayneea.github.io/PDMS7/reference/pdm_series.md)
   : Series for the standard run plots
+- [`calibration_path()`](https://jonpayneea.github.io/PDMS7/reference/calibration_path.md)
+  [`plot(`*`<pdm_calibration_path>`*`)`](https://jonpayneea.github.io/PDMS7/reference/calibration_path.md)
+  [`autoplot(`*`<pdm_calibration_path>`*`)`](https://jonpayneea.github.io/PDMS7/reference/calibration_path.md)
+  : The path of a calibration through its stages
+- [`plot(`*`<pdm_calibration_checks>`*`)`](https://jonpayneea.github.io/PDMS7/reference/plot.pdm_calibration_checks.md)
+  [`autoplot(`*`<pdm_calibration_checks>`*`)`](https://jonpayneea.github.io/PDMS7/reference/plot.pdm_calibration_checks.md)
+  : Plot the acceptance checks of a calibration
+- [`plot(`*`<pdm_events>`*`)`](https://jonpayneea.github.io/PDMS7/reference/plot.pdm_events.md)
+  [`autoplot(`*`<pdm_events>`*`)`](https://jonpayneea.github.io/PDMS7/reference/plot.pdm_events.md)
+  : Plot a table of events
 
 ## Recession analysis
 
@@ -897,10 +915,14 @@ State correction and ARMA error prediction (Moore 2007, Eq. 28-42).
 
 - [Automatic calibration from start to
   finish](https://jonpayneea.github.io/PDMS7/articles/calibration-journey.md):
+- [Checking the data and the
+  events](https://jonpayneea.github.io/PDMS7/articles/checks.md):
 - [Calibration: multi-start, budgets and staged
   calibration](https://jonpayneea.github.io/PDMS7/articles/calibration.md):
 - [Getting the floods
   right](https://jonpayneea.github.io/PDMS7/articles/floods.md):
+- [Tailoring calibration to the largest events in the
+  app](https://jonpayneea.github.io/PDMS7/articles/app-events.md):
 - [Catchment rainfall from gauges and
   radar](https://jonpayneea.github.io/PDMS7/articles/rainfall.md):
 - [Automatic calibration,
