@@ -5,6 +5,7 @@
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
 # Modified:     2026-10-05 - CX: Align with Flode Tier 3 target conventions
+#               2026-11-10 - A heartbeat during long searches (see R/progress.R)
 # Tier:         3
 # Inputs:       Typed S7 components; depths in mm; time in hours
 # Outputs:      Validated S7 objects or hydrological values with documented units
@@ -187,8 +188,11 @@ calibrate_pdm <- function(
   # differ only in their parameters. Any
   # trial that fails, for example a parameter set the model rejects, scores 1e30 rather than
   # stopping the search. .quietly() keeps calibration runs out of the run log.
+  # Long searches say every minute or so that they are running and how fast (R/progress.R).
+  beat <- .heartbeat(as.integer(starts), if (method == "dds") control$maxit %||% 200L)
   loss <- function(z) {
     counter$calls <- counter$calls + 1L
+    beat$tick()
     tryCatch(
       {
         mod <- pdm_from_config(build(box$to_value(z)))
@@ -224,6 +228,7 @@ calibrate_pdm <- function(
   runs <- lapply(seq_along(z_start), function(i) {
     z <- z_start[[i]]
     counter$calls <- 0L
+    beat$start(i)
     fit <- switch(method,
       lbfgsb = stats::optim(z, loss, method = "L-BFGS-B", lower = rep(0, length(lower)),
                             upper = rep(1, length(upper)), control = control),

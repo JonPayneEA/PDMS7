@@ -6,6 +6,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-01
 # Modified:     2026-11-05 - The polish searches the full bounds by default
+#               2026-11-10 - Progress: each logged stage says when it begins
 # Tier:         3
 # Inputs:       A configuration; forcing (mm per step); observed flow (m3/s)
 # Outputs:      The fitted configuration and one calibration result per stage
@@ -293,6 +294,10 @@ log_staged_calibration <- function(project, parent, reasoning, stages = NULL, bo
   node <- .model_node(.read_entries(.project_path(project)), parent)
   stage <- stages[[i]]
   b <- .stage_bounds(stage, bounds, node$configuration)
+  label <- paste("Stage", .stage_label(i, stages))
+  old <- options(pdmS7.progress_label = label)
+  on.exit(options(old), add = TRUE)
+  .progress_say(sprintf("begun, searching %d parameters", length(b$lower)))
   .check(is.null(stage$thresholds) || is.character(stage$thresholds), paste(
     "In a project, thresholds are named by the thresholds registered with the data"
   ))

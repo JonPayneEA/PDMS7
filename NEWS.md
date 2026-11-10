@@ -1,3 +1,25 @@
+# pdmS7 0.19.0
+
+- **Progress during long calibrations.** `calibrate_project()` said almost nothing between
+  registering the data and the end, which on a long record is hours, so there was no telling
+  whether it was running. It now reports its plan at the start; each structure step and each
+  calibration stage as it begins; each structure's calibration and validation scores and the
+  time it took; and, after each structure step, the time left at the pace so far. During any
+  search, `calibrate_pdm()` reports every minute or so how many model runs the current start
+  has made (out of how many, for DDS) and how long each takes.
+- **Comparisons on several cores** cannot write to the console, so each structure's progress
+  goes to `progress.log` in the project folder, and the console says so.
+- `options(pdmS7.progress_every = 0)` turns the minute-by-minute lines off; any other number
+  sets their interval in seconds.
+- **Report fix.** The candidate's "Calibration window" hydrograph and flow-duration figures
+  showed the validation window: the figures were drawn after the loop that made them, and
+  every one saw its last window. Each window's figures now show that window.
+- **Report: the held-back wettest years** each get a hydrograph of observed and simulated
+  flow, once the test has scored them, beside the table of their peaks.
+- **Report: the largest events.** A table and a figure of the ten largest events of the
+  record by observed peak, in whichever window they fall, with each one's window, peak error,
+  timing error and event NSE, and its rain.
+
 # pdmS7 0.18.1
 
 Fixes from a review of 0.18.0.

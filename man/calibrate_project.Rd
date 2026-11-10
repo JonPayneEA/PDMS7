@@ -98,6 +98,15 @@ with test years, or long enough for the wettest years to be held back (the defau
 validation window. Without one the call stops after registering the data and before the
 search; give \code{validation}, or \code{wettest_years = 0}.
 
+\strong{Progress.} A calibration of a long record takes hours, so it reports as it goes: the plan
+at the start, each structure step and calibration stage as it begins, each structure's
+scores and time when its comparison ends, with the time left for the rest at that pace, and,
+every minute or so during a search, the model runs made so far and the time each takes.
+Comparisons run on several cores (\code{cores > 1}) cannot write to this console, so each
+structure's progress goes to \code{progress.log} in the project folder; open it to follow them.
+\code{options(pdmS7.progress_every = 0)} turns the minute-by-minute lines off, and any number sets
+their interval in seconds.
+
 \strong{Existing projects.} A project that already has a candidate keeps it: a rerun only does
 whichever of the validation, the test and (with \code{report = TRUE}) the report are still
 missing, so a run that stopped after proposing the candidate can be finished, and a report

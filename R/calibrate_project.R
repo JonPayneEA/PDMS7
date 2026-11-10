@@ -10,6 +10,8 @@
 #                            stages and bounds may be functions of the chosen structure;
 #                            held-back years without a validation window refused before the
 #                            search; a rerun finishes the validation, test and report
+#               2026-11-10 - Progress: the plan at the start, each step as it begins, the
+#                            total time at the end
 # Tier:         3
 # Inputs:       Forcing and observed flow; a calibration project
 # Outputs:      A logged calibration project; models, check readouts and event runs
@@ -40,6 +42,15 @@
 #' with test years, or long enough for the wettest years to be held back (the default), needs a
 #' validation window. Without one the call stops after registering the data and before the
 #' search; give `validation`, or `wettest_years = 0`.
+#'
+#' **Progress.** A calibration of a long record takes hours, so it reports as it goes: the plan
+#' at the start, each structure step and calibration stage as it begins, each structure's
+#' scores and time when its comparison ends, with the time left for the rest at that pace, and,
+#' every minute or so during a search, the model runs made so far and the time each takes.
+#' Comparisons run on several cores (`cores > 1`) cannot write to this console, so each
+#' structure's progress goes to `progress.log` in the project folder; open it to follow them.
+#' `options(pdmS7.progress_every = 0)` turns the minute-by-minute lines off, and any number sets
+#' their interval in seconds.
 #'
 #' **Existing projects.** A project that already has a candidate keeps it: a rerun only does
 #' whichever of the validation, the test and (with `report = TRUE`) the report are still
@@ -105,6 +116,8 @@ calibrate_project <- function(project, forcing, observed, area_km2, calibration,
   existing <- .existing_project(project)
   if (!is.null(existing)) return(invisible(.finish_project(project, report)))
   structure <- structure %||% .default_structure(forcing, area_km2)
+  started <- Sys.time()
+  .progress_say(.calibration_plan(recommend, validation, report))
   start_calibration_project(project, catchment, gauge, purpose, area_km2, owner %||% user,
                             steward %||% user)
   register_data(project, forcing, observed, calibration = calibration, validation = validation,
@@ -137,7 +150,24 @@ calibrate_project <- function(project, forcing, observed, area_km2, calibration,
                                  starts = starts, seed = seed, control = control,
                                  method = method)
   propose_candidate(project, fits[[length(fits)]]$id, "Final stage of the staged calibration.")
-  invisible(.finish_project(project, report))
+  out <- .finish_project(project, report)
+  .progress_say(sprintf("Calibration of %s finished in %s", basename(project),
+                        .duration_text(.seconds_since(started))))
+  invisible(out)
+}
+
+# The steps a calibrate_project() call will take, said before it starts.
+.calibration_plan <- function(recommend, validation, report) {
+  n <- sum(lengths(.component_options()))
+  steps <- c(
+    "register the data",
+    if (recommend) sprintf("choose the structure (%d calibrations)", n) else "select the structure",
+    "run the calibration stages", "propose the candidate",
+    if (!is.null(validation)) c("validate it", "test it, if test years are held back"),
+    if (isTRUE(report)) "build the report"
+  )
+  paste0("Calibration plan: ", paste(steps, collapse = "; "), ". Long searches report every ",
+         "minute or so; options(pdmS7.progress_every = 0) quietens them.")
 }
 
 # The steps after the candidate, each done only if still missing: validation when a window is
