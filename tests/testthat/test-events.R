@@ -172,3 +172,50 @@ test_that("the C core matches the R reference event for event", {
               "volume_error", "nse")
   expect_equal(core$scores[scores], reference$scores[scores], tolerance = 1e-12)
 })
+
+# Guards: fragments of one flood merge into one event; independent floods stay apart
+test_that("independent events merge the fragments of one flood", {
+  rows <- function(...) {
+    m <- rbind(...)
+    colnames(m) <- c("rain_start", "rain_end", "flow_start", "flow_end")
+    m
+  }
+  # One long flood: a rise to 10 from row 20 to 60 and a fall back by row 100, hourly steps
+  q <- c(rep(1, 20), seq(1, 10, length.out = 40), seq(10, 1, length.out = 40), rep(1, 100))
+  # Three slices of it, as DMCA-ESR cuts a multi-burst flood: overlapping windows, peaks close
+  parts <- rows(c(18, 25, 20, 55), c(40, 45, 50, 62), c(55, 58, 61, 95))
+  one <- .independent_rows(parts, q, dt = 1, response_h = 4, separation = 3, trough = 2 / 3)
+  expect_equal(nrow(one), 1)
+  expect_equal(unname(one[1, ]), c(18, 58, 20, 95))
+  # Two floods apart: the flow falls back between them, and the peaks are far apart
+  q2 <- c(q[1:110], q[11:110], rep(1, 10))
+  two <- .independent_rows(rows(c(18, 25, 20, 100), c(118, 125, 120, 200)), q2, dt = 1,
+                           response_h = 4, separation = 3, trough = 2 / 3)
+  expect_equal(nrow(two), 2)
+  # Close peaks with no real trough between them are one flood even without overlap
+  q3 <- c(rep(1, 20), rep(8, 5), 7, rep(9, 5), rep(1, 50))
+  near <- .independent_rows(rows(c(18, 22, 20, 25), c(24, 28, 26, 40)), q3, dt = 1,
+                            response_h = 4, separation = 3, trough = 2 / 3)
+  expect_equal(nrow(near), 1)
+  expect_identical(.independent_rows(parts[1, , drop = FALSE], q, 1, 4, 3, 2 / 3),
+                   parts[1, , drop = FALSE])
+})
+
+# Guards: find_events keeps the published events by default and merges floods on request
+test_that("find_events merges floods only when asked", {
+  river <- synthetic_catchment(years = 2, dt = 1, seed = 1)
+  args <- list(river$forcing$rain, river$observed, river$forcing$time, dt = 1,
+               area_km2 = river$truth$area_km2)
+  published <- do.call(find_events, args)
+  floods <- do.call(find_events, c(args, independent = TRUE))
+  expect_false(attr(published, "independent"))
+  expect_true(attr(floods, "independent"))
+  expect_lte(nrow(floods), nrow(published))
+  # No two floods overlap, and every published event lies inside a flood
+  expect_true(all(utils::head(floods$flow_end, -1) < utils::tail(floods$flow_start, -1)))
+  inside <- vapply(seq_len(nrow(published)), function(e) {
+    any(floods$flow_start <= published$flow_start[e] & floods$flow_end >= published$flow_end[e])
+  }, logical(1))
+  expect_true(all(inside))
+  expect_error(do.call(find_events, c(args, trough = 2)), "trough")
+})

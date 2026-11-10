@@ -33,7 +33,12 @@ they name one; \code{NULL} summarises every event.}
 \value{
 A \code{pdm_calibration_checks} list of three data frames and the response times; printing it
 shows the parameters at a bound and the event summary. \code{parameters}: \code{path}, \code{value},
-\code{lower}, \code{upper}, \code{scale} and \code{at_bound} (\code{"lower"}, \code{"upper"} or \code{NA}). \code{events}: every
+\code{lower}, \code{upper}, \code{scale}, \code{at_bound} (\code{"lower"}, \code{"upper"} or \code{NA}) and \code{note}, which says
+what a bound means where it switches part of the model off. A lower bound of zero is
+usually a natural value (no delay, no threshold) and is not flagged, except for a split
+recharge's \code{recharge.alpha}: at 0 every drop of direct runoff goes to groundwater and the
+surface stores carry nothing; at 1 none reaches groundwater. Events are taken one per
+flood (\code{find_events(independent = TRUE)}). \code{events}: every
 event with its \code{period} and the columns of \code{\link[=event_scores]{event_scores()}}. \code{summary}: one row per window
 with \code{events} (the number summarised), \code{median_peak_error}, \code{median_abs_peak_error} (the
 median size of the peak errors, so that errors of -50\% and +50\% do not cancel),

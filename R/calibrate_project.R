@@ -254,6 +254,7 @@ print.pdm_calibration_checks <- function(x, ...) {
     for (i in seq_len(nrow(edge))) {
       cat(sprintf("  %-20s %10.4g at its %s bound (searched %g to %g)\n", edge$path[i],
                   edge$value[i], edge$at_bound[i], edge$lower[i], edge$upper[i]))
+      if (!is.na(edge$note[i] %||% NA)) cat("  ", " -> ", edge$note[i], "\n", sep = "")
     }
   } else {
     cat("No parameter at a bound\n")

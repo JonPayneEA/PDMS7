@@ -6,6 +6,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-06
 # Modified:     2026-11-06 - Record the check against the authors' reference code
+#               2026-11-10 - independent: merge fragments of one flood (UK peak independence)
 # Tier:         3
 # Inputs:       Rain (mm per step) and flow (any units; m3/s with an area for volumes)
 # Outputs:      Response time; a table of events; per-event model scores
@@ -133,6 +134,17 @@ response_time_dmca <- function(rain, flow, dt = 1, max_response_h = 150) {
 #' @param max_response_h Passed to [response_time_dmca()].
 #' @param area_km2 Optional catchment area, km2. With it, flow volumes are in mm and each event
 #'   has a runoff ratio.
+#' @param independent Merge the events of one flood into one. At short time steps a long flood
+#'   fed by several bursts of rain is cut into an event per burst, each a slice of the same
+#'   hydrograph, so a list of the largest events counts one flood many times. With
+#'   `independent = TRUE`, neighbouring events are one flood unless their peaks are independent
+#'   by the rule used for UK peaks-over-threshold series: at least `separation` response times
+#'   apart, with the flow between them falling below `trough` times the smaller peak; events
+#'   whose flow windows overlap are always one flood. Merged events span all their parts, and
+#'   their rain, peak and volumes are worked out afresh. `FALSE`, the default, gives the
+#'   published method's events unchanged.
+#' @param separation,trough The independence rule: the least gap between peaks, in response
+#'   times, and the share of the smaller peak the flow must fall below between them.
 #'
 #' @return A data frame with one row per event: `event`, the first and last rows of its rain
 #'   window (`rain_start`, `rain_end`) and flow window (`flow_start`, `flow_end`), their times
@@ -152,12 +164,16 @@ response_time_dmca <- function(rain, flow, dt = 1, max_response_h = 150) {
 #' @seealso [event_scores()], [batch_events()], [response_time_dmca()]
 #' @export
 find_events <- function(rain, flow, time = NULL, dt = 1, rain_min = NULL,
-                        max_response_h = 150, area_km2 = NULL) {
+                        max_response_h = 150, area_km2 = NULL, independent = FALSE,
+                        separation = 3, trough = 2 / 3) {
   rain_min <- rain_min %||% (0.2 * dt^-0.5)
   .check(.scalar(rain_min, 0, strict = TRUE), "rain_min must be a positive intensity, mm/h")
   .check(is.null(time) || length(time) == length(rain), "time must match rain in length")
   .check(is.null(area_km2) || .scalar(area_km2, 0, strict = TRUE),
          "area_km2 must be a positive number, or NULL")
+  .check(isTRUE(independent) || isFALSE(independent), "independent must be TRUE or FALSE")
+  .check(.scalar(separation, 0), "separation must be a nonnegative number of response times")
+  .check(.scalar(trough, 0, 1), "trough must lie between 0 and 1")
   h_max <- .dmca_h_max(rain, flow, dt, max_response_h)
   columns <- c("rain_start", "rain_end", "flow_start", "flow_end")
   if (.engine_wanted()) {
@@ -177,7 +193,47 @@ find_events <- function(rain, flow, time = NULL, dt = 1, rain_min = NULL,
     fl <- .event_fluctuations(intensity, flow, h, rain_min)
     rows <- .dmca_esr(intensity, fl$rain, fl$flow, h, rain_min)
   }
-  .event_table(rows, rain, flow, time, dt, area_km2, response, rain_min)
+  if (independent) {
+    rows <- .independent_rows(rows, flow, dt, response$response_h, separation, trough)
+  }
+  out <- .event_table(rows, rain, flow, time, dt, area_km2, response, rain_min)
+  attr(out, "independent") <- independent
+  out
+}
+
+# Merges events that belong to one flood. Taking the events in time order, each is joined to the
+# flood before it unless its peak is independent of that flood's: at least `separation` response
+# times later, with the flow between the two peaks falling below `trough` times the smaller one
+# (the rule of UK peaks-over-threshold series). Events whose flow windows overlap the flood's are
+# always joined. A merged flood spans all its parts. Returns rows in the form of .dmca_esr().
+.independent_rows <- function(rows, flow, dt, response_h, separation, trough) {
+  if (nrow(rows) < 2L) return(rows)
+  rows <- rows[order(rows[, "flow_start"], rows[, "flow_end"]), , drop = FALSE]
+  q <- flow
+  q[!is.finite(q)] <- -Inf
+  peak_of <- function(a, b) a - 1L + which.max(q[a:b])
+  gap <- max(separation * response_h, dt) / dt
+  out <- rows[1L, , drop = FALSE]
+  peak <- peak_of(rows[1L, "flow_start"], rows[1L, "flow_end"])
+  for (e in seq_len(nrow(rows))[-1L]) {
+    k <- nrow(out)
+    p <- peak_of(rows[e, "flow_start"], rows[e, "flow_end"])
+    between <- q[min(peak, p):max(peak, p)]
+    smaller <- min(q[peak], q[p])
+    independent <- rows[e, "flow_start"] > out[k, "flow_end"] && abs(p - peak) >= gap &&
+      min(between) < trough * smaller
+    if (independent) {
+      out <- rbind(out, rows[e, , drop = FALSE])
+      peak <- p
+    } else {
+      out[k, "rain_start"] <- min(out[k, "rain_start"], rows[e, "rain_start"])
+      out[k, "rain_end"] <- max(out[k, "rain_end"], rows[e, "rain_end"])
+      out[k, "flow_end"] <- max(out[k, "flow_end"], rows[e, "flow_end"])
+      if (q[p] > q[peak]) peak <- p
+    }
+  }
+  rownames(out) <- NULL
+  out
 }
 
 # The DMCA correlation for half-windows 1..h_max, in R: the reference for the compiled
@@ -534,7 +590,7 @@ batch_events <- function(output, rain_min = NULL, max_response_h = 150) {
   model <- pdm_from_config(configuration)
   rain <- data$forcing$rain
   events <- find_events(rain, data$observed, run$time, model@dt, rain_min, max_response_h,
-                        model@area_km2)
+                        model@area_km2, independent = TRUE)
   if (!is.null(screen)) {
     events <- do.call(screen_events, c(list(events, data$observed), .project_screen(screen, card)))
   }

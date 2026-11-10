@@ -6,6 +6,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-07
 # Modified:     2026-11-07 - First version
+#               2026-11-10 - One event per flood (find_events(independent = TRUE))
 # Tier:         3
 # Inputs:       A calibration project and one of its model entries
 # Outputs:      The events, their simulations before and after a change, scores and plots
@@ -72,7 +73,7 @@ event_workbench <- function(project, entry = NULL, n = 10L,
   start <- .workbench_start(model, card, data$observed)
   time <- if ("time" %in% names(data$forcing)) data$forcing$time else NULL
   events <- find_events(data$forcing$rain, data$observed, time, model@dt,
-                        area_km2 = model@area_km2)
+                        area_km2 = model@area_km2, independent = TRUE)
   if (!is.null(screen)) {
     events <- do.call(screen_events, c(list(events, data$observed), .project_screen(screen, card)))
   }

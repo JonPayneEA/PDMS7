@@ -164,3 +164,29 @@ test_that("bound flags find parameters at either end, but not at zero", {
   flags <- .bound_flags(above_zero, above_zero[[3]], 0.01)
   expect_equal(flags$at_bound[flags$path == "c"], "lower")
 })
+
+# Guards: a split recharge's alpha at 0 or 1 is flagged, with what it switches off, though a zero
+# lower bound is otherwise left alone
+test_that("a split recharge's alpha at either end is flagged", {
+  entries <- function(alpha, type = "split") {
+    list(
+      list(id = "0001", type = "structure_selected"),
+      list(id = "0002", type = "auto_calibration", parent = "0001",
+           bounds = list(lower = list(recharge.alpha = 0, td = 0),
+                         upper = list(recharge.alpha = 1, td = 6)),
+           configuration = list(recharge = list(type = type, alpha = alpha), td = 0))
+    )
+  }
+  flags <- function(e) {
+    f <- .bound_flags(e, e[[2]], 0.01)
+    f[order(f$path), ]
+  }
+  off <- flags(entries(0))
+  expect_equal(off$at_bound, c("lower", NA))
+  expect_match(off$note[1], "surface stores carry nothing")
+  expect_true(is.na(off$note[2]))
+  expect_equal(flags(entries(1))$at_bound[1], "upper")
+  expect_match(flags(entries(1))$note[1], "no direct runoff reaches groundwater")
+  expect_true(is.na(flags(entries(0.4))$at_bound[1]))
+  expect_true(is.na(flags(entries(0, "demand"))$at_bound[1]))
+})

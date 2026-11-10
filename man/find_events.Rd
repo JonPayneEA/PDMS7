@@ -11,7 +11,10 @@ find_events(
   dt = 1,
   rain_min = NULL,
   max_response_h = 150,
-  area_km2 = NULL
+  area_km2 = NULL,
+  independent = FALSE,
+  separation = 3,
+  trough = 2/3
 )
 }
 \arguments{
@@ -32,6 +35,19 @@ They found results insensitive between about 0.1 and 1 mm/h at hourly scale.}
 
 \item{area_km2}{Optional catchment area, km2. With it, flow volumes are in mm and each event
 has a runoff ratio.}
+
+\item{independent}{Merge the events of one flood into one. At short time steps a long flood
+fed by several bursts of rain is cut into an event per burst, each a slice of the same
+hydrograph, so a list of the largest events counts one flood many times. With
+\code{independent = TRUE}, neighbouring events are one flood unless their peaks are independent
+by the rule used for UK peaks-over-threshold series: at least \code{separation} response times
+apart, with the flow between them falling below \code{trough} times the smaller peak; events
+whose flow windows overlap are always one flood. Merged events span all their parts, and
+their rain, peak and volumes are worked out afresh. \code{FALSE}, the default, gives the
+published method's events unchanged.}
+
+\item{separation, trough}{The independence rule: the least gap between peaks, in response
+times, and the share of the smaller peak the flow must fall below between them.}
 }
 \value{
 A data frame with one row per event: \code{event}, the first and last rows of its rain
