@@ -8,6 +8,7 @@
 # Modified:     2026-11-07 - First version
 #               2026-11-09 - overrides and exclude passed to compare_structures(); ties
 #                            broken on the median of the absolute peak errors
+#               2026-11-10 - Progress: each step announced, with the time left at its pace
 # Tier:         3
 # Inputs:       A calibration project with registered calibration and validation windows
 # Outputs:      The recommended configuration, a table per step, and a note in the log
@@ -81,15 +82,31 @@ recommend_structure <- function(project,
   base <- if (is.null(latest)) pdm_presets("standard") else latest$configuration
   steps <- list()
   entry <- NULL
-  for (component in components) {
+  counts <- vapply(components, function(k) length(.component_options()[[k]]), integer(1))
+  .progress_say(sprintf(
+    "Structure recommendation: %d steps (%s), %d calibrations in all",
+    length(components), toString(components), sum(counts)
+  ))
+  started <- Sys.time()
+  for (k in seq_along(components)) {
+    component <- components[[k]]
     options <- .component_variants(base, component)
-    table <- compare_structures(path, options, overrides = overrides, exclude = exclude,
-                                starts = starts, seed = seed, control = control,
-                                method = method, cores = cores,
-                                reasoning = paste0(reasoning, " Structure step: ", component, "."))
+    label <- sprintf("Structure step %d of %d (%s)", k, length(components), component)
+    table <- .with_progress_label(label, compare_structures(
+      path, options, overrides = overrides, exclude = exclude, starts = starts, seed = seed,
+      control = control, method = method, cores = cores,
+      reasoning = paste0(reasoning, " Structure step: ", component, ".")
+    ))
     step <- .structure_step(path, table, component, .component_type(base, component), tolerance,
                             n_events, attr(table, "headline"))
     steps[[component]] <- step
+    # The time left, at the pace so far: calibrations to go times the time each has taken.
+    spent <- .seconds_since(started)
+    to_go <- sum(counts[-seq_len(k)])
+    .progress_say(sprintf("%s: chose %s.%s", label, step$choice, if (to_go) sprintf(
+      " %s so far; about %s for the remaining %d calibrations at this pace",
+      .duration_text(spent), .duration_text(spent / sum(counts[seq_len(k)]) * to_go), to_go
+    ) else sprintf(" Recommendation done in %s.", .duration_text(spent))))
     chosen <- step$table[step$table$structure == step$choice, ]
     entry <- chosen$calibration_entry
     base <- read_entry(path, entry)$configuration

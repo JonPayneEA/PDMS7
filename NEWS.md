@@ -1,3 +1,17 @@
+# pdmS7 0.19.0
+
+- **Progress during long calibrations.** `calibrate_project()` said almost nothing between
+  registering the data and the end, which on a long record is hours, so there was no telling
+  whether it was running. It now reports its plan at the start; each structure step and each
+  calibration stage as it begins; each structure's calibration and validation scores and the
+  time it took; and, after each structure step, the time left at the pace so far. During any
+  search, `calibrate_pdm()` reports every minute or so how many model runs the current start
+  has made (out of how many, for DDS) and how long each takes.
+- **Comparisons on several cores** cannot write to the console, so each structure's progress
+  goes to `progress.log` in the project folder, and the console says so.
+- `options(pdmS7.progress_every = 0)` turns the minute-by-minute lines off; any other number
+  sets their interval in seconds.
+
 # pdmS7 0.18.1
 
 Fixes from a review of 0.18.0.

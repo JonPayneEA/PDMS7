@@ -5,6 +5,8 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-01
 # Modified:     2026-11-01 - Add structure comparison
+#               2026-11-10 - Progress: what is being compared, how long each fit took,
+#                            and a progress file for fits run on several cores
 # Tier:         3
 # Inputs:       A calibration project with a validation window; named configurations
 # Outputs:      structure_selected and auto_calibration entries; a ranking table
@@ -74,9 +76,33 @@ compare_structures <- function(project, structures = NULL, overrides = NULL, exc
   settings <- list(objective = objective, starts = as.integer(starts), seed = seed,
                    control = control, method = method, overrides = overrides,
                    exclude = exclude, cross_validate = isTRUE(cross_validate))
-  jobs <- lapply(names(structures), function(n) list(name = n, config = structures[[n]]))
+  # Each fit's progress carries its name, after any label the caller set (such as the step of
+  # a structure recommendation). Fits on other cores cannot reach this console, so they write
+  # their progress to a file in the project.
+  outer <- getOption("pdmS7.progress_label")
+  jobs <- lapply(names(structures), function(n) {
+    list(name = n, config = structures[[n]], label = paste(c(outer, n), collapse = ", "))
+  })
+  workers <- min(cores, length(jobs))
+  progress_file <- if (workers > 1L) file.path(path, "progress.log")
+  .progress_say(sprintf(
+    "comparing %d structures (%s), one calibration each, %s%s", length(jobs),
+    toString(names(structures)), if (workers > 1L) sprintf("%d at a time", workers) else
+      "one at a time",
+    if (workers > 1L) paste0("; each one's progress is in ", progress_file) else ""
+  ))
+  started <- Sys.time()
   fits <- .run_jobs(jobs, .fit_structure, cores, data = data, card = card, info = info,
-                    registration = registration, settings = settings)
+                    registration = registration, settings = settings,
+                    progress_file = progress_file)
+  headline <- card$headline %||% "nse"
+  for (f in fits) {
+    .progress_say(sprintf("%s: calibration %s %.3f, validation %.3f (%s)", f$name, headline,
+                          .num_or_na(f$calibrated$scores[[headline]]),
+                          .num_or_na(f$validation_scores[[headline]]),
+                          .duration_text(f$seconds)))
+  }
+  .progress_say(sprintf("compared in %s", .duration_text(.seconds_since(started))))
   comparison <- .new_comparison_id(.read_entries(path))
   for (f in fits) .write_structure_fit(path, author, registration, f, comparison, settings,
                                        reasoning)
@@ -118,8 +144,9 @@ compare_structures <- function(project, structures = NULL, overrides = NULL, exc
 }
 
 # Runs fun over jobs, serially or on a local cluster of worker processes. Workers load the
-# installed package. Used by compare_structures() and calibrate_batch().
-.run_jobs <- function(jobs, fun, cores, ...) {
+# installed package and, given a progress_file, write their progress lines there. Used by
+# compare_structures() and calibrate_batch().
+.run_jobs <- function(jobs, fun, cores, ..., progress_file = NULL) {
   if (cores <= 1L || length(jobs) < 2L) return(lapply(jobs, fun, ...))
   cl <- parallel::makeCluster(min(cores, length(jobs)))
   on.exit(parallel::stopCluster(cl), add = TRUE)
@@ -127,16 +154,21 @@ compare_structures <- function(project, structures = NULL, overrides = NULL, exc
   # pdmS7 was loaded from, so a package installed elsewhere (by R CMD build, renv or a user
   # library) is the one the workers run.
   paths <- unique(c(dirname(system.file(package = "pdmS7")), .libPaths()))
-  parallel::clusterCall(cl, function(p) {
+  parallel::clusterCall(cl, function(p, f, every) {
     .libPaths(p)
     library(pdmS7)
+    options(pdmS7.progress_file = f, pdmS7.progress_every = every)
     NULL
-  }, paths)
+  }, paths, progress_file, getOption("pdmS7.progress_every", 60))
   parallel::parLapply(cl, jobs, fun, ...)
 }
 
-# Fits one structure; runs in a worker, so it writes nothing.
+# Fits one structure; runs in a worker, so it writes nothing to the log, only progress lines.
 .fit_structure <- function(job, data, card, info, registration, settings) {
+  started <- Sys.time()
+  old <- options(pdmS7.progress_label = job$label %||% job$name)
+  on.exit(options(old), add = TRUE)
+  .progress_say("calibrating")
   config <- job$config
   # Bounds for this structure; starting values outside them are moved to the nearest bound.
   bounds <- calibration_bounds(config, settings$overrides, settings$exclude)
@@ -173,10 +205,12 @@ compare_structures <- function(project, structures = NULL, overrides = NULL, exc
     reverse <- .run_registered(NULL, info, registration, back$config, "calibration",
                                data)$scores
   }
+  seconds <- .seconds_since(started)
+  .progress_say(sprintf("done in %s", .duration_text(seconds)))
   list(name = job$name, config = config, bounds = bounds, log_scale = log_scale,
        initial = initial[c("scores", "output_md5")], fit = fit,
        calibrated = calibrated[c("scores", "output_md5")],
-       validation_scores = validated$scores, reverse_scores = reverse)
+       validation_scores = validated$scores, reverse_scores = reverse, seconds = seconds)
 }
 
 # Writes one structure's results to the log as two ordinary entries, so the comparison needs no
