@@ -6,6 +6,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-06
 # Modified:     2026-11-06 - First version
+#               2026-11-10 - One event per flood (find_events(independent = TRUE))
 # Tier:         3
 # Inputs:       Events from find_events(); rain (mm per step); observed flow (m3/s)
 # Outputs:      A scoring function of the simulated flow, and its description
@@ -69,7 +70,9 @@
 .event_windows <- function(events, rain, observed, warmup, dt, share, screen, area_km2) {
   if (is.null(events)) {
     .check(!is.null(rain), "The events objective needs rain in forcing, or events")
-    events <- find_events(rain, observed, dt = dt, area_km2 = area_km2)
+    # One event per flood: fragments of a long flood would otherwise each count as an event,
+    # and the largest share would fit one flood many times over.
+    events <- find_events(rain, observed, dt = dt, area_km2 = area_km2, independent = TRUE)
   }
   .check(is.data.frame(events) && all(c("flow_start", "flow_end") %in% names(events)),
          "events must come from find_events()")

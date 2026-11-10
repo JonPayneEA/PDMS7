@@ -1,3 +1,27 @@
+# pdmS7 0.20.0
+
+Fixes from the Beggearn Huish calibration.
+
+- **One event per flood.** At 15-minute steps, with a response time under two hours, the
+  event method cut a long flood fed by several bursts of rain into an event per burst. On
+  Beggearn Huish seven of the ten "largest events" were slices of one flood, with event NSE
+  down to -234, and the events stage of the calibration fitted that flood several times over:
+  it lost 0.04 of NSE, 0.23 of log NSE and 16% of the water balance, and the peaks were no
+  better. `find_events(independent = TRUE)` now merges events that belong to one flood: those
+  whose flow windows overlap, and those whose peaks are not independent by the rule of UK
+  peaks-over-threshold series (at least three response times apart, with the flow between
+  them falling below two-thirds of the smaller peak; `separation` and `trough` set the rule).
+  The events objective and the events stage, `calibration_checks()`, the largest events of
+  the report, `batch_events()` and the Events tab of the app all use it. The default of
+  `find_events()` is unchanged: the published method's events, as checked against its
+  reference code.
+- **A flow path switched off is flagged.** A lower bound of zero is usually a natural value,
+  so `calibration_checks()` did not flag parameters there. A split recharge's `recharge.alpha`
+  at 0, though, sends every drop of direct runoff to groundwater and leaves the surface stores
+  carrying nothing, as it did on Beggearn Huish, where it was reported as "No parameter at a
+  bound". `alpha` at 0 or 1 is now flagged, with a note saying what it switches off, and
+  `recommend_structure()` sets aside a split recharge that ends there.
+
 # pdmS7 0.19.0
 
 - **Progress during long calibrations.** `calibrate_project()` said almost nothing between

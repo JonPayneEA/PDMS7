@@ -7,6 +7,8 @@
 # Created:      2026-11-06
 # Modified:     2026-11-06 - First version
 #               2026-11-09 - Summary adds median_abs_peak_error
+#               2026-11-10 - A split recharge's alpha at 0 or 1 is flagged: it switches a
+#                            flow path off
 # Tier:         3
 # Inputs:       A calibration project and one of its model entries
 # Outputs:      Tables of parameters, events and a summary by window
@@ -45,7 +47,12 @@
 #'
 #' @return A `pdm_calibration_checks` list of three data frames and the response times; printing it
 #'   shows the parameters at a bound and the event summary. `parameters`: `path`, `value`,
-#'   `lower`, `upper`, `scale` and `at_bound` (`"lower"`, `"upper"` or `NA`). `events`: every
+#'   `lower`, `upper`, `scale`, `at_bound` (`"lower"`, `"upper"` or `NA`) and `note`, which says
+#'   what a bound means where it switches part of the model off. A lower bound of zero is
+#'   usually a natural value (no delay, no threshold) and is not flagged, except for a split
+#'   recharge's `recharge.alpha`: at 0 every drop of direct runoff goes to groundwater and the
+#'   surface stores carry nothing; at 1 none reaches groundwater. Events are taken one per
+#'   flood (`find_events(independent = TRUE)`). `events`: every
 #'   event with its `period` and the columns of [event_scores()]. `summary`: one row per window
 #'   with `events` (the number summarised), `median_peak_error`, `median_abs_peak_error` (the
 #'   median size of the peak errors, so that errors of -50% and +50% do not cancel),
@@ -92,7 +99,8 @@ calibration_checks <- function(project, entry = NULL, top = 20L, edge = 0.01, ra
   chain <- .entry_chain(entries, node)
   searched <- Filter(function(e) identical(e$type, "auto_calibration"), chain)
   empty <- data.frame(path = character(0), value = numeric(0), lower = numeric(0),
-                      upper = numeric(0), scale = character(0), at_bound = character(0))
+                      upper = numeric(0), scale = character(0), at_bound = character(0),
+                      note = character(0))
   if (!length(searched)) return(empty)
   rows <- do.call(rbind, lapply(searched, function(e) {
     data.frame(path = names(e$bounds$lower), lower = unlist(e$bounds$lower),
@@ -112,8 +120,16 @@ calibration_checks <- function(project, entry = NULL, top = 20L, edge = 0.01, ra
   logged <- out$scale == "log"
   z <- (tr(out$value, logged) - tr(out$lower, logged)) /
     (tr(out$upper, logged) - tr(out$lower, logged))
-  out$at_bound <- ifelse(z <= edge & out$lower != 0, "lower",
+  # A zero lower bound is usually a natural value and is not flagged; a split recharge's alpha
+  # at either end switches a flow path off, so it always is.
+  split_alpha <- out$path == "recharge.alpha" &
+    identical(node$configuration$recharge$type, "split")
+  out$at_bound <- ifelse(z <= edge & (out$lower != 0 | split_alpha), "lower",
                          ifelse(z >= 1 - edge, "upper", NA_character_))
+  out$note <- ifelse(split_alpha & out$at_bound %in% "lower",
+                     "all direct runoff goes to groundwater; the surface stores carry nothing",
+                     ifelse(split_alpha & out$at_bound %in% "upper",
+                            "no direct runoff reaches groundwater", NA_character_))
   rownames(out) <- NULL
   out
 }
