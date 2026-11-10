@@ -11,6 +11,14 @@
   goes to `progress.log` in the project folder, and the console says so.
 - `options(pdmS7.progress_every = 0)` turns the minute-by-minute lines off; any other number
   sets their interval in seconds.
+- **Report fix.** The candidate's "Calibration window" hydrograph and flow-duration figures
+  showed the validation window: the figures were drawn after the loop that made them, and
+  every one saw its last window. Each window's figures now show that window.
+- **Report: the held-back wettest years** each get a hydrograph of observed and simulated
+  flow, once the test has scored them, beside the table of their peaks.
+- **Report: the largest events.** A table and a figure of the ten largest events of the
+  record by observed peak, in whichever window they fall, with each one's window, peak error,
+  timing error and event NSE, and its rain.
 
 # pdmS7 0.18.1
 

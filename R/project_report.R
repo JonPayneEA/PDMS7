@@ -5,6 +5,9 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-01
 # Modified:     2026-11-01 - Add the calibration report
+#               2026-11-10 - Each window's figures show that window (they all showed the
+#                            last); hydrographs of the held-back wettest years; the ten
+#                            largest events
 # Tier:         3
 # Inputs:       A calibration project folder
 # Outputs:      report/report.html (self-contained), report/report.md, report/figures
@@ -24,7 +27,9 @@
 #' Sections, in reading order: project and roles; integrity (any failure is flagged at the
 #' top); data and scoring windows; model structure; the calibration path, as a tree of runs
 #' and a table of every run with its changes, scores, verdict and reasoning; the candidate,
-#' with hydrographs, flow-duration curves and a scatter for both windows; parameter
+#' with hydrographs, flow-duration curves and a scatter for each window, a hydrograph for each
+#' held-back wettest year once tested, and the ten largest events of the record in any window,
+#' tabled and drawn with their rain; parameter
 #' sensitivity; sign-off history; and an appendix with the final configuration and the
 #' entry checksums.
 #'
@@ -348,22 +353,120 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
                                   if (validated) validation$validation_scores,
                                   if (!is.null(test)) test$test_scores))
   }
-  for (w in c("calibration", if (validated) "validation")) {
-    rows <- .window_rows(card[[w]])
+  c(out, .rpt_candidate_figures(path, series, card, validated, test, registration, candidate))
+}
+
+# The candidate's figures: each window, each held-back wettest year once tested, and the largest
+# events. Each window's figures are built in a function of their own: figures are drawn after
+# the report is assembled, and closures made in a loop would all see the loop's last window.
+.rpt_candidate_figures <- function(path, series, card, validated, test, registration,
+                                   candidate) {
+  windows <- c("calibration", if (validated) "validation")
+  out <- unlist(lapply(windows, function(w) .rpt_window(series, card, w)), recursive = FALSE)
+  if (!is.null(test$wettest) && !is.null(test$series)) {
+    out <- c(out, .rpt_wettest_figures(path, test, card))
+  }
+  c(out, .rpt_top_events(path, registration, candidate, series))
+}
+
+# A window's hydrograph, flow-duration curves and scatter.
+.rpt_window <- function(series, card, w) {
+  rows <- .window_rows(card[[w]])
+  obs <- series$observed_m3s[rows]
+  sim <- series$simulated_m3s[rows]
+  time <- if ("time" %in% names(series)) .parse_time(series$time[rows]) else rows
+  list(
+    .blk_h(paste(tools::toTitleCase(w), "window"), 3L),
+    .blk_fig(paste0("hydrograph-", w), function() .plot_hydrograph(time, obs, sim),
+             paste("Observed and simulated flow over the", w, "window, linear and log scale"),
+             height = 6),
+    .blk_fig(paste0("fdc-", w), function() .plot_fdc_scatter(obs, sim),
+             paste("Flow-duration curves and simulated against observed flow,", w, "window"),
+             height = 3.8)
+  )
+}
+
+# One hydrograph per held-back wettest year, from the run the test saved: the floods the model
+# was never fitted to, beside the peaks table above.
+.rpt_wettest_figures <- function(path, test, card) {
+  series <- data.table::fread(file.path(path, test$series$file))
+  figure <- function(y) {
+    rows <- seq.int(y$first_row, y$last_row)
     obs <- series$observed_m3s[rows]
     sim <- series$simulated_m3s[rows]
     time <- if ("time" %in% names(series)) .parse_time(series$time[rows]) else rows
-    out <- c(out, list(
-      .blk_h(paste(tools::toTitleCase(w), "window"), 3L),
-      .blk_fig(paste0("hydrograph-", w), function() .plot_hydrograph(time, obs, sim),
-               paste("Observed and simulated flow over the", w, "window, linear and log scale"),
-               height = 6),
-      .blk_fig(paste0("fdc-", w), function() .plot_fdc_scatter(obs, sim),
-               paste("Flow-duration curves and simulated against observed flow,", w, "window"),
-               height = 3.8)
-    ))
+    .blk_fig(paste0("hydrograph-wettest-", y$water_year),
+             function() .plot_hydrograph(time, obs, sim),
+             paste("Observed and simulated flow in held-back water year", y$water_year,
+                   "(scored once, by the test), linear and log scale"), height = 6)
   }
-  out
+  c(list(.blk_h("Held-back wettest years", 3L)), lapply(.held_years(card), figure))
+}
+
+# The ten largest usable events of the record, whichever window they fall in, each with its rain,
+# the observed flow and the candidate's: the floods that matter most, side by side.
+.rpt_top_events <- function(path, registration, candidate, series, n = 10L) {
+  checks <- tryCatch(calibration_checks(path, candidate$id, top = n),
+                     error = function(e) NULL)
+  if (is.null(checks)) return(list())
+  ev <- as.data.frame(checks$events)
+  use <- if ("use" %in% names(ev)) ev$use else rep(TRUE, nrow(ev))
+  ev <- ev[use & is.finite(ev$peak_error), ]
+  if (!nrow(ev)) return(list())
+  ev <- ev[order(-ev$observed_peak), ][seq_len(min(n, nrow(ev))), ]
+  rain <- .load_registration(path, registration)$forcing$rain
+  dt <- candidate$configuration$dt %||% 1
+  spec <- .top_events_spec(ev, series, rain, dt)
+  table <- data.frame(window = ev$period, peak_m3s = signif(ev$observed_peak, 3),
+                      simulated_m3s = signif(ev$simulated_peak, 3),
+                      peak_error = sprintf("%+.0f%%", 100 * ev$peak_error),
+                      timing_h = sprintf("%+.1f", ev$timing_error_h),
+                      event_nse = round(ev$nse, 2))
+  if ("time" %in% names(series)) {
+    table <- cbind(peak = format(.parse_time(series$time[ev$peak_row]), "%d %b %Y %H:%M"),
+                   table)
+  }
+  list(
+    .blk_h("Largest events", 3L),
+    .blk_table(table, paste(
+      "The", nrow(ev), "largest events of the record by observed peak, in any window. A",
+      "negative peak error is a peak too low; a negative timing error, a peak too early."
+    )),
+    .blk_fig("top-events", function() .draw_base(spec),
+             paste("The", nrow(ev), "largest events: observed flow (dots), the candidate (line)",
+                   "and rain (bars)"), height = 2.3 * ceiling(nrow(ev) / 2) + 0.8)
+  )
+}
+
+# The panels of the largest events, in the house style of the event plots.
+.top_events_spec <- function(ev, series, rain, dt) {
+  has_time <- "time" %in% names(series)
+  lead <- round(12 / dt)
+  parts <- lapply(seq_len(nrow(ev)), function(e) {
+    rows <- seq.int(max(1L, min(ev$rain_start[e], ev$flow_start[e]) - lead), ev$flow_end[e])
+    x <- if (has_time) .parse_time(series$time[rows]) else rows
+    obs <- series$observed_m3s[rows]
+    sim <- series$simulated_m3s[rows]
+    layers <- rbind(
+      .layer(x, obs, "Observed", .pdm_roles[["observed"]], geom = "point", lwd = 1.1,
+             panel = e),
+      .layer(x, sim, "Candidate", .pdm_roles[["simulated"]], panel = e)
+    )
+    step <- if (has_time) dt * 3600 else 1
+    when <- if (has_time) format(x[rows == ev$peak_row[e]][1], "%d %b %Y") else
+      paste("row", ev$peak_row[e])
+    list(series = layers,
+         title = sprintf("%s (%s)  peak %+.0f%%, %+.1f h", when, ev$period[e],
+                         100 * ev$peak_error[e], ev$timing_error_h[e]),
+         rain = .rain_layer(x - step, x, rain[rows], max(c(obs, sim), na.rm = TRUE),
+                            panel = e))
+  })
+  list(
+    series = do.call(rbind, lapply(parts, `[[`, "series")),
+    rain = do.call(rbind, lapply(parts, `[[`, "rain")), rain_axis = FALSE,
+    panels = data.frame(panel = seq_along(parts), title = vapply(parts, `[[`, "", "title")),
+    ncol = 2L, xlab = "", ylab = "Flow (m3/s)", log = "", title = "Largest events"
+  )
 }
 
 # Adds the test window's and the held-back years' scores to the scorecard table, where scored.

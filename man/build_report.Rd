@@ -39,7 +39,9 @@ control.
 Sections, in reading order: project and roles; integrity (any failure is flagged at the
 top); data and scoring windows; model structure; the calibration path, as a tree of runs
 and a table of every run with its changes, scores, verdict and reasoning; the candidate,
-with hydrographs, flow-duration curves and a scatter for both windows; parameter
+with hydrographs, flow-duration curves and a scatter for each window, a hydrograph for each
+held-back wettest year once tested, and the ten largest events of the record in any window,
+tabled and drawn with their rain; parameter
 sensitivity; sign-off history; and an appendix with the final configuration and the
 entry checksums.
 
