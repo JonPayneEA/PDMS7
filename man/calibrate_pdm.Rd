@@ -143,7 +143,11 @@ term changes in steps, so use \code{method = "dds"} or \code{"nelder_mead"}.}
 
 \item{event_weights}{Named weights \code{nse}, \code{peak} and \code{timing} of the three terms.}
 
-\item{event_share}{Share of the events, largest observed peak first, that are scored.}
+\item{event_share}{Share of the events, largest observed peak first, that are scored. Or a
+flow floor, so that every event whose observed peak reaches it is scored: a marker of
+\code{\link[=flow_markers]{flow_markers()}} such as \code{"Q1"} or \code{"0.5QMED"}, worked out from \code{observed}, or
+\code{c(peak = 12.5)} for a flow in m3/s. In a project, the name of a registered threshold, or
+a multiple of one such as \code{"0.5QMED"}, uses its registered flow.}
 
 \item{event_screen}{Settings for \code{\link[=screen_events]{screen_events()}}, which leaves out events with a rise lost
 in the baseflow, more quick flow than rain, or gaps; \code{NULL} scores every event.}

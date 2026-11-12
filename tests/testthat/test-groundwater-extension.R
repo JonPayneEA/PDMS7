@@ -104,6 +104,46 @@ test_that("the extended model reduces to the standard one and keeps its water ba
                       well_level_m[1]))
 })
 
+# Guards: the compiled engine gives the R loop's results for every extended store, through
+# drawdown below zero, a dry spell and refill
+test_that("the compiled engine matches the R loop", {
+  set.seed(2)
+  n <- 24 * 30
+  forcing <- data.frame(rain = ifelse(stats::runif(n) < 0.08, stats::rexp(n, 0.2), 0),
+                        pet = 0.12, abstraction = rep(c(0.002, 0.4, 0), each = n / 3))
+  stores <- list(list(type = "cubic", kb = 3000),
+                 list(type = "cubic", kb = 3000, solver = "smith"),
+                 list(type = "linear", kb = 400), list(type = "quadratic", kb = 2000))
+  r_loop <- function(...) {
+    old <- options(pdmS7.engine = "r")
+    on.exit(options(old))
+    run_pdm(...)
+  }
+  for (g in stores) {
+    cfg <- ext_config(ku = 3000, dbu = 50, alpha_b = 0.1, ca = 0.01, smax_b = 500, ys = 0.02,
+                      hw = 80)
+    cfg$recharge$kg <- 600
+    cfg$groundwater <- c(g, list(extension = cfg$groundwater$extension))
+    model <- pdm_from_config(cfg)
+    start <- suppressWarnings(initial_state_from_flow(model, 0.3, 0.8))
+    compiled <- run_pdm(model, forcing, start)
+    reference <- r_loop(model, forcing, start)
+    expect_equal(compiled$output, reference$output, tolerance = 1e-12)
+    expect_equal(compiled$state, reference$state, tolerance = 1e-12)
+    expect_lt(min(reference$output$groundwater_mm), 0)
+    flow <- pdmS7:::.run_flow(model, forcing, start, "q_m3s")
+    expect_equal(flow, reference$output$q_m3s, tolerance = 1e-12)
+  }
+  # No well: the well level column is missing, as in the R loop
+  out <- run_pdm(pdm_from_config(ext_config(ku = 3000)), forcing)$output
+  expect_true(all(is.na(out$well_level_m)))
+  # The core refuses an abstraction for a model without the extension
+  standard <- pdm_from_config(pdm_presets("standard"))
+  par <- pdmS7:::.engine_params(standard)
+  state <- pdmS7:::.engine_pack_state(initial_state(standard))
+  expect_error(pdmS7:::pdm_engine_run(1, 0, 0.5, par, state, FALSE), "groundwater extension")
+})
+
 # Guards: underflow follows Eq. 10 from the start-of-step storage, and springs take their share
 test_that("underflow and springs follow the published rules", {
   store <- groundwater_extension(linear_routing(100), ku = 1000, dbu = 30, alpha_b = 0.25)

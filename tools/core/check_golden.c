@@ -148,6 +148,8 @@ static pdm_params params_from(const table* t, int row) {
   p.qc = cell(t, row, "qc");
   p.area_km2 = cell(t, row, "area_km2");
   p.dt = cell(t, row, "dt");
+  /* The golden cases predate the groundwater extension, which they leave switched off. */
+  memset(&p.extension, 0, sizeof(p.extension));
   return p;
 }
 

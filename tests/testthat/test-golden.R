@@ -106,9 +106,10 @@ test_that(
     params <- setdiff(names(invalid), c("case", "expected_code"))
     expect_length(params, 40L)
     for (i in seq_len(nrow(invalid))) {
-      par <- as.numeric(invalid[i, params])
+      # The golden cases predate the groundwater extension: switched off, nine zeros.
+      par <- c(as.numeric(invalid[i, params]), numeric(9))
       expect_error(
-        pdmS7:::pdm_engine_run(1, 0.1, par, rep(0, 10), FALSE),
+        pdmS7:::pdm_engine_run(1, 0.1, numeric(0), par, rep(0, 10), FALSE),
         regexp = "Invalid parameter|cannot exceed|Demand recharge|incompatible",
         label = invalid$case[i]
       )

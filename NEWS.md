@@ -1,3 +1,22 @@
+# pdmS7 0.22.0
+
+- **The groundwater extension runs in the compiled engine.** Interface version 3 of the C core
+  (`src/pdm_core.h`) adds an extension block to `pdm_params` and `pdm_run_ext()`, which takes an
+  abstraction series and writes the extension's five columns to their own table. `pdm_run()`
+  and its 24 columns are unchanged. Simulation and calibration of extended models now use the
+  core, which gives the R loop's results exactly (checked for linear, quadratic, cubic and
+  Smith stores through drawdown below zero, a dry spell and refill), at roughly 800 times the
+  speed. The start from flow and state correction of extended models stay on the R loop.
+- **Flow markers: thresholds from the record.** `flow_markers()` works out QMED (the median of
+  water-year maxima, as in the Flood Estimation Handbook), any multiple of it such as
+  `0.5QMED`, and flow duration exceedances such as `Q1` and `Q5`. `register_data()` registers
+  `QMED`, `Q1` and `Q5` when no thresholds are given (argument `markers`; `NULL` for none), so
+  every catchment gets threshold scores; reports mark them as worked out from the record.
+- **Events chosen by a flow.** `event_share` in `calibrate_pdm()`, `pdm_stages()` and the
+  project functions also takes a flow floor: a marker (`"Q1"`, `"0.5QMED"`), a registered
+  threshold's name or a multiple of one, or `c(peak = flow)`. Every event whose observed peak
+  reaches it is then fitted, rather than the largest share.
+
 # pdmS7 0.21.0
 
 - **Tier 1.** The package is declared Tier 1 (experimental) under the Flode governance tiers:

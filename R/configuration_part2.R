@@ -92,7 +92,11 @@
 #' each window's own mean flow, so long recessions between events do not count. The timing
 #' term changes in steps, so use `method = "dds"` or `"nelder_mead"`.
 #' @param event_weights Named weights `nse`, `peak` and `timing` of the three terms.
-#' @param event_share Share of the events, largest observed peak first, that are scored.
+#' @param event_share Share of the events, largest observed peak first, that are scored. Or a
+#'   flow floor, so that every event whose observed peak reaches it is scored: a marker of
+#'   [flow_markers()] such as `"Q1"` or `"0.5QMED"`, worked out from `observed`, or
+#'   `c(peak = 12.5)` for a flow in m3/s. In a project, the name of a registered threshold, or
+#'   a multiple of one such as `"0.5QMED"`, uses its registered flow.
 #' @param event_screen Settings for [screen_events()], which leaves out events with a rise lost
 #' in the baseflow, more quick flow than rain, or gaps; `NULL` scores every event.
 #' @param archive Optional function of the full simulated flow returning one number. When given,
@@ -158,7 +162,7 @@ calibrate_pdm <- function(
   .check(sum(keep) >= 2, "At least two observed values after warmup are required")
   scoring <- .objective_scorer(objective, observed, keep, warmup, log_offset, events,
                                forcing$rain, pdm_from_config(config), event_weights,
-                               event_share, event_screen)
+                               event_share, event_screen, forcing$time)
   # Every trial starts the same way. The start is built once for the configured model first, so
   # a start that cannot work (a first flow below qc, say) stops here with its own message rather
   # than failing every trial.
@@ -307,10 +311,10 @@ calibrate_pdm <- function(
 # The continuous part of the objective as a function of the full simulated series: the events
 # objective scores the event windows, every other objective the kept rows.
 .objective_scorer <- function(objective, observed, keep, warmup, log_offset, events, rain,
-                              model, event_weights, event_share, event_screen) {
+                              model, event_weights, event_share, event_screen, time = NULL) {
   if (objective == "events") {
     return(.event_objective(events, rain, observed, warmup, model@dt, event_weights, event_share,
-                            event_screen, model@area_km2))
+                            event_screen, model@area_km2, time))
   }
   score <- .calibration_scorer(objective, observed[keep], log_offset)
   list(score = function(sim) score(sim[keep]), name = NULL)

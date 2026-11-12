@@ -7,6 +7,7 @@
 # Created:      2026-11-12
 # Modified:     2026-11-12 - First version, from Moore and Bell (2002) and the PDM for PCs
 #                            scientific guide (UKCEH, 2022), section 3 and Appendix B
+#               2026-11-12 - Runs in the compiled engine (interface version 3)
 # Tier:         1
 # Inputs:       A linear, quadratic or cubic groundwater store; recharge and recorded
 #               abstraction per step (mm)
@@ -49,8 +50,10 @@
 #' stepped by Smith's method, Eqs. 4, 6 and 7, as published, whichever solver it uses for
 #' positive input.
 #'
-#' Models with the extension run in R, not the compiled engine. Abstraction enters as a forcing
-#' column `abstraction`, mm per step over the catchment.
+#' Models with the extension run in the compiled engine, like the standard model, and give the
+#' same results as the step-by-step R loop. Starting from a flow ([initial_state_from_flow()])
+#' and state correction use the R loop. Abstraction enters as a forcing column `abstraction`,
+#' mm per step over the catchment.
 #'
 #' @param store A linear, quadratic or cubic groundwater store, from [linear_routing()],
 #'   [quadratic_routing()], [cubic_routing()] or [power_routing()] with `m` 1, 2 or 3.
