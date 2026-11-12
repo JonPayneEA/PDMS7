@@ -5,6 +5,7 @@
 // Author:       Claude Code (AI-generated); human maintainer attribution not supplied
 // Created:      2026-10-31
 // Modified:     2026-11-06 - Add event identification (DMCA-ESR) and event scores
+//               2026-11-12 - Interface version 3: the groundwater extension
 // Tier:         1
 // Inputs:       Parameters, state, rain and PET depths in mm per interval
 // Outputs:      Flow in m3/s, optional flux table, updated state
@@ -27,7 +28,10 @@
    - capacity distribution: Pareto, rectangular, exponential, triangular or lognormal;
    - recharge: standard, split or demand;
    - surface and groundwater routes, chosen independently: two-store cascade, power-law store
-     (linear, quadratic, cubic or any positive exponent) or exponential store.
+     (linear, quadratic, cubic or any positive exponent) or exponential store;
+   - the groundwater extension (Moore and Bell 2002; PDM for PCs scientific guide, UKCEH 2022,
+     section 3 and Appendix B): abstraction, negative storage and ephemeral flow, underflow,
+     external springs, storage deficit and well level;
    - the PACK snowpack (Institute of Hydrology, NORA report 15304), alone or feeding PDM;
    - forecast updating: state correction (Moore 2007, Eq. 28-30) and ARMA error prediction
      (Eq. 31-42). Estimating the ARMA coefficients stays in the host language.
@@ -56,15 +60,16 @@ extern "C" {
 
 /* Version of this interface. It changes only when a signature, struct layout, state layout,
    type code or flux column order changes. */
-#define PDM_CORE_ABI_VERSION 2
+#define PDM_CORE_ABI_VERSION 3
 
 /* Return codes. */
 #define PDM_OK 0
 #define PDM_ERR_ARGUMENT 1   /* invalid parameter, state, input or buffer size */
 #define PDM_ERR_NUMERICAL 2  /* the solver failed during the run */
 
-/* Number of columns in the optional flux table. */
+/* Number of columns in the optional flux table, and in the extension's flux table. */
 #define PDM_N_FLUX 24
+#define PDM_N_EXT_FLUX 5
 
 /* Capacity distribution types (pdm_params.distribution). */
 #define PDM_DIST_PARETO 0       /* uses cmin, cmax, b */
@@ -98,9 +103,32 @@ typedef struct pdm_route {
   double gamma;   /* exponential: log-flow intercept; any finite value */
 } pdm_route;
 
+/* The groundwater extension of a linear, quadratic or cubic groundwater store (a power route
+   with m = 1, 2 or 3), as in R/groundwater_extension.R. The net input to the store is
+   recharge less abstraction and underflow, u = d - A - qu, with A = ca + fa Ar, Ar the
+   recorded abstraction rate, and qu = (S + dbu) / ku while S > -dbu, from the storage at the
+   start of the step. A negative input drains the store; when it empties, outflow stops at the
+   time to cessation (Eqs. B.1, B.3 and B.5) and the storage falls below zero by continuity
+   until recharge refills it. A fraction alpha_b of the store's outflow leaves the catchment as
+   springs. With a negative input the cubic store is stepped by Smith's method, as published.
+   Not available with demand recharge.
+   Layout: two 32-bit integers, then 8 doubles; 72 bytes. */
+typedef struct pdm_extension {
+  int32_t enabled;  /* 1: the groundwater store is extended; 0: the rest is ignored */
+  int32_t reserved; /* set to 0 */
+  double ku;        /* underflow time constant, h; > 0, or +Inf for no underflow */
+  double dbu;       /* baseflow-underflow deficit, mm: depth of the underflow outlet; >= 0 */
+  double alpha_b;   /* fraction of outflow lost to springs; < 1, negative for an import */
+  double ca;        /* constant abstraction, mm/h; any finite value */
+  double fa;        /* factor on the recorded abstraction; >= 0 */
+  double smax_b;    /* maximum groundwater storage for the deficit, mm; >= 0 */
+  double ys;        /* specific yield of the aquifer; >= 0; 0 for no well level */
+  double hw;        /* well level datum: ground height at the well, m; any finite value */
+} pdm_extension;
+
 /* Model parameters. Fields not used by the chosen types are ignored; used fields must be
-   finite. Layout: two 32-bit integers, 12 doubles, two pdm_route, 6 doubles; 296 bytes with
-   no padding on common platforms. */
+   finite. Layout: two 32-bit integers, 12 doubles, two pdm_route, 6 doubles, pdm_extension;
+   368 bytes with no padding on common platforms. */
 typedef struct pdm_params {
   int32_t distribution;  /* PDM_DIST_* */
   int32_t recharge;      /* PDM_RECHARGE_* */
@@ -124,6 +152,7 @@ typedef struct pdm_params {
   double qc;             /* constant flow added at the outlet, m3/s; any finite value */
   double area_km2;       /* catchment area, km2; > 0 */
   double dt;             /* time step, h; > 0. 0.25 for 15-minute data */
+  pdm_extension extension; /* groundwater extension; enabled = 0 for the standard PDM */
 } pdm_params;
 
 /* Interface version compiled into the library. Compare with PDM_CORE_ABI_VERSION. */
@@ -139,7 +168,7 @@ PDM_CORE_API int32_t pdm_core_abi_version(void);
      then four delay queues of n = floor(td / dt) + 1 values each, in this order:
      surface volume, groundwater volume, surface endpoint flow, groundwater endpoint flow.
    Stores are in mm and must be >= 0, except an exponential store, whose storage is a signed
-   coordinate. */
+   coordinate, and an extended groundwater store, which may fall below zero. */
 PDM_CORE_API int64_t pdm_state_length(const pdm_params* params);
 
 /* Fills state with the standard initial state: soil at soil_fraction of Smax, all routing
@@ -154,7 +183,8 @@ PDM_CORE_API int32_t pdm_initial_state(const pdm_params* params, double soil_fra
    that recharge equals baseflow (standard and demand recharge), or to soil_fraction of
    capacity with split recharge, and capped at capacity; the delay queues hold the water in
    transit. observed_m3s must be at least qc, both fractions must lie in [0, 1], and an
-   exponential store's share of the flow must be positive. */
+   exponential store's share of the flow must be positive. Not available with the groundwater
+   extension. */
 PDM_CORE_API int32_t pdm_state_from_flow(const pdm_params* params, double observed_m3s,
                                          double baseflow_fraction, double soil_fraction,
                                          double* state, int64_t state_length,
@@ -179,6 +209,22 @@ PDM_CORE_API int32_t pdm_run(const pdm_params* params, const double* rain, const
                              int64_t n, double* state, int64_t state_length, double* q_m3s,
                              double* q_end_m3s, double* fluxes, char* message,
                              int64_t message_length);
+
+/* Name of extension flux column j (0 to PDM_N_EXT_FLUX - 1), or a null pointer. */
+PDM_CORE_API const char* pdm_ext_flux_name(int32_t j);
+
+/* As pdm_run(), for a model with the groundwater extension (it also runs any other model).
+   abstraction: null for none, or n recorded abstraction depths in mm per interval, finite;
+                only a model with the extension enabled may have a nonzero abstraction.
+   ext_fluxes:  null, or n * PDM_N_EXT_FLUX values written column by column: abstraction_mm,
+                underflow_mm, spring_mm, groundwater_deficit_mm and well_level_m (NaN when
+                ys is 0). Zero for a model without the extension.
+   The water balance column of fluxes counts abstraction, underflow and springs as losses. */
+PDM_CORE_API int32_t pdm_run_ext(const pdm_params* params, const double* rain,
+                                 const double* pet, const double* abstraction, int64_t n,
+                                 double* state, int64_t state_length, double* q_m3s,
+                                 double* q_end_m3s, double* fluxes, double* ext_fluxes,
+                                 char* message, int64_t message_length);
 
 /* ---- PACK snowpack --------------------------------------------------------------------------
 
@@ -272,7 +318,8 @@ typedef struct pdm_correction {
 } pdm_correction;
 
 /* Corrects the state towards observed_m3s, the flow observed at the end of the last interval.
-   Requires td = 0: with an outlet delay, the observation reflects earlier states. On success
+   Requires td = 0: with an outlet delay, the observation reflects earlier states. Not
+   available with the groundwater extension. On success
    state is updated in place and out receives the details. */
 PDM_CORE_API int32_t pdm_correct_state(const pdm_params* params,
                                        const pdm_state_updater* updater,

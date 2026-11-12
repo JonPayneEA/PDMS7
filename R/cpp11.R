@@ -16,8 +16,8 @@ event_scores_engine <- function(simulated, observed, dt, events) {
   .Call(`_pdmS7_event_scores_engine`, simulated, observed, dt, events)
 }
 
-pdm_engine_run <- function(rain, pet, par, state, full) {
-  .Call(`_pdmS7_pdm_engine_run`, rain, pet, par, state, full)
+pdm_engine_run <- function(rain, pet, abstraction, par, state, full) {
+  .Call(`_pdmS7_pdm_engine_run`, rain, pet, abstraction, par, state, full)
 }
 
 pack_engine_run <- function(precipitation, temperature, par, state, dt) {

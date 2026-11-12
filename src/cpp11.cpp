@@ -34,10 +34,10 @@ extern "C" SEXP _pdmS7_event_scores_engine(SEXP simulated, SEXP observed, SEXP d
   END_CPP11
 }
 // pdm_engine.cpp
-cpp11::list pdm_engine_run(doubles rain, doubles pet, doubles par, doubles state, bool full);
-extern "C" SEXP _pdmS7_pdm_engine_run(SEXP rain, SEXP pet, SEXP par, SEXP state, SEXP full) {
+cpp11::list pdm_engine_run(doubles rain, doubles pet, doubles abstraction, doubles par, doubles state, bool full);
+extern "C" SEXP _pdmS7_pdm_engine_run(SEXP rain, SEXP pet, SEXP abstraction, SEXP par, SEXP state, SEXP full) {
   BEGIN_CPP11
-    return cpp11::as_sexp(pdm_engine_run(cpp11::as_cpp<cpp11::decay_t<doubles>>(rain), cpp11::as_cpp<cpp11::decay_t<doubles>>(pet), cpp11::as_cpp<cpp11::decay_t<doubles>>(par), cpp11::as_cpp<cpp11::decay_t<doubles>>(state), cpp11::as_cpp<cpp11::decay_t<bool>>(full)));
+    return cpp11::as_sexp(pdm_engine_run(cpp11::as_cpp<cpp11::decay_t<doubles>>(rain), cpp11::as_cpp<cpp11::decay_t<doubles>>(pet), cpp11::as_cpp<cpp11::decay_t<doubles>>(abstraction), cpp11::as_cpp<cpp11::decay_t<doubles>>(par), cpp11::as_cpp<cpp11::decay_t<doubles>>(state), cpp11::as_cpp<cpp11::decay_t<bool>>(full)));
   END_CPP11
 }
 // pdm_engine.cpp
@@ -79,7 +79,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_pdmS7_forecast_engine_run",  (DL_FUNC) &_pdmS7_forecast_engine_run,  7},
     {"_pdmS7_from_flow_engine_run", (DL_FUNC) &_pdmS7_from_flow_engine_run, 4},
     {"_pdmS7_pack_engine_run",      (DL_FUNC) &_pdmS7_pack_engine_run,      5},
-    {"_pdmS7_pdm_engine_run",       (DL_FUNC) &_pdmS7_pdm_engine_run,       5},
+    {"_pdmS7_pdm_engine_run",       (DL_FUNC) &_pdmS7_pdm_engine_run,       6},
     {NULL, NULL, 0}
 };
 }

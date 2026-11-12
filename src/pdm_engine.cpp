@@ -5,6 +5,7 @@
 // Author:       Claude Code (AI-generated); human maintainer attribution not supplied
 // Created:      2026-10-31
 // Modified:     2026-10-31 - Interface version 2 parameter layout
+//               2026-11-12 - Interface version 3: the groundwater extension and abstraction
 // Tier:         1
 // Inputs:       Rain and PET depths in mm per interval; parameters in R/engine.R order
 // Outputs:      Flux columns equal to pdm_step() to rounding; final state vector
@@ -42,7 +43,8 @@ void fill_route(pdm_route& r, const doubles& par, int at) {
 
 // Builds the parameter struct from the flat vector made by .engine_params() in R/engine.R, in
 // pdm_params order. The one place that knows the layout: every entry point uses it, so a change
-// to the layout is made here once. Callers check the vector has 40 values first.
+// to the layout is made here once. Callers check the vector has 49 values first: 40 for the
+// model, then the extension's enabled flag and its eight parameters.
 pdm_params fill_params(const doubles& par) {
   pdm_params p;
   p.distribution = static_cast<int32_t>(par[0]);
@@ -55,18 +57,28 @@ pdm_params fill_params(const doubles& par) {
   fill_route(p.groundwater, par, 24);
   p.be = par[34]; p.fc = par[35]; p.td = par[36]; p.qc = par[37]; p.area_km2 = par[38];
   p.dt = par[39];
+  p.extension.enabled = static_cast<int32_t>(par[40]);
+  p.extension.reserved = 0;
+  p.extension.ku = par[41]; p.extension.dbu = par[42]; p.extension.alpha_b = par[43];
+  p.extension.ca = par[44]; p.extension.fa = par[45]; p.extension.smax_b = par[46];
+  p.extension.ys = par[47]; p.extension.hw = par[48];
   return p;
 }
 
 }  // namespace
 
-// Runs the time loop. par holds the 40 fields of pdm_params in struct order, as built by
-// .engine_params() in R/engine.R. state uses the layout documented in pdm_core.h. With
-// full = FALSE only q_m3s and q_end_m3s are filled; the flux columns are returned empty.
+// Runs the time loop. par holds the 49 fields of pdm_params in struct order, as built by
+// .engine_params() in R/engine.R. state uses the layout documented in pdm_core.h. abstraction
+// is empty for none, or one recorded depth per step. With full = FALSE only q_m3s and
+// q_end_m3s are filled; the flux columns are returned empty.
 [[cpp11::register]]
-cpp11::list pdm_engine_run(doubles rain, doubles pet, doubles par, doubles state, bool full) {
-  if (par.size() != 40) cpp11::stop("pdm_engine_run expects 40 parameters");
+cpp11::list pdm_engine_run(doubles rain, doubles pet, doubles abstraction, doubles par,
+                           doubles state, bool full) {
+  if (par.size() != 49) cpp11::stop("pdm_engine_run expects 49 parameters");
   if (rain.size() != pet.size()) cpp11::stop("rain and pet must have equal length");
+  if (abstraction.size() != 0 && abstraction.size() != rain.size()) {
+    cpp11::stop("abstraction must be empty or as long as rain");
+  }
   pdm_params p = fill_params(par);
 
   // Copy R's vectors into C++ storage: the C core writes to state and the outputs, and R's
@@ -74,19 +86,23 @@ cpp11::list pdm_engine_run(doubles rain, doubles pet, doubles par, doubles state
   const int64_t n = static_cast<int64_t>(rain.size());
   std::vector<double> rain_v(rain.begin(), rain.end());
   std::vector<double> pet_v(pet.begin(), pet.end());
+  std::vector<double> abs_v(abstraction.begin(), abstraction.end());
   std::vector<double> state_v(state.begin(), state.end());
   std::vector<double> q(n), q_end(n);
   std::vector<double> fluxes(full ? static_cast<std::size_t>(n) * PDM_N_FLUX : 0);
+  std::vector<double> ext(full ? static_cast<std::size_t>(n) * PDM_N_EXT_FLUX : 0);
   char message[512];
 
-  int32_t code = pdm_run(&p, rain_v.data(), pet_v.data(), n, state_v.data(),
-                         static_cast<int64_t>(state_v.size()), q.data(), q_end.data(),
-                         full ? fluxes.data() : nullptr, message, sizeof(message));
+  int32_t code = pdm_run_ext(&p, rain_v.data(), pet_v.data(),
+                             abs_v.empty() ? nullptr : abs_v.data(), n, state_v.data(),
+                             static_cast<int64_t>(state_v.size()), q.data(), q_end.data(),
+                             full ? fluxes.data() : nullptr, full ? ext.data() : nullptr,
+                             message, sizeof(message));
   // Any error from the core becomes an R error carrying the core's message.
   if (code != PDM_OK) cpp11::stop("%s", message);
 
-  // The core writes the flux table column by column; each column becomes one R vector.
-  cpp11::writable::list columns(PDM_N_FLUX);
+  // The core writes the flux tables column by column; each column becomes one R vector.
+  cpp11::writable::list columns(PDM_N_FLUX), ext_columns(PDM_N_EXT_FLUX);
   for (int j = 0; j < PDM_N_FLUX; ++j) {
     if (full) {
       auto first = fluxes.begin() + static_cast<std::ptrdiff_t>(j) * n;
@@ -95,9 +111,18 @@ cpp11::list pdm_engine_run(doubles rain, doubles pet, doubles par, doubles state
       columns[j] = cpp11::writable::doubles(static_cast<R_xlen_t>(0));
     }
   }
+  for (int j = 0; j < PDM_N_EXT_FLUX; ++j) {
+    if (full) {
+      auto first = ext.begin() + static_cast<std::ptrdiff_t>(j) * n;
+      ext_columns[j] = cpp11::writable::doubles(first, first + n);
+    } else {
+      ext_columns[j] = cpp11::writable::doubles(static_cast<R_xlen_t>(0));
+    }
+  }
   using namespace cpp11::literals;
   return cpp11::writable::list({
     "columns"_nm = columns,
+    "ext_columns"_nm = ext_columns,
     "q_m3s"_nm = cpp11::writable::doubles(q.begin(), q.end()),
     "q_end_m3s"_nm = cpp11::writable::doubles(q_end.begin(), q_end.end()),
     "state"_nm = cpp11::writable::doubles(state_v.begin(), state_v.end())
@@ -145,11 +170,11 @@ cpp11::list pack_engine_run(doubles precipitation, doubles temperature, doubles 
   });
 }
 
-// State correction. par holds the 40 fields of pdm_params; upd holds scheme, soil_proportional,
+// State correction. par holds the 49 fields of pdm_params; upd holds scheme, soil_proportional,
 // gb, gs, gg, beta1 and beta2, as built by .engine_updater_params() in R/engine.R.
 [[cpp11::register]]
 cpp11::list correct_engine_run(doubles par, doubles state, double observed, doubles upd) {
-  if (par.size() != 40 || upd.size() != 7) cpp11::stop("correct_engine_run: wrong lengths");
+  if (par.size() != 49 || upd.size() != 7) cpp11::stop("correct_engine_run: wrong lengths");
   pdm_params p = fill_params(par);
   pdm_state_updater u;
   u.scheme = static_cast<int32_t>(upd[0]);
@@ -201,11 +226,11 @@ cpp11::list forecast_engine_run(doubles ar, doubles ma, int scale, double offset
   });
 }
 
-// Steady-state start from an observed flow. par holds the 40 fields of pdm_params.
+// Steady-state start from an observed flow. par holds the 49 fields of pdm_params.
 [[cpp11::register]]
 cpp11::doubles from_flow_engine_run(doubles par, double observed, double baseflow_fraction,
                                     double soil_fraction) {
-  if (par.size() != 40) cpp11::stop("from_flow_engine_run expects 40 parameters");
+  if (par.size() != 49) cpp11::stop("from_flow_engine_run expects 49 parameters");
   pdm_params p = fill_params(par);
   int64_t len = pdm_state_length(&p);
   if (len < 0) cpp11::stop("Invalid parameter(s): dt or td");

@@ -5,6 +5,7 @@
 # Author:       Claude Code (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-31
 # Modified:     2026-11-01 - All PDM components; only PACK snow stays on the R loop
+#               2026-11-12 - The groundwater extension, with abstraction (interface version 3)
 # Tier:         1
 # Inputs:       FlodePdmModel, FlodePdmState, forcing depths in mm per interval
 # Outputs:      run_pdm() output columns and final state, equal to the R loop to rounding
@@ -36,16 +37,32 @@ NULL
 )
 
 # TRUE when every component of the model has a compiled implementation and the user has not
-# asked for the R loop. Matching on the first class name, not inheritance, is deliberate.
-.engine_supported <- function(model) {
+# asked for the R loop. Matching on the first class name, not inheritance, is deliberate. The
+# core runs the groundwater extension (extended = TRUE, for simulation and calibration), but
+# not its warm start from flow or state correction, which stay on the R loop.
+.engine_supported <- function(model, extended = FALSE) {
   if (identical(getOption("pdmS7.engine", "auto"), "r")) {
     return(FALSE)
   }
   first <- function(x) class(x)[1L]
+  ground <- model@groundwater
+  if (S7::S7_inherits(ground, FlodeExtendedGroundwater)) {
+    if (!extended) return(FALSE)
+    ground <- ground@store
+  }
   first(model@distribution) %in% names(.engine_classes$distribution) &&
     first(model@recharge) %in% names(.engine_classes$recharge) &&
     first(model@surface) %in% names(.engine_classes$route) &&
-    first(model@groundwater) %in% names(.engine_classes$route)
+    first(ground) %in% names(.engine_classes$route)
+}
+
+# The extension block of pdm_params: the enabled flag and eight parameters, in struct order.
+.engine_extension_params <- function(x) {
+  p <- c(enabled = 0, ku = 0, dbu = 0, alpha_b = 0, ca = 0, fa = 0, smax_b = 0, ys = 0, hw = 0)
+  if (S7::S7_inherits(x, FlodeExtendedGroundwater)) {
+    p[] <- c(1, x@ku, x@dbu, x@alpha_b, x@ca, x@fa, x@smax_b, x@ys, x@hw)
+  }
+  stats::setNames(p, paste0("extension.", names(p)))
 }
 
 # Field values of pdm_params in src/pdm_core.h, in struct order. Fields not used by a
@@ -67,7 +84,8 @@ NULL
 
 # Flattens a model into the numeric parameter vector the C core reads: component type codes, then
 # every distribution and recharge field (zero where unused), then both routes, then the catchment
-# settings. Order matters and must match pdm_params in src/pdm_core.h.
+# settings, then the groundwater extension. Order matters and must match pdm_params in
+# src/pdm_core.h. An extended groundwater store passes its inner store as the route.
 .engine_params <- function(model) {
   d <- model@distribution
   r <- model@recharge
@@ -92,12 +110,14 @@ NULL
     p[c("alpha", "beta", "qsat")] <- c(r@alpha, r@beta, r@qsat)
   }
   surface <- .engine_route_params(model@surface)
-  groundwater <- .engine_route_params(model@groundwater)
+  ground <- model@groundwater
+  extended <- S7::S7_inherits(ground, FlodeExtendedGroundwater)
+  groundwater <- .engine_route_params(if (extended) ground@store else ground)
   names(surface) <- paste0("surface.", names(surface))
   names(groundwater) <- paste0("groundwater.", names(groundwater))
   c(p, surface, groundwater,
     be = model@be, fc = model@fc, td = model@td, qc = model@qc, area_km2 = model@area_km2,
-    dt = model@dt)
+    dt = model@dt, .engine_extension_params(ground))
 }
 
 # State array of src/pdm_core.h: soil, two surface slots, two groundwater slots, step, then the
@@ -135,17 +155,29 @@ NULL
   "groundwater_mm", "delay_mm", "saturated_fraction", "balance_error_mm"
 )
 
+# The extension's columns, which pdm_step() adds after the others for an extended model.
+.engine_ext_flux_names <- c("abstraction_mm", "underflow_mm", "spring_mm",
+                            "groundwater_deficit_mm", "well_level_m")
+
 # Runs the compiled PDM. full = TRUE returns every flux column; full = FALSE returns only the two
 # flow series, which is all calibration needs and avoids building a large table thousands of times.
-.engine_run <- function(model, rain, pet, state, full) {
+# abstraction is NULL for none, or one recorded depth per step (mm), for an extended model.
+.engine_run <- function(model, rain, pet, state, full, abstraction = NULL) {
   .validate_state(model, state)
   res <- pdm_engine_run(
-    as.double(rain), as.double(pet), as.double(.engine_params(model)),
-    .engine_pack_state(state), full
+    as.double(rain), as.double(pet), as.double(abstraction %||% numeric(0)),
+    as.double(.engine_params(model)), .engine_pack_state(state), full
   )
   final <- .engine_unpack_state(res$state, state)
   if (full) {
     columns <- stats::setNames(res$columns, .engine_flux_names)
+    ground <- model@groundwater
+    if (S7::S7_inherits(ground, FlodeExtendedGroundwater)) {
+      extra <- stats::setNames(res$ext_columns, .engine_ext_flux_names)
+      # The core writes NaN without a well; the R loop's column is NA.
+      if (ground@ys <= 0) extra$well_level_m <- rep(NA_real_, length(rain))
+      columns <- c(columns, extra)
+    }
     output <- data.table::setDF(data.table::setDT(columns))
   } else {
     output <- list(q_m3s = res$q_m3s, q_end_m3s = res$q_end_m3s)
@@ -156,11 +188,12 @@ NULL
 # Simulated flow only, for calibration. Applies the same checks as run_pdm() and returns the
 # same values as run_pdm(...)$output[[flow]] without building the full flux table.
 .run_flow <- function(model, forcing, state, flow) {
-  if (!.engine_supported(model)) {
+  if (!.engine_supported(model, extended = TRUE)) {
     return(run_pdm(model, forcing, state)$output[[flow]])
   }
   .check_forcing(model, forcing)
-  .engine_run(model, forcing$rain, forcing$pet, state, full = FALSE)$output[[flow]]
+  .engine_run(model, forcing$rain, forcing$pet, state, full = FALSE,
+              abstraction = forcing$abstraction)$output[[flow]]
 }
 
 # The Smith cubic solver's error grows with the square of dt. Measured against a tight
