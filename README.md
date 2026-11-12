@@ -1,4 +1,4 @@
-# pdmS7 — configurable PDM for Flode conventions
+# pdmS7: configurable PDM for Flode conventions <img src="man/figures/logo.png" align="right" height="139" alt="pdmS7 logo" />
 
 pdmS7 is a probability-distributed rainfall-runoff model (Moore, 2007) built to calibrate
 conceptual models fairly, record each calibration so it can be defended, and compare the result
