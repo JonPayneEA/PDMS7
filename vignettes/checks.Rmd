@@ -33,6 +33,7 @@ and a copy of it with faults put in on purpose, so that each check can be seen t
 | Before registering | Water balance by year | Does each year fit the water and energy limits, and does any year or period stand apart? | `water_balance()` |
 | Before calibrating | Event balance | Did each event shed less quick flow than its rain? | `find_events()`, `plot()` |
 | Before calibrating | Event screening | Which events are too small, gappy or doubtful to judge by? | `screen_events()` |
+| Before calibrating | Gauge response | Which gauge does the quick response follow; is any clock out or any gauge dry? | `gauge_response()` |
 | After calibrating | Parameters | Did the search press against a limit? | `calibration_checks()` |
 | After calibrating | Peaks and timing | Are the largest floods the right size, at the right time? | `calibration_checks()` |
 | After calibrating | The stages | Did each stage do its job, and did the starts agree? | `calibration_path()` |
@@ -202,6 +203,84 @@ heavy shower over one gauge given too much weight. The rainfall article, [Catchm
 from gauges and radar](rainfall.html), shows how to weigh gauges and radar so that each
 storm's rain is right.
 
+## Which gauge the river answers to
+
+Catchment rain is an average of gauges, and the average can hide a gauge that matters more
+than the rest, a gauge whose clock is out, or a gauge that missed the storms. `gauge_response()`
+takes each gauge on its own and asks how closely the river's quick response follows it. It
+is the cross-correlation analysis long used in karst hydrology (Larocque et al., 1998),
+applied gauge by gauge.
+
+The rise in flow from one step to the next is moved almost only by quick runoff. So for each
+gauge, the correlation of its rain with the rise a few hours later says how well that gauge
+explains the spikes, and the lag of the strongest correlation says when. Then, for each of
+the twenty largest floods, the gauge whose rain best matches the rise wins the flood.
+
+Here, three gauges over a catchment of 30 km^2^. The town gauge sits over the 15 per cent of
+the catchment that sheds rain at once; the hill and moor gauges cover the rest. The moor
+gauge's logger runs an hour late, and the hill gauge's funnel blocked during the largest
+storm.
+
+```{r gauges}
+make <- function(seed) synthetic_rain("2019-10-01", years = 2, dt = 1, seed = seed)
+common <- make(1)
+gauges <- data.frame(town = 0.5 * common$rain + 0.5 * make(2)$rain,
+                     hill = 0.5 * common$rain + 0.5 * make(3)$rain,
+                     moor = 0.5 * common$rain + 0.5 * make(4)$rain)
+catchment <- two_zone_config(within(pdm_presets("standard"), area_km2 <- 30), share = 0.15)
+catchment$zones$fast$surface$kb <- 0.6
+zoned <- pdm_from_config(catchment)
+zoned_start <- initial_state_from_flow(zoned, 0.5, 0.7)
+river <- function(zone, rain) {
+  f <- data.frame(time = common$time, rain = rain, pet = common$pet)
+  run_pdm(zoned@zones[[zone]], f, zoned_start@states[[zone]])$output$q_m3s
+}
+set.seed(3)
+gauged <- (river("main", (gauges$hill + gauges$moor) / 2) + river("fast", gauges$town)) *
+  exp(rnorm(nrow(gauges), 0, 0.03))
+
+recorded <- gauges
+recorded$moor <- c(0, gauges$moor[-nrow(gauges)])          # the logger an hour late
+storms <- find_events(rowMeans(gauges), gauged, common$time)
+blocked <- storms[which.max(storms$peak_flow), ]
+recorded$hill[blocked$rain_start:blocked$rain_end] <- 0            # the funnel blocked
+answers <- gauge_response(recorded, gauged, common$time, area_km2 = 30, max_lag_h = 24)
+answers
+```
+
+```{r gauges-plot, fig.cap="Each gauge's rain against the rise in flow, by lag. The dot marks each gauge's strongest correlation."}
+plot(answers)
+```
+
+The table reads in three ways.
+
+- **Which gauge drives the spike.** The town gauge's correlation, `r`, stands clearly above the
+  others'. Correlations between gauges blur the differences, since much of the rain falls on
+  all of them, so read the ranking and the gap, not the value alone. The flood-by-flood wins
+  are a rougher count over twenty floods, and the large floods are mostly the main zone's
+  work.
+- **A clock out.** Rain cannot follow the flow it causes, yet the moor gauge's strongest
+  correlation comes an hour *before* the rise: its clock is late, or the flow's is early. A
+  lag that differs from the neighbours' by a whole number of hours points the same way. Check
+  the logger's time zone and summer-time handling ([Preparing the data](data-preparation.html)).
+- **A gauge that missed the storms.** `dry_events` counts floods in which a gauge recorded
+  under a tenth of the median gauge. The hill gauge's blocked funnel shows here, in its lower
+  `size_r`, and in the event table:
+
+```{r gauges-dry}
+answers$events[nzchar(answers$events$dry),
+               c("rain_start_time", "dry", "town.rain_mm", "hill.rain_mm", "moor.rain_mm")]
+```
+
+If one gauge clearly drives the spike, as here, that is evidence for a fast zone fed by that
+gauge's area ([The two-zone PDM](two-zone-pdm.html)), and for weighting that gauge well in
+the catchment rain. If no gauge stands out, the catchment average is the right input.
+
+The same analysis cannot say which gauge drives the slow response. Baseflow answers to the
+rain of many storms over days or weeks, and over such spans the gauges' totals converge, so
+every gauge correlates with it alike. Long-term drift between gauges is a matter for the
+double-mass curve of `water_balance()`, above.
+
 # After calibrating: the checks a score hides
 
 A calibration run end to end, as [Automatic calibration from start to
@@ -325,6 +404,12 @@ in NSE deserves a look at what changed between the windows.
 Every plot here also draws in ggplot2: replace `plot()` with `ggplot2::autoplot()` to get a
 ggplot to change or combine. `pdm_save()` writes any of them at report, slide or journal size.
 
+# References
+
+Larocque, M., Mangin, A., Razack, M. and Banton, O. (1998). Contribution of correlation and
+spectral analyses to the regional study of a large karst aquifer (Charente, France). *Journal
+of Hydrology*, 205(3-4), 217-231. doi:10.1016/S0022-1694(97)00155-8.
+
 ```{r cleanup, include=FALSE}
 # Articles are built one after another in one R session: leave nothing behind.
 unlink(project, recursive = TRUE)
@@ -332,5 +417,6 @@ rm(list = c("rain", "forcing", "truth", "model", "flow", "wb", "rerated", "after
             "events", "biggest", "storm",
             "broken", "bad_events", "flagged", "project", "start", "checks", "p", "place",
             "nearest", "edge", "edge_note", "big", "median_peak", "scores", "cal_nse", "path",
-            "pct"))
+            "pct", "make", "common", "gauges", "catchment", "zoned", "zoned_start", "river",
+            "gauged", "recorded", "storms", "blocked", "answers"))
 ```

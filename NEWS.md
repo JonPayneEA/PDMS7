@@ -1,3 +1,13 @@
+# pdmS7 0.24.0
+
+- **Which gauge the river answers to.** `gauge_response()` takes each rain gauge on its own and
+  correlates its rain with the rise in flow, lag by lag: the gauge with the strongest
+  correlation drives the quick response. For the largest floods it names the gauge whose rain
+  best matches each rise, checks whether each gauge sees the big storms as big, and counts the
+  floods a gauge recorded almost nothing for. A negative best lag, rain after the rise it
+  caused, flags a clock out. The slow response is not split this way: over days the gauges'
+  totals converge. Written up in *Checking the data and the events*.
+
 # pdmS7 0.23.0
 
 - **The multi-zone PDM** (PDM for PCs configuration guide, section 5): independent PDMs over
