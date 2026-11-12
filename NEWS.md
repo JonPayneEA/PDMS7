@@ -1,5 +1,6 @@
 # pdmS7 0.22.1
 
+- **A logo**, in `man/figures/logo.png`, shown in the README and on the website.
 - **Documentation reorganised.** The calibration articles are fewer and say each thing once:
   - *How automatic calibration works* now holds multi-start, budgets and staged calibration
     (from the retired *Calibration* article), the objectives, including how the weighted stages
