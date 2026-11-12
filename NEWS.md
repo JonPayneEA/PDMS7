@@ -1,3 +1,21 @@
+# pdmS7 0.23.0
+
+- **The multi-zone PDM** (PDM for PCs configuration guide, section 5): independent PDMs over
+  parts of the catchment, driven by the same rain, their flows added at the outlet. A
+  configuration with a `zones` list builds a `FlodeMultiZoneModel`; `run_pdm()`, calibration,
+  projects, reports and `compare_calibrations()` take it like a single-zone model. Each zone
+  runs on the compiled engine.
+- **A fast zone for flashy catchments.** `two_zone_config()` adds a small zone that makes quick
+  runoff only (split recharge with `alpha` 1, one linear surface store, a groundwater store it
+  never feeds). Every parameter is set; four are searched: its share of the area (0.01 to 0.3),
+  soil capacity, surface time constant and delay. Bounds and exclusions without a `zones.`
+  prefix apply to the main zone, so existing overrides carry over.
+- **Zones in the structure recommendation.** `calibrate_project(recommend = TRUE, zones =
+  c(1, 2))` and `recommend_structure(components = c(..., "zones"))` add a last step comparing one
+  zone with two, by the usual rule: two zones only if better on validation by more than the tie
+  tolerance and not pinned at a bound. `zones = 2` adds the fast zone without a comparison.
+  Forecast updating, hindcasts, the events workbench and PDM for PCs files stay single-zone.
+
 # pdmS7 0.22.1
 
 - **A logo**, in `man/figures/logo.png`, shown in the README and on the website.

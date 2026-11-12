@@ -37,12 +37,17 @@
 #'    largest validation events wins ([calibration_checks()]), then the one with fewer
 #'    parameters.
 #'
+#' **Zones.** With `"zones"` among the components, a last step compares the structure chosen so
+#' far, as one zone, with the same structure plus a fast zone for a flashy part of the response
+#' ([two_zone_config()]), by the same rule: two zones replace one only if they are better on
+#' validation by more than the tolerance, and not pinned at a bound.
+#'
 #' Every comparison is logged in the project as usual, and each step's choice and reason is
 #' written as a note, so the recommendation is part of the audit trail.
 #'
 #' @param project A calibration project with registered calibration and validation windows.
 #' @param components Components to choose, in order, among `recharge`, `distribution` and
-#'   `groundwater`.
+#'   `groundwater`, and optionally `zones`, which must come last.
 #' @param tolerance Width of the band of equally good scores; by default the project's tie
 #'   tolerance (0.02 unless registered otherwise).
 #' @param n_events Largest validation events used to break ties.
@@ -71,7 +76,9 @@ recommend_structure <- function(project,
                                 overrides = NULL, exclude = NULL, reasoning, note = TRUE) {
   .check(is.character(components) && length(components) > 0 &&
            all(components %in% names(.component_options())) && !anyDuplicated(components),
-         "components must be among recharge, distribution and groundwater")
+         "components must be among recharge, distribution, groundwater and zones")
+  .check(!"zones" %in% components || components[length(components)] == "zones",
+         "The zones step must come last")
   reasoning <- .require_text(reasoning, "reasoning")
   path <- .project_path(project)
   entries <- .read_entries(path)
@@ -136,6 +143,7 @@ print.pdm_structure_recommendation <- function(x, ...) {
 # structure_set(); a base that already uses an option keeps its own values for it.
 .component_options <- function() {
   list(
+    zones = list(one = NULL, two = NULL),
     recharge = list(
       standard = list(type = "standard", kg = 4000, bg = 1, st = 0),
       split = list(type = "split", alpha = 0.7),
@@ -159,6 +167,9 @@ print.pdm_structure_recommendation <- function(x, ...) {
 
 # The type a configuration uses for a component, as the option names spell it.
 .component_type <- function(config, component) {
+  if (component == "zones") return(if (.is_multizone_config(config)) "two" else "one")
+  .check(!.is_multizone_config(config),
+         "A multi-zone structure's components are chosen before its zones")
   default <- c(recharge = "standard", distribution = "pareto", groundwater = "cubic")
   config[[component]]$type %||% default[[component]]
 }
@@ -167,6 +178,10 @@ print.pdm_structure_recommendation <- function(x, ...) {
 # option the base already uses keeps the base's values, and its solver settings carry over.
 .component_variants <- function(base, component) {
   current <- .component_type(base, component)
+  if (component == "zones") {
+    one <- if (current == "one") base else .first_zone_config(base)
+    return(list(one = one, two = if (current == "two") base else two_zone_config(one)))
+  }
   options <- .component_options()[[component]]
   lapply(stats::setNames(names(options), names(options)), function(name) {
     config <- base

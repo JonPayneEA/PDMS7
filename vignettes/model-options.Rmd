@@ -227,6 +227,30 @@ needed. It cannot extend the exponential store, which can never run dry, and is 
 with demand recharge. [Model equations](model-equations.html#the-groundwater-extension) gives
 the equations.
 
+# Several zones
+
+Some catchments respond on three timescales: a sharp spike over a few hours, from impermeable or
+near-channel ground, then a slower flood hydrograph, then baseflow. One PDM has two routes, and
+a calibration then bends one of them to do two jobs. The multi-zone PDM (PDM for PCs
+configuration guide, section 5) divides the catchment into zones, each a complete PDM with its
+own area, parameters and delay, driven by the same rain; their flows add at the outlet.
+
+`two_zone_config()` adds a fast zone to any single-zone configuration. Every parameter is set,
+and only four are searched: its share of the area, its soil capacity, its surface time constant
+and its delay. It sends no water to groundwater, so it cannot trade baseflow with the main
+zone.
+
+```{r zones}
+cfg <- pdm_presets("standard")
+cfg$area_km2 <- 36.7
+two <- two_zone_config(cfg, share = 0.1)
+calibration_bounds(two)[, c("path", "lower", "upper")]
+```
+
+Parameters are addressed as `zones.main.surface.k1`, `zones.fast.share` and so on. In
+`calibrate_project()`, `zones = c(1, 2)` lets the structure recommendation decide whether two
+zones earn their place ([How the model structure is chosen](choosing-structure.html)).
+
 # Groundwater solver: adaptive or Smith
 
 The cubic store can be solved two ways. The adaptive solver integrates the store equation to

@@ -29,6 +29,11 @@
 #' registered, and [test_candidate()] when a test window or wettest years are. Each step is an
 #' entry in the project's log, as if made by hand.
 #'
+#' **Zones.** `zones = c(1, 2)` with `recommend = TRUE` adds a last structure step comparing one
+#' zone with two, a fast zone added for a flashy part of the response ([two_zone_config()]);
+#' two zones are kept only if better on validation by more than the tie tolerance. `zones = 2`
+#' gives the structure a fast zone without a comparison. The default, 1, keeps one zone.
+#'
 #' **Choosing the candidate.** The candidate is the last stage, unless another fit in hand
 #' scores better on the calibration headline by more than the project's tie tolerance (0.02 for
 #' NSE): an earlier stage, or, with `recommend = TRUE`, the structure comparison's fit of the
@@ -91,6 +96,8 @@
 #' @param catchment,gauge,purpose,owner,steward Passed to [start_calibration_project()]; the
 #'   owner and steward default to the user declared.
 #' @param report If `TRUE`, build the report with [build_report()] at the end.
+#' @param zones `1` (one zone), `2` (always two: a fast zone added), or `c(1, 2)` to compare
+#'   them as a last structure step, with `recommend = TRUE`.
 #' @param ... Passed to [register_data()], such as `wettest_years`, `thresholds`,
 #'   `highest_gauged_m3s` or `reasoning`.
 #' @return The project's row of [read_projects()], invisibly.
@@ -115,10 +122,14 @@ calibrate_project <- function(project, forcing, observed, area_km2, calibration,
                               starts = 2L, seed = 1L, control = list(maxit = 40L),
                               method = "lbfgsb", catchment = basename(project),
                               gauge = catchment, purpose = "PDM calibration", owner = NULL,
-                              steward = NULL, report = FALSE, ...) {
+                              steward = NULL, report = FALSE, zones = 1, ...) {
   user <- .identity("custodian")$name
   .check(is.character(project) && length(project) == 1L, "project must be a folder path")
   .check(isTRUE(recommend) || isFALSE(recommend), "recommend must be TRUE or FALSE")
+  .check(is.numeric(zones) && length(zones) >= 1 && all(zones %in% c(1, 2)),
+         "zones must be 1, 2 or c(1, 2)")
+  .check(!(length(zones) == 2 && !recommend),
+         "zones = c(1, 2) compares one and two zones, which needs recommend = TRUE")
   .check(!recommend || !is.null(validation),
          "recommend = TRUE needs a validation window: structures are chosen on it")
   existing <- .existing_project(project)
@@ -136,20 +147,11 @@ calibrate_project <- function(project, forcing, observed, area_km2, calibration,
          paste("Test years are registered (test, or the wettest years held back) but no",
                "validation window; the test needs a validated candidate. Give validation,",
                "or wettest_years = 0"))
-  if (recommend) {
-    select_structure(project, structure, "Starting structure for the structure recommendation.")
-    chosen <- recommend_structure(
-      project, starts = starts, seed = seed, control = control, method = method, cores = cores,
-      overrides = overrides, exclude = exclude,
-      reasoning = "Automatic calibration: structure chosen on this record."
-    )
-    parent <- chosen$entry
-    structure <- chosen$configuration
-    compared <- chosen$entry
-  } else {
-    parent <- select_structure(project, structure, "Structure for the automatic calibration.")$id
-    compared <- NULL
-  }
+  chosen <- .project_structure(project, structure, recommend, zones, starts, seed, control,
+                               method, cores, overrides, exclude)
+  parent <- chosen$parent
+  structure <- chosen$structure
+  compared <- chosen$compared
   # Stages and bounds suit the structure the stages start from, chosen or given.
   for_structure <- function(x, default) {
     if (is.function(x)) x(structure) else x %||% default(structure, overrides, exclude)
@@ -429,4 +431,39 @@ plot.pdm_event_run <- function(x, ...) {
     "Entry %s scores best on the calibration %s (%.4g). The final stage, entry %s, scores %.4g,",
     "worse by more than the tie tolerance of %g, so it is not proposed."
   ), best, headline, score[[best]], last, score[[last]], tolerance))
+}
+
+# The structure the stages start from, selected in the project: recommended on the record (with
+# a last zones step when zones = c(1, 2)), or as given; with zones = 2, given a fast zone.
+# Returns the parent entry, the structure and the comparison fit already in hand, if any.
+.project_structure <- function(project, structure, recommend, zones, starts, seed, control,
+                               method, cores, overrides, exclude) {
+  if (recommend) {
+    select_structure(project, structure, "Starting structure for the structure recommendation.")
+    # With zones = c(1, 2) the last step compares one zone with two; with zones = 2 the chosen
+    # structure is given a fast zone without a comparison.
+    components <- c("recharge", "distribution", "groundwater",
+                    if (length(zones) == 2) "zones")
+    chosen <- recommend_structure(
+      project, components = components, starts = starts, seed = seed, control = control,
+      method = method, cores = cores, overrides = overrides, exclude = exclude,
+      reasoning = "Automatic calibration: structure chosen on this record."
+    )
+    parent <- chosen$entry
+    structure <- chosen$configuration
+    compared <- chosen$entry
+    if (identical(zones, 2) && !.is_multizone_config(structure)) {
+      structure <- two_zone_config(structure)
+      parent <- select_structure(project, structure,
+                                 "The chosen structure with a fast zone (zones = 2).")$id
+      compared <- NULL
+    }
+  } else {
+    if (identical(zones, 2) && !.is_multizone_config(structure)) {
+      structure <- two_zone_config(structure)
+    }
+    parent <- select_structure(project, structure, "Structure for the automatic calibration.")$id
+    compared <- NULL
+  }
+  list(parent = parent, structure = structure, compared = compared)
 }

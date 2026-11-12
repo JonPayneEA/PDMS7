@@ -24,7 +24,7 @@ recommend_structure(
 \item{project}{A calibration project with registered calibration and validation windows.}
 
 \item{components}{Components to choose, in order, among \code{recharge}, \code{distribution} and
-\code{groundwater}.}
+\code{groundwater}, and optionally \code{zones}, which must come last.}
 
 \item{tolerance}{Width of the band of equally good scores; by default the project's tie
 tolerance (0.02 unless registered otherwise).}
@@ -69,6 +69,11 @@ cannot justify a change.
 largest validation events wins (\code{\link[=calibration_checks]{calibration_checks()}}), then the one with fewer
 parameters.
 }
+
+\strong{Zones.} With \code{"zones"} among the components, a last step compares the structure chosen so
+far, as one zone, with the same structure plus a fast zone for a flashy part of the response
+(\code{\link[=two_zone_config]{two_zone_config()}}), by the same rule: two zones replace one only if they are better on
+validation by more than the tolerance, and not pinned at a bound.
 
 Every comparison is logged in the project as usual, and each step's choice and reason is
 written as a note, so the recommendation is part of the audit trail.

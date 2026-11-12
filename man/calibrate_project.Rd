@@ -28,6 +28,7 @@ calibrate_project(
   owner = NULL,
   steward = NULL,
   report = FALSE,
+  zones = 1,
   ...
 )
 }
@@ -68,6 +69,9 @@ owner and steward default to the user declared.}
 
 \item{report}{If \code{TRUE}, build the report with \code{\link[=build_report]{build_report()}} at the end.}
 
+\item{zones}{\code{1} (one zone), \code{2} (always two: a fast zone added), or \code{c(1, 2)} to compare
+them as a last structure step, with \code{recommend = TRUE}.}
+
 \item{...}{Passed to \code{\link[=register_data]{register_data()}}, such as \code{wettest_years}, \code{thresholds},
 \code{highest_gauged_m3s} or \code{reasoning}.}
 }
@@ -83,6 +87,11 @@ registered, and \code{\link[=test_candidate]{test_candidate()}} when a test wind
 entry in the project's log, as if made by hand.
 }
 \details{
+\strong{Zones.} \code{zones = c(1, 2)} with \code{recommend = TRUE} adds a last structure step comparing one
+zone with two, a fast zone added for a flashy part of the response (\code{\link[=two_zone_config]{two_zone_config()}});
+two zones are kept only if better on validation by more than the tie tolerance. \code{zones = 2}
+gives the structure a fast zone without a comparison. The default, 1, keeps one zone.
+
 \strong{Choosing the candidate.} The candidate is the last stage, unless another fit in hand
 scores better on the calibration headline by more than the project's tie tolerance (0.02 for
 NSE): an earlier stage, or, with \code{recommend = TRUE}, the structure comparison's fit of the

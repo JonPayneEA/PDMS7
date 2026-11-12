@@ -241,18 +241,34 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
   if (times) paste(w$start %||% "", "to", w$end %||% "") else paste0(w$first_row, "-", w$last_row)
 }
 
+# The components of a configuration, one row each; for a multi-zone configuration, one set of
+# rows per zone, with its share of the area.
+.structure_table <- function(cfg) {
+  one <- function(c) {
+    data.frame(
+      component = c("Soil store", "Recharge", "Surface routing", "Groundwater routing"),
+      choice = c(c$distribution$type %||% "pareto", c$recharge$type %||% "standard",
+                 c$surface$type %||% "cascade",
+                 paste(c$groundwater$type %||% "cubic", c$groundwater$solver %||% ""))
+    )
+  }
+  if (!.is_multizone_config(cfg)) return(one(cfg))
+  shares <- vapply(cfg$zones[-1], function(z) z$share, numeric(1))
+  shares <- c(1 - sum(shares), shares)
+  do.call(rbind, lapply(seq_along(cfg$zones), function(i) {
+    t <- one(cfg$zones[[i]])
+    t$component <- paste0(names(cfg$zones)[i], " zone (", format(signif(shares[i], 3)),
+                          " of area): ", t$component)
+    t
+  }))
+}
+
 # Every structure selection, with its configuration and reasoning.
 .rpt_structure <- function(entries) {
   structures <- Filter(function(e) e$type == "structure_selected", entries)
   out <- list(.blk_h("Model structure"))
   for (s in structures) {
-    cfg <- s$configuration
-    table <- data.frame(
-      component = c("Soil store", "Recharge", "Surface routing", "Groundwater routing"),
-      choice = c(cfg$distribution$type %||% "pareto", cfg$recharge$type %||% "standard",
-                 cfg$surface$type %||% "cascade",
-                 paste(cfg$groundwater$type %||% "cubic", cfg$groundwater$solver %||% ""))
-    )
+    table <- .structure_table(s$configuration)
     out <- c(out, list(
       .blk_h(paste("Entry", s$id, "by", s$author$name, "on", substr(s$timestamp, 1, 10)), 3L),
       .blk_table(table), .blk_p(s$reasoning)

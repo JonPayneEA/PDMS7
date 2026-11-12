@@ -224,6 +224,7 @@ pdm_model <- function(
 # and empty delay queues. Each queue has floor(td / dt) + 1 slots, enough to hold water for the
 # whole delay. For a starting state matched to an observed flow, see initial_state_from_flow().
 initial_state <- function(model, soil_fraction = 0.5, surface = NULL, groundwater = NULL) {
+  if (.is_multizone(model)) return(.multizone_initial_state(model, soil_fraction))
   .check(
     .scalar(soil_fraction, 0, 1),
     "soil_fraction must lie in [0,1]"
@@ -261,6 +262,7 @@ initial_state <- function(model, soil_fraction = 0.5, surface = NULL, groundwate
 # right length, and delay queues of the length the model's td and dt imply. A state saved under a
 # different time step cannot be reused, because its queues would mean different delays.
 .validate_state <- function(model, state) {
+  if (.is_multizone(model)) return(.multizone_validate_state(model, state))
   .check(
     S7::S7_inherits(state, FlodePdmState),
     "state must be a FlodePdmState"

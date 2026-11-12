@@ -188,6 +188,7 @@ NULL
 # Simulated flow only, for calibration. Applies the same checks as run_pdm() and returns the
 # same values as run_pdm(...)$output[[flow]] without building the full flux table.
 .run_flow <- function(model, forcing, state, flow) {
+  if (.is_multizone(model)) return(.multizone_flow(model, forcing, state, flow))
   if (!.engine_supported(model, extended = TRUE)) {
     return(run_pdm(model, forcing, state)$output[[flow]])
   }

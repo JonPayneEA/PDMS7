@@ -91,6 +91,12 @@ rec                           # one line per step: choice and reason
 rec$steps$recharge$table      # the comparison, with at_bound and equally_good
 ```
 
+**Zones, if asked.** With `zones = c(1, 2)` in `calibrate_project()`, a fourth step compares the
+structure chosen as one zone with the same structure plus a small fast zone, by the same rule
+([Choosing model components](model-options.html#several-zones)). Use it where one PDM cannot
+give a sharp spike and a slower flood hydrograph at once: the signs are a split recharge share
+at its lower bound and surface stores at their caps in every fit.
+
 **What it does not choose.** The surface routing stays a cascade of two linear stores, the
 standard and almost always adequate. The groundwater extension is not tried automatically: it
 needs abstraction data or a reason to expect losses, and its parameters cannot be pinned down

@@ -62,6 +62,7 @@
 # exclude drops parameters to be held fixed. Rows the table marks as fixed by default (the
 # rainfall factor) are dropped too, unless an override names them.
 calibration_bounds <- function(config, overrides = NULL, exclude = NULL) {
+  if (.is_multizone_config(config)) return(.multizone_bounds(config, overrides, exclude))
   pdm_from_config(config)
   table <- .bounds_table()
   slots <- c(distribution = "distribution", recharge = "recharge", surface = "route",

@@ -79,8 +79,9 @@ compare_calibrations <- function(models, forcing, observed, windows = NULL, warm
   sims <- lapply(built, function(model) {
     state <- suppressWarnings(.start_state(model, start, first, baseflow_fraction,
                                            soil_fraction))
-    keep <- c("rain", "pet", "time",
-              if (S7::S7_inherits(model@groundwater, FlodeExtendedGroundwater)) "abstraction")
+    extended <- function(z) S7::S7_inherits(z@groundwater, FlodeExtendedGroundwater)
+    zones <- if (.is_multizone(model)) model@zones else list(model)
+    keep <- c("rain", "pet", "time", if (any(vapply(zones, extended, logical(1)))) "abstraction")
     .quietly(run_pdm(model, forcing[intersect(names(forcing), keep)], state))$output$q_m3s
   })
   scored <- sort(unique(unlist(rows)))
@@ -113,7 +114,7 @@ compare_calibrations <- function(models, forcing, observed, windows = NULL, warm
 # One model from any source: a model, a configuration, a project folder, or a *.inp or YAML
 # file.
 .comparison_model <- function(x, name, step) {
-  if (S7::S7_inherits(x, FlodePdmModel)) return(x)
+  if (S7::S7_inherits(x, FlodePdmModel) || .is_multizone(x)) return(x)
   if (is.list(x)) return(pdm_from_config(x))
   .check(is.character(x) && length(x) == 1L, paste(
     "Model", name, "must be a configuration, a model, a YAML or *.inp file, or a project folder"
@@ -152,7 +153,25 @@ compare_calibrations <- function(models, forcing, observed, windows = NULL, warm
 # Each model's numeric parameters, one row per parameter: component properties named as
 # configuration paths, then the catchment settings.
 .comparison_parameters <- function(models) {
-  flat <- lapply(models, function(m) {
+  flat <- lapply(models, .model_parameters)
+  paths <- unique(unlist(lapply(flat, names)))
+  table <- data.frame(parameter = paths,
+                      lapply(flat, function(f) sub("^pdmS7::Flode", "", unname(f[paths]))),
+                      check.names = FALSE)
+  table$differs <- apply(table[names(models)], 1, function(v) length(unique(v)) > 1)
+  table
+}
+
+# One model's parameters as text, named by configuration path; a multi-zone model's zones by
+# zones.<name>.<path>.
+.model_parameters <- function(m) {
+  if (.is_multizone(m)) {
+    return(unlist(lapply(names(m@zones), function(z) {
+      p <- .model_parameters(m@zones[[z]])
+      stats::setNames(p, paste0("zones.", z, ".", names(p)))
+    })))
+  }
+  local({
     one <- function(x, prefix) {
       if (S7::S7_inherits(x, FlodeExtendedGroundwater)) {
         return(c(one(x@store, prefix), one_props(x, paste0(prefix, "extension."), "store")))
@@ -170,12 +189,6 @@ compare_calibrations <- function(models, forcing, observed, windows = NULL, warm
       vapply(c(fc = m@fc, be = m@be, td = m@td, qc = m@qc, area_km2 = m@area_km2),
              function(v) format(signif(v, 6)), ""))
   })
-  paths <- unique(unlist(lapply(flat, names)))
-  table <- data.frame(parameter = paths,
-                      lapply(flat, function(f) sub("^pdmS7::Flode", "", unname(f[paths]))),
-                      check.names = FALSE)
-  table$differs <- apply(table[names(models)], 1, function(v) length(unique(v)) > 1)
-  table
 }
 
 # Scores by window: one row per window and score, one column per model.
