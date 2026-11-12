@@ -21,7 +21,7 @@
 
 #' Calibrate a catchment from start to finish in one call
 #'
-#' Runs the whole logged calibration of [Automatic calibration from start to
+#' Runs the whole logged calibration of [Calibrating a catchment from start to
 #' finish](https://jonpayneea.github.io/PDMS7/articles/calibration-journey.html) for one set of
 #' prepared data: [start_calibration_project()], [register_data()], [select_structure()],
 #' [recommend_structure()] when `recommend = TRUE`, [log_staged_calibration()],

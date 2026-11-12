@@ -20,7 +20,7 @@ should make you stop.
 You need no R to follow it. Everything here is in the report from `build_report()`, which opens
 in a browser, or on the Report tab of `calibration_app()`. [Logging a manual
 calibration](calibration-log.html) shows how a project is built; [Inside the
-logs](log-structure.html) explains the files.
+logs](calibration-log.html#inside-the-logs) explains the files.
 
 # Your role
 

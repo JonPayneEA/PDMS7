@@ -67,47 +67,43 @@ Model options:
 
 Calibration:
 
-- [Automatic calibration from start to finish](https://jonpayneea.github.io/PDMS7/articles/calibration-journey.html):
+- [Calibrating a catchment from start to finish](https://jonpayneea.github.io/PDMS7/articles/calibration-journey.html):
   the whole journey in plain English, from the data to sign-off, with flow diagrams of each
   step and a small calibration run live
+- [How automatic calibration works](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.html):
+  bounds and locked parameters, search scales, the three search methods, several starts and
+  their cost, the objectives (weighted scores and the multi-objective trade-off), staged
+  calibration, calibrating for floods, and how the candidate is chosen
+- [How the model structure is chosen](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.html):
+  the recharge rule, soil store and groundwater store, one at a time, by a stated rule, then a
+  full comparison carried through validation and a final test
+- [Getting the floods right](https://jonpayneea.github.io/PDMS7/articles/floods.html):
+  why a good score can hide bad floods; finding, checking and choosing the events, by share
+  or by a flow such as half QMED; calibrating and inspecting them; the structure question
+- [Tailoring calibration to the largest events in the app](https://jonpayneea.github.io/PDMS7/articles/app-events.html)
 - [Checking the data and the events](https://jonpayneea.github.io/PDMS7/articles/checks.html):
-  every check before and after calibrating, in the order to run them, with a broken record
-  to show each one firing
-- [Calibration: multi-start, budgets and staged calibration](https://jonpayneea.github.io/PDMS7/articles/calibration.html)
-- [Automatic calibration, explained](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.html):
-  in plain terms: bounds, search scales, the two search methods, rewarding flood warnings,
-  and calibrating in stages
+  every check before and after calibrating, in the order to run them
+- [Catchment rainfall from gauges and radar](https://jonpayneea.github.io/PDMS7/articles/rainfall.html):
+  Thiessen polygons, multiquadric surfaces and conditional merging of gauges with radar
 - [Scoring a simulation](https://jonpayneea.github.io/PDMS7/articles/scoring.html): NSE, KGE,
-  flow-duration signatures, and POD, FAR and CSI at warning thresholds
-- [Choosing a model structure](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.html):
-  calibrate the alternatives alike, rank on validation, and keep a final test window
+  flow-duration signatures, POD, FAR and CSI at warning thresholds, and thresholds from the
+  record (QMED, Q1, Q5)
+- [Comparing calibrations and PDM for PCs files](https://jonpayneea.github.io/PDMS7/articles/comparing-calibrations.html):
+  reading and writing `*.inp` files, and setting two calibrations side by side
 - [Larger floods: extrapolation and the rating](https://jonpayneea.github.io/PDMS7/articles/extrapolation.html):
   the wettest years held back, the spread of equally good fits, and flows above the highest
   gauging
 - [Calibrating many catchments](https://jonpayneea.github.io/PDMS7/articles/many-catchments.html):
-  a step-by-step guide to `calibrate_batch()`: preparing folders, running, resuming after an
-  interruption, fixing failures, and reading the results
-- [Getting the floods right](https://jonpayneea.github.io/PDMS7/articles/floods.html):
-  in plain English, why a good score can hide bad floods, and how to find, check, calibrate
-  and inspect the events, and what the record can say about the model's structure
-- [Catchment rainfall from gauges and radar](https://jonpayneea.github.io/PDMS7/articles/rainfall.html):
-  Thiessen polygons, multiquadric surfaces and conditional merging of gauges with radar, shown
-  on a made-up storm, with how to judge them and how to read H19 radar
-- [A large sample: what automatic calibration recovers](https://jonpayneea.github.io/PDMS7/articles/large-sample.html):
-  30 synthetic catchments, each with its own climate and known truth, calibrated as a batch
-- [What limits automatic calibration: a study](https://jonpayneea.github.io/PDMS7/articles/calibration-study.html):
-  four searches checked against the truth, a fault in staged calibration, and why `kb` cannot
-  be recovered from flow records but matters in severe droughts
-- [Events in large samples](https://jonpayneea.github.io/PDMS7/articles/events.html):
-  finding rainfall-runoff events and response times objectively from the records, and scoring
-  models event by event across a batch
+  a step-by-step guide to `calibrate_batch()`
+- [Many catchments: what automatic calibration recovers, and what limits it](https://jonpayneea.github.io/PDMS7/articles/large-sample.html):
+  30 synthetic catchments with known truths; which parameters a record pins down, the search
+  or the record as the limit, and events scored across a batch
 
 Records and review:
 
-- [Logging a manual calibration](https://jonpayneea.github.io/PDMS7/articles/calibration-log.html):
-  the audit trail from project start to sign-off, the report, and tracing operational runs
-- [Inside the logs](https://jonpayneea.github.io/PDMS7/articles/log-structure.html): project
-  folders, entries, the checksum chain, the run log and the register
+- [Calibration records](https://jonpayneea.github.io/PDMS7/articles/calibration-log.html):
+  the audit trail from project start to sign-off, the report, tracing operational runs, and
+  inside the logs: the folders, entries, checksum chain and run log
 - [Reviewing a calibration: a Steward's guide](https://jonpayneea.github.io/PDMS7/articles/steward-guide.html):
   what to check in the report, warning signs, and what signing off means
 

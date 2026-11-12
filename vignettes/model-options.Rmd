@@ -197,6 +197,36 @@ The surface path normally uses the cascade of two linear stores, which shapes th
 hydrograph's rise and fall with two time constants, `k1` and `k2`. Either path can use any of
 the routing forms.
 
+# The groundwater extension
+
+Some catchments lose water the standard model cannot: pumped abstractions from the aquifer,
+streams that dry up in summer, flow that passes beneath the gauge, or springs that drain to a
+neighbouring catchment. The PDM's groundwater extension (Moore and Bell, 2002; PDM for PCs
+scientific guide, section 3) adds them to a linear, quadratic or cubic groundwater store:
+
+| Process | Parameters | What it does |
+|---|---|---|
+| Abstraction | `ca` (mm/h), `fa` | Removes `ca + fa x` recorded abstraction from the store; the record is a forcing column `abstraction`, mm per step |
+| Negative storage | none | The store may fall below zero; outflow stops when it empties and restarts once recharge refills it: ephemeral flow |
+| Underflow | `ku` (h), `dbu` (mm) | A lower outlet, `dbu` below the baseflow outlet, drains `(S + dbu) / ku` beneath the gauge |
+| External springs | `alpha_b` | A share of the store's outflow leaves the catchment; a negative share brings water in |
+| Well level | `smax_b` (mm), `ys`, `hw` (m) | The storage deficit and a modelled well level, for comparison with boreholes; no effect on flow |
+
+```{r extension}
+cfg <- pdm_presets("standard")
+cfg$groundwater$extension <- list(ku = 12000, dbu = 400, ca = 0.002, smax_b = 1600,
+                                  ys = 0.02, hw = 84)
+model <- pdm_from_config(cfg)
+model@groundwater
+```
+
+The extension runs in the compiled engine and gives the same results as the step-by-step R
+loop. Its parameters are searched only when the configuration sets them, because the manual
+warns they cannot be pinned down from flow alone: abstraction records or well levels are
+needed. It cannot extend the exponential store, which can never run dry, and is not offered
+with demand recharge. [Model equations](model-equations.html#the-groundwater-extension) gives
+the equations.
+
 # Groundwater solver: adaptive or Smith
 
 The cubic store can be solved two ways. The adaptive solver integrates the store equation to

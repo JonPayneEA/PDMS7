@@ -250,7 +250,7 @@ it, or instead of it when a forecaster needs to see and own the choice.
 - [Getting the floods right](floods.html): why whole-record scores miss the floods, and the
   event tools behind this tab.
 - [Checking the data and the events](checks.html): checks to run before trusting any event.
-- [Logging a manual calibration](calibration-log.html): what each entry records, and the
+- [Calibration records](calibration-log.html): what each entry records, and the
   rest of the app.
-- [Automatic calibration from start to finish](calibration-journey.html): the stages,
+- [Calibrating a catchment from start to finish](calibration-journey.html): the stages,
   including the events stage.

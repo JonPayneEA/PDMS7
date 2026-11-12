@@ -128,6 +128,28 @@ $$\frac{dX}{dt}=u-q(X).\qquad\text{(Eq. 21-23)}$$
 Inflow is constant within an interval. The Smith recurrence is accurate only for steps up
 to about an hour; see [Choosing model components](model-options.html).
 
+## The groundwater extension
+
+For a linear, quadratic or cubic groundwater store $S$ with outflow $q=kS^m$ (Moore and Bell,
+2002; PDM for PCs scientific guide, section 3 and Appendix B), the net input is recharge $d$
+less abstraction and underflow,
+
+$$u=d-A-q_u,\qquad A=c_A+f_A A_r,\qquad q_u=\frac{\max(0,S+D_{bu})}{k_u},$$
+
+with $A_r$ the recorded abstraction rate and $q_u$ worked out from the storage at the start of
+the interval. With $u<0$ the store drains, and if it empties within the interval, flow ceases
+at
+
+$$T'=-\frac{1}{k}\ln\frac{u}{u-q}\ \text{(linear)},\qquad
+T'=\frac{1}{\sqrt{-ku}}\tan^{-1}\sqrt{\frac{q}{-u}}\ \text{(quadratic)},\qquad
+T'=-\frac{\ln\left(1+\frac{3q}{u-q}\right)}{3kS^2}\ \text{(cubic, Smith)}$$
+
+(Eqs. B.1, B.3, B.5), after which $S$ falls by continuity, ending the interval at
+$u(\Delta t-T')$. Below zero there is no outflow, and $S$ changes by continuity until recharge
+refills it; the rest of that interval is routed normally. A share $\alpha_b$ of the outflow
+leaves as springs, so the baseflow at the outlet is $(1-\alpha_b)\,kS^m$. The storage deficit
+is $D=S^b_{max}-S$, and the modelled well level $h_w-Y_sD/1000$ m.
+
 ## Delay and discharge
 
 After an outlet delay $t_d$ (fractional delays split water between neighbouring intervals),
@@ -140,9 +162,10 @@ adjustment in m³/s that does not draw on the model's stores.
 
 ## Water balance
 
-$$\epsilon=\text{old storage}+p-e-\text{natural outflow}-\text{new storage},$$
+$$\epsilon=\text{old storage}+p-e-\text{natural outflow}-\text{losses}-\text{new storage},$$
 
-with storage including the soil, routing stores and water in the delay queue. pdmS7 reports
+with storage including the soil, routing stores and water in the delay queue, and losses the
+abstraction, underflow and springs of the groundwater extension (zero without it). pdmS7 reports
 $\epsilon$ for every step; it is zero to rounding.
 
 ## Forecast updating (Eq. 28-42)

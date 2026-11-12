@@ -254,7 +254,7 @@ parts.
 When the range is wide, more calibration effort will not help. The remedies change what the
 calibration knows: fix the poorly constrained parameter from independent evidence (soil
 data for `cmax`, or the baseflow index for `kb`), choose a simpler structure that extrapolates predictably (see
-[Choosing a model structure](choosing-structure.html)), or extend the rating with new
+[How the model structure is chosen](choosing-structure.html)), or extend the rating with new
 gaugings. Record the decision, with its reasons, in a note before sign-off.
 
 # Settings

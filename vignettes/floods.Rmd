@@ -151,6 +151,31 @@ lines(forcing$time[shown], attr(events, "baseflow")[shown], col = pal[["orange"]
       lwd = 1.5)
 ```
 
+**How the method finds them.** The response time is the average lag between the centre of
+mass of rain and the centre of mass of the flow it produces. Rain and flow are each
+accumulated, and each cumulative series has its moving average subtracted, leaving its
+fluctuations. Over a window about twice the response time the two are most strongly
+anti-correlated, and that window gives the estimate (Giani and others, 2021). At that window
+an event is under way wherever both rain and flow fluctuate: each such stretch is an event's
+core, its edges are moved out to where the rain starts and stops and the flow starts to rise
+and finishes receding, and events that do not fit are dropped or merged. The one setting is
+`rain_min`, the smallest rain intensity that counts: by default 0.2 mm/h at an hourly step,
+the authors' guidance for British catchments.
+
+The response time is not a time to peak. It is the timescale of the fast response: on
+constructed records it recovers the centre of mass of a symmetric response exactly, and falls
+short of one with a long recession tail. Use it to compare like with like, a catchment's
+observed and simulated flow, or catchments with each other.
+
+**One event per flood.** Calibration counts each flood once (`independent = TRUE`), by the rule
+of UK peaks-over-threshold series: two peaks are separate floods only if they are at least
+three response times apart and the flow between them falls below two-thirds of the smaller.
+Otherwise the fragments of one long flood would each count as an event.
+
+The method finds every burst of rain that moves the flow, small ones included: dozens of
+events a year. [Many catchments](large-sample.html#events-across-a-sample) finds and scores
+the events of a whole batch at once.
+
 # Setting aside the events not to trust
 
 Not every event deserves equal weight. A hydrologist calibrating by eye ignores some without
@@ -232,6 +257,44 @@ three things at once:
   so that an hour matters more in a fast catchment than a slow one.
 
 The first counts fully and the other two half each, by default.
+
+## Which events
+
+By default the events stage fits the largest half of the calibration events, by observed peak
+(`event_share = 0.5`). A share is simple but arbitrary: in a wet record half the events
+includes floods that matter, in a dry one it reaches down into ripples. A flow says what
+matters directly. `event_share` can name one:
+
+| `event_share` | Fits every event whose observed peak reaches |
+|---|---|
+| `0.5` (default) | the largest half, whatever their size |
+| `"0.5QMED"` | half the median annual flood, near the threshold of a UK peaks-over-threshold series |
+| `"QMED"` | the median annual flood: a handful of events in a decade |
+| `"Q1"` | the flow exceeded 1 per cent of the time |
+| `"Flood Warning"` | a threshold registered with the project, or a multiple of one such as `"0.8Flood Warning"` |
+| `c(peak = 12)` | 12 m3/s |
+
+The markers come from the record itself ([`flow_markers()`](../reference/flow_markers.html)):
+QMED is the median of the water-year maxima, October to September, as in the Flood Estimation
+Handbook, and `Q1` the flow exceeded 1 per cent of the time. A project with no registered
+thresholds registers QMED, Q1 and Q5 itself, worked out from the calibration window alone, so
+the validation and test data never shape them. Here are this catchment's:
+
+```{r markers}
+markers <- suppressWarnings(flow_markers(observed, dt = 1, time = forcing$time,
+                                         markers = c("QMED", "0.5QMED", "Q1", "Q5")))
+markers
+peaks <- vapply(seq_len(nrow(events)), function(i) {
+  max(observed[events$flow_start[i]:events$flow_end[i]], na.rm = TRUE)
+}, numeric(1))
+data.frame(marker = markers$name, events_reaching = vapply(markers$value,
+                                                           function(q) sum(peaks >= q), 0))
+```
+
+A floor that only a few events reach gives the search too little to learn from, and the fit
+can rest on luck; QMED alone suits a long record. `0.5QMED` is a sensible first choice. The
+objective's description in the log says which events it fitted and why.
+
 
 **How it searches.** The timing part changes in whole steps: a peak is either one hour late or
 two, never 1.3. A search that feels for the slope of the ground finds no slope on a staircase,

@@ -66,7 +66,7 @@
 #' bends its parameters until its recessions look roughly right. The best validation score found
 #' it in all 16, but by a median of 0.003 in log NSE. Use this analysis to check that a fitted
 #' model's low flows fall at the right rate ([plot_recession()] draws the record and the model
-#' together), not to choose its store; see the calibration study article.
+#' together), not to choose its store; see the article on many catchments (large-sample).
 #'
 #' @param flow Flow, m3/s, at a regular step.
 #' @param rain Optional rain, mm per step, aligned with `flow`. Without it, only falling flow

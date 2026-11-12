@@ -190,7 +190,7 @@ abline(v = forcing$time[24 * 45], lty = 2, col = pal[7])
 ```
 
 The scores in the table are on the second half only, which the calibration never saw: that
-is the honest measure of the improvement. [Automatic calibration, explained](auto-calibration.html)
+is the honest measure of the improvement. [How automatic calibration works](auto-calibration.html)
 covers the settings used here.
 
 # 9. Save it
@@ -217,9 +217,9 @@ unlink(folder, recursive = TRUE)
 
 | To | Read |
 |---|---|
-| Keep a reviewable record of a calibration, with sign-off | [Logging a manual calibration](calibration-log.html) |
+| Keep a reviewable record of a calibration, with sign-off | [Calibration records](calibration-log.html) |
 | Calibrate many catchments the same way | [Calibrating many catchments](many-catchments.html) |
-| Compare model structures | [Choosing a model structure](choosing-structure.html) |
+| Compare model structures | [How the model structure is chosen](choosing-structure.html) |
 | Add snow | [How the snow model works](snowpack-explained.html), then `sim_snow_pdm()` |
 | Use the model for forecasting | [Forecast updating](forecast-updating.html) |
 | Do all this without code | `calibration_app()` |

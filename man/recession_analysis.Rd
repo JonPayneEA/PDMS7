@@ -108,7 +108,7 @@ store in 8, and the fitted store whose simulated slope came closest in 9: each f
 bends its parameters until its recessions look roughly right. The best validation score found
 it in all 16, but by a median of 0.003 in log NSE. Use this analysis to check that a fitted
 model's low flows fall at the right rate (\code{\link[=plot_recession]{plot_recession()}} draws the record and the model
-together), not to choose its store; see the calibration study article.
+together), not to choose its store; see the article on many catchments (large-sample).
 }
 \examples{
 set.seed(2)

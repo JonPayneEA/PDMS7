@@ -1,8 +1,8 @@
 ---
-title: "Choosing a model structure"
+title: "How the model structure is chosen"
 author: "pdmS7 documentation"
 vignette: >
-  %\VignetteIndexEntry{Choosing a model structure}
+  %\VignetteIndexEntry{How the model structure is chosen}
   %\VignetteEngine{knitr::knitr}
   %\VignetteEncoding{UTF-8}
 ---
@@ -23,9 +23,83 @@ answer; "we calibrated the alternatives alike and this one did best on data the
 calibration never saw" is a better one. `compare_structures()` gives that answer, and logs
 it.
 
-This article compares eight structures on a synthetic catchment whose true structure is
-known, then carries the chosen one through validation and a final test. The
-[component guide](model-options.html) explains what each structure does.
+This article first explains how `recommend_structure()` chooses the soil store, recharge rule
+and groundwater store, step by step. It then compares eight structures on a synthetic
+catchment whose true structure is known, and carries the chosen one through validation and a
+final test. The [component guide](model-options.html) explains what each component does.
+
+# How the structure is chosen
+
+`recommend_structure()` chooses the structure one component at a time, as a hydrologist would,
+and writes down why. `calibrate_project(recommend = TRUE)` calls it before the staged
+calibration. Each step changes one component and holds the others at what the steps before
+chose:
+
+| Step | Component | Options compared |
+|---|---|---|
+| 1 | Recharge rule | standard, split, demand |
+| 2 | Soil store distribution | Pareto, rectangular, triangular, exponential, lognormal |
+| 3 | Groundwater store | cubic, quadratic, linear, exponential |
+
+**Why this order.** It follows what a record can tell apart. On made-up catchments whose true
+structure is known ([What automatic calibration recovers](large-sample.html)), the recharge
+rule was identified every time, by margins of 0.08 or more in log NSE, and the groundwater
+store only by margins too small to trust. Deciding the clearest
+question first means the later, harder choices are made on a structure that is already right
+where the record can say so.
+
+**What each step does.** Every option is calibrated alike, by `compare_structures()`: the same
+objective, starts, seed and iteration limit, bounds from `calibration_bounds()` for its own
+components, on the calibration window. Each is then scored on the validation window, which no
+calibration saw. One rule then makes the choice:
+
+1. **Set aside any option bent to fit.** An option that ended with a parameter at a bound of
+   its search range is not describing the catchment; the search pushed it as far as it could
+   go. It is set aside, unless every option did. (Split recharge cannot end at a share of 0 or
+   1, which would switch a flow path off: its search range is 0.05 to 0.95.)
+2. **Find the equally good.** Every remaining option within the tie tolerance of the best
+   validation score counts as equally good: 0.02 in NSE unless the project registered another.
+   A smaller difference is a tie, not a result; another seed or another winter could reorder
+   them.
+3. **Keep the current component if it is among them.** The record cannot justify a change. This
+   makes the recommendation conservative: where the record is silent, as it usually is about
+   the groundwater store, the standard structure stays.
+4. **Otherwise, break the tie on the floods.** Among the equally good, the option with the
+   smallest median peak error on the largest validation events wins, then the one with fewer
+   parameters.
+
+**An example.** On one catchment the groundwater step compared:
+
+| Option | Parameters | Calibration NSE | Validation NSE |
+|---|---|---|---|
+| exponential | 8 | 0.9362 | 0.9172 |
+| quadratic | 7 | 0.9387 | 0.9171 |
+| linear | 7 | 0.9165 | 0.8923 |
+| cubic (current) | 7 | 0.8826 | 0.8369 |
+
+The exponential and quadratic stores are equally good, 0.0001 apart. The current cubic store is
+not among them, 0.08 behind, so rule 3 does not keep it. Rule 4 chose the exponential store
+for its smaller median peak error on the largest validation floods. Had their peak errors been
+equal, the quadratic store would have won on fewer parameters.
+
+Every comparison is logged, and each step's choice and reason is written as a note, so the
+recommendation is part of the audit trail:
+
+```{r recommend, eval=FALSE}
+rec <- recommend_structure(project, reasoning = "First choice of structure.")
+rec                           # one line per step: choice and reason
+rec$steps$recharge$table      # the comparison, with at_bound and equally_good
+```
+
+**What it does not choose.** The surface routing stays a cascade of two linear stores, the
+standard and almost always adequate. The groundwater extension is not tried automatically: it
+needs abstraction data or a reason to expect losses, and its parameters cannot be pinned down
+from flow alone. Add it to the configuration when the catchment calls for it
+([Choosing model components](model-options.html#the-groundwater-extension)).
+
+The rest of this article runs a full comparison by hand, on a made-up catchment, and carries
+the chosen structure through validation and a final test.
+
 
 # The catchment
 
@@ -202,38 +276,6 @@ the cost.
 compare_structures(project, structures, starts = 4, cross_validate = TRUE, cores = 8,
                    reasoning = "Short record: rank on both held-out windows.")
 ```
-
-# One component at a time
-
-Comparing every combination of soil store, recharge rule and groundwater store means
-sixty calibrations. `recommend_structure()` chooses one component at a time instead, the way
-a hydrologist would, and writes its reasons to the log as notes:
-
-```{r recommend, eval=FALSE}
-rec <- recommend_structure(project, reasoning = "First choice of structure.")
-rec
-rec$steps$recharge$table
-```
-
-The order follows what a record can tell apart. On made-up catchments ([What limits
-automatic calibration](calibration-study.html)) the recharge rule was identified every time,
-by margins of 0.08 or more in log NSE, and the groundwater store only by margins too small to
-trust. So the recharge rule comes first, then the soil store distribution, then the
-groundwater store, each step starting from the structure the step before chose.
-
-Each step compares its options with `compare_structures()` and chooses by one rule:
-
-1. A structure that ended with a parameter at a bound of its search range is set aside, as
-   being bent to fit.
-2. The rest are ranked on the validation window. Every structure within the tie tolerance of
-   the best (0.02 unless registered otherwise) counts as equally good.
-3. If the structure the step started from is among the equally good, it is kept: the record
-   cannot justify a change.
-4. Otherwise the one with the smallest median peak error on the largest validation events
-   wins, then the one with fewer parameters.
-
-Rule 3 makes the recommendation conservative. Where the record is silent, as it usually is
-about the groundwater store, the standard structure stays, and the note says why.
 
 # In the app and at scale
 

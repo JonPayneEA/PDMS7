@@ -62,24 +62,21 @@ articles:
   navbar: Calibration
   contents:
   - calibration-journey
-  - checks
-  - calibration
+  - auto-calibration
+  - choosing-structure
   - floods
   - app-events
+  - checks
   - rainfall
-  - auto-calibration
   - scoring
-  - choosing-structure
+  - comparing-calibrations
   - extrapolation
   - many-catchments
   - large-sample
-  - calibration-study
-  - events
 - title: Records and review
   navbar: Records and review
   contents:
   - calibration-log
-  - log-structure
   - steward-guide
 - title: Forecasting
   navbar: Forecasting
@@ -97,6 +94,12 @@ articles:
   - glossary
   - troubleshooting
   - further-reading
+
+redirects:
+- ["articles/calibration.html", "articles/auto-calibration.html"]
+- ["articles/calibration-study.html", "articles/large-sample.html"]
+- ["articles/events.html", "articles/large-sample.html"]
+- ["articles/log-structure.html", "articles/calibration-log.html"]
 
 reference:
 - title: Building a model
