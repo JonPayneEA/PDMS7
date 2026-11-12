@@ -114,6 +114,13 @@ test_that("the compiled engine matches the R loop", {
   stores <- list(list(type = "cubic", kb = 3000),
                  list(type = "cubic", kb = 3000, solver = "smith"),
                  list(type = "linear", kb = 400), list(type = "quadratic", kb = 2000))
+  # Each column within 1e-12 of its own size, at least 1, as test-engine.R compares: later R
+  # versions round in the last place differently from C, which matters only near zero.
+  agree <- function(a, b, label) {
+    expect_identical(is.na(a), is.na(b), label = label)
+    ok <- !is.na(b)
+    expect_lte(max(abs(a[ok] - b[ok]), 0), 1e-12 * max(1, abs(b[ok])), label = label)
+  }
   r_loop <- function(...) {
     old <- options(pdmS7.engine = "r")
     on.exit(options(old))
@@ -128,11 +135,14 @@ test_that("the compiled engine matches the R loop", {
     start <- suppressWarnings(initial_state_from_flow(model, 0.3, 0.8))
     compiled <- run_pdm(model, forcing, start)
     reference <- r_loop(model, forcing, start)
-    expect_equal(compiled$output, reference$output, tolerance = 1e-12)
-    expect_equal(compiled$state, reference$state, tolerance = 1e-12)
+    expect_identical(names(compiled$output), names(reference$output))
+    for (col in names(reference$output)) {
+      agree(compiled$output[[col]], reference$output[[col]], col)
+    }
+    agree(pdmS7:::.engine_pack_state(compiled$state),
+          pdmS7:::.engine_pack_state(reference$state), "state")
     expect_lt(min(reference$output$groundwater_mm), 0)
-    flow <- pdmS7:::.run_flow(model, forcing, start, "q_m3s")
-    expect_equal(flow, reference$output$q_m3s, tolerance = 1e-12)
+    agree(pdmS7:::.run_flow(model, forcing, start, "q_m3s"), reference$output$q_m3s, "flow")
   }
   # No well: the well level column is missing, as in the R loop
   out <- run_pdm(pdm_from_config(ext_config(ku = 3000)), forcing)$output
