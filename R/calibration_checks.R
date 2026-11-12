@@ -126,9 +126,11 @@ calibration_checks <- function(project, entry = NULL, top = 20L, edge = 0.01, ra
     identical(node$configuration$recharge$type, "split")
   out$at_bound <- ifelse(z <= edge & (out$lower != 0 | split_alpha), "lower",
                          ifelse(z >= 1 - edge, "upper", NA_character_))
-  out$note <- ifelse(split_alpha & out$at_bound %in% "lower",
+  # The note says a path is switched off only when it is: at 0 or 1, which the default bounds
+  # (0.05 to 0.95) keep a search from reaching.
+  out$note <- ifelse(split_alpha & out$value <= 0,
                      "all direct runoff goes to groundwater; the surface stores carry nothing",
-                     ifelse(split_alpha & out$at_bound %in% "upper",
+                     ifelse(split_alpha & out$value >= 1,
                             "no direct runoff reaches groundwater", NA_character_))
   rownames(out) <- NULL
   out

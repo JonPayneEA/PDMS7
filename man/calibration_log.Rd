@@ -49,7 +49,8 @@ register_data(
   test = NULL,
   highest_gauged_m3s = NULL,
   wettest_years = 2,
-  tie_tolerance = 0.02
+  tie_tolerance = 0.02,
+  markers = c("QMED", "Q1", "Q5")
 )
 
 select_structure(project, configuration, reasoning)
@@ -144,7 +145,8 @@ by path and MD5. Data frames and vectors are always written into the project.}
 
 \item{thresholds}{Optional data frame of thresholds with columns \code{name}, \code{value} and
 \code{unit}: \code{flow} (m3/s) or \code{level} (m, converted to flow through \code{rating}). Every run is
-then also scored with \code{\link[=pdm_threshold_scores]{pdm_threshold_scores()}}, under names such as \verb{csi:Flood Warning}.}
+then also scored with \code{\link[=pdm_threshold_scores]{pdm_threshold_scores()}}, under names such as \verb{csi:Flood Warning}.
+Without thresholds, the \code{markers} are registered instead.}
 
 \item{rating}{Rating table for level thresholds: a CSV path or data frame with \code{stage_m}
 and \code{q_m3s}. Levels outside it are refused, not extrapolated. Stored like the data.}
@@ -160,6 +162,13 @@ of the reliable rating. Flows above it are flagged, not changed.}
 
 \item{tie_tolerance}{Parameter sets whose calibration headline score lies within this of
 the best count as equally good, in the headline's own units (0.02 for NSE).}
+
+\item{markers}{Flow markers of \code{\link[=flow_markers]{flow_markers()}} registered as thresholds when \code{thresholds}
+is \code{NULL}, worked out from the calibration window alone, held-back years left out, so no
+validation or test data shape them: by default \code{QMED}, \code{Q1} and \code{Q5},
+so every catchment gets threshold scores and an event floor to fit to. QMED needs times
+in \code{forcing} and two complete water years, and is left out otherwise, as is any marker
+that cannot be worked out. \code{NULL} registers none.}
 
 \item{configuration}{A configuration list or the path of a YAML configuration file.}
 

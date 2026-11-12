@@ -79,6 +79,13 @@
 #' @param thresholds Optional data frame of thresholds with columns `name`, `value` and
 #'   `unit`: `flow` (m3/s) or `level` (m, converted to flow through `rating`). Every run is
 #'   then also scored with [pdm_threshold_scores()], under names such as `csi:Flood Warning`.
+#'   Without thresholds, the `markers` are registered instead.
+#' @param markers Flow markers of [flow_markers()] registered as thresholds when `thresholds`
+#'   is `NULL`, worked out from the calibration window alone, held-back years left out, so no
+#'   validation or test data shape them: by default `QMED`, `Q1` and `Q5`,
+#'   so every catchment gets threshold scores and an event floor to fit to. QMED needs times
+#'   in `forcing` and two complete water years, and is left out otherwise, as is any marker
+#'   that cannot be worked out. `NULL` registers none.
 #' @param rating Rating table for level thresholds: a CSV path or data frame with `stage_m`
 #'   and `q_m3s`. Levels outside it are refused, not extrapolated. Stored like the data.
 #' @param event_tolerance_h,event_gap_h,event_min_duration_h Event matching settings in
@@ -246,7 +253,7 @@ register_data <- function(project, forcing, observed, calibration, validation = 
                           copy = TRUE, reasoning = "", thresholds = NULL, rating = NULL,
                           event_tolerance_h = 6, event_gap_h = 24, event_min_duration_h = 0,
                           test = NULL, highest_gauged_m3s = NULL, wettest_years = 2,
-                          tie_tolerance = 0.02) {
+                          tie_tolerance = 0.02, markers = c("QMED", "Q1", "Q5")) {
   author <- .identity("custodian")
   path <- .project_path(project)
   forcing_data <- .as_forcing(forcing)
@@ -257,10 +264,6 @@ register_data <- function(project, forcing, observed, calibration, validation = 
   for (v in list(event_tolerance_h, event_gap_h, event_min_duration_h)) {
     .check(.scalar(v, 0), "Event settings must be nonnegative hours")
   }
-  .check(.valid_headline(headline, levels), paste(
-    "headline must be one of", paste(names(.headline_scores()), collapse = ", "),
-    "or a threshold score such as csi:<threshold name>"
-  ))
   .check(.scalar(log_offset, 0, strict = TRUE), "log_offset must be positive")
   .check(.scalar(soil_fraction, 0, 1), "soil_fraction must lie between 0 and 1")
   start <- match.arg(start)
@@ -286,6 +289,16 @@ register_data <- function(project, forcing, observed, calibration, validation = 
   # The held years are chosen once, here, from the observed flow, and recorded; later runs
   # read them from the scorecard rather than choosing again.
   wettest <- .choose_wettest(wettest_years, forcing_data, observed_data, cal, val)
+  # Without thresholds, flow markers from the calibration window, the held years left out, so
+  # neither validation, test nor held data shape what the calibration is scored against.
+  if (is.null(thresholds)) {
+    rows <- .scored_rows(list(calibration = cal, wettest = wettest), "calibration")
+    levels <- .marker_levels(markers, forcing_data, observed_data, rows)
+  }
+  .check(.valid_headline(headline, levels), paste(
+    "headline must be one of", paste(names(.headline_scores()), collapse = ", "),
+    "or a threshold score such as csi:<threshold name>"
+  ))
   summary <- .data_summary(forcing_data, observed_data)
   # What preparation functions noted on the series (units, gaps, negatives), for the log.
   preparation <- .registration_notes(forcing, observed)
@@ -415,7 +428,8 @@ log_auto_calibration <- function(project, parent, lower, upper,
     start_flow = .first_observed(data$observed), starts = starts, seed = seed, method = method,
     thresholds = flows, threshold_weight = threshold_weight, threshold_score = threshold_score,
     event_settings = card$events, log_scale = log_scale, volume_weight = volume_weight,
-    archive = archive, event_weights = event_weights, event_share = event_share,
+    archive = archive, event_weights = event_weights,
+    event_share = .project_event_share(event_share, card),
     event_screen = .project_screen(event_screen, card)
   )
   good <- if (!is.null(archive)) {

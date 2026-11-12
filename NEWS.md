@@ -1,3 +1,45 @@
+# pdmS7 0.22.0
+
+- **PDM for PCs input files.** `read_pdm_inp()` reads the model of a PDM for PCs `*.inp` file
+  into a configuration, and `write_pdm_inp()` writes one, following the manual's conventions:
+  the cubic store's `kb` is the cube root of the time constant used, `k2 = 0` means equal
+  reservoirs, `tdly` may be given by its position, and the cubic store uses Smith's method.
+  The groundwater extension block and its well datum are read; the title, stations, events
+  and optimised parameters are kept as attributes; error-prediction, rating and raingauge
+  settings are noted, not used. The time step is not in the file, so it is an argument.
+  Several hydrological zones, demand recharge, the power distribution and exponential stores
+  are refused with a reason. The manual's two example files ship in `inst/examples`.
+- **`compare_calibrations()`** runs two or more calibrated models, from configurations, YAML or
+  `*.inp` files, or project folders, on the same forcing from the same start, and sets their
+  parameters, scores by window, threshold scores against flow markers and errors on the
+  largest floods side by side; `plot()` draws their hydrographs for a flood or a window.
+- **`calibrate_project()` proposes the best fit in hand.** It proposed the last stage whatever
+  it scored, so a staged search that ended worse than the structure comparison's own fit of the
+  chosen structure threw the better fit away (seen on Beggearn Huish: calibration NSE 0.898
+  proposed over 0.936). The last stage is still proposed when it is within the tie tolerance of
+  the best fit, so an events stage keeps its small trade; otherwise the best fit is, with the
+  reason recorded in the candidate entry.
+- **Split recharge is searched over 0.05 to 0.95 by default**, not 0 to 1, so no search can
+  switch a flow path off: at 0 every drop of direct runoff goes to groundwater and the surface
+  stores carry nothing. `overrides = list(recharge.alpha = c(0, 1))` restores the full range;
+  the acceptance note on a path switched off now appears only at 0 or 1 exactly.
+- **The groundwater extension runs in the compiled engine.** Interface version 3 of the C core
+  (`src/pdm_core.h`) adds an extension block to `pdm_params` and `pdm_run_ext()`, which takes an
+  abstraction series and writes the extension's five columns to their own table. `pdm_run()`
+  and its 24 columns are unchanged. Simulation and calibration of extended models now use the
+  core, which gives the R loop's results exactly (checked for linear, quadratic, cubic and
+  Smith stores through drawdown below zero, a dry spell and refill), at roughly 800 times the
+  speed. The start from flow and state correction of extended models stay on the R loop.
+- **Flow markers: thresholds from the record.** `flow_markers()` works out QMED (the median of
+  water-year maxima, as in the Flood Estimation Handbook), any multiple of it such as
+  `0.5QMED`, and flow duration exceedances such as `Q1` and `Q5`. `register_data()` registers
+  `QMED`, `Q1` and `Q5` when no thresholds are given (argument `markers`; `NULL` for none), so
+  every catchment gets threshold scores; reports mark them as worked out from the record.
+- **Events chosen by a flow.** `event_share` in `calibrate_pdm()`, `pdm_stages()` and the
+  project functions also takes a flow floor: a marker (`"Q1"`, `"0.5QMED"`), a registered
+  threshold's name or a multiple of one, or `c(peak = flow)`. Every event whose observed peak
+  reaches it is then fitted, rather than the largest share.
+
 # pdmS7 0.21.0
 
 - **Tier 1.** The package is declared Tier 1 (experimental) under the Flode governance tiers:

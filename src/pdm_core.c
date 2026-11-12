@@ -5,6 +5,7 @@
 // Author:       Claude Code (AI-generated); human maintainer attribution not supplied
 // Created:      2026-10-31
 // Modified:     2026-11-01 - C99 rewrite; PACK snowpack and coupled snow-PDM runs added
+//               2026-11-12 - The groundwater extension (groundwater_extension.R)
 // Tier:         1
 // Inputs:       pdm_params, state array, rain and PET depths in mm per interval
 // Outputs:      Flow in m3/s, optional flux table, updated state
@@ -439,6 +440,92 @@ static double storage_for_flow(const pdm_route* p, double q) {
   return (log(q) - p->gamma) / p->a;
 }
 
+/* ---- Groundwater extension (groundwater_extension.R) -------------------------------------- */
+
+/* One step of the extended store: the routing result (outflow and q_end are the catchment's
+   share), and the losses over the step, mm. */
+typedef struct {
+  double spring, underflow, abstraction, deficit;
+} ext_out;
+
+/* .time_to_cessation: time to flow cessation with a negative input u, from storage s and
+   outflow q. Eqs. B.1 (linear), B.3 (quadratic) and B.5 (cubic, Smith's method); infinite when
+   Smith's step never reaches zero. */
+static double time_to_cessation(double m, double k, double s, double q, double u) {
+  double inside;
+  if (m == 1) return -log(u / (u - q)) / k;
+  if (m == 2) return sqrt(1 / (-k * u)) * atan(sqrt(q / (-u)));
+  inside = 1 + 3 * q / (u - q);
+  if (inside <= 0) return INFINITY;
+  return -log(inside) / (3 * k * rpow(s, 2));
+}
+
+/* .negative_input_storage: the storage after a whole step of negative input in which flow does
+   not cease. Exact for the linear store, Eq. A.5 for the quadratic, Smith's Eq. A.8 for the
+   cubic. */
+static double negative_input_storage(double m, double k, double s, double q, double u,
+                                     double dt) {
+  double q_next, lambda;
+  if (m == 1) return s * exp(-k * dt) + u * (-expm1(-k * dt)) / k;
+  if (m == 2) {
+    q_next = -u * rpow(tan(atan(sqrt(q / (-u))) - sqrt(-u * k) * dt), 2);
+    return sqrt(q_next / k);
+  }
+  lambda = 3 * k * rpow(s, 2);
+  return s + (-expm1(-lambda * dt) / lambda) * (u - k * rpow(s, 3));
+}
+
+/* .extended_storage: the storage at the end of a step with net input u (mm/h), which may be
+   negative. At or below zero the store changes by continuity until it refills, then routes
+   normally for the rest of the step. */
+static double extended_storage(const pdm_route* g, double s, double u, double dt,
+                               pdm_error* e) {
+  double store, q, cease, refill;
+  if (s > 0 && u >= 0) {
+    store = s;
+    power_step(g, &store, u, dt, e);
+    return store;
+  }
+  if (s > 0) {
+    q = g->k * rpow(s, g->m);
+    cease = time_to_cessation(g->m, g->k, s, q, u);
+    if (cease < dt) return u * (dt - cease);
+    return negative_input_storage(g->m, g->k, s, q, u, dt);
+  }
+  if (u <= 0) return s + u * dt;
+  refill = -s / u;
+  if (refill >= dt) return s + u * dt;
+  store = 0;
+  power_step(g, &store, u, dt - refill, e);
+  return store;
+}
+
+/* .extended_step: one step of the extended store with recharge rate d (mm/h) and recorded
+   abstraction over the step (mm). Underflow is worked out from the start-of-step storage and
+   never draws the store below the underflow outlet within the step. */
+static route_out extended_step(const pdm_params* in, double* store, double d,
+                               double abstraction, double dt, ext_out* x, pdm_error* e) {
+  const pdm_route* g = &in->groundwater;
+  const pdm_extension* p = &in->extension;
+  route_out r = {0, 0};
+  double s = store[0], a, above, qu, u, next, released;
+  a = p->ca + p->fa * abstraction / dt;
+  above = dmax(0.0, s + p->dbu);
+  qu = isfinite(p->ku) ? dmin(above / p->ku, above / dt) : 0;
+  u = d - a - qu;
+  next = extended_storage(g, s, u, dt, e);
+  if (e->code != PDM_OK) return r;
+  released = dmax(0.0, s + u * dt - next);
+  r.outflow = (1 - p->alpha_b) * released;
+  r.q_end = next <= 0 ? 0 : (1 - p->alpha_b) * (g->k * rpow(next, g->m));
+  x->spring = p->alpha_b * released;
+  x->underflow = qu * dt;
+  x->abstraction = a * dt;
+  x->deficit = p->smax_b - next;
+  store[0] = next;
+  return r;
+}
+
 /* ---- Validation ---------------------------------------------------------------------------- */
 
 /* Collects the names of every invalid parameter, so one message lists them all, as the S7
@@ -539,6 +626,21 @@ static int validate(const pdm_params* in, pdm_error* e) {
   need(&b, isfinite(in->qc), "", "qc");
   need(&b, isfinite(in->area_km2) && in->area_km2 > 0, "", "area_km2");
   need(&b, isfinite(in->dt) && in->dt > 0, "", "dt");
+  need(&b, in->extension.enabled == 0 || in->extension.enabled == 1, "", "extension.enabled");
+  if (in->extension.enabled == 1) {
+    const pdm_extension* x = &in->extension;
+    need(&b, in->groundwater.type == PDM_ROUTE_POWER &&
+           (in->groundwater.m == 1 || in->groundwater.m == 2 || in->groundwater.m == 3),
+         "", "extension.store");
+    need(&b, !isnan(x->ku) && x->ku > 0, "", "extension.ku");
+    need(&b, isfinite(x->dbu) && x->dbu >= 0, "", "extension.dbu");
+    need(&b, isfinite(x->alpha_b) && x->alpha_b < 1, "", "extension.alpha_b");
+    need(&b, isfinite(x->ca), "", "extension.ca");
+    need(&b, isfinite(x->fa) && x->fa >= 0, "", "extension.fa");
+    need(&b, isfinite(x->smax_b) && x->smax_b >= 0, "", "extension.smax_b");
+    need(&b, isfinite(x->ys) && x->ys >= 0, "", "extension.ys");
+    need(&b, isfinite(x->hw), "", "extension.hw");
+  }
   if (b.any) {
     char text[300];
     strcpy(text, "Invalid parameter(s): ");
@@ -554,6 +656,11 @@ static int validate(const pdm_params* in, pdm_error* e) {
     return 0;
   }
   if (in->recharge == PDM_RECHARGE_DEMAND) {
+    if (in->extension.enabled) {
+      set_error(e, PDM_ERR_ARGUMENT,
+                "Demand recharge cannot be used with the groundwater extension");
+      return 0;
+    }
     if (in->groundwater.type == PDM_ROUTE_CASCADE) {
       set_error(e, PDM_ERR_ARGUMENT, "Demand recharge requires a single groundwater store");
       return 0;
@@ -576,9 +683,11 @@ static int64_t pending_length(const pdm_params* in) {
 }
 
 /* Checks one route's two state slots: finite, nonnegative (an exponential store's coordinate
-   may be negative), and the unused second slot of a single store exactly zero. */
-static int validate_route_state(const pdm_route* r, const double* s, pdm_error* e) {
-  int signed_ok = r->type == PDM_ROUTE_EXPONENTIAL;
+   and an extended store's storage may be negative), and the unused second slot of a single
+   store exactly zero. */
+static int validate_route_state(const pdm_route* r, const double* s, int extended,
+                                pdm_error* e) {
+  int signed_ok = r->type == PDM_ROUTE_EXPONENTIAL || extended;
   if (!(isfinite(s[0]) && (signed_ok || s[0] >= 0))) {
     set_error(e, PDM_ERR_ARGUMENT, "FlodeRouting storage must be finite and nonnegative");
     return 0;
@@ -613,8 +722,8 @@ static int validate_state(const pdm_params* in, const double* state, int64_t sta
     set_error(e, PDM_ERR_ARGUMENT, "Soil storage exceeds capacity_mean(distribution)");
     return 0;
   }
-  if (!validate_route_state(&in->surface, state + 1, e)) return 0;
-  if (!validate_route_state(&in->groundwater, state + 3, e)) return 0;
+  if (!validate_route_state(&in->surface, state + 1, 0, e)) return 0;
+  if (!validate_route_state(&in->groundwater, state + 3, in->extension.enabled, e)) return 0;
   if (!(isfinite(state[5]) && state[5] >= 0 && state[5] == floor(state[5]))) {
     set_error(e, PDM_ERR_ARGUMENT, "Invalid state dimensions");
     return 0;
@@ -657,6 +766,10 @@ static const char* const k_flux_names[PDM_N_FLUX] = {
   "groundwater_mm", "delay_mm", "saturated_fraction", "balance_error_mm"
 };
 
+static const char* const k_ext_flux_names[PDM_N_EXT_FLUX] = {
+  "abstraction_mm", "underflow_mm", "spring_mm", "groundwater_deficit_mm", "well_level_m"
+};
+
 /* recharge.R, recharge_depth. */
 static double recharge_depth(const pdm_params* in, double soil, double smax, double groundwater,
                              double dt, pdm_error* e) {
@@ -697,8 +810,9 @@ static double total_storage(double soil, const pdm_route* srf, const double* sur
 }
 
 /* model_part2.R, pdm_step, repeated for each interval. state is the caller's working copy. */
-static void run(const pdm_params* in, const double* rain, const double* pet, int64_t n_steps,
-                double* state, double* q, double* q_end, double* fluxes, double* buffer,
+static void run(const pdm_params* in, const double* rain, const double* pet,
+                const double* abstraction, int64_t n_steps, double* state, double* q,
+                double* q_end, double* fluxes, double* ext_fluxes, double* buffer,
                 pdm_error* e) {
   /* Unpack the state array into locals. buffer holds the four delay queues, each n_pending long,
      then the scratch queue used by delay(). */
@@ -734,10 +848,17 @@ static void run(const pdm_params* in, const double* rain, const double* pet, int
 #define COL(j, k) fluxes[(int64_t)(j) * n_steps + (k)]
   for (t = 0; t < n_steps; ++t) {
     double r = rain[t], ev = pet[t], old, pr, et_requested, dr_requested, et, dr, net;
-    double soil_next, runoff, fast, slow, d1, d2, e1, e2, natural;
+    double soil_next, runoff, fast, slow, d1, d2, e1, e2, natural, losses = 0;
+    double ab = abstraction == NULL ? 0 : abstraction[t];
     route_out surf, gw;
+    ext_out x = {0, 0, 0, 0};
     if (!(isfinite(r) && r >= 0 && isfinite(ev))) {
       set_error(e, PDM_ERR_ARGUMENT, "rain must be finite and nonnegative, and pet finite");
+      return;
+    }
+    if (!(isfinite(ab) && (in->extension.enabled || ab == 0))) {
+      set_error(e, PDM_ERR_ARGUMENT,
+                "abstraction must be finite, and nonzero only with the groundwater extension");
       return;
     }
     if (!check(e, soil >= 0 && soil <= smax, "Soil storage exceeds capacity_mean(distribution)")) {
@@ -775,7 +896,13 @@ static void run(const pdm_params* in, const double* rain, const double* pet, int
     }
     surf = route_step(srf, surface, fast / dt, dt, e);
     if (e->code != PDM_OK) return;
-    gw = route_step(gwr, ground, slow / dt, dt, e);
+    /* The extension also takes abstraction, and loses water to springs and underflow. */
+    if (in->extension.enabled) {
+      gw = extended_step(in, ground, slow / dt, ab, dt, &x, e);
+      losses = x.spring + x.underflow + x.abstraction;
+    } else {
+      gw = route_step(gwr, ground, slow / dt, dt, e);
+    }
     if (e->code != PDM_OK) return;
     d1 = delay(ds, work, n_pending, surf.outflow, ratio);
     d2 = delay(dg, work, n_pending, gw.outflow, ratio);
@@ -794,7 +921,7 @@ static void run(const pdm_params* in, const double* rain, const double* pet, int
     q[t] = natural / dt * factor + in->qc;
     q_end[t] = (e1 + e2) * factor + in->qc;
     if (fluxes != NULL) {
-      double residual = old + pr - et - natural -
+      double residual = old + pr - et - natural - losses -
         total_storage(soil, srf, surface, gwr, ground, ds, dg, n_pending);
       double c_now = cap_from_storage(&dist, soil, e);
       if (e->code != PDM_OK) return;
@@ -822,6 +949,15 @@ static void run(const pdm_params* in, const double* rain, const double* pet, int
       COL(21, t) = rsum(ds, n_pending) + rsum(dg, n_pending);
       COL(22, t) = cap_cdf(&dist, c_now);
       COL(23, t) = residual;
+    }
+    if (ext_fluxes != NULL) {
+      const pdm_extension* p = &in->extension;
+      ext_fluxes[t] = x.abstraction;
+      ext_fluxes[n_steps + t] = x.underflow;
+      ext_fluxes[2 * n_steps + t] = x.spring;
+      ext_fluxes[3 * n_steps + t] = in->extension.enabled ? x.deficit : 0;
+      ext_fluxes[4 * n_steps + t] = in->extension.enabled && p->ys > 0 ?
+        p->hw - p->ys * x.deficit / 1000 : NAN;
     }
   }
 #undef COL
@@ -894,11 +1030,17 @@ const char* pdm_flux_name(int32_t j) {
   return k_flux_names[j];
 }
 
+const char* pdm_ext_flux_name(int32_t j) {
+  if (j < 0 || j >= PDM_N_EXT_FLUX) return NULL;
+  return k_ext_flux_names[j];
+}
+
 /* Validates and runs PDM on a state array updated in place. Used by pdm_run() and
    pdm_snow_run(), which pass a working copy. */
 static void pdm_simulate(const pdm_params* params, const double* rain, const double* pet,
-                         int64_t n, double* state, int64_t state_length, double* q_m3s,
-                         double* q_end_m3s, double* fluxes, pdm_error* e) {
+                         const double* abstraction, int64_t n, double* state,
+                         int64_t state_length, double* q_m3s, double* q_end_m3s,
+                         double* fluxes, double* ext_fluxes, pdm_error* e) {
   size_t n_pending;
   double* buffer;
   if (params == NULL) {
@@ -921,13 +1063,22 @@ static void pdm_simulate(const pdm_params* params, const double* rain, const dou
     set_error(e, PDM_ERR_NUMERICAL, "Out of memory");
     return;
   }
-  run(params, rain, pet, n, state, q_m3s, q_end_m3s, fluxes, buffer, e);
+  run(params, rain, pet, abstraction, n, state, q_m3s, q_end_m3s, fluxes, ext_fluxes, buffer,
+      e);
   free(buffer);
 }
 
 int32_t pdm_run(const pdm_params* params, const double* rain, const double* pet, int64_t n,
                 double* state, int64_t state_length, double* q_m3s, double* q_end_m3s,
                 double* fluxes, char* message, int64_t message_length) {
+  return pdm_run_ext(params, rain, pet, NULL, n, state, state_length, q_m3s, q_end_m3s, fluxes,
+                     NULL, message, message_length);
+}
+
+int32_t pdm_run_ext(const pdm_params* params, const double* rain, const double* pet,
+                    const double* abstraction, int64_t n, double* state, int64_t state_length,
+                    double* q_m3s, double* q_end_m3s, double* fluxes, double* ext_fluxes,
+                    char* message, int64_t message_length) {
   pdm_error e;
   double* copy = NULL;
   e.code = PDM_OK;
@@ -941,7 +1092,8 @@ int32_t pdm_run(const pdm_params* params, const double* rain, const double* pet,
     memcpy(copy, state, sizeof(double) * (size_t)state_length);
   }
   /* Run on a copy so that the caller's state is unchanged if the run fails. */
-  pdm_simulate(params, rain, pet, n, copy, state_length, q_m3s, q_end_m3s, fluxes, &e);
+  pdm_simulate(params, rain, pet, abstraction, n, copy, state_length, q_m3s, q_end_m3s, fluxes,
+               ext_fluxes, &e);
   if (e.code == PDM_OK) memcpy(state, copy, sizeof(double) * (size_t)state_length);
   free(copy);
   return finish(&e, message, message_length);
@@ -1167,8 +1319,8 @@ int32_t pdm_snow_run(const pdm_params* pdm, const pdm_pack_params* pack,
       pack_simulate(pack, precipitation, temperature, n, pdm->dt, pack_copy, effective,
                     pack_fluxes, &e);
       if (e.code == PDM_OK) {
-        pdm_simulate(pdm, effective, pet, n, pdm_copy, pdm_state_length, q_m3s, q_end_m3s,
-                     pdm_fluxes, &e);
+        pdm_simulate(pdm, effective, pet, NULL, n, pdm_copy, pdm_state_length, q_m3s,
+                     q_end_m3s, pdm_fluxes, NULL, &e);
       }
     }
     if (e.code == PDM_OK) {
@@ -1289,7 +1441,10 @@ int32_t pdm_correct_state(const pdm_params* params, const pdm_state_updater* upd
   if (params == NULL || updater == NULL || out == NULL) {
     set_error(&e, PDM_ERR_ARGUMENT, "params, updater and out must not be null");
   } else if (validate(params, &e) && validate_state(params, state, state_length, &e)) {
-    if (params->td != 0) {
+    if (params->extension.enabled) {
+      set_error(&e, PDM_ERR_ARGUMENT,
+                "State correction is not available in the core with the groundwater extension");
+    } else if (params->td != 0) {
       set_error(&e, PDM_ERR_ARGUMENT,
                 "State correction requires td=0; delayed observations need a lag-aware smoother");
     } else if (!isfinite(observed_m3s)) {
@@ -1456,7 +1611,10 @@ int32_t pdm_state_from_flow(const pdm_params* params, double observed_m3s,
     return finish(&e, message, message_length);
   }
   if (!validate(params, &e)) return finish(&e, message, message_length);
-  if (state_length != 6 + 4 * pending_length(params)) {
+  if (params->extension.enabled) {
+    set_error(&e, PDM_ERR_ARGUMENT,
+              "A start from flow is not available in the core with the groundwater extension");
+  } else if (state_length != 6 + 4 * pending_length(params)) {
     set_error(&e, PDM_ERR_ARGUMENT, "state must hold pdm_state_length() values");
   } else if (!isfinite(observed_m3s)) {
     set_error(&e, PDM_ERR_ARGUMENT, "observed_m3s must be finite");

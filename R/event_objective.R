@@ -7,6 +7,7 @@
 # Created:      2026-11-06
 # Modified:     2026-11-06 - First version
 #               2026-11-10 - One event per flood (find_events(independent = TRUE))
+#               2026-11-12 - Events chosen by a flow floor: a marker or a threshold
 # Tier:         1
 # Inputs:       Events from find_events(); rain (mm per step); observed flow (m3/s)
 # Outputs:      A scoring function of the simulated flow, and its description
@@ -21,7 +22,9 @@
 # already carry a `use` column keep it. Only events whose flow window lies wholly after the
 # warm-up are scored, and of
 # those only the largest share by observed peak, so that small, noisy events do not dominate the
-# peak and timing terms. The objective, to be minimised, is
+# peak and timing terms. Instead of a share, `share` may name a flow (a marker such as Q1 or
+# 0.5QMED, see flow_markers(), or c(peak = flow)); every event whose observed peak reaches it
+# is then scored. The objective, to be minimised, is
 #   w_nse * (1 - pooled event NSE) + w_peak * mean |peak error| + w_timing * mean |timing| / Tr
 # where the pooled event NSE sums squared errors over every chosen window and divides by the sum
 # of squared deviations from each window's own mean flow; the peak error is the simulated over the
@@ -30,12 +33,11 @@
 # 100% too high, at equal weights. Peak and timing follow event_scores().
 .event_objective <- function(events, rain, observed, warmup, dt,
                              weights = .default_event_weights, share = 0.5, screen = list(),
-                             area_km2 = NULL) {
+                             area_km2 = NULL, time = NULL) {
   .check(is.numeric(weights) && setequal(names(weights), names(.default_event_weights)) &&
            all(is.finite(weights) & weights >= 0) && sum(weights) > 0,
          "event_weights must be nonnegative numbers named nse, peak and timing, not all zero")
-  .check(.scalar(share, 0, 1) && share > 0, "event_share must lie in (0, 1]")
-  chosen <- .event_windows(events, rain, observed, warmup, dt, share, screen, area_km2)
+  chosen <- .event_windows(events, rain, observed, warmup, dt, share, screen, area_km2, time)
   windows <- chosen$windows
   rows <- unlist(windows)
   obs <- observed[rows]
@@ -55,19 +57,28 @@
       w[["peak"]] * mean(abs(sim_peak / obs_peak - 1)) +
       w[["timing"]] * mean(abs(sim_at - obs_at)) * dt / scale_h
   }
+  which_events <- if (is.null(chosen$floor)) {
+    sprintf("the %d largest of %d events", length(windows), chosen$found)
+  } else {
+    sprintf("the %d of %d events peaking at %.3g m3/s or more%s", length(windows), chosen$found,
+            chosen$floor, if (is.character(share)) paste0(" (", share, ")") else "")
+  }
   name <- sprintf(paste0(
     "events: %g x (1 - pooled event NSE) + %g x mean |peak error| + %g x mean |timing error| ",
-    "/ %.3g h, over the %d largest of %d events%s"
-  ), w[["nse"]], w[["peak"]], w[["timing"]], scale_h, length(windows), chosen$found,
+    "/ %.3g h, over %s%s"
+  ), w[["nse"]], w[["peak"]], w[["timing"]], scale_h, which_events,
   if (chosen$screened_out) sprintf(" (%d screened out)", chosen$screened_out) else "")
   list(score = score, name = name, events = length(windows), found = chosen$found,
-       response_h = scale_h)
+       response_h = scale_h, floor_m3s = chosen$floor)
 }
 
 # The rows of the events the objective scores: found (unless given) and screened (unless the
 # screen is NULL or the events carry a use column), wholly after the warm-up, with at least two
-# observed flows, and of those the largest share by observed peak.
-.event_windows <- function(events, rain, observed, warmup, dt, share, screen, area_km2) {
+# observed flows, and of those the largest share by observed peak, or those whose peak reaches
+# the flow floor that share names.
+.event_windows <- function(events, rain, observed, warmup, dt, share, screen, area_km2,
+                           time = NULL) {
+  floor <- .event_floor(share, observed, dt, time)
   if (is.null(events)) {
     .check(!is.null(rain), "The events objective needs rain in forcing, or events")
     # One event per flood: fragments of a long flood would otherwise each count as an event,
@@ -92,7 +103,14 @@
     "objective has nothing to score"
   ))
   peaks <- vapply(windows, function(i) max(observed[i]), numeric(1))
-  chosen <- order(-peaks)[seq_len(max(1L, ceiling(share * length(windows))))]
+  chosen <- if (is.null(floor)) {
+    order(-peaks)[seq_len(max(1L, ceiling(share * length(windows))))]
+  } else {
+    none <- paste("No event in the scored period peaks at %.3g m3/s or more; choose a lower",
+                  "flow for event_share")
+    .check(any(peaks >= floor), sprintf(none, floor))
+    order(-peaks)[seq_len(sum(peaks >= floor))]
+  }
   list(windows = windows[chosen], found = length(windows), screened_out = sum(!use),
-       response_h = attr(events, "response")$response_h %||% NA_real_)
+       response_h = attr(events, "response")$response_h %||% NA_real_, floor = floor)
 }

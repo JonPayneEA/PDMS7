@@ -546,6 +546,7 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
   data.frame(
     threshold = vapply(card$thresholds, function(t) t$name, character(1)),
     given = vapply(card$thresholds, function(t) {
+      if (identical(t$source, "flow marker")) return("from the record")
       paste(format(t$value), if (t$unit == "level") "m" else "m3/s")
     }, character(1)),
     flow_m3s = vapply(card$thresholds, function(t) t$flow_m3s, numeric(1))

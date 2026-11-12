@@ -8,7 +8,7 @@ distribution,exponential,mean,10,400,linear,Mean store capacity (mm),search
 distribution,lognormal,meanlog,2.3,6,linear,Log of capacity (log mm); 10 to 400 mm,search
 distribution,lognormal,sdlog,0.1,2,linear,Spread of log capacity,search
 recharge,standard,kg,1,5000,log,Recharge time constant (h); spans orders of magnitude,search
-recharge,split,alpha,0,1,linear,Share of drainage sent to the surface store,search
+recharge,split,alpha,0.05,0.95,linear,Share of drainage sent to the surface store; kept off 0 and 1 so neither flow path is switched off,search
 recharge,demand,alpha,0.05,1,linear,Demand recharge shape,search
 recharge,demand,beta,0.1,5,log,Demand recharge exponent,search
 recharge,demand,qsat,0.01,10,log,Saturated recharge rate (mm/h),search

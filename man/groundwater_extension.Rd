@@ -88,8 +88,10 @@ run dry (scientific guide, Appendices A and B). With a negative input the cubic 
 stepped by Smith's method, Eqs. 4, 6 and 7, as published, whichever solver it uses for
 positive input.
 
-Models with the extension run in R, not the compiled engine. Abstraction enters as a forcing
-column \code{abstraction}, mm per step over the catchment.
+Models with the extension run in the compiled engine, like the standard model, and give the
+same results as the step-by-step R loop. Starting from a flow (\code{\link[=initial_state_from_flow]{initial_state_from_flow()}})
+and state correction use the R loop. Abstraction enters as a forcing column \code{abstraction},
+mm per step over the catchment.
 }
 \examples{
 store <- groundwater_extension(cubic_routing(5000), ku = 12000, dbu = 400, ca = 0.002,

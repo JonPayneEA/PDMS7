@@ -6,6 +6,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-08
 # Modified:     2026-11-08 - First version, from the Beggearn Huish calibration script
+#               2026-11-12 - The best fit in hand is proposed, not a worse final stage
 #               2026-11-09 - recommend: choose the structure with recommend_structure() first;
 #                            stages and bounds may be functions of the chosen structure;
 #                            held-back years without a validation window refused before the
@@ -24,9 +25,16 @@
 #' finish](https://jonpayneea.github.io/PDMS7/articles/calibration-journey.html) for one set of
 #' prepared data: [start_calibration_project()], [register_data()], [select_structure()],
 #' [recommend_structure()] when `recommend = TRUE`, [log_staged_calibration()],
-#' [propose_candidate()] (the last stage), [validate_candidate()] when a validation window is
+#' [propose_candidate()], [validate_candidate()] when a validation window is
 #' registered, and [test_candidate()] when a test window or wettest years are. Each step is an
 #' entry in the project's log, as if made by hand.
+#'
+#' **Choosing the candidate.** The candidate is the last stage, unless another fit in hand
+#' scores better on the calibration headline by more than the project's tie tolerance (0.02 for
+#' NSE): an earlier stage, or, with `recommend = TRUE`, the structure comparison's fit of the
+#' chosen structure. A final events stage trades a little of the headline for the floods, and a
+#' loss within the tolerance keeps it; a larger loss means the stages ended worse than a fit
+#' already found, which is proposed instead, with the reason recorded.
 #'
 #' **Choosing the structure.** With `recommend = TRUE`, `structure` is only the starting
 #' point. [recommend_structure()] then chooses the recharge rule, the soil store distribution
@@ -137,8 +145,10 @@ calibrate_project <- function(project, forcing, observed, area_km2, calibration,
     )
     parent <- chosen$entry
     structure <- chosen$configuration
+    compared <- chosen$entry
   } else {
     parent <- select_structure(project, structure, "Structure for the automatic calibration.")$id
+    compared <- NULL
   }
   # Stages and bounds suit the structure the stages start from, chosen or given.
   for_structure <- function(x, default) {
@@ -149,7 +159,8 @@ calibrate_project <- function(project, forcing, observed, area_km2, calibration,
                                  bounds = for_structure(bounds, calibration_bounds),
                                  starts = starts, seed = seed, control = control,
                                  method = method)
-  propose_candidate(project, fits[[length(fits)]]$id, "Final stage of the staged calibration.")
+  pick <- .best_candidate(project, c(compared, vapply(fits, function(f) f$id, "")))
+  propose_candidate(project, pick$id, pick$reason)
   out <- .finish_project(project, report)
   .progress_say(sprintf("Calibration of %s finished in %s", basename(project),
                         .duration_text(.seconds_since(started))))
@@ -388,4 +399,34 @@ plot.pdm_event_run <- function(x, ...) {
   observed <- if (all(is.na(s$observed))) NULL else s$observed
   plot(pdm_series(s$simulated, observed, rain = s$rain, time = s$time, dt = x$dt), ...)
   invisible(x)
+}
+
+# The candidate among the fits of a calibration: the last stage, unless another fit (an earlier
+# stage, or the structure comparison's fit of the chosen structure) beats it on the calibration
+# headline by more than the project's tie tolerance. A final events stage trades a little of
+# the headline for the floods, so a loss within the tolerance keeps it; a larger loss means the
+# staged search ended worse than a fit already in hand, which is proposed instead. Returns the
+# entry id and the reason recorded with the candidate.
+.best_candidate <- function(project, ids) {
+  entries <- .read_entries(.project_path(project))
+  card <- .registration(entries)$scorecard
+  headline <- card$headline
+  sign <- if (.headline_direction(headline) == "lower") -1 else 1
+  tolerance <- card$tie_tolerance %||% 0.02
+  score <- vapply(ids, function(id) {
+    .num_or_na(.find_entry(entries, id)$scores[[headline]])
+  }, numeric(1))
+  last <- ids[length(ids)]
+  ok <- is.finite(score)
+  if (!any(ok) || !is.finite(score[[last]])) {
+    return(list(id = last, reason = "Final stage of the staged calibration."))
+  }
+  best <- ids[ok][which.max(sign * score[ok])]
+  if (sign * score[[last]] >= sign * score[[best]] - tolerance) {
+    return(list(id = last, reason = "Final stage of the staged calibration."))
+  }
+  list(id = best, reason = sprintf(paste(
+    "Entry %s scores best on the calibration %s (%.4g). The final stage, entry %s, scores %.4g,",
+    "worse by more than the tie tolerance of %g, so it is not proposed."
+  ), best, headline, score[[best]], last, score[[last]], tolerance))
 }

@@ -37,9 +37,10 @@ run_pdm <- function(model, forcing, state = initial_state(model)) {
 .run_pdm_core <- function(model, forcing, state) {
   .check_forcing(model, forcing)
   initial <- state
-  if (.engine_supported(model)) {
+  if (.engine_supported(model, extended = TRUE)) {
     # Compiled loop; results agree with the R loop below to rounding (see R/engine.R).
-    res <- .engine_run(model, forcing$rain, forcing$pet, state, full = TRUE)
+    res <- .engine_run(model, forcing$rain, forcing$pet, state, full = TRUE,
+                       abstraction = forcing$abstraction)
     state <- res$state
     output <- res$output
   } else {

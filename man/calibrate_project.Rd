@@ -78,11 +78,18 @@ The project's row of \code{\link[=read_projects]{read_projects()}}, invisibly.
 Runs the whole logged calibration of \href{https://jonpayneea.github.io/PDMS7/articles/calibration-journey.html}{Automatic calibration from start to finish} for one set of
 prepared data: \code{\link[=start_calibration_project]{start_calibration_project()}}, \code{\link[=register_data]{register_data()}}, \code{\link[=select_structure]{select_structure()}},
 \code{\link[=recommend_structure]{recommend_structure()}} when \code{recommend = TRUE}, \code{\link[=log_staged_calibration]{log_staged_calibration()}},
-\code{\link[=propose_candidate]{propose_candidate()}} (the last stage), \code{\link[=validate_candidate]{validate_candidate()}} when a validation window is
+\code{\link[=propose_candidate]{propose_candidate()}}, \code{\link[=validate_candidate]{validate_candidate()}} when a validation window is
 registered, and \code{\link[=test_candidate]{test_candidate()}} when a test window or wettest years are. Each step is an
 entry in the project's log, as if made by hand.
 }
 \details{
+\strong{Choosing the candidate.} The candidate is the last stage, unless another fit in hand
+scores better on the calibration headline by more than the project's tie tolerance (0.02 for
+NSE): an earlier stage, or, with \code{recommend = TRUE}, the structure comparison's fit of the
+chosen structure. A final events stage trades a little of the headline for the floods, and a
+loss within the tolerance keeps it; a larger loss means the stages ended worse than a fit
+already found, which is proposed instead, with the reason recorded.
+
 \strong{Choosing the structure.} With \code{recommend = TRUE}, \code{structure} is only the starting
 point. \code{\link[=recommend_structure]{recommend_structure()}} then chooses the recharge rule, the soil store distribution
 and the groundwater store in turn, each by a structure comparison on this record, and the
