@@ -171,6 +171,7 @@ NULL
 .engine_flags <- new.env(parent = emptyenv())
 .warn_smith_step <- function(model) {
   uses_smith <- function(route) {
+    if (S7::S7_inherits(route, FlodeExtendedGroundwater)) route <- route@store
     class(route)[1L] == "pdmS7::FlodePowerRouting" && route@solver == "smith"
   }
   if (model@dt > .smith_max_dt && (uses_smith(model@surface) || uses_smith(model@groundwater)) &&

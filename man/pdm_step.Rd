@@ -4,7 +4,7 @@
 \alias{pdm_step}
 \title{Pdm step}
 \usage{
-pdm_step(model, state, rain, pet)
+pdm_step(model, state, rain, pet, abstraction = 0)
 }
 \arguments{
 \item{model}{A FlodePdmModel compatible with the supplied state.}
@@ -15,6 +15,9 @@ pdm_step(model, state, rain, pet)
 
 \item{pet}{Interval potential evaporation depth in mm. Negative values are condensation
 and add their whole depth to the soil store.}
+
+\item{abstraction}{Recorded abstraction over the interval, mm, for a model with the
+groundwater extension (\code{\link[=groundwater_extension]{groundwater_extension()}}); negative for a gain.}
 }
 \value{
 A list with state and a one-row flux data.frame.

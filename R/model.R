@@ -74,19 +74,29 @@ FlodePdmModel <- S7::new_class(
       return("st cannot exceed Smax")
     }
     if (S7::S7_inherits(self@recharge, FlodeDemandRecharge)) {
-      if (S7::S7_inherits(self@groundwater, FlodeCascadeRouting)) {
-        return("Demand recharge requires a single groundwater store")
-      }
-      if (storage_for_flow(self@groundwater, self@recharge@qsat) <= 0) {
-        return("Demand recharge requires Sgmax > 0")
-      }
-      if (self@recharge@qsat * self@dt > capacity_mean(self@distribution)) {
-        return("Demand recharge requires qsat*dt <= Smax")
-      }
+      return(.demand_problems(self))
     }
     NULL
   }
 )
+
+# What stops a model using demand recharge, or NULL: it needs a single groundwater store, not
+# the extension, with room for the saturation recharge within a step.
+.demand_problems <- function(self) {
+  if (S7::S7_inherits(self@groundwater, FlodeExtendedGroundwater)) {
+    return("Demand recharge cannot be used with the groundwater extension")
+  }
+  if (S7::S7_inherits(self@groundwater, FlodeCascadeRouting)) {
+    return("Demand recharge requires a single groundwater store")
+  }
+  if (storage_for_flow(self@groundwater, self@recharge@qsat) <= 0) {
+    return("Demand recharge requires Sgmax > 0")
+  }
+  if (self@recharge@qsat * self@dt > capacity_mean(self@distribution)) {
+    return("Demand recharge requires qsat*dt <= Smax")
+  }
+  NULL
+}
 #' Create FlodePdmState
 #'
 #' Component of the configurable Moore (2007) rainfall-runoff framework.

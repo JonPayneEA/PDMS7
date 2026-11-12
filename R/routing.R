@@ -307,7 +307,10 @@ S7::method(storage_for_flow, FlodeExponentialRouting) <- function(x, q) {
   .check(
     length(storage) == n, paste("FlodeRouting state requires", n, "storage values")
   )
-  if (!S7::S7_inherits(x, FlodeExponentialRouting)) {
+  # The exponential store's storage is a signed log coordinate, and an extended groundwater
+  # store may be drawn below zero by abstraction; every other store holds water.
+  if (!S7::S7_inherits(x, FlodeExponentialRouting) &&
+        !S7::S7_inherits(x, FlodeExtendedGroundwater)) {
     .nonnegative(storage, "FlodeRouting storage")
   }
 }

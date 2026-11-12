@@ -19,3 +19,8 @@ route,quadratic,kb,10,1e5,log,Quadratic store constant
 route,cubic,kb,100,1e6,log,Cubic store constant
 route,exponential,a,0.001,1,log,Exponential store rate (1/mm)
 route,exponential,gamma,-15,0,linear,Exponential store offset (log mm/h)
+extension,extension,ku,100,1e6,log,Underflow time constant (h); searched only when set
+extension,extension,dbu,0,2000,linear,Baseflow-underflow deficit (mm); searched only when set
+extension,extension,alpha_b,-1,0.9,linear,Share of groundwater outflow lost to external springs; negative imports; searched only when set
+extension,extension,ca,0,0.1,linear,Constant abstraction (mm/h); searched only when set
+extension,extension,fa,0,3,linear,Factor on recorded abstraction; searched only when set

@@ -1,3 +1,28 @@
+# pdmS7 0.21.0
+
+- **The PDM groundwater extension**, `groundwater_extension()`, as published in Moore and Bell
+  (2002) and the PDM for PCs scientific guide (UKCEH, 2022, section 3 and Appendix B), for
+  catchments with pumped abstractions, ephemeral streams and losses below or beyond the gauge.
+  It wraps a linear, quadratic or cubic groundwater store and adds:
+  - abstraction, `A = cA + fA Ar`, from a recorded series given as a forcing column
+    `abstraction` (mm per step);
+  - negative storage and flow cessation: the time to cessation within a step and the storage
+    after it are the published Eqs. B.1 to B.6, checked against a fine-step solution (linear and
+    quadratic exact; cubic by Smith's method, as published, within 0.003 mm at 15 minutes);
+    below zero the storage changes by continuity, and flow restarts once recharge refills it;
+  - underflow, `qu = (S + Dbu) / ku` (Eq. 10), from the start-of-step storage like the model's
+    other losses, never below the underflow outlet;
+  - external springs or inter-catchment exchange, a fraction `alpha_b` of the store's outflow;
+  - the storage deficit and well level, `hw - Ys (Sbmax - S)` in m (Eqs. 8 and 11).
+  Set it in a configuration as `groundwater: extension: {ku: ..., dbu: ...}`. With nothing set
+  it changes nothing: the flows equal the standard model's. The water balance, losses
+  included, closes to rounding. Its flow parameters are searched by calibration only when the
+  configuration sets them, so a loss the record cannot inform stays off. The exponential store
+  cannot be extended, since it cannot run dry, nor used with demand recharge.
+- **Speed.** A model with the extension runs in R, not the compiled engine: about 2.6 ms a step,
+  so a 15-minute record of 17 years takes about 25 minutes a run. It suits checking and short
+  records; the compiled version comes next, for calibration on long records.
+
 # pdmS7 0.20.0
 
 Fixes from the Beggearn Huish calibration.

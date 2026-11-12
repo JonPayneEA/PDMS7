@@ -108,7 +108,17 @@ pdm_from_config <- function(config) {
     config$surface <- .component(config$surface, .route_registry())
   }
   if (!is.null(config$groundwater)) {
+    # The groundwater extension wraps the store it extends (groundwater_extension()).
+    extension <- config$groundwater$extension
+    config$groundwater$extension <- NULL
     config$groundwater <- .component(config$groundwater, .route_registry())
+    if (!is.null(extension)) {
+      named <- !is.null(names(extension)) && all(nzchar(names(extension)))
+      .check(is.list(extension) && (!length(extension) || named),
+             "groundwater extension must be a named list of its parameters")
+      config$groundwater <- do.call(groundwater_extension,
+                                    c(list(store = config$groundwater), extension))
+    }
   }
   do.call(pdm_model, config)
 }

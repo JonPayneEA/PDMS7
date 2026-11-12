@@ -44,8 +44,9 @@ run_pdm <- function(model, forcing, state = initial_state(model)) {
     output <- res$output
   } else {
     rows <- vector("list", nrow(forcing))
+    abstraction <- forcing$abstraction %||% numeric(nrow(forcing))
     for (i in seq_len(nrow(forcing))) {
-      step <- pdm_step(model, state, forcing$rain[i], forcing$pet[i])
+      step <- pdm_step(model, state, forcing$rain[i], forcing$pet[i], abstraction[i])
       state <- step$state
       rows[[i]] <- step$flux
     }
@@ -70,6 +71,12 @@ run_pdm <- function(model, forcing, state = initial_state(model)) {
   .check(nrow(forcing) > 0L, "forcing must have at least one row")
   .nonnegative(forcing$rain, "rain")
   .finite_depths(forcing$pet, "pet")
+  if ("abstraction" %in% names(forcing)) {
+    .check(S7::S7_inherits(model@groundwater, FlodeExtendedGroundwater),
+           paste("forcing has an abstraction column, which only a model with the groundwater",
+                 "extension uses (groundwater_extension())"))
+    .finite_depths(forcing$abstraction, "abstraction")
+  }
   if ("time" %in% names(forcing)) {
     .check(inherits(forcing$time, "POSIXt") && all(is.finite(as.numeric(forcing$time))),
            "time must be complete finite POSIXct/POSIXlt")

@@ -5,6 +5,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-01
 # Modified:     2026-11-01 - Add structure comparison
+#               2026-11-12 - Bounds for the groundwater extension's flow parameters, when set
 # Tier:         3
 # Inputs:       Configuration lists; inst/calibration-bounds.csv
 # Outputs:      Bounds tables and named lists of configurations
@@ -52,6 +53,17 @@ calibration_bounds <- function(config, overrides = NULL, exclude = NULL) {
     hit <- table[table$slot == slots[[name]] & table$type == type, ]
     if (nrow(hit)) {
       hit$parameter <- paste(name, hit$parameter, sep = ".")
+      rows <- c(rows, list(hit))
+    }
+  }
+  # The groundwater extension's flow parameters, each only if the configuration sets it: an
+  # unset one (no underflow, no springs) stays off rather than being switched on by a search.
+  extension <- config$groundwater$extension
+  if (length(extension)) {
+    hit <- table[table$slot == "extension" & table$parameter %in% names(extension), ]
+    hit <- hit[vapply(hit$parameter, function(p) is.finite(extension[[p]]), logical(1)), ]
+    if (nrow(hit)) {
+      hit$parameter <- paste("groundwater.extension", hit$parameter, sep = ".")
       rows <- c(rows, list(hit))
     }
   }
