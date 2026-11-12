@@ -202,3 +202,30 @@ test_that("calibrate_project finishes the missing steps of an interrupted run", 
   expect_message(run(), "finishing any missing steps")
   expect_length(read_project(folder)$entries$type, before)
 })
+
+# Guards: the candidate is the last stage unless an earlier fit beats it on the calibration
+# headline by more than the tie tolerance; then the better fit is proposed, and the reason says so
+test_that("the best fit in hand is proposed, not a worse final stage", {
+  p <- new_project()
+  structure <- "0003"
+  good <- log_trial(p$folder, structure, c(fc = 1), "better", "Volume right")$id
+  close <- log_trial(p$folder, good, c(fc = 0.995), "inconclusive", "Nearly the same")$id
+  pick <- pdmS7:::.best_candidate(p$folder, c(good, structure))
+  expect_identical(pick$id, good)
+  expect_match(pick$reason, "not proposed")
+  expect_identical(pdmS7:::.best_candidate(p$folder, c(structure, good))$id, good)
+  kept <- pdmS7:::.best_candidate(p$folder, c(good, close))
+  expect_identical(kept$id, close)
+  expect_identical(kept$reason, "Final stage of the staged calibration.")
+})
+
+# Guards: a split recharge's default bounds keep both flow paths open
+test_that("split recharge is searched off 0 and 1", {
+  b <- calibration_bounds(structure_set("split")$split)
+  expect_equal(unlist(b[b$path == "recharge.alpha", c("lower", "upper")]),
+               c(lower = 0.05, upper = 0.95))
+  open <- calibration_bounds(structure_set("split")$split,
+                             overrides = list(recharge.alpha = c(0, 1)))
+  expect_equal(unlist(open[open$path == "recharge.alpha", c("lower", "upper")]),
+               c(lower = 0, upper = 1))
+})

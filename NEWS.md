@@ -1,5 +1,15 @@
 # pdmS7 0.22.0
 
+- **`calibrate_project()` proposes the best fit in hand.** It proposed the last stage whatever
+  it scored, so a staged search that ended worse than the structure comparison's own fit of the
+  chosen structure threw the better fit away (seen on Beggearn Huish: calibration NSE 0.898
+  proposed over 0.936). The last stage is still proposed when it is within the tie tolerance of
+  the best fit, so an events stage keeps its small trade; otherwise the best fit is, with the
+  reason recorded in the candidate entry.
+- **Split recharge is searched over 0.05 to 0.95 by default**, not 0 to 1, so no search can
+  switch a flow path off: at 0 every drop of direct runoff goes to groundwater and the surface
+  stores carry nothing. `overrides = list(recharge.alpha = c(0, 1))` restores the full range;
+  the acceptance note on a path switched off now appears only at 0 or 1 exactly.
 - **The groundwater extension runs in the compiled engine.** Interface version 3 of the C core
   (`src/pdm_core.h`) adds an extension block to `pdm_params` and `pdm_run_ext()`, which takes an
   abstraction series and writes the extension's five columns to their own table. `pdm_run()`
