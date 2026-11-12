@@ -7,7 +7,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-07
 # Modified:     2026-11-07 - First version
-# Tier:         3
+# Tier:         1
 # Inputs:       None: synthetic rain and known truths
 # Outputs:      inst/extdata/recession_stores.csv, one row per truth and candidate store
 # Dependencies: pdmS7; parallel

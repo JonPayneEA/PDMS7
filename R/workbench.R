@@ -7,7 +7,7 @@
 # Created:      2026-11-07
 # Modified:     2026-11-07 - First version
 #               2026-11-10 - One event per flood (find_events(independent = TRUE))
-# Tier:         3
+# Tier:         1
 # Inputs:       A calibration project and one of its model entries
 # Outputs:      The events, their simulations before and after a change, scores and plots
 # Dependencies: graphics

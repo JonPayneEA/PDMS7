@@ -6,7 +6,7 @@
 # Created:      2026-10-04
 # Modified:     2026-10-05 - CX: Align with Flode Tier 3 target conventions
 #               2026-11-12 - The groundwater extension: abstraction and its losses
-# Tier:         3
+# Tier:         1
 # Inputs:       Typed S7 components; depths in mm; time in hours
 # Outputs:      Validated S7 objects or hydrological values with documented units
 # Dependencies: S7; data.table; yaml; logger (structured logging; no fastverse equivalent)

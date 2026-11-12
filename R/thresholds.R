@@ -5,7 +5,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-01
 # Modified:     2026-11-01 - Add threshold scores
-# Tier:         3
+# Tier:         1
 # Inputs:       Aligned simulated and observed discharge (m3/s); thresholds as flows (m3/s)
 # Outputs:      data.table of scores, one row per threshold
 # Dependencies: data.table; stats

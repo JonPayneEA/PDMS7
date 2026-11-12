@@ -5,7 +5,7 @@
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-05
 # Modified:     2026-10-05 - CX: Add multi-objective calibration metrics
-# Tier:         3
+# Tier:         1
 # Inputs:       Aligned simulated and observed discharge in m3/s
 # Outputs:      Loss values, all minimized; Pareto membership
 # Dependencies: stats

@@ -5,7 +5,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-01
 # Modified:     2026-11-01 - Add calibration log tests
-# Tier:         3
+# Tier:         1
 # Inputs:       Synthetic forcing and flow in temporary project folders
 # Outputs:      testthat expectations
 # Dependencies: testthat

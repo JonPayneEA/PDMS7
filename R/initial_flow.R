@@ -5,7 +5,7 @@
 # Author:       Claude Code (AI-generated); human maintainer attribution not supplied
 # Created:      2026-11-01
 # Modified:     2026-11-01 - Initial steady-state start
-# Tier:         3
+# Tier:         1
 # Inputs:       FlodePdmModel; observed flow in m3/s; baseflow share of natural flow
 # Outputs:      A validated FlodePdmState in equilibrium with the observed flow
 # Dependencies: S7

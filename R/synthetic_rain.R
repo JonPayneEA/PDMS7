@@ -7,7 +7,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-02
 # Modified:     2026-11-02 - Add synthetic_rain(), fit_rain() and rain_statistics()
-# Tier:         3
+# Tier:         1
 # Inputs:       Parameters by calendar month, or a rainfall record (time, mm per step)
 # Outputs:      Regular rain and PET series, mm per step; fitted parameter tables
 # Dependencies: stats; S7 (reading reach.io objects)

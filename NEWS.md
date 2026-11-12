@@ -1,5 +1,8 @@
 # pdmS7 0.21.0
 
+- **Tier 1.** The package is declared Tier 1 (experimental) under the Flode governance tiers:
+  in CI and in every file header. R CMD check still blocks a merge on all four platforms; lint
+  and the 70 per cent coverage floor now report without blocking.
 - **The rainfall factor is locked during automatic calibration.** `calibration_bounds()` leaves
   `fc` out, so `calibrate_project()`, `compare_structures()`, `recommend_structure()`,
   `pdm_stages()` and `calibrate_batch()` hold it at the configuration's value, 1 in the presets.

@@ -5,7 +5,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-01
 # Modified:     2026-11-01 - Add calibration log fixtures
-# Tier:         3
+# Tier:         1
 # Inputs:       None
 # Outputs:      Temporary calibration projects
 # Dependencies: testthat

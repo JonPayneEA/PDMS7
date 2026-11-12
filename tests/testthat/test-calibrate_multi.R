@@ -5,7 +5,7 @@
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-05
 # Modified:     2026-10-05 - CX: Add multi-objective tests
-# Tier:         3
+# Tier:         1
 # Inputs:       Embedded synthetic flows
 # Outputs:      testthat expectations
 # Dependencies: testthat; data.table

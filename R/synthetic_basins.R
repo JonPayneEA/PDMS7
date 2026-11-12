@@ -6,7 +6,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-05
 # Modified:     2026-11-06 - Sub-daily windows no longer overlap
-# Tier:         3
+# Tier:         1
 # Inputs:       Sample size, record length, ranges for climate and parameters
 # Outputs:      Basin folders (forcing.csv, flow.csv, basin.yml, truth.yml); sample table
 # Dependencies: stats; data.table

@@ -7,7 +7,7 @@
 # Created:      2026-11-06
 # Modified:     2026-11-06 - Record the check against the authors' reference code
 #               2026-11-10 - independent: merge fragments of one flood (UK peak independence)
-# Tier:         3
+# Tier:         1
 # Inputs:       Rain (mm per step) and flow (any units; m3/s with an area for volumes)
 # Outputs:      Response time; a table of events; per-event model scores
 # Dependencies: stats

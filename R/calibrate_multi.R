@@ -5,7 +5,7 @@
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-05
 # Modified:     2026-10-05 - CX: Add bounded multi-objective calibration
-# Tier:         3
+# Tier:         1
 # Inputs:       PDM or coupled configuration, forcing and observed flow
 # Outputs:      Candidate archive, nondominated configurations and optimizer status
 # Dependencies: data.table; stats

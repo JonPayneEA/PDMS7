@@ -6,7 +6,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-08
 # Modified:     2026-11-08 - First version
-# Tier:         3
+# Tier:         1
 # Inputs:       Plot descriptions built by each standard plot
 # Outputs:      Base R graphics, ggplot objects, figure files
 # Dependencies: graphics; grDevices; ggplot2 (suggested)

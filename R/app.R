@@ -5,7 +5,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-01
 # Modified:     2026-11-01 - Add the calibration app
-# Tier:         3
+# Tier:         1
 # Inputs:       A calibration project folder; the user's declared name and role
 # Outputs:      Log entries written through the exported calibration log functions
 # Dependencies: shiny (suggested); graphics

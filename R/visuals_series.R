@@ -6,7 +6,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-08
 # Modified:     2026-11-08 - First version
-# Tier:         3
+# Tier:         1
 # Inputs:       Simulated and observed flow (m3/s), rain (mm per step), times, windows,
 #               thresholds; or a calibration project entry
 # Outputs:      A pdm_series object and its plots

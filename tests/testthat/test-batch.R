@@ -5,7 +5,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-01
 # Modified:     2026-11-01 - Add batch calibration tests
-# Tier:         3
+# Tier:         1
 # Inputs:       Temporary basin folders
 # Outputs:      testthat expectations
 # Dependencies: testthat

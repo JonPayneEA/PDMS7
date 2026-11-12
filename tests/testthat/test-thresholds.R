@@ -5,7 +5,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-01
 # Modified:     2026-11-01 - Add threshold tests
-# Tier:         3
+# Tier:         1
 # Inputs:       Hand-built flow series; temporary projects
 # Outputs:      testthat expectations
 # Dependencies: testthat

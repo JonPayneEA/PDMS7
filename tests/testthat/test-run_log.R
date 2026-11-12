@@ -5,7 +5,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-01
 # Modified:     2026-11-01 - Add run log tests
-# Tier:         3
+# Tier:         1
 # Inputs:       Synthetic forcing; temporary projects and log files
 # Outputs:      testthat expectations
 # Dependencies: testthat

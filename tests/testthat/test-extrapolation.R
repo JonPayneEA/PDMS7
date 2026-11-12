@@ -5,7 +5,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-02
 # Modified:     2026-11-02 - Add extrapolation tests
-# Tier:         3
+# Tier:         1
 # Inputs:       Synthetic daily records; temporary calibration projects
 # Outputs:      testthat expectations
 # Dependencies: testthat

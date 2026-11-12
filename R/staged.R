@@ -7,7 +7,7 @@
 # Created:      2026-11-01
 # Modified:     2026-11-05 - The polish searches the full bounds by default
 #               2026-11-10 - Progress: each logged stage says when it begins
-# Tier:         3
+# Tier:         1
 # Inputs:       A configuration; forcing (mm per step); observed flow (m3/s)
 # Outputs:      The fitted configuration and one calibration result per stage
 # Dependencies: stats

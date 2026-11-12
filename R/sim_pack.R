@@ -5,7 +5,7 @@
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-05
 # Modified:     2026-11-01 - Compiled snowpack by default; R loop as reference
-# Tier:         3
+# Tier:         1
 # Inputs:       Interval precipitation mm, temperature Celsius and PET mm
 # Outputs:      data.table fluxes and restart attributes
 # Dependencies: S7; data.table

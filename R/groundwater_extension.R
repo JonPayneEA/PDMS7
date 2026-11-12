@@ -7,7 +7,7 @@
 # Created:      2026-11-12
 # Modified:     2026-11-12 - First version, from Moore and Bell (2002) and the PDM for PCs
 #                            scientific guide (UKCEH, 2022), section 3 and Appendix B
-# Tier:         3
+# Tier:         1
 # Inputs:       A linear, quadratic or cubic groundwater store; recharge and recorded
 #               abstraction per step (mm)
 # Outputs:      Storage, which may fall below zero; baseflow, spring flow, underflow,

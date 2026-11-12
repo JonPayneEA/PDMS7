@@ -7,7 +7,7 @@
 # Created:      2026-11-06
 # Modified:     2026-11-06 - First version
 #               2026-11-10 - One event per flood (find_events(independent = TRUE))
-# Tier:         3
+# Tier:         1
 # Inputs:       Events from find_events(); rain (mm per step); observed flow (m3/s)
 # Outputs:      A scoring function of the simulated flow, and its description
 # Dependencies: stats

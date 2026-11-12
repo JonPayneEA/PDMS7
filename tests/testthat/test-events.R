@@ -5,7 +5,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-06
 # Modified:     2026-11-06 - Add event tests
-# Tier:         3
+# Tier:         1
 # Inputs:       Constructed rain and flow with known responses; a small synthetic batch
 # Outputs:      testthat expectations
 # Dependencies: testthat

@@ -5,7 +5,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-01
 # Modified:     2026-11-01 - Add scorecard for the calibration log
-# Tier:         3
+# Tier:         1
 # Inputs:       Aligned simulated and observed discharge in m3/s
 # Outputs:      Named numeric vector of scores
 # Dependencies: stats

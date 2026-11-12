@@ -5,7 +5,7 @@
 // Author:       Claude Code (AI-generated); human maintainer attribution not supplied
 // Created:      2026-10-31
 // Modified:     2026-11-01 - C99 rewrite; PACK snowpack and coupled snow-PDM runs added
-// Tier:         3
+// Tier:         1
 // Inputs:       pdm_params, state array, rain and PET depths in mm per interval
 // Outputs:      Flow in m3/s, optional flux table, updated state
 // Dependencies: C99 standard library only; no R or Python headers

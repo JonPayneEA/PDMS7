@@ -7,7 +7,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-08
 # Modified:     2026-11-08 - First version (standard visuals, part 2)
-# Tier:         3
+# Tier:         1
 # Inputs:       A calibration project; event tables; calibration_checks() results
 # Outputs:      Plots in the pdmS7 house style
 # Dependencies: graphics; ggplot2 (suggested)

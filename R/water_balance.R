@@ -6,7 +6,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-08
 # Modified:     2026-11-08 - First version
-# Tier:         3
+# Tier:         1
 # Inputs:       Forcing (time, rain, pet in mm per step), observed flow (m3/s), area (km2)
 # Outputs:      A pdm_water_balance with a table by water year, flags and plots
 # Dependencies: stats; graphics; ggplot2 (suggested)

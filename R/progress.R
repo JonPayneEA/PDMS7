@@ -6,7 +6,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-10
 # Modified:     2026-11-10 - First version
-# Tier:         3
+# Tier:         1
 # Inputs:       Options pdmS7.progress_every, pdmS7.progress_label, pdmS7.progress_file
 # Outputs:      INFO log lines, or lines appended to a progress file from worker processes
 # Dependencies: logger

@@ -5,7 +5,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-01
 # Modified:     2026-11-01 - Add the calibration log
-# Tier:         3
+# Tier:         1
 # Inputs:       Calibration project folders
 # Outputs:      data.tables of entries, trials, projects and integrity checks
 # Dependencies: data.table; tools (MD5)

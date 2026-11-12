@@ -6,7 +6,7 @@
 # Created:      2026-11-01
 # Modified:     2026-11-01 - Add pdm_hindcast(), hindcast_scores(), plot_hindcast()
 #               2026-11-09 - Forecast origins only at rows of the window, not in its gaps
-# Tier:         3
+# Tier:         1
 # Inputs:       A FlodePdmModel; forcing (mm per step); observed flow (m3/s)
 # Outputs:      data.table of forecasts by origin, lead and method; scores by lead
 # Dependencies: data.table; stats

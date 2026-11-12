@@ -5,7 +5,7 @@
 // Author:       Claude Code (AI-generated); human maintainer attribution not supplied
 // Created:      2026-10-31
 // Modified:     2026-11-06 - Add event identification (DMCA-ESR) and event scores
-// Tier:         3
+// Tier:         1
 // Inputs:       Parameters, state, rain and PET depths in mm per interval
 // Outputs:      Flow in m3/s, optional flux table, updated state
 // Dependencies: C99 standard library only

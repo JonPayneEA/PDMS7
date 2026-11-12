@@ -9,7 +9,7 @@
 #               2026-11-09 - Summary adds median_abs_peak_error
 #               2026-11-10 - A split recharge's alpha at 0 or 1 is flagged: it switches a
 #                            flow path off
-# Tier:         3
+# Tier:         1
 # Inputs:       A calibration project and one of its model entries
 # Outputs:      Tables of parameters, events and a summary by window
 # Dependencies: stats

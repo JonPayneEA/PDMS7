@@ -7,7 +7,7 @@
 # Modified:     2026-11-01 - Add structure comparison
 #               2026-11-12 - Bounds for the groundwater extension's flow parameters, when set
 #               2026-11-12 - The rainfall factor held fixed unless an override searches it
-# Tier:         3
+# Tier:         1
 # Inputs:       Configuration lists; inst/calibration-bounds.csv
 # Outputs:      Bounds tables and named lists of configurations
 # Dependencies: data.table

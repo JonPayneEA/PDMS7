@@ -5,7 +5,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-01
 # Modified:     2026-11-01 - Add the calibration log
-# Tier:         3
+# Tier:         1
 # Inputs:       Forcing (rain, pet mm per interval; optional time) and flow (m3/s)
 # Outputs:      Checked data, simulated flow and scorecards
 # Dependencies: data.table; tools (MD5)

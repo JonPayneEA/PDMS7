@@ -7,7 +7,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-02
 # Modified:     2026-11-02 - Add synthetic_catchment()
-# Tier:         3
+# Tier:         1
 # Inputs:       Rain and PET (generated or supplied); a configuration
 # Outputs:      Forcing, true and observed flow, and a record of what was done
 # Dependencies: stats

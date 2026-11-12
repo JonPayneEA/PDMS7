@@ -6,7 +6,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-07
 # Modified:     2026-11-07 - First version
-# Tier:         3
+# Tier:         1
 # Inputs:       A model; forcing (mm per step); events from find_events(); a starting state
 # Outputs:      Saved states and event windows; simulated flow per event
 # Dependencies: none

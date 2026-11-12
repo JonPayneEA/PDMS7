@@ -9,7 +9,7 @@
 #               2026-11-09 - overrides and exclude passed to compare_structures(); ties
 #                            broken on the median of the absolute peak errors
 #               2026-11-10 - Progress: each step announced, with the time left at its pace
-# Tier:         3
+# Tier:         1
 # Inputs:       A calibration project with registered calibration and validation windows
 # Outputs:      The recommended configuration, a table per step, and a note in the log
 # Dependencies: none

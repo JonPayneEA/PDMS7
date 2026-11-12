@@ -5,7 +5,7 @@
 # Author:       Claude Code (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-31
 # Modified:     2026-10-31 - Add compiled engine and 15-minute series
-# Tier:         3
+# Tier:         1
 # Inputs:       None; synthetic daily and 15-minute forcing from fixed seeds
 # Outputs:      Console report in markdown; figures apply to the machine used
 # Dependencies: pdmS7; data.table

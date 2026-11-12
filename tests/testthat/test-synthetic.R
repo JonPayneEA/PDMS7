@@ -5,7 +5,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-02
 # Modified:     2026-11-06 - Check the stored search study
-# Tier:         3
+# Tier:         1
 # Inputs:       Simulated rain and flow
 # Outputs:      testthat expectations
 # Dependencies: testthat

@@ -6,7 +6,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-07
 # Modified:     2026-11-07 - First version
-# Tier:         3
+# Tier:         1
 # Inputs:       Gauge locations and depths (mm per step); optionally radar grids (mm per step);
 #               a catchment mask on the grid
 # Outputs:      Catchment-average rain (mm per step), with leave-one-gauge-out checks

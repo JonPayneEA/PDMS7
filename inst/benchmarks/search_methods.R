@@ -5,7 +5,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-05
 # Modified:     2026-11-06 - Four searches; writes inst/extdata/search_study.csv
-# Tier:         3
+# Tier:         1
 # Inputs:       None; 30 synthetic catchments from a fixed seed
 # Outputs:      search_study.csv (one row per search and basin); console summary
 # Dependencies: pdmS7 (installed, for parallel workers); data.table
