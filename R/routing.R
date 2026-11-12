@@ -5,7 +5,7 @@
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
 # Modified:     2026-10-05 - CX: Align with Flode Tier 3 target conventions
-# Tier:         3
+# Tier:         1
 # Inputs:       Typed S7 components; depths in mm; time in hours
 # Outputs:      Validated S7 objects or hydrological values with documented units
 # Dependencies: S7; data.table; yaml; logger (structured logging; no fastverse equivalent)
@@ -307,7 +307,10 @@ S7::method(storage_for_flow, FlodeExponentialRouting) <- function(x, q) {
   .check(
     length(storage) == n, paste("FlodeRouting state requires", n, "storage values")
   )
-  if (!S7::S7_inherits(x, FlodeExponentialRouting)) {
+  # The exponential store's storage is a signed log coordinate, and an extended groundwater
+  # store may be drawn below zero by abstraction; every other store holds water.
+  if (!S7::S7_inherits(x, FlodeExponentialRouting) &&
+        !S7::S7_inherits(x, FlodeExtendedGroundwater)) {
     .nonnegative(storage, "FlodeRouting storage")
   }
 }

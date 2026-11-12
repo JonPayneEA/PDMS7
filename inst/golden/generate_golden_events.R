@@ -6,7 +6,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-06
 # Modified:     2026-11-06 - Initial event golden files
-# Tier:         3
+# Tier:         1
 # Inputs:       None; synthetic records from fixed seeds
 # Outputs:      events_*.csv and <case>_events_*.csv in inst/golden/ (see README.md there)
 # Dependencies: pdmS7

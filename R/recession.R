@@ -6,7 +6,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-07
 # Modified:     2026-11-07 - First version
-# Tier:         3
+# Tier:         1
 # Inputs:       Flow (m3/s); optionally rain (mm per step)
 # Outputs:      The recession slope with a confidence interval, the stores consistent with it,
 #               and the points and bins behind it

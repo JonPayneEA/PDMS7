@@ -56,7 +56,7 @@ joint polish over everything.
 \details{
 \tabular{lll}{
    Stage \tab Fits \tab Objective \cr
-   1. Volume and baseflow \tab \code{fc}, soil store, recharge, groundwater \tab 1 - log NSE + volume error \cr
+   1. Volume and baseflow \tab Soil, recharge, groundwater; \code{fc} if unlocked \tab 1 - log NSE + volume \cr
    2. Fast response \tab Surface stores and the store shape \code{b} \tab 1 - NSE \cr
    3. Polish \tab Everything, over the full bounds \tab 1 - NSE \cr
    4. Events (optional) \tab Surface stores, \code{b} and the time delay \code{td} \tab events objective \cr

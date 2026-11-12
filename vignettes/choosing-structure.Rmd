@@ -95,7 +95,9 @@ calibration_bounds(structures$lognormal)[, c("path", "lower", "upper", "scale")]
 ```
 
 Bounds can be overridden for a catchment you know, with `overrides`, or a parameter held
-fixed with `exclude`.
+fixed with `exclude`. The rainfall factor `fc` is held at its configured value unless an
+override gives it bounds. This made-up catchment's rain is known to be 10 per cent low, so
+the comparison below unlocks it.
 
 # The comparison
 
@@ -105,6 +107,7 @@ structures run in parallel; here they run in turn.
 ```{r compare}
 elapsed <- system.time(
   ranking <- compare_structures(project, structures, starts = 2, control = list(maxit = 30),
+                                overrides = list(fc = c(0.6, 1.6)),
                                 reasoning = "Which structure suits this catchment?")
 )[["elapsed"]]
 round(elapsed)

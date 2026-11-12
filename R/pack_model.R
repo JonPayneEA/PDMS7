@@ -5,7 +5,7 @@
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-05
 # Modified:     2026-10-05 - CX: Add PACK snow components
-# Tier:         3
+# Tier:         1
 # Inputs:       Snow parameters in mm, hours and degrees Celsius
 # Outputs:      Validated S7 model and state objects
 # Dependencies: S7 (typed model components); yaml (configuration)

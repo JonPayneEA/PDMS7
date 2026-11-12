@@ -5,7 +5,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-01
 # Modified:     2026-11-01 - Add report tests
-# Tier:         3
+# Tier:         1
 # Inputs:       Temporary calibration projects
 # Outputs:      testthat expectations
 # Dependencies: testthat

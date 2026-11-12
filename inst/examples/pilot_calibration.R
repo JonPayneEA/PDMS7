@@ -5,7 +5,7 @@
 # Author:       Claude Code (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-31
 # Modified:     2026-10-31 - Initial pilot script
-# Tier:         3
+# Tier:         1
 # Inputs:       Per-basin CSV files of rain, PET and flow; a basin table with areas
 # Outputs:      Per-basin and per-start CSV tables, an RDS of all fits, a console report
 # Dependencies: pdmS7; parallel; utils

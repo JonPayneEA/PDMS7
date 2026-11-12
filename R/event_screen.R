@@ -7,7 +7,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-07
 # Modified:     2026-11-07 - First version
-# Tier:         3
+# Tier:         1
 # Inputs:       Events from find_events(); observed flow (m3/s)
 # Outputs:      The events with their rise above baseflow, flags and whether to use them
 # Dependencies: none

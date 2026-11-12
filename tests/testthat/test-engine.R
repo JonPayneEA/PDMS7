@@ -5,7 +5,7 @@
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
 # Modified:     2026-10-31 - Add compiled engine equivalence tests
-# Tier:         3
+# Tier:         1
 # Inputs:       Typed S7 components; depths in mm; time in hours
 # Outputs:      Validated S7 objects or hydrological values with documented units
 # Dependencies: S7; data.table; yaml; logger (structured logging; no fastverse equivalent)

@@ -5,7 +5,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-01
 # Modified:     2026-11-01 - Add structure comparison tests
-# Tier:         3
+# Tier:         1
 # Inputs:       Synthetic data; temporary projects
 # Outputs:      testthat expectations
 # Dependencies: testthat
@@ -50,6 +50,19 @@ test_that("bounds can be overridden, extended and excluded", {
   expect_error(calibration_bounds(pdm_presets("standard"), overrides = list(fc = 1)), "pairs")
   expect_error(calibration_bounds(pdm_presets("standard"), overrides = list(x = c(0, 1))),
                "Unknown parameter")
+})
+
+# Guards: the rainfall factor is locked at its configured value unless an override unlocks it,
+# and so stays out of every default stage
+test_that("the rainfall factor is locked by default", {
+  cfg <- pdm_presets("standard")
+  expect_false("fc" %in% calibration_bounds(cfg)$path)
+  expect_false("fc" %in% unlist(lapply(pdm_stages(cfg), `[[`, "parameters")))
+  open <- calibration_bounds(cfg, overrides = list(fc = c(0.6, 1.6)))
+  expect_equal(unlist(open[open$path == "fc", c("lower", "upper")]), c(lower = 0.6, upper = 1.6))
+  expect_true("fc" %in% pdm_stages(cfg, overrides = list(fc = c(0.8, 1.2)))[[1]]$parameters)
+  stage <- list(parameters = "fc")
+  expect_error(.stage_bounds(stage, calibration_bounds(cfg), cfg), "locked by default")
 })
 
 # Guards: log-scale search helps where it should

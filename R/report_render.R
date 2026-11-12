@@ -5,7 +5,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-01
 # Modified:     2026-11-01 - Add the calibration report
-# Tier:         3
+# Tier:         1
 # Inputs:       A list of report blocks
 # Outputs:      HTML with embedded PNG figures; Markdown with PNG files
 # Dependencies: grDevices

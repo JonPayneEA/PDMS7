@@ -6,7 +6,7 @@
 // Created:      2026-11-06
 // Modified:     2026-11-06 - Bind pdm_dmca_rho, pdm_find_events, pdm_event_summary and
 //                            pdm_event_scores
-// Tier:         3
+// Tier:         1
 // Inputs:       Rain (mm per step), flow, events as 1-based positions from R
 // Outputs:      The correlation curve; events; event totals; event scores
 // Dependencies: cpp11 (header only, build time); pdm_core

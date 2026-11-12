@@ -5,7 +5,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-01
 # Modified:     2026-11-01 - Add calibration app tests
-# Tier:         3
+# Tier:         1
 # Inputs:       Temporary projects driven through shiny::testServer
 # Outputs:      testthat expectations
 # Dependencies: testthat; shiny (suggested)

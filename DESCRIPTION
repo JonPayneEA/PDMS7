@@ -1,7 +1,7 @@
 Package: pdmS7
 Type: Package
 Title: Configurable Probability Distributed Rainfall Runoff Model
-Version: 0.20.0
+Version: 0.21.0
 Authors@R: person("PDM", "Contributors", role = c("aut", "cre"), email =
         "pdm@example.org")
 Description: An independent, configurable implementation of the Probability Distributed
@@ -24,7 +24,7 @@ VignetteBuilder: knitr
 Config/testthat/edition: 3
 Roxygen: list(markdown = TRUE)
 Collate: 'utils.R' 'distributions.R' 'distributions_part3.R' 'distributions_part2.R'
-        'distributions_2.R' 'routing.R' 'routing_part3.R' 'routing_part2.R' 'routing_2.R'
+        'distributions_2.R' 'routing.R' 'routing_part3.R' 'routing_part2.R' 'routing_2.R' 'groundwater_extension.R'
         'recharge.R' 'model.R' 'model_part2.R' 'model_2.R' 'configuration.R'
         'configuration_part2.R' 'updating.R' 'updating_part2.R' 'compatibility.R'
         'sim_pdm.R' 'read_pdm_config.R' 'pack_model.R' 'pack_step.R' 'sim_pack.R'

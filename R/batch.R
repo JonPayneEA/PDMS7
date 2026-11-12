@@ -5,7 +5,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-01
 # Modified:     2026-11-01 - Add batch calibration
-# Tier:         3
+# Tier:         1
 # Inputs:       A folder of basin folders (forcing.csv, flow.csv, basin.yml)
 # Outputs:      One calibration project per basin; batch-status.csv
 # Dependencies: parallel (base R); data.table; yaml

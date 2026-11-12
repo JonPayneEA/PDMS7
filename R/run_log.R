@@ -5,7 +5,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-01
 # Modified:     2026-11-01 - Add the run log and approval register
-# Tier:         3
+# Tier:         1
 # Inputs:       options(pdmS7.run_log, pdmS7.register) or PDMS7_RUN_LOG, PDMS7_REGISTER
 # Outputs:      One CSV row per run_pdm() call
 # Dependencies: data.table; yaml; tools (MD5)

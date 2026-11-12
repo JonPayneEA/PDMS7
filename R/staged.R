@@ -7,7 +7,7 @@
 # Created:      2026-11-01
 # Modified:     2026-11-05 - The polish searches the full bounds by default
 #               2026-11-10 - Progress: each logged stage says when it begins
-# Tier:         3
+# Tier:         1
 # Inputs:       A configuration; forcing (mm per step); observed flow (m3/s)
 # Outputs:      The fitted configuration and one calibration result per stage
 # Dependencies: stats
@@ -21,7 +21,7 @@
 #'
 #' | Stage | Fits | Objective |
 #' |---|---|---|
-#' | 1. Volume and baseflow | `fc`, soil store, recharge, groundwater | 1 - log NSE + volume error |
+#' | 1. Volume and baseflow | Soil, recharge, groundwater; `fc` if unlocked | 1 - log NSE + volume |
 #' | 2. Fast response | Surface stores and the store shape `b` | 1 - NSE |
 #' | 3. Polish | Everything, over the full bounds | 1 - NSE |
 #' | 4. Events (optional) | Surface stores, `b` and the time delay `td` | events objective |
@@ -154,7 +154,10 @@ pdm_stages <- function(config, overrides = NULL, exclude = NULL, polish = TRUE,
                     extra[, c("path", "lower", "upper", "scale")])
   }
   missing <- setdiff(stage$parameters, bounds$path)
-  .check(!length(missing), paste("No bounds for", toString(missing)))
+  .check(!length(missing), paste0(
+    "No bounds for ", toString(missing), ". A parameter locked by default, such as fc, needs ",
+    "bounds from calibration_bounds(config, overrides = list(fc = c(0.8, 1.2)))"
+  ))
   b <- bounds[match(stage$parameters, bounds$path), ]
   lower <- stats::setNames(b$lower, b$path)
   upper <- stats::setNames(b$upper, b$path)

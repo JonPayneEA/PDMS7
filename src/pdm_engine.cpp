@@ -5,7 +5,7 @@
 // Author:       Claude Code (AI-generated); human maintainer attribution not supplied
 // Created:      2026-10-31
 // Modified:     2026-10-31 - Interface version 2 parameter layout
-// Tier:         3
+// Tier:         1
 // Inputs:       Rain and PET depths in mm per interval; parameters in R/engine.R order
 // Outputs:      Flux columns equal to pdm_step() to rounding; final state vector
 // Dependencies: cpp11 (header only, build time); pdm_core

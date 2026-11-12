@@ -8,7 +8,7 @@
 #               2026-11-10 - Each window's figures show that window (they all showed the
 #                            last); hydrographs of the held-back wettest years; the ten
 #                            largest events
-# Tier:         3
+# Tier:         1
 # Inputs:       A calibration project folder
 # Outputs:      report/report.html (self-contained), report/report.md, report/figures
 # Dependencies: graphics; grDevices; data.table

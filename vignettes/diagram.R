@@ -5,7 +5,7 @@
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-06
 # Modified:     2026-10-06 - CX: Add reproducible documentation diagrams
-# Tier:         3
+# Tier:         1
 # Inputs:       Diagram name: pdm, snow or workflow
 # Outputs:      Base graphics process diagram
 # Dependencies: graphics (R bundled)

@@ -47,7 +47,9 @@ Shoemaker, 2007), is built for watershed models and now available as `method = "
 # Four searches, one sample
 
 Each search was run as one `calibrate_batch()` over the same 30 catchments, ten years of daily
-data each, and every result was set against its truth.
+data each, and every result was set against its truth. Each catchment's rain is biased by a
+known factor, so every search included the rainfall factor `fc`, which a batch now holds at 1
+unless an override unlocks it.
 
 | Search | What it does |
 |---|---|
@@ -175,7 +177,7 @@ profile_basin <- function(id) {
   rows <- d$first:d$last
   cal <- d$forcing[seq_len(d$last), ]
   obs <- d$observed[seq_len(d$last)]
-  b <- calibration_bounds(d$truth)
+  b <- calibration_bounds(d$truth, overrides = list(fc = c(0.6, 1.6)))
   b <- b[b$path %in% others, ]
   fits <- lapply(kb_grid, function(kb) {
     cfg <- d$truth

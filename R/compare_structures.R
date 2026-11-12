@@ -7,7 +7,7 @@
 # Modified:     2026-11-01 - Add structure comparison
 #               2026-11-10 - Progress: what is being compared, how long each fit took,
 #                            and a progress file for fits run on several cores
-# Tier:         3
+# Tier:         1
 # Inputs:       A calibration project with a validation window; named configurations
 # Outputs:      structure_selected and auto_calibration entries; a ranking table
 # Dependencies: parallel (base R); data.table

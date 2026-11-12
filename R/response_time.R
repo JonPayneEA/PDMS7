@@ -5,7 +5,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-01
 # Modified:     2026-11-01 - Add pdm_response_time() and ar_from_response_time()
-# Tier:         3
+# Tier:         1
 # Inputs:       A FlodePdmModel; a reference flow (m3/s); optional FEH time to peak (h)
 # Outputs:      A list of timescales in hours, the pulse response, and an FEH check
 # Dependencies: stats

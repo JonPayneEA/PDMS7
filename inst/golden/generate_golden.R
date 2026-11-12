@@ -5,7 +5,7 @@
 # Author:       Claude Code (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-31
 # Modified:     2026-10-31 - Initial golden file generator
-# Tier:         3
+# Tier:         1
 # Inputs:       None; fixed synthetic forcing and parameter sets
 # Outputs:      CSV files in inst/golden/ (see README.md there)
 # Dependencies: pdmS7

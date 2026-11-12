@@ -5,7 +5,7 @@
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
 # Modified:     2026-10-05 - CX: Align with Flode Tier 3 target conventions
-# Tier:         3
+# Tier:         1
 # Inputs:       Typed S7 components; depths in mm; time in hours
 # Outputs:      Validated S7 objects or hydrological values with documented units
 # Dependencies: S7; data.table; yaml; logger (structured logging; no fastverse equivalent)
@@ -108,7 +108,17 @@ pdm_from_config <- function(config) {
     config$surface <- .component(config$surface, .route_registry())
   }
   if (!is.null(config$groundwater)) {
+    # The groundwater extension wraps the store it extends (groundwater_extension()).
+    extension <- config$groundwater$extension
+    config$groundwater$extension <- NULL
     config$groundwater <- .component(config$groundwater, .route_registry())
+    if (!is.null(extension)) {
+      named <- !is.null(names(extension)) && all(nzchar(names(extension)))
+      .check(is.list(extension) && (!length(extension) || named),
+             "groundwater extension must be a named list of its parameters")
+      config$groundwater <- do.call(groundwater_extension,
+                                    c(list(store = config$groundwater), extension))
+    }
   }
   do.call(pdm_model, config)
 }

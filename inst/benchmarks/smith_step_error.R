@@ -5,7 +5,7 @@
 # Author:       Claude Code (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-31
 # Modified:     2026-10-31 - Add Smith step error sweep
-# Tier:         3
+# Tier:         1
 # Inputs:       None; three years of synthetic 15-minute forcing, aggregated to each step
 # Outputs:      Console table; supports the 1-hour threshold in pdm_model()
 # Dependencies: pdmS7

@@ -5,7 +5,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-01
 # Modified:     2026-11-06 - Default AR sets must be stable; test the refusal
-# Tier:         3
+# Tier:         1
 # Inputs:       Synthetic forcing and flows
 # Outputs:      testthat expectations
 # Dependencies: testthat

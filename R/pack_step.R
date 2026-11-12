@@ -5,7 +5,7 @@
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-05
 # Modified:     2026-10-05 - CX: Implement PACK accounting
-# Tier:         3
+# Tier:         1
 # Inputs:       Precipitation depth mm; temperature Celsius; interval hours
 # Outputs:      Updated S7 snow state and conservative water fluxes
 # Dependencies: S7 (typed model components)

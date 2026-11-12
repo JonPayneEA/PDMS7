@@ -74,8 +74,9 @@ check_inputs(forcing, flow, area_km2 = 2.5)
 ```
 
 The water balance is impossible, and the check says so before any calibration is spent on it.
-A model given this area would need ten times the rain it has; the search would push the
-rainfall factor to its limit and still fall short.
+A model given this area would need ten times the rain it has. No store can make up that
+difference, and a rainfall factor unlocked for the search would reach its limit and still
+fall short.
 
 ## Year by year: the water balance
 

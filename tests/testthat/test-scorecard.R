@@ -5,7 +5,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-01
 # Modified:     2026-11-01 - Add scorecard tests
-# Tier:         3
+# Tier:         1
 # Inputs:       Synthetic flows, m3/s
 # Outputs:      testthat expectations
 # Dependencies: testthat

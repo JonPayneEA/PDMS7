@@ -5,7 +5,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-01
 # Modified:     2026-11-01 - Add the calibration log
-# Tier:         3
+# Tier:         1
 # Inputs:       A calibration project folder; declared user and role
 # Outputs:      Append-only YAML entries; invisible entry lists
 # Dependencies: yaml; data.table

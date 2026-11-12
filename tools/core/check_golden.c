@@ -5,7 +5,7 @@
 // Author:       Claude Code (AI-generated); human maintainer attribution not supplied
 // Created:      2026-10-31
 // Modified:     2026-11-06 - Check the event functions
-// Tier:         3
+// Tier:         1
 // Inputs:       CSV files in inst/golden
 // Outputs:      Pass or fail per case on stdout; exit status 0 only if every case passes
 // Dependencies: C99 and the PDM core (src/pdm_core.h, src/pdm_core.c)

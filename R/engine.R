@@ -5,7 +5,7 @@
 # Author:       Claude Code (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-31
 # Modified:     2026-11-01 - All PDM components; only PACK snow stays on the R loop
-# Tier:         3
+# Tier:         1
 # Inputs:       FlodePdmModel, FlodePdmState, forcing depths in mm per interval
 # Outputs:      run_pdm() output columns and final state, equal to the R loop to rounding
 # Dependencies: cpp11 (build time); data.table
@@ -171,6 +171,7 @@ NULL
 .engine_flags <- new.env(parent = emptyenv())
 .warn_smith_step <- function(model) {
   uses_smith <- function(route) {
+    if (S7::S7_inherits(route, FlodeExtendedGroundwater)) route <- route@store
     class(route)[1L] == "pdmS7::FlodePowerRouting" && route@solver == "smith"
   }
   if (model@dt > .smith_max_dt && (uses_smith(model@surface) || uses_smith(model@groundwater)) &&

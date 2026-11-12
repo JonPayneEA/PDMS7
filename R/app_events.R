@@ -7,7 +7,7 @@
 # Created:      2026-11-07
 # Modified:     2026-11-07 - First version
 #               2026-11-08 - Sliders snapped to their step no longer count as moved
-# Tier:         3
+# Tier:         1
 # Inputs:       Shiny inputs; the open project
 # Outputs:      Event plots, scores, recession check; trial entries
 # Dependencies: shiny

@@ -5,7 +5,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-01
 # Modified:     2026-11-01 - Add the calibration app
-# Tier:         3
+# Tier:         1
 # Inputs:       Shiny inputs
 # Outputs:      Calls to the exported calibration log functions
 # Dependencies: shiny (suggested)

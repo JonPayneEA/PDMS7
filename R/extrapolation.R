@@ -7,7 +7,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-02
 # Modified:     2026-11-02 - Add wettest-year hold-out, rating flag and equally good sets
-# Tier:         3
+# Tier:         1
 # Inputs:       Times, observed flow (m3/s), a registered scorecard
 # Outputs:      Held-back years, scoring masks, rating flags, thinned parameter sets
 # Dependencies: none beyond base R

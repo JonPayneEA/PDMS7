@@ -12,7 +12,7 @@
 #                            search; a rerun finishes the validation, test and report
 #               2026-11-10 - Progress: the plan at the start, each step as it begins, the
 #                            total time at the end
-# Tier:         3
+# Tier:         1
 # Inputs:       Forcing and observed flow; a calibration project
 # Outputs:      A logged calibration project; models, check readouts and event runs
 # Dependencies: none beyond pdmS7

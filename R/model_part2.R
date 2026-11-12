@@ -5,7 +5,8 @@
 # Author:       Codex (AI-generated); human maintainer attribution not supplied
 # Created:      2026-10-04
 # Modified:     2026-10-05 - CX: Align with Flode Tier 3 target conventions
-# Tier:         3
+#               2026-11-12 - The groundwater extension: abstraction and its losses
+# Tier:         1
 # Inputs:       Typed S7 components; depths in mm; time in hours
 # Outputs:      Validated S7 objects or hydrological values with documented units
 # Dependencies: S7; data.table; yaml; logger (structured logging; no fastverse equivalent)
@@ -19,6 +20,8 @@
 #' @param rain Nonnegative interval rainfall depth in mm.
 #' @param pet Interval potential evaporation depth in mm. Negative values are condensation
 #'   and add their whole depth to the soil store.
+#' @param abstraction Recorded abstraction over the interval, mm, for a model with the
+#'   groundwater extension ([groundwater_extension()]); negative for a gain.
 #'
 #' @return A list with state and a one-row flux data.frame.
 #'
@@ -33,12 +36,15 @@
 # soil storage at the start of the step; limit both to the water available; update the soil store,
 # which yields direct runoff; send runoff and recharge to the surface and groundwater stores; delay
 # both outflows by td; convert to m3/s; and check the water balance.
-pdm_step <- function(model, state, rain, pet) {
+pdm_step <- function(model, state, rain, pet, abstraction = 0) {
   .validate_state(model, state)
   .check(
-    .scalar(rain, 0) && .scalar(pet),
-    "rain must be finite and nonnegative, and pet finite"
+    .scalar(rain, 0) && .scalar(pet) && .scalar(abstraction),
+    "rain must be finite and nonnegative, and pet and abstraction finite"
   )
+  extended <- S7::S7_inherits(model@groundwater, FlodeExtendedGroundwater)
+  .check(extended || abstraction == 0,
+         "abstraction needs the groundwater extension (groundwater_extension())")
   dt <- model@dt
   old <- .total_storage(state)
   smax <- capacity_mean(model@distribution)
@@ -68,7 +74,13 @@ pdm_step <- function(model, state, rain, pet) {
   }
   # Inputs are spread evenly across the step as a rate (mm/h).
   surf <- route_step(model@surface, state@surface, fast / dt, dt)
-  ground <- route_step(model@groundwater, state@groundwater, slow / dt, dt)
+  # The groundwater extension also takes abstraction, and loses water to springs and underflow.
+  ground <- if (extended) {
+    .extended_step(model@groundwater, state@groundwater, slow / dt, abstraction, dt)
+  } else {
+    route_step(model@groundwater, state@groundwater, slow / dt, dt)
+  }
+  losses <- if (extended) ground$spring + ground$underflow + ground$abstraction else 0
   d1 <- .delay(state@delay_surface, surf$outflow, model@td / dt)
   d2 <- .delay(state@delay_groundwater, ground$outflow, model@td / dt)
   e1 <- .delay(state@delay_surface_end, surf$q_end, model@td / dt)
@@ -90,7 +102,7 @@ pdm_step <- function(model, state, rain, pet) {
   natural <- d1$out + d2$out
   # Water balance for the step, mm: storage before, plus corrected rain, minus evaporation and
   # outflow, minus storage after. Zero to rounding; reported in every output row.
-  residual <- old + p - et - natural - .total_storage(next_state)
+  residual <- old + p - et - natural - losses - .total_storage(next_state)
   flux_dt <- data.table::data.table(
     step = next_state@step, rain_mm = rain, rain_corrected_mm = p, pet_mm = pet, aet_mm = et,
     aet_requested_mm = et_requested, recharge_mm = dr, recharge_requested_mm = dr_requested,
@@ -107,5 +119,14 @@ pdm_step <- function(model, state, rain, pet) {
 
     balance_error_mm = residual
   )
-  list(state = next_state, flux = data.table::setDF(flux_dt))
+  flux <- data.table::setDF(flux_dt)
+  if (extended) {
+    g <- model@groundwater
+    flux$abstraction_mm <- ground$abstraction
+    flux$underflow_mm <- ground$underflow
+    flux$spring_mm <- ground$spring
+    flux$groundwater_deficit_mm <- ground$deficit
+    flux$well_level_m <- if (g@ys > 0) g@hw - g@ys * ground$deficit / 1000 else NA_real_
+  }
+  list(state = next_state, flux = flux)
 }

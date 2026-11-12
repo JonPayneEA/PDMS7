@@ -7,7 +7,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-08
 # Modified:     2026-11-08 - First version, from the Beggearn Huish calibration script
-# Tier:         3
+# Tier:         1
 # Inputs:       CSV files of rain, potential evaporation and flow
 # Outputs:      Aligned, converted, gap-free series with preparation notes; an input check
 # Dependencies: data.table; stats

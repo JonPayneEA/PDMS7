@@ -6,7 +6,7 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-07
 # Modified:     2026-11-07 - First version
-# Tier:         3
+# Tier:         1
 # Inputs:       Daily H19 NetCDF files (British National Grid), an extent in metres
 # Outputs:      The cropped grid, the times of every layer, and a reader for one step's grid
 # Dependencies: terra, ncdf4 (suggested)
