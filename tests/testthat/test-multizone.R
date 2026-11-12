@@ -28,6 +28,29 @@ test_that("a two-zone configuration builds as documented", {
   expect_false(identical(pdm_fingerprint(two), pdm_fingerprint(mz_base())))
 })
 
+# Guards: the rain adds up: every zone reads the same depths under one rainfall factor, so the
+# rain volume over the zones is the catchment's; unlocking fc scales every zone together
+test_that("the rainfall adds up across the zones", {
+  f <- mz_forcing()
+  two <- two_zone_config(mz_base(), share = 0.25)
+  two$fc <- 1.1
+  model <- pdm_from_config(two)
+  expect_equal(unname(vapply(model@zones, function(z) z@fc, 0)), c(1.1, 1.1))
+  out <- run_pdm(model, f)$output
+  parts <- lapply(model@zones, function(z) run_pdm(z, f)$output)
+  volume <- function(o, area) sum(o$rain_corrected_mm) * area
+  expect_equal(volume(parts$main, model@zones$main@area_km2) +
+                 volume(parts$fast, model@zones$fast@area_km2),
+               volume(out, model@area_km2), tolerance = 1e-12)
+  expect_equal(out$rain_corrected_mm, 1.1 * f$rain, tolerance = 1e-12)
+  open <- calibration_bounds(two, overrides = list(fc = c(0.8, 1.2)))
+  expect_true("fc" %in% open$path)
+  expect_false(any(grepl("zones\\..*\\.fc$", open$path)))
+  bad <- two
+  bad$zones$fast$fc <- 1
+  expect_error(pdm_from_config(bad), "rainfall factor once")
+})
+
 # Guards: the outlet flow is the sum of the zones' flows, depths are area-weighted, and the water
 # balance closes
 test_that("run_pdm adds the zones at the outlet", {

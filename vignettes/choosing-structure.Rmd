@@ -93,7 +93,8 @@ rec$steps$recharge$table      # the comparison, with at_bound and equally_good
 
 **Zones, if asked.** With `zones = c(1, 2)` in `calibrate_project()`, a fourth step compares the
 structure chosen as one zone with the same structure plus a small fast zone, by the same rule
-([Choosing model components](model-options.html#several-zones)). Use it where one PDM cannot
+([Choosing model components](model-options.html#several-zones); worked through in
+[The two-zone PDM](two-zone-pdm.html)). Use it where one PDM cannot
 give a sharp spike and a slower flood hydrograph at once: the signs are a split recharge share
 at its lower bound and surface stores at their caps in every fit.
 

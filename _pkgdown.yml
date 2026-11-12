@@ -57,6 +57,7 @@ articles:
   navbar: Model options
   contents:
   - model-options
+  - two-zone-pdm
   - starting-states
 - title: Calibration
   navbar: Calibration

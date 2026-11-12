@@ -31,8 +31,9 @@ then a slower flood hydrograph, then baseflow.
 }
 \details{
 \strong{Configuration.} A multi-zone configuration has \code{area_km2} and \code{dt} for the whole
-catchment and a named list \code{zones}, each a single-zone configuration without \code{area_km2} or
-\code{dt}. Every zone after the first has a \code{share}, its fraction of the catchment area; the first
+catchment, optionally one rainfall factor \code{fc} for every zone, and a named list \code{zones}, each
+a single-zone configuration without \code{area_km2} or \code{dt} (nor \code{fc}, when it is given at the
+top). Every zone after the first has a \code{share}, its fraction of the catchment area; the first
 zone takes the rest. Parameters are addressed as \verb{zones.<name>.<path>}, such as
 \code{zones.fast.share} or \code{zones.main.surface.k1}.
 
@@ -45,9 +46,15 @@ configuration, with every parameter set and most of them locked:\tabular{lll}{
    surface \tab one linear store, \code{kb} 1 h \tab \code{kb}, 0.25 to 12 h \cr
    groundwater \tab linear, \code{kb} 1000 h, never fed \tab no \cr
    \code{td} \tab 0 h \tab 0 to 6 h \cr
-   \code{be}, \code{fc} \tab the main zone's \tab no \cr
+   \code{be} \tab the main zone's \tab no \cr
 }
 
+
+\strong{The rain adds up.} Every zone reads the same rain and evaporation depths, and the zone
+areas add up to the catchment's, so the rain volume over the zones is the catchment's. The
+rainfall factor \code{fc} is set once, at the top, for every zone (locked at 1 by default, as for
+one zone); unlocked with \code{overrides = list(fc = ...)}, it scales the rain on every zone
+together.
 
 The fast zone only ever makes quick runoff, so it cannot trade baseflow with the main zone,
 which keeps the two zones' roles apart. \code{\link[=calibration_bounds]{calibration_bounds()}} gives the main zone its usual

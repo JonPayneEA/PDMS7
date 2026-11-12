@@ -15,6 +15,13 @@
   zone with two, by the usual rule: two zones only if better on validation by more than the tie
   tolerance and not pinned at a bound. `zones = 2` adds the fast zone without a comparison.
   Forecast updating, hindcasts, the events workbench and PDM for PCs files stay single-zone.
+- **The rain adds up across the zones.** Each zone takes the catchment-average rain depth over its
+  own area, and the zones' areas sum to the catchment's. The rainfall factor `fc` is one
+  catchment-wide setting at the top of the configuration, locked at 1 by default and, if
+  unlocked, searched as a single parameter for every zone. Giving it both at the top and in a
+  zone is refused.
+- **New article: the two-zone PDM.** When one zone is not enough, how the fast zone is built and
+  locked, a worked example on a made-up flashy catchment, and how to read the result.
 
 # pdmS7 0.22.1
 

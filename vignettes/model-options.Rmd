@@ -249,7 +249,9 @@ calibration_bounds(two)[, c("path", "lower", "upper")]
 
 Parameters are addressed as `zones.main.surface.k1`, `zones.fast.share` and so on. In
 `calibrate_project()`, `zones = c(1, 2)` lets the structure recommendation decide whether two
-zones earn their place ([How the model structure is chosen](choosing-structure.html)).
+zones earn their place ([How the model structure is chosen](choosing-structure.html)). The rain
+adds up: each zone takes the catchment-average depth over its own area, and the rainfall factor
+`fc` is set once for every zone. [The two-zone PDM](two-zone-pdm.html) works through an example.
 
 # Groundwater solver: adaptive or Smith
 

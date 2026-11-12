@@ -21,8 +21,9 @@
 #' then a slower flood hydrograph, then baseflow.
 #'
 #' **Configuration.** A multi-zone configuration has `area_km2` and `dt` for the whole
-#' catchment and a named list `zones`, each a single-zone configuration without `area_km2` or
-#' `dt`. Every zone after the first has a `share`, its fraction of the catchment area; the first
+#' catchment, optionally one rainfall factor `fc` for every zone, and a named list `zones`, each
+#' a single-zone configuration without `area_km2` or `dt` (nor `fc`, when it is given at the
+#' top). Every zone after the first has a `share`, its fraction of the catchment area; the first
 #' zone takes the rest. Parameters are addressed as `zones.<name>.<path>`, such as
 #' `zones.fast.share` or `zones.main.surface.k1`.
 #'
@@ -37,7 +38,13 @@
 #' | surface | one linear store, `kb` 1 h | `kb`, 0.25 to 12 h |
 #' | groundwater | linear, `kb` 1000 h, never fed | no |
 #' | `td` | 0 h | 0 to 6 h |
-#' | `be`, `fc` | the main zone's | no |
+#' | `be` | the main zone's | no |
+#'
+#' **The rain adds up.** Every zone reads the same rain and evaporation depths, and the zone
+#' areas add up to the catchment's, so the rain volume over the zones is the catchment's. The
+#' rainfall factor `fc` is set once, at the top, for every zone (locked at 1 by default, as for
+#' one zone); unlocked with `overrides = list(fc = ...)`, it scales the rain on every zone
+#' together.
 #'
 #' The fast zone only ever makes quick runoff, so it cannot trade baseflow with the main zone,
 #' which keeps the two zones' roles apart. [calibration_bounds()] gives the main zone its usual
@@ -72,14 +79,15 @@ two_zone_config <- function(config, share = 0.1, names = c("main", "fast")) {
   main <- config
   main$area_km2 <- NULL
   main$dt <- NULL
+  main$fc <- NULL
   fast <- list(
     distribution = list(type = "pareto", cmin = 0, cmax = 20, b = 0.5),
     recharge = list(type = "split", alpha = 1),
     surface = list(type = "linear", kb = 1),
     groundwater = list(type = "linear", kb = 1000),
-    be = config$be %||% 1, fc = config$fc %||% 1, td = 0, qc = 0, share = share
+    be = config$be %||% 1, td = 0, qc = 0, share = share
   )
-  list(area_km2 = config$area_km2 %||% 1, dt = config$dt %||% 1,
+  list(area_km2 = config$area_km2 %||% 1, dt = config$dt %||% 1, fc = config$fc %||% 1,
        zones = stats::setNames(list(main, fast), names))
 }
 
@@ -124,8 +132,8 @@ FlodeMultiZoneState <- S7::new_class(
 # Builds a multi-zone model: each zone's configuration with its area (its share of the whole,
 # the first zone taking the rest) and the common time step.
 .multizone_from_config <- function(config) {
-  .check(all(names(config) %in% c("zones", "area_km2", "dt")),
-         "A multi-zone configuration has only zones, area_km2 and dt at the top")
+  .check(all(names(config) %in% c("zones", "area_km2", "dt", "fc")),
+         "A multi-zone configuration has only zones, area_km2, dt and fc at the top")
   zones <- config$zones
   .check(is.list(zones) && length(zones) >= 2L && !is.null(names(zones)) &&
            all(nzchar(names(zones))) && !anyDuplicated(names(zones)),
@@ -135,6 +143,8 @@ FlodeMultiZoneState <- S7::new_class(
   .check(!any(vapply(zones, function(z) any(c("area_km2", "dt") %in% names(z)), logical(1))),
          "Zone configurations take their area from share and their step from the model")
   .check(is.null(zones[[1]]$share), "The first zone takes the area the others leave: no share")
+  .check(is.null(config$fc) || !any(vapply(zones, function(z) "fc" %in% names(z), logical(1))),
+         "Give the rainfall factor once: at the top for every zone, or in each zone")
   shares <- vapply(zones[-1], function(z) z$share %||% NA_real_, numeric(1))
   .check(all(is.finite(shares) & shares > 0) && sum(shares) < 1,
          "Every zone after the first needs a share in (0, 1), and the shares must leave some area")
@@ -143,6 +153,7 @@ FlodeMultiZoneState <- S7::new_class(
     z$share <- NULL
     z$area_km2 <- config$area_km2 * s
     z$dt <- config$dt
+    if (!is.null(config$fc)) z$fc <- config$fc
     pdm_from_config(z)
   }, zones, shares)
   FlodeMultiZoneModel(zones = stats::setNames(models, names(zones)), area_km2 = config$area_km2,
@@ -224,10 +235,12 @@ FlodeMultiZoneState <- S7::new_class(
   pdm_from_config(config)
   zones <- names(config$zones)
   prefix <- function(z) paste0("zones.", z, ".")
-  to_first <- function(p) if (startsWith(p, "zones.")) p else paste0(prefix(zones[1]), p)
-  main <- config$zones[[1]]
-  main$area_km2 <- config$area_km2
-  main$dt <- config$dt
+  # The rainfall factor, when set at the top, is one parameter for every zone.
+  to_first <- function(p) {
+    if (startsWith(p, "zones.") || (p == "fc" && !is.null(config$fc))) p else
+      paste0(prefix(zones[1]), p)
+  }
+  main <- .first_zone_config(config)
   rows <- calibration_bounds(main)
   rows$path <- paste0(prefix(zones[1]), rows$path)
   for (z in zones[-1]) {
@@ -256,5 +269,6 @@ FlodeMultiZoneState <- S7::new_class(
   out <- config$zones[[1]]
   out$area_km2 <- config$area_km2
   out$dt <- config$dt
+  if (!is.null(config$fc)) out$fc <- config$fc
   out
 }
