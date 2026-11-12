@@ -255,7 +255,7 @@ calibration does the same:
 flow_canvas()
 xs <- c(0.13, 0.38, 0.63, 0.88)
 titles <- c("1. Volume and\nbaseflow", "2. Fast\nresponse", "3. Polish", "4. Events\n(optional)")
-moves <- c("rainfall factor,\nsoil store, recharge,\ngroundwater",
+moves <- c("soil store, recharge,\ngroundwater (and the\nrainfall factor if\nunlocked)",
            "surface stores,\nsoil store shape b", "everything,\nover the full ranges",
            "surface stores, b,\ntime delay")
 scores <- c("log NSE + volume:\nlow flows and\nthe water balance",

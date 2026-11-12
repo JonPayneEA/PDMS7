@@ -75,9 +75,12 @@ years are held back and revealed at the end by the test, as every project does b
 # on the number: each basin's random starts are seeded from its name.
 limited <- identical(toupper(Sys.getenv("_R_CHECK_LIMIT_CORES_")), "TRUE")
 cores <- if (limited) 2L else min(4L, max(1L, parallel::detectCores() - 1L))
+# Each basin's rain is biased by a known factor between 0.9 and 1.1, so the rainfall factor,
+# locked by default, is searched.
+unlock <- list(fc = c(0.6, 1.6))
 elapsed <- system.time(
   calibrate_batch(basins, output, starts = 4, control = list(maxit = 40), cores = cores,
-                  test = TRUE)
+                  overrides = unlock, test = TRUE)
 )[["elapsed"]]
 status <- batch_status(output)
 table(status$state)
@@ -171,7 +174,7 @@ best_two_text <- if (best_two == nrow(truth)) {
 ```{r edges, include=FALSE}
 # A calibrated value within 1 per cent of a bound (in logs for log-scaled parameters) means the
 # search ended against the fence rather than at an optimum inside it.
-b <- calibration_bounds(pdm_presets("standard"))
+b <- calibration_bounds(pdm_presets("standard"), overrides = unlock)
 at_edge <- vapply(sample$basin, function(id) {
   cfg <- fitted_config(id)
   v <- vapply(b$path, function(p) pdmS7:::.path_get(cfg, p), numeric(1))

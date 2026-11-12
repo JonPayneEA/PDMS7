@@ -17,10 +17,9 @@ test_that("default stages follow the structure", {
   expect_equal(vapply(standard, function(s) s$name, ""),
                c("volume and baseflow", "fast response", "polish"))
   expect_setequal(standard[[1]]$parameters,
-                  c("fc", "distribution.cmax", "distribution.b", "recharge.kg",
-                    "groundwater.kb"))
+                  c("distribution.cmax", "distribution.b", "recharge.kg", "groundwater.kb"))
   expect_setequal(standard[[2]]$parameters, c("surface.k1", "surface.k2", "distribution.b"))
-  expect_length(standard[[3]]$parameters, 7)
+  expect_length(standard[[3]]$parameters, 6)
   expect_equal(c(standard[[1]]$objective, standard[[1]]$volume_weight), c("log_nse", "1"))
   # The polish searches the full bounds unless a band is asked for.
   expect_null(standard[[3]]$band)
@@ -35,7 +34,7 @@ test_that("default stages follow the structure", {
 # Guards: stage 3 bounds are the documented band, in logs where logged
 test_that("the polish band is a quarter of each range on the search scale", {
   config <- pdm_presets("standard")
-  bounds <- calibration_bounds(config)
+  bounds <- calibration_bounds(config, overrides = list(fc = c(0.6, 1.6)))
   config$fc <- 1.1
   config$groundwater$kb <- 1e4
   stage <- list(parameters = c("fc", "groundwater.kb"), band = 0.25)
@@ -89,9 +88,13 @@ staged_data <- function() {
 test_that("each stage moves only its own parameters and starts where the last ended", {
   d <- staged_data()
   config <- pdm_presets("standard")
-  stages <- pdm_stages(config, exclude = c("groundwater.kb", "recharge.kg", "distribution.cmax"))
+  # The rainfall factor is unlocked, since the data were made with a wrong one.
+  open <- list(fc = c(0.6, 1.6))
+  stages <- pdm_stages(config, overrides = open,
+                       exclude = c("groundwater.kb", "recharge.kg", "distribution.cmax"))
   # The data start from a half-full soil, so the calibration does too.
   fit <- calibrate_staged(config, d$forcing, d$observed, stages = stages, warmup = 48,
+                          bounds = calibration_bounds(config, open),
                           control = list(maxit = 15), start = "soil")
   expect_length(fit$stages, 3)
   expect_equal(fit$stages[[1]]$label, "1 of 3: volume and baseflow")

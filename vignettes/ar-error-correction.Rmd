@@ -275,8 +275,9 @@ sample <- synthetic_basins(basins, n = 8, years = 2, dt = 1, seed = 21)
 old <- options(pdmS7.user = "Ann Custodian", pdmS7.role = "custodian")
 limited <- identical(toupper(Sys.getenv("_R_CHECK_LIMIT_CORES_")), "TRUE")
 cores <- if (limited) 2L else min(4L, max(1L, parallel::detectCores() - 1L))
+# The made-up basins' rain is biased by a known factor, so the rainfall factor is searched.
 status <- calibrate_batch(basins, output, starts = 2, control = list(maxit = 30),
-                          cores = cores)
+                          overrides = list(fc = c(0.6, 1.6)), cores = cores)
 options(old)
 stable_set <- function(h) tryCatch(ar_from_response_time(h, 1), error = function(e) NULL)
 per_basin <- lapply(sample$basin, function(id) {

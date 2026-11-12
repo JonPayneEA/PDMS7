@@ -159,11 +159,13 @@ empty. [Scoring a simulation](scoring.html) explains every score and what it poi
 # 8. Improve it
 
 Let the computer adjust the settings the scores point to: the drainage time constant `kg`,
-the two fast stores' time constants, and the rainfall factor `fc` for good measure. The first
-half of the record is used to fit, and the second half is kept back to check.
+the two fast stores' time constants, and the rainfall factor `fc`. The rainfall factor is
+locked at 1 by default, because a fitted factor carries the calibration years' rainfall errors
+into operation; it is unlocked here because this made-up rain is known to be 10 per cent low.
+The first half of the record is used to fit, and the second half is kept back to check.
 
 ```{r calibrate}
-bounds <- calibration_bounds(config)
+bounds <- calibration_bounds(config, overrides = list(fc = c(0.6, 1.6)))
 pick <- c("fc", "recharge.kg", "surface.k1", "surface.k2")
 bounds <- bounds[bounds$path %in% pick, ]
 fit <- calibrate_pdm(config, forcing[1:(24 * 45), ], observed$q_m3s[1:(24 * 45)],

@@ -1,5 +1,14 @@
 # pdmS7 0.21.0
 
+- **The rainfall factor is locked during automatic calibration.** `calibration_bounds()` leaves
+  `fc` out, so `calibrate_project()`, `compare_structures()`, `recommend_structure()`,
+  `pdm_stages()` and `calibrate_batch()` hold it at the configuration's value, 1 in the presets.
+  A calibrated factor absorbs the calibration period's rainfall errors and carries them into
+  operation, where the rain may come from other gauges or another product. Unlock it by giving
+  it bounds, `overrides = list(fc = c(0.8, 1.2))`. Any other parameter is locked with
+  `exclude`, as before. The bounds table gains a `default` column marking which parameters are
+  locked by default. A run that searched `fc` before now gives different results unless that
+  override is added.
 - **The PDM groundwater extension**, `groundwater_extension()`, as published in Moore and Bell
   (2002) and the PDM for PCs scientific guide (UKCEH, 2022, section 3 and Appendix B), for
   catchments with pumped abstractions, ephemeral streams and losses below or beyond the gauge.

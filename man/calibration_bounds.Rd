@@ -10,7 +10,8 @@ calibration_bounds(config, overrides = NULL, exclude = NULL)
 \item{config}{A configuration list.}
 
 \item{overrides}{Optional named list of \code{c(lower, upper)} pairs by configuration path,
-such as \code{list(fc = c(0.8, 1.2))}, replacing or adding bounds.}
+such as \code{list(fc = c(0.8, 1.2))}, replacing or adding bounds. Naming a parameter that is
+locked by default, such as \code{fc}, unlocks it.}
 
 \item{exclude}{Optional configuration paths to leave out, holding them at their values.}
 }
@@ -19,12 +20,31 @@ A data frame with \code{path}, \code{lower}, \code{upper}, \code{scale} (\code{l
 }
 \description{
 Looks up default calibration bounds for every calibrated parameter of a configuration's
-components, from the table shipped in \code{inst/calibration-bounds.csv}. The rainfall factor
-and every store parameter in the table are included; parameters that are usually fixed
-(\code{cmin}, \code{st}, \code{bg}, \code{be}, \code{td}, \code{qc}, area and time step) are not. Parameters that span
-orders of magnitude, such as recharge and groundwater constants, are marked for
-log-scale search.
+components, from the table shipped in \code{inst/calibration-bounds.csv}. Every store parameter
+in the table is included; parameters that are usually fixed (\code{cmin}, \code{st}, \code{bg}, \code{be}, \code{td},
+\code{qc}, area and time step) are not. Parameters that span orders of magnitude, such as
+recharge and groundwater constants, are marked for log-scale search.
+}
+\details{
+\strong{Locked parameters.} A parameter left out of the bounds is held at its value in the
+configuration by every automatic calibration: \code{\link[=calibrate_project]{calibrate_project()}}, \code{\link[=compare_structures]{compare_structures()}},
+\code{\link[=recommend_structure]{recommend_structure()}}, \code{\link[=pdm_stages]{pdm_stages()}} and \code{\link[=calibrate_batch]{calibrate_batch()}} all take their search from
+here. Lock any parameter with \code{exclude}, setting its value in the configuration first.
+
+The rainfall factor \code{fc} is locked by default, at the configuration's value (1 in the
+presets and the model's default). A calibrated factor absorbs errors in the gauge or radar
+totals of the calibration period, and carries them into operation, where the rainfall may
+come from different gauges or a different product. Search it only when the rainfall's bias
+is known and stable, by giving it bounds: \code{overrides = list(fc = c(0.8, 1.2))}, or the
+table's range \code{c(0.6, 1.6)}. The table's \code{default} column marks which parameters are locked
+in this way.
 }
 \examples{
 calibration_bounds(pdm_presets("standard"))
+# Search the rainfall factor too
+calibration_bounds(pdm_presets("standard"), overrides = list(fc = c(0.8, 1.2)))
+# Lock the store's shape at 0.4
+cfg <- pdm_presets("standard")
+cfg$distribution$b <- 0.4
+calibration_bounds(cfg, exclude = "distribution.b")
 }

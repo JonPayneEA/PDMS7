@@ -1,26 +1,26 @@
-slot,type,parameter,lower,upper,scale,note
-model,model,fc,0.6,1.6,linear,Rainfall factor; outside this range question the rain gauge rather than the model
-distribution,pareto,cmax,20,800,linear,Maximum store capacity (mm)
-distribution,pareto,b,0.05,2,linear,Shape: low values give a near-uniform store
-distribution,rectangular,cmax,20,800,linear,Maximum store capacity (mm)
-distribution,triangular,cmax,20,800,linear,Maximum store capacity (mm)
-distribution,exponential,mean,10,400,linear,Mean store capacity (mm)
-distribution,lognormal,meanlog,2.3,6,linear,Log of capacity (log mm); 10 to 400 mm
-distribution,lognormal,sdlog,0.1,2,linear,Spread of log capacity
-recharge,standard,kg,1,5000,log,Recharge time constant (h); spans orders of magnitude
-recharge,split,alpha,0,1,linear,Share of drainage sent to the surface store
-recharge,demand,alpha,0.05,1,linear,Demand recharge shape
-recharge,demand,beta,0.1,5,log,Demand recharge exponent
-recharge,demand,qsat,0.01,10,log,Saturated recharge rate (mm/h)
-route,cascade,k1,0.5,72,log,Time constant of the first store (h)
-route,cascade,k2,0.5,72,log,Time constant of the second store (h)
-route,linear,kb,10,5000,log,Linear store time constant (h)
-route,quadratic,kb,10,1e5,log,Quadratic store constant
-route,cubic,kb,100,1e6,log,Cubic store constant
-route,exponential,a,0.001,1,log,Exponential store rate (1/mm)
-route,exponential,gamma,-15,0,linear,Exponential store offset (log mm/h)
-extension,extension,ku,100,1e6,log,Underflow time constant (h); searched only when set
-extension,extension,dbu,0,2000,linear,Baseflow-underflow deficit (mm); searched only when set
-extension,extension,alpha_b,-1,0.9,linear,Share of groundwater outflow lost to external springs; negative imports; searched only when set
-extension,extension,ca,0,0.1,linear,Constant abstraction (mm/h); searched only when set
-extension,extension,fa,0,3,linear,Factor on recorded abstraction; searched only when set
+slot,type,parameter,lower,upper,scale,note,default
+model,model,fc,0.6,1.6,linear,Rainfall factor; outside this range question the rain gauge rather than the model,fixed
+distribution,pareto,cmax,20,800,linear,Maximum store capacity (mm),search
+distribution,pareto,b,0.05,2,linear,Shape: low values give a near-uniform store,search
+distribution,rectangular,cmax,20,800,linear,Maximum store capacity (mm),search
+distribution,triangular,cmax,20,800,linear,Maximum store capacity (mm),search
+distribution,exponential,mean,10,400,linear,Mean store capacity (mm),search
+distribution,lognormal,meanlog,2.3,6,linear,Log of capacity (log mm); 10 to 400 mm,search
+distribution,lognormal,sdlog,0.1,2,linear,Spread of log capacity,search
+recharge,standard,kg,1,5000,log,Recharge time constant (h); spans orders of magnitude,search
+recharge,split,alpha,0,1,linear,Share of drainage sent to the surface store,search
+recharge,demand,alpha,0.05,1,linear,Demand recharge shape,search
+recharge,demand,beta,0.1,5,log,Demand recharge exponent,search
+recharge,demand,qsat,0.01,10,log,Saturated recharge rate (mm/h),search
+route,cascade,k1,0.5,72,log,Time constant of the first store (h),search
+route,cascade,k2,0.5,72,log,Time constant of the second store (h),search
+route,linear,kb,10,5000,log,Linear store time constant (h),search
+route,quadratic,kb,10,1e5,log,Quadratic store constant,search
+route,cubic,kb,100,1e6,log,Cubic store constant,search
+route,exponential,a,0.001,1,log,Exponential store rate (1/mm),search
+route,exponential,gamma,-15,0,linear,Exponential store offset (log mm/h),search
+extension,extension,ku,100,1e6,log,Underflow time constant (h); searched only when set,search
+extension,extension,dbu,0,2000,linear,Baseflow-underflow deficit (mm); searched only when set,search
+extension,extension,alpha_b,-1,0.9,linear,Share of groundwater outflow lost to external springs; negative imports; searched only when set,search
+extension,extension,ca,0,0.1,linear,Constant abstraction (mm/h); searched only when set,search
+extension,extension,fa,0,3,linear,Factor on recorded abstraction; searched only when set,search

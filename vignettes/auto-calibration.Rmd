@@ -84,8 +84,15 @@ the model, from a table that comes with the package:
 show_bounds(calibration_bounds(pdm_presets("standard")), note = TRUE)
 ```
 
-If you know a catchment, move any fence, add a parameter to calibrate, or hold one fixed at
-its current value:
+One parameter is missing on purpose: the rainfall factor `fc`. It is locked at its value in
+the configuration, 1 unless you change it. A calibrated factor soaks up whatever was wrong
+with the rainfall totals in the calibration years, and then carries that correction into
+operation, where the rain may come from other gauges or another radar product and need none.
+Unlock it only when you know the rainfall's bias and trust it to stay put, by giving it
+bounds.
+
+If you know a catchment, move any fence, add a parameter to calibrate (the rainfall factor
+here), or lock one at its current value:
 
 ```{r overrides}
 b <- calibration_bounds(pdm_presets("standard"),
@@ -282,7 +289,7 @@ balance and the slow response first, then the fast response, then make a final a
 
 | Stage | Fits | Objective |
 |---|---|---|
-| 1. Volume and baseflow | `fc`, the soil store, recharge and groundwater | 1 - log NSE, plus the volume error |
+| 1. Volume and baseflow | The soil store, recharge and groundwater, and `fc` if unlocked | 1 - log NSE, plus the volume error |
 | 2. Fast response | The surface stores, and the store shape `b` again | 1 - NSE |
 | 3. Polish | Everything, over the full bounds, starting from stage 2's values | 1 - NSE |
 

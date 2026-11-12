@@ -6,6 +6,7 @@
 # Created:      2026-11-01
 # Modified:     2026-11-01 - Add structure comparison
 #               2026-11-12 - Bounds for the groundwater extension's flow parameters, when set
+#               2026-11-12 - The rainfall factor held fixed unless an override searches it
 # Tier:         3
 # Inputs:       Configuration lists; inst/calibration-bounds.csv
 # Outputs:      Bounds tables and named lists of configurations
@@ -22,24 +23,44 @@
 #' Calibration bounds for a model structure
 #'
 #' Looks up default calibration bounds for every calibrated parameter of a configuration's
-#' components, from the table shipped in `inst/calibration-bounds.csv`. The rainfall factor
-#' and every store parameter in the table are included; parameters that are usually fixed
-#' (`cmin`, `st`, `bg`, `be`, `td`, `qc`, area and time step) are not. Parameters that span
-#' orders of magnitude, such as recharge and groundwater constants, are marked for
-#' log-scale search.
+#' components, from the table shipped in `inst/calibration-bounds.csv`. Every store parameter
+#' in the table is included; parameters that are usually fixed (`cmin`, `st`, `bg`, `be`, `td`,
+#' `qc`, area and time step) are not. Parameters that span orders of magnitude, such as
+#' recharge and groundwater constants, are marked for log-scale search.
+#'
+#' **Locked parameters.** A parameter left out of the bounds is held at its value in the
+#' configuration by every automatic calibration: [calibrate_project()], [compare_structures()],
+#' [recommend_structure()], [pdm_stages()] and [calibrate_batch()] all take their search from
+#' here. Lock any parameter with `exclude`, setting its value in the configuration first.
+#'
+#' The rainfall factor `fc` is locked by default, at the configuration's value (1 in the
+#' presets and the model's default). A calibrated factor absorbs errors in the gauge or radar
+#' totals of the calibration period, and carries them into operation, where the rainfall may
+#' come from different gauges or a different product. Search it only when the rainfall's bias
+#' is known and stable, by giving it bounds: `overrides = list(fc = c(0.8, 1.2))`, or the
+#' table's range `c(0.6, 1.6)`. The table's `default` column marks which parameters are locked
+#' in this way.
 #'
 #' @param config A configuration list.
 #' @param overrides Optional named list of `c(lower, upper)` pairs by configuration path,
-#'   such as `list(fc = c(0.8, 1.2))`, replacing or adding bounds.
+#'   such as `list(fc = c(0.8, 1.2))`, replacing or adding bounds. Naming a parameter that is
+#'   locked by default, such as `fc`, unlocks it.
 #' @param exclude Optional configuration paths to leave out, holding them at their values.
 #' @return A data frame with `path`, `lower`, `upper`, `scale` (`linear` or `log`) and `note`.
 #' @examples
 #' calibration_bounds(pdm_presets("standard"))
+#' # Search the rainfall factor too
+#' calibration_bounds(pdm_presets("standard"), overrides = list(fc = c(0.8, 1.2)))
+#' # Lock the store's shape at 0.4
+#' cfg <- pdm_presets("standard")
+#' cfg$distribution$b <- 0.4
+#' calibration_bounds(cfg, exclude = "distribution.b")
 #' @export
 # Bounds for every calibratable parameter of a configuration, as configuration paths: the
 # catchment-wide rows, then the rows for each component's actual type (a split recharge gets
 # alpha, an exponential groundwater store gets a and gamma). Overrides replace or add rows;
-# exclude drops parameters to be held fixed.
+# exclude drops parameters to be held fixed. Rows the table marks as fixed by default (the
+# rainfall factor) are dropped too, unless an override names them.
 calibration_bounds <- function(config, overrides = NULL, exclude = NULL) {
   pdm_from_config(config)
   table <- .bounds_table()
@@ -68,6 +89,7 @@ calibration_bounds <- function(config, overrides = NULL, exclude = NULL) {
     }
   }
   out <- do.call(rbind, rows)
+  out <- out[out$default != "fixed" | out$parameter %in% names(overrides), ]
   out <- data.frame(path = out$parameter, lower = out$lower, upper = out$upper,
                     scale = out$scale, note = out$note)
   if (!is.null(overrides)) out <- .apply_bound_overrides(out, overrides, config)

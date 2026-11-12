@@ -40,14 +40,18 @@ root <- file.path(tempdir(), "search-methods")
 unlink(root, recursive = TRUE)
 basins <- file.path(root, "basins")
 sample <- synthetic_basins(basins, n = 30, years = 10, dt = 24, seed = 7)
-paths <- calibration_bounds(pdm_presets("standard"))$path
+# The basins' rain is biased by a known factor, so the rainfall factor, locked by default, is
+# searched as it was when these results were stored.
+unlock <- list(fc = c(0.6, 1.6))
+paths <- calibration_bounds(pdm_presets("standard"), overrides = unlock)$path
 short <- c("fc", "cmax", "b", "kg", "k1", "k2", "kb")
 
 # One search over the whole sample, as rows of: model runs, minutes, the calibrated score, the
 # true parameters' score, and the calibrated parameters.
 search <- function(label, ...) {
   output <- file.path(root, gsub("[^a-z]+", "-", label))
-  minutes <- system.time(calibrate_batch(basins, output, test = TRUE, ...))[["elapsed"]] / 60
+  run <- function() calibrate_batch(basins, output, test = TRUE, overrides = unlock, ...)
+  minutes <- system.time(run())[["elapsed"]] / 60
   rows <- lapply(sample$basin, function(id) {
     project <- file.path(output, id)
     entries <- read_project(project)$entries

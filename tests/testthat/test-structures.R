@@ -52,6 +52,19 @@ test_that("bounds can be overridden, extended and excluded", {
                "Unknown parameter")
 })
 
+# Guards: the rainfall factor is locked at its configured value unless an override unlocks it,
+# and so stays out of every default stage
+test_that("the rainfall factor is locked by default", {
+  cfg <- pdm_presets("standard")
+  expect_false("fc" %in% calibration_bounds(cfg)$path)
+  expect_false("fc" %in% unlist(lapply(pdm_stages(cfg), `[[`, "parameters")))
+  open <- calibration_bounds(cfg, overrides = list(fc = c(0.6, 1.6)))
+  expect_equal(unlist(open[open$path == "fc", c("lower", "upper")]), c(lower = 0.6, upper = 1.6))
+  expect_true("fc" %in% pdm_stages(cfg, overrides = list(fc = c(0.8, 1.2)))[[1]]$parameters)
+  stage <- list(parameters = "fc")
+  expect_error(.stage_bounds(stage, calibration_bounds(cfg), cfg), "locked by default")
+})
+
 # Guards: log-scale search helps where it should
 test_that("log-scale search finds wide-ranging parameters in fewer runs", {
   set.seed(1)
