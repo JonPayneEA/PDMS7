@@ -52,7 +52,8 @@ test_that("trials are scored on the calibration window only", {
   preview <- preview_trial(p$folder, 3, c(fc = 1))
   expect_equal(preview$rows, 121:700)
   expected <- pdm_scorecard(preview$simulated[121:700], p$data$observed[121:700])
-  expect_equal(unlist(preview$scores), expected)
+  # The project also scores the flow markers it registered; the scorecard's scores must agree.
+  expect_equal(unlist(preview$scores)[names(expected)], expected)
   expect_length(list.files(file.path(p$folder, "entries")), 3L)
 })
 

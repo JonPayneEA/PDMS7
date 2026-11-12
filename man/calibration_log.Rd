@@ -164,7 +164,8 @@ of the reliable rating. Flows above it are flagged, not changed.}
 the best count as equally good, in the headline's own units (0.02 for NSE).}
 
 \item{markers}{Flow markers of \code{\link[=flow_markers]{flow_markers()}} registered as thresholds when \code{thresholds}
-is \code{NULL}, worked out from the whole observed record: by default \code{QMED}, \code{Q1} and \code{Q5},
+is \code{NULL}, worked out from the calibration window alone, held-back years left out, so no
+validation or test data shape them: by default \code{QMED}, \code{Q1} and \code{Q5},
 so every catchment gets threshold scores and an event floor to fit to. QMED needs times
 in \code{forcing} and two complete water years, and is left out otherwise, as is any marker
 that cannot be worked out. \code{NULL} registers none.}

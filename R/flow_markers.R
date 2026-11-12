@@ -164,8 +164,8 @@ flow_markers <- function(observed, dt, time = NULL, markers = c("QMED", "Q1", "Q
   share
 }
 
-# The markers register_data() records when no thresholds are given, from the whole observed
-# record: a thresholds table, or NULL. QMED needs times (for water years and the step) and is
+# The markers register_data() records when no thresholds are given, from the observed flow it
+# is given: a thresholds table, or NULL. QMED needs times (for water years and the step) and is
 # dropped without them; any marker that cannot be worked out is dropped too.
 .record_markers <- function(markers, forcing, observed) {
   if (!length(markers)) return(NULL)
@@ -183,10 +183,12 @@ flow_markers <- function(observed, dt, time = NULL, markers = c("QMED", "Q1", "Q
   out[!duplicated(out$value), ]
 }
 
-# The thresholds a project registers: those given, or else the flow markers worked out from the
-# record, each marked with its source.
-.registered_levels <- function(thresholds, markers, forcing, observed, rating) {
-  if (!is.null(thresholds)) return(.resolve_thresholds(thresholds, rating))
-  levels <- .resolve_thresholds(.record_markers(markers, forcing, observed), rating)
+# The flow markers a project registers when no thresholds are given, from the calibration rows
+# only (rows), each marked with its source. The other rows are blanked, so QMED counts only
+# water years complete within the calibration window.
+.marker_levels <- function(markers, forcing, observed, rows) {
+  seen <- rep(NA_real_, length(observed))
+  seen[rows] <- observed[rows]
+  levels <- .resolve_thresholds(.record_markers(markers, forcing, seen), NULL)
   lapply(levels, function(t) c(t, list(source = "flow marker")))
 }

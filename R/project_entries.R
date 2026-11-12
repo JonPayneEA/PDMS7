@@ -81,7 +81,8 @@
 #'   then also scored with [pdm_threshold_scores()], under names such as `csi:Flood Warning`.
 #'   Without thresholds, the `markers` are registered instead.
 #' @param markers Flow markers of [flow_markers()] registered as thresholds when `thresholds`
-#'   is `NULL`, worked out from the whole observed record: by default `QMED`, `Q1` and `Q5`,
+#'   is `NULL`, worked out from the calibration window alone, held-back years left out, so no
+#'   validation or test data shape them: by default `QMED`, `Q1` and `Q5`,
 #'   so every catchment gets threshold scores and an event floor to fit to. QMED needs times
 #'   in `forcing` and two complete water years, and is left out otherwise, as is any marker
 #'   that cannot be worked out. `NULL` registers none.
@@ -259,14 +260,10 @@ register_data <- function(project, forcing, observed, calibration, validation = 
   observed_data <- .as_observed(observed)
   .check(length(observed_data) == nrow(forcing_data), "observed must align with forcing rows")
   rating_data <- if (is.null(rating)) NULL else .as_rating(rating)
-  levels <- .registered_levels(thresholds, markers, forcing_data, observed_data, rating_data)
+  levels <- .resolve_thresholds(thresholds, rating_data)
   for (v in list(event_tolerance_h, event_gap_h, event_min_duration_h)) {
     .check(.scalar(v, 0), "Event settings must be nonnegative hours")
   }
-  .check(.valid_headline(headline, levels), paste(
-    "headline must be one of", paste(names(.headline_scores()), collapse = ", "),
-    "or a threshold score such as csi:<threshold name>"
-  ))
   .check(.scalar(log_offset, 0, strict = TRUE), "log_offset must be positive")
   .check(.scalar(soil_fraction, 0, 1), "soil_fraction must lie between 0 and 1")
   start <- match.arg(start)
@@ -292,6 +289,16 @@ register_data <- function(project, forcing, observed, calibration, validation = 
   # The held years are chosen once, here, from the observed flow, and recorded; later runs
   # read them from the scorecard rather than choosing again.
   wettest <- .choose_wettest(wettest_years, forcing_data, observed_data, cal, val)
+  # Without thresholds, flow markers from the calibration window, the held years left out, so
+  # neither validation, test nor held data shape what the calibration is scored against.
+  if (is.null(thresholds)) {
+    rows <- .scored_rows(list(calibration = cal, wettest = wettest), "calibration")
+    levels <- .marker_levels(markers, forcing_data, observed_data, rows)
+  }
+  .check(.valid_headline(headline, levels), paste(
+    "headline must be one of", paste(names(.headline_scores()), collapse = ", "),
+    "or a threshold score such as csi:<threshold name>"
+  ))
   summary <- .data_summary(forcing_data, observed_data)
   # What preparation functions noted on the series (units, gaps, negatives), for the log.
   preparation <- .registration_notes(forcing, observed)

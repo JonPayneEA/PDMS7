@@ -38,9 +38,9 @@ given.
 \details{
 \tabular{lll}{
    Marker \tab Flow \tab Crossed \cr
-   \code{QMED} \tab Median annual maximum: the 2-year flood \tab About one year in two \cr
-   \verb{0.5QMED}, any multiple \tab That fraction of QMED; 0.5 is near the threshold of a UK peaks-over-threshold series \tab A few times a year at 0.5 \cr
-   \code{Q1}, \code{Q5}, any \verb{Q<p>} \tab Exceeded \code{p} per cent of the time (flow duration curve) \tab Q1: about 3.6 days a year above it; Q5: about 18 \cr
+   \code{QMED} \tab Median annual maximum: the 2-year flood \tab One year in two \cr
+   \verb{0.5QMED}, multiples \tab Fraction of QMED; 0.5 is near a UK POT threshold \tab A few times a year \cr
+   \code{Q1}, \code{Q5}, any \verb{Q<p>} \tab Exceeded \code{p} per cent of the time \tab Above Q1 3.6 days a year \cr
 }
 
 
