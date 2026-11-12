@@ -107,6 +107,7 @@ reference:
   - pdm_from_config
   - read_pdm_config
   - write_pdm_config
+  - read_pdm_inp
   - load_pdm_model
   - parameter_catalog
   - FlodePdmModel
@@ -228,6 +229,7 @@ reference:
   desc: Calibrate several model structures alike and rank them on held-out data.
   contents:
   - compare_structures
+  - compare_calibrations
   - recommend_structure
   - structure_set
   - calibration_bounds

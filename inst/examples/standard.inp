@@ -1,0 +1,40 @@
+1/4 hr Raingauge Data- standard PDM configuration
+objtyp maxfun konvge objtol
+  11       9999    4       8.
+analys   qmin    qmax    pkmin    pkrge
+  2          0. 1000.0    30.        -1
+prtfnf prtopt common file name of plot files (<= 64 chars)
+  0      3          'USER_EVPLOT'
+indx     xs     smpstp   smptol     xs name (<= 8 chars)
+  1     0.9      .001      .05      'rainfac'
+  0     0.0       .2       .02      'cmin'
+  1     135.       1.      1.       'cmax'
+  1     .63      0.001     .05      'b'
+  0     2.5        3.      .1       'be'
+  1     3.1       0.001    .8       'k1'
+  0      0.       .2       .01      'k2'
+  1    13.0       .2        1.      'kb'
+  1    85000.     40.       1.      'kg'
+  0     0.         1.      .5       'St'
+  1    2.42       0.3      .05      'bg'
+  0     0.        0.1      .05      'qconst'
+  0    0.17       0.25     0.2      'tdly'
+/
+PROBABILITY DISTRIBUTED LOSS MODEL
+Flow     Rainfall     Climate-station      Daily Rain
+'57006' '490291'        'sin curve'           '490291'   /
+loss runoff surface base tdly
+   1        0     22     3     -13 /
+Catchment area (km**2)
+100.5
+Event begin           Event end            noi End 15' Rain
+'09:00 30 Mar 1991' '09:00 1 Jun 1991' /
+/
+error parameters: 0(SIM) /, or 1(UPD) upd miter gaintyp, or 2(ARMA) p q
+0 /
+forecast mode: 0 = no forecast, 1 = fixed origin, 2 = fixed lead-time
+0 /
+forecast times ( 1 read-statement per event)
+/
+prtflg
+ 0

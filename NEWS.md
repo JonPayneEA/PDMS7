@@ -1,5 +1,18 @@
 # pdmS7 0.22.0
 
+- **PDM for PCs input files.** `read_pdm_inp()` reads the model of a PDM for PCs `*.inp` file
+  into a configuration, and `write_pdm_inp()` writes one, following the manual's conventions:
+  the cubic store's `kb` is the cube root of the time constant used, `k2 = 0` means equal
+  reservoirs, `tdly` may be given by its position, and the cubic store uses Smith's method.
+  The groundwater extension block and its well datum are read; the title, stations, events
+  and optimised parameters are kept as attributes; error-prediction, rating and raingauge
+  settings are noted, not used. The time step is not in the file, so it is an argument.
+  Several hydrological zones, demand recharge, the power distribution and exponential stores
+  are refused with a reason. The manual's two example files ship in `inst/examples`.
+- **`compare_calibrations()`** runs two or more calibrated models, from configurations, YAML or
+  `*.inp` files, or project folders, on the same forcing from the same start, and sets their
+  parameters, scores by window, threshold scores against flow markers and errors on the
+  largest floods side by side; `plot()` draws their hydrographs for a flood or a window.
 - **`calibrate_project()` proposes the best fit in hand.** It proposed the last stage whatever
   it scored, so a staged search that ended worse than the structure comparison's own fit of the
   chosen structure threw the better fit away (seen on Beggearn Huish: calibration NSE 0.898
