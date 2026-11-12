@@ -22,9 +22,9 @@ explains any term along the way.
    with no data to hand, [Synthetic rivers](synthetic-rivers.html).
 4. [Starting a run](starting-states.html) and [Choosing model components](model-options.html).
 5. [Scoring a simulation](scoring.html): what each score shows.
-6. [Automatic calibration, explained](auto-calibration.html), including staged calibration.
-7. [Logging a manual calibration](calibration-log.html): the record a Steward will review.
-8. [Choosing a model structure](choosing-structure.html), when the standard PDM may not suit.
+6. [How automatic calibration works](auto-calibration.html), including staged calibration.
+7. [Calibration records](calibration-log.html): the record a Steward will review.
+8. [How the model structure is chosen](choosing-structure.html), when the standard PDM may not suit.
 9. [Larger floods: extrapolation and the rating](extrapolation.html): what the held-back
    wettest years and the rating flag show.
 
@@ -36,8 +36,8 @@ For many catchments at once, add [Calibrating many catchments](many-catchments.h
 1. [Reviewing a calibration: a Steward's guide](steward-guide.html): what to look at and what
    should make you stop.
 2. [Scoring a simulation](scoring.html): enough to read the report's scores.
-3. [Logging a manual calibration](calibration-log.html): how the record is built.
-4. [Inside the logs](log-structure.html): what the checksums prove.
+3. [Calibration records](calibration-log.html): how the record is built.
+4. [Inside the logs](calibration-log.html#inside-the-logs): what the checksums prove.
 5. [Larger floods: extrapolation and the rating](extrapolation.html): how to read the
    held-back years in the test.
 

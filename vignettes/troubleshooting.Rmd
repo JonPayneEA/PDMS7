@@ -89,7 +89,7 @@ model. The `start_results` table of a calibration shows each start's final value
 Several starts ending at different parameters with similar scores mean the data do not pin
 those parameters down (equifinality). More starts will not fix it. Staged calibration
 (`calibrate_staged()`), which fits groups of parameters to the parts of the hydrograph they
-control, often helps. [Automatic calibration, explained](auto-calibration.html).
+control, often helps. [How automatic calibration works](auto-calibration.html).
 
 ## A threshold objective with the gradient method
 

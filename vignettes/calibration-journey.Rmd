@@ -1,8 +1,8 @@
 ---
-title: "Automatic calibration from start to finish"
+title: "Calibrating a catchment from start to finish"
 author: "pdmS7 documentation"
 vignette: >
-  %\VignetteIndexEntry{Automatic calibration from start to finish}
+  %\VignetteIndexEntry{Calibrating a catchment from start to finish}
   %\VignetteEngine{knitr::knitr}
   %\VignetteEncoding{UTF-8}
 ---
@@ -209,7 +209,11 @@ Four things shape the search:
 - **The starts.** The ground may have several valleys. Starting the search from several
   places, and keeping the best result, guards against settling in a poor one.
 
-[Automatic calibration, explained](auto-calibration.html) shows each of these at work.
+Two parameters are held back by default. The rainfall factor `fc` stays at 1: a fitted factor
+would absorb the calibration years' rainfall errors and carry them into operation. And a split
+recharge's share is kept between 0.05 and 0.95, so no flow path is switched off.
+
+[How automatic calibration works](auto-calibration.html) shows each of these at work.
 
 # Step 3: choosing the structure
 
@@ -242,8 +246,9 @@ flow_arrow(0.56, 0.28, 0.66, 0.2, "no", pos = 1)
 Tests on made-up catchments, where the true structure was known, showed what a record can
 tell apart. The recharge rule was found every time, by a clear margin. The groundwater store
 was found only by margins too small to survive real data, so the rule keeps the standard store
-unless another is clearly better. See [Choosing a model structure](choosing-structure.html) and
-[What limits automatic calibration](calibration-study.html).
+unless another is clearly better. [How the model structure is
+chosen](choosing-structure.html) sets out each step's rule, with an example, and [Many
+catchments](large-sample.html#what-limits-automatic-calibration) the evidence.
 
 # Step 4: calibrating in stages
 
@@ -349,6 +354,12 @@ text(0.5, 0.12, "The validation and test scores are written down before anyone s
      cex = 0.78, col = flow_pal[["dark"]])
 ```
 
+The candidate is the last stage's fit, unless a fit already in hand scores better on the
+calibration years by more than the tie tolerance (0.02 in NSE): an earlier stage, or the
+structure comparison's own fit of the chosen structure. A final events stage may trade a
+little overall fit for the floods; a larger loss means the stages ended worse than a fit
+already found, which is proposed instead, with the reason in the log.
+
 The candidate is proposed first, then validated, then tested, in that order and only once
 each. A model cannot be quietly re-tuned after its test has been seen, because the log shows the
 order in which things happened. The Steward reads the log, checks the reasoning at each step,
@@ -422,7 +433,7 @@ the true 2 used to make the record. The two surface stores came out at
 against a true 2 and 4: the same two stores the other way round, which give the same flood,
 with the shorter delay making up the difference. The floods come out right; the parameters
 behind them are not unique. This is why the checks look
-at the floods themselves, and why [What limits automatic calibration](calibration-study.html)
+at the floods themselves, and why [What limits automatic calibration](large-sample.html#what-limits-automatic-calibration)
 matters before reading too much into any one value.
 
 # All of this in one call
@@ -467,12 +478,13 @@ catchments](many-catchments.html).
 |---|---|
 | Preparing the data | [Getting started with data](data-preparation.html) |
 | Every check, before and after calibrating | [Checking the data and the events](checks.html) |
-| How the search works, bounds, scores, starts | [Automatic calibration, explained](auto-calibration.html) |
+| How the search works, bounds, scores, starts | [How automatic calibration works](auto-calibration.html) |
 | Why a good score can hide bad floods | [Getting the floods right](floods.html) |
 | The rain the model is given | [Catchment rainfall from gauges and radar](rainfall.html) |
-| Choosing the structure | [Choosing a model structure](choosing-structure.html) |
-| What a record can and cannot tell | [What limits automatic calibration](calibration-study.html) |
-| The log, trials and sign-off | [Logging a manual calibration](calibration-log.html) |
+| Choosing the structure | [How the model structure is chosen](choosing-structure.html) |
+| Comparing with an older model, or a PDM for PCs file | [Comparing calibrations](comparing-calibrations.html) |
+| What a record can and cannot tell | [What limits automatic calibration](large-sample.html#what-limits-automatic-calibration) |
+| The log, trials and sign-off | [Calibration records](calibration-log.html) |
 | Many catchments | [Calibrating many catchments](many-catchments.html) |
 
 ```{r cleanup, include=FALSE}

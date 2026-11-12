@@ -52,7 +52,7 @@ comparison (\code{\link[=compare_structures]{compare_structures()}}) on the proj
 }
 \details{
 \strong{The order} follows what the record can tell apart. On made-up catchments (see the
-calibration study article) the recharge rule was identified every time, by wide margins; the
+large-sample article) the recharge rule was identified every time, by wide margins; the
 groundwater store only by margins too small to trust. So the recharge rule comes first, then
 the soil store distribution, then the groundwater store, each step starting from the
 calibrated structure the step before chose.

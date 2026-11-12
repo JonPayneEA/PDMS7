@@ -215,7 +215,7 @@ same one reach.postproc makes, so check the result with a hindcast.
 
 The family needs one timescale, and there are two candidates: the model's own time to peak,
 from `pdm_response_time()`, and the response time estimated from the records alone by
-`response_time_dmca()` ([Events in large samples](events.html)). The second needs no model,
+`response_time_dmca()` ([Many catchments](large-sample.html#events-across-a-sample)). The second needs no model,
 but it measures the timescale of the fast response, which is usually shorter than the time to
 peak. Two things decide between them: whether the set is stable, and whether it forecasts well.
 

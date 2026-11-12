@@ -1,0 +1,147 @@
+---
+title: "Comparing calibrations and PDM for PCs files"
+author: "pdmS7 documentation"
+vignette: >
+  %\VignetteIndexEntry{Comparing calibrations and PDM for PCs files}
+  %\VignetteEngine{knitr::knitr}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+library(pdmS7)
+knitr::opts_chunk$set(
+  error = FALSE, collapse = TRUE, comment = "#>", fig.width = 8,
+  fig.height = 3.8, dpi = if (nzchar(Sys.getenv("IN_PKGDOWN"))) 110 else 60
+)
+logger::log_threshold(logger::WARN, namespace = "pdmS7")
+```
+
+Two calibrations of the same catchment are worth comparing when one replaces the other: a model
+calibrated years ago in PDM for PCs against a new one, two candidates from different searches,
+or a model before and after a change of structure. The comparison is only fair if both run on
+the same rain, from the same start, and are scored on the same windows by the same measures.
+`compare_calibrations()` does that, for models from any source, including PDM for PCs input
+files.
+
+# Reading a PDM for PCs file
+
+PDM for PCs saves a model as a `*.inp` text file: a title, the parameter list, the model
+structure line, the catchment area and the event periods. `read_pdm_inp()` reads the model
+from it into a configuration. The package ships the two examples from the PDM for PCs manual:
+
+```{r read}
+path <- system.file("examples", "standard.inp", package = "pdmS7")
+cat(readLines(path)[c(1, 8:21, 26:29)], sep = "\n")
+old <- read_pdm_inp(path, dt = 0.25)
+str(old[c("distribution", "recharge", "surface", "groundwater", "fc", "td", "area_km2")])
+attr(old, "optimised")
+```
+
+The file and pdmS7 describe the same model in slightly different terms. The reader applies
+the manual's conventions:
+
+| In the file | Here |
+|---|---|
+| `loss`, `runoff`, `surface`, `base` codes, such as `1 0 22 3` | Pareto store, standard recharge, cascade of two linear stores, cubic store |
+| cubic `kb` = 13 | `kb` = 13³ = 2197: the file holds the cube root, to avoid very large numbers |
+| `k2` = 0 | `k2` = `k1`: two equal reservoirs |
+| `tdly` in the structure line, -13 | the delay is the 13th parameter of the list; a positive value is the delay in hours |
+| `rainfac`, `qconst` | `fc`, `qc` (m3/s) |
+| lognormal (5) or exponential (6) loss model | `cmin` and `b` as the mean and standard deviation of log capacity, or `cmin` as the mean |
+| cubic store | stepped by Smith's method, as PDM for PCs does |
+| `'GW'` block, and `ku`, `Dbu`, `springfrac`, `abstcon`, `abstfac`, `Gsmax`, `wellfac` | the groundwater extension, with the well datum from the block |
+
+**The time step is not in the file.** PDM for PCs takes it from the model set-up, so give it as
+`dt`: 15 minutes by default.
+
+**What is kept, and what is ignored.** The title, the stations, the event periods and the
+parameters marked for optimisation are kept as attributes. Error-prediction, rating and
+raingauge-weighting settings are not part of the simulation model; the reader notes them
+(`attr(old, "notes")`) and leaves them out. Give the catchment rainfall in the forcing, as the
+weighted gauges would have made it.
+
+**What is refused.** Several hydrological zones, demand recharge and the unrestricted split
+(runoff models 2 to 4), the power distribution, exponential stores and a cubic surface store
+have no faithful equivalent yet. The reader stops with a message naming what it found, rather
+than guess.
+
+# Writing one
+
+`write_pdm_inp()` writes any configuration, or a project's candidate, as a file PDM for PCs
+can load (Model > Load Previous PDM Configuration), with the same conventions in reverse. It
+needs a title and one event period, and can mark parameters for optimisation:
+
+```{r write}
+new <- old
+new$surface$k1 <- 4.2
+out <- file.path(tempdir(), "example-recalibrated.inp")
+write_pdm_inp(new, out, title = "Example Brook: recalibrated in pdmS7",
+              event = c("2020-10-01 09:00", "2021-04-01 09:00"),
+              optimised = c("k1", "kb"))
+cat(readLines(out)[c(1, 9:21)], sep = "\n")
+```
+
+Writing then reading gives back the same model, for every structure the format holds. A
+structure it cannot hold, such as an exponential groundwater store, is refused with the
+reason.
+
+# Comparing two calibrations
+
+`compare_calibrations()` takes a named list of models. Each may be a configuration, a model, a
+YAML configuration file, a `*.inp` file, or a calibration project folder, whose candidate is
+used. Here the original model is the PDM for PCs file, and the recalibration the configuration
+just written, on a made-up record at 15 minutes:
+
+```{r compare}
+set.seed(4)
+n <- 96 * 180
+forcing <- data.frame(time = as.POSIXct("2020-10-01", tz = "UTC") + 900 * (seq_len(n) - 1),
+                      rain = ifelse(stats::runif(n) < 0.025, stats::rexp(n, 0.8), 0),
+                      pet = 0.02)
+truth <- new
+truth$surface$k1 <- 4.5
+model <- pdm_from_config(truth)
+observed <- run_pdm(model, forcing, initial_state_from_flow(model, 2, 0.7))$output$q_m3s *
+  exp(stats::rnorm(n, 0, 0.03))
+cmp <- compare_calibrations(
+  list(pdm_for_pcs = path, recalibrated = out),
+  forcing, observed, warmup = 96 * 14,
+  windows = list(first = c("2020-10-15", "2021-01-15"), second = c("2021-01-16", "2021-03-29")),
+  markers = c("Q1", "Q5")
+)
+cmp
+```
+
+The printout gives, in turn:
+
+- **the parameters that differ**: everything else is the same;
+- **the scores in each window**: NSE, log NSE, KGE, volume, peak and flow duration errors;
+- **threshold scores** against flow markers from the observed record (here Q1 and Q5, the
+  flows exceeded 1 and 5 per cent of the time; QMED by default, given two water years);
+- **the largest floods**: each model's median peak and timing error over them.
+
+Every model starts the same way, from the first observed flow in steady state, and nothing
+before `warmup` is scored. The full tables are in the result: `cmp$parameters`, `cmp$scores`,
+`cmp$thresholds` and `cmp$events`, one row per flood with each model's errors.
+
+```{r plot, fig.cap="The largest flood of the record: observed flow and the two models."}
+plot(cmp)
+```
+
+`plot(cmp, event = 3)` shows the third largest flood, and `plot(cmp, window = "second")` a
+whole window.
+
+# Reading a comparison fairly
+
+- **Same rain.** A model calibrated in PDM for PCs was fitted to that software's rainfall, often
+  a weighted mix of gauges. If the forcing here is a different mix, some of the difference in
+  the scores is the rain, not the model. Give both models the same catchment rainfall, and
+  state which.
+- **Same start.** The comparison starts both models from the first observed flow. Warm-up
+  removes most of the effect of the start; make it long enough for the slowest store.
+- **Same windows.** Score both on windows neither was calibrated on, where possible. A model
+  always looks best on the period it was fitted to.
+- **The time step.** Every model must have the forcing's step. A model calibrated at another
+  step is refused rather than run at the wrong one.
+- **Small differences are ties.** As in a structure comparison, a difference in NSE of a few
+  thousandths says nothing; differences in the floods usually say more.

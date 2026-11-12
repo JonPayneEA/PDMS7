@@ -1,3 +1,22 @@
+# pdmS7 0.22.1
+
+- **Documentation reorganised.** The calibration articles are fewer and say each thing once:
+  - *How automatic calibration works* now holds multi-start, budgets and staged calibration
+    (from the retired *Calibration* article), the objectives, including how the weighted stages
+    differ from `calibrate_pdm_multi()`'s multi-objective trade-off, the locked rainfall factor
+    and the split recharge bounds, and how the candidate is chosen.
+  - *How the model structure is chosen* opens with how `recommend_structure()` chooses the
+    recharge rule, soil store and groundwater store: the order, the rule and a worked example.
+  - *Getting the floods right* explains how events are found (from the retired *Events in large
+    samples*) and how to choose them by a flow, such as half QMED.
+  - *Many catchments: what automatic calibration recovers, and what limits it* merges the
+    large-sample article with the calibration study and the batch half of the events article.
+  - *Calibration records* merges *Logging a manual calibration* and *Inside the logs*.
+  - New: *Comparing calibrations and PDM for PCs files*.
+  - Model options, model equations, scoring and the C core article cover the groundwater
+    extension, thresholds from the record and interface version 3.
+  The retired pages redirect to the articles that replaced them.
+
 # pdmS7 0.22.0
 
 - **PDM for PCs input files.** `read_pdm_inp()` reads the model of a PDM for PCs `*.inp` file

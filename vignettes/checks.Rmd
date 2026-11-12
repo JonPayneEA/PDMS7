@@ -255,7 +255,7 @@ edge_note <- if (nrow(edge)) {
 `r edge_note` Not every parameter pressed to an edge is a fault in the data: some barely
 change the flow, and the search moves them because nothing pulls them back. The recharge and
 groundwater constants are the usual drifters; [What limits automatic
-calibration](calibration-study.html) shows which parameters a record can and cannot pin down.
+calibration](large-sample.html#what-limits-automatic-calibration) shows which parameters a record can and cannot pin down.
 Before widening a range, ask which: a parameter that matters and sits at its limit points to a
 fault elsewhere; one that does not matter can be fixed at a sensible value with `exclude` in
 `calibration_bounds()`, so it stops drifting.

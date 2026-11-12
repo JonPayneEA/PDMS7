@@ -75,7 +75,7 @@ owner and steward default to the user declared.}
 The project's row of \code{\link[=read_projects]{read_projects()}}, invisibly.
 }
 \description{
-Runs the whole logged calibration of \href{https://jonpayneea.github.io/PDMS7/articles/calibration-journey.html}{Automatic calibration from start to finish} for one set of
+Runs the whole logged calibration of \href{https://jonpayneea.github.io/PDMS7/articles/calibration-journey.html}{Calibrating a catchment from start to finish} for one set of
 prepared data: \code{\link[=start_calibration_project]{start_calibration_project()}}, \code{\link[=register_data]{register_data()}}, \code{\link[=select_structure]{select_structure()}},
 \code{\link[=recommend_structure]{recommend_structure()}} when \code{recommend = TRUE}, \code{\link[=log_staged_calibration]{log_staged_calibration()}},
 \code{\link[=propose_candidate]{propose_candidate()}}, \code{\link[=validate_candidate]{validate_candidate()}} when a validation window is
