@@ -131,7 +131,10 @@ write_pdm_inp <- function(config, path, title, event,
                           stations = c(flow = "FLOW", rain = "RAIN", pet = "SIN CURVE",
                                        daily_rain = "NULL"),
                           optimised = character(0)) {
-  model <- if (S7::S7_inherits(config, FlodePdmModel)) config else pdm_from_config(config)
+  model <- if (S7::S7_inherits(config, FlodePdmModel) || .is_multizone(config)) config else
+    pdm_from_config(config)
+  .check(!.is_multizone(model),
+         "A multi-zone model cannot be written to a PDM input file yet: write each zone")
   .check(is.character(title) && length(title) == 1L && nzchar(title), "title must be text")
   .check(length(event) == 2L, "event must be a start and an end")
   .check(is.character(stations) && all(c("flow", "rain", "pet", "daily_rain") %in%

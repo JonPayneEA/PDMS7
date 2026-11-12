@@ -89,6 +89,12 @@
 # Builds a model from a configuration list. Top-level keys must be known; each component is built
 # through its registry; anything omitted takes pdm_model()'s default.
 pdm_from_config <- function(config) {
+  if (.is_multizone_config(config)) return(.multizone_from_config(config))
+  .single_zone_from_config(config)
+}
+
+# The single-zone model of a configuration.
+.single_zone_from_config <- function(config) {
   allowed <- c(
     "distribution", "recharge", "surface", "groundwater", "be", "fc", "td", "qc", "area_km2",
     "dt"

@@ -45,6 +45,8 @@
     return(c(list(class = sub("^pdmS7::", "", class(x)[1L])), lapply(props, .canonical)))
   }
   if (is.numeric(x)) return(as.numeric(x))
+  # A multi-zone model's zones are a list of models.
+  if (is.list(x)) return(lapply(x, .canonical))
   x
 }
 
@@ -65,7 +67,7 @@
 # MD5 of the canonical model written as exact YAML. A model built in code and one read from a
 # signed-off configuration file therefore have the same fingerprint when they are the same model.
 pdm_fingerprint <- function(x) {
-  .check(S7::S7_inherits(x, FlodePdmModel) || is.list(x),
+  .check(S7::S7_inherits(x, FlodePdmModel) || .is_multizone(x) || is.list(x),
          "x must be a model or a configuration list")
   model <- if (is.list(x)) pdm_from_config(x) else x
   .md5_text(yaml::as.yaml(.yaml_ready(.canonical(model))))

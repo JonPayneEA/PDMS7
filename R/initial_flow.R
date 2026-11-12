@@ -55,6 +55,9 @@
 #' @references Moore (2007), doi:10.5194/hess-11-483-2007.
 #' @export
 initial_state_from_flow <- function(model, observed_m3s, baseflow_fraction, soil_fraction = 0.5) {
+  if (.is_multizone(model)) {
+    return(.multizone_state_from_flow(model, observed_m3s, baseflow_fraction, soil_fraction))
+  }
   .check(S7::S7_inherits(model, FlodePdmModel), "model must be a FlodePdmModel")
   .check(.scalar(observed_m3s), "observed_m3s must be finite")
   .check(.scalar(baseflow_fraction, 0, 1), "baseflow_fraction must lie in [0,1]")

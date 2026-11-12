@@ -88,8 +88,14 @@ pdm_stages <- function(config, overrides = NULL, exclude = NULL, polish = TRUE,
   # Sort the structure's parameters by the part of the hydrograph they control. The store shape b
   # appears in both stages: it affects the water balance and how sharply runoff responds.
   paths <- calibration_bounds(config, overrides, exclude)$path
-  slow <- paths[paths == "fc" | grepl("^(distribution|recharge|groundwater)\\.", paths)]
-  fast <- paths[grepl("^surface\\.", paths) | paths == "distribution.b"]
+  # In a multi-zone model, each zone's parameters sort by their path within the zone; a fast
+  # zone's share and delay go with the fast response.
+  bare <- sub("^zones\\.[^.]+\\.", "", paths)
+  slow <- paths[bare == "fc" | grepl("^(distribution|recharge|groundwater)\\.", bare)]
+  fast <- paths[grepl("^surface\\.", bare) | bare == "distribution.b" |
+                  grepl("^zones\\.[^.]+\\.(share|td)$", paths)]
+  td_path <- if (.is_multizone_config(config)) paste0("zones.", names(config$zones)[1], ".td") else
+    "td"
   stages <- list(
     list(name = "volume and baseflow", parameters = slow, objective = "log_nse",
          volume_weight = volume_weight, band = NULL),
@@ -102,7 +108,8 @@ pdm_stages <- function(config, overrides = NULL, exclude = NULL, polish = TRUE,
   }
   if (events) {
     stages[[length(stages) + 1L]] <- .events_stage(fast, paths, exclude, td_max, event_budget,
-                                                   event_weights, event_share, event_screen)
+                                                   event_weights, event_share, event_screen,
+                                                   td_path)
   }
   # A structure may leave a stage with nothing to fit (everything excluded); drop it.
   stages <- stages[vapply(stages, function(s) length(s$parameters) > 0, logical(1))]
@@ -111,16 +118,19 @@ pdm_stages <- function(config, overrides = NULL, exclude = NULL, polish = TRUE,
 
 # Stage 4: the fast response and, unless it is excluded or td_max is NULL, the time delay, fitted
 # by DDS on the largest events.
-.events_stage <- function(fast, paths, exclude, td_max, budget, weights, share, screen) {
+.events_stage <- function(fast, paths, exclude, td_max, budget, weights, share, screen,
+                          td_path = "td") {
   .check(is.null(td_max) || .scalar(td_max, 0, strict = TRUE),
          "td_max must be a positive number of hours, or NULL")
-  timing <- if (!is.null(td_max) && !"td" %in% paths && !"td" %in% exclude) "td"
+  # The delay searched: the model's, or in a multi-zone model the first zone's.
+  timing <- if (!is.null(td_max) && !td_path %in% paths && !td_path %in% exclude &&
+                  !sub("^zones\\.[^.]+\\.", "", td_path) %in% exclude) td_path
   list(
     name = "events", parameters = c(fast, timing), objective = "events", volume_weight = 0,
     band = NULL, method = "dds", control = list(maxit = budget),
     event_weights = weights, event_share = share, event_screen = screen,
     extra_bounds = if (!is.null(timing)) {
-      data.frame(path = "td", lower = 0, upper = td_max, scale = "linear",
+      data.frame(path = timing, lower = 0, upper = td_max, scale = "linear",
                  note = "Time delay (h), searched by the events stage")
     }
   )

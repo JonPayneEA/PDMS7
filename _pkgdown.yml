@@ -57,6 +57,7 @@ articles:
   navbar: Model options
   contents:
   - model-options
+  - two-zone-pdm
   - starting-states
 - title: Calibration
   navbar: Calibration
@@ -163,6 +164,7 @@ reference:
   - cubic_routing
   - power_routing
   - groundwater_extension
+  - two_zone_config
   - routing_flow
   - storage_for_flow
   - transfer_coefficients

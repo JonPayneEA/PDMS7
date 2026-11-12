@@ -35,6 +35,7 @@ run_pdm <- function(model, forcing, state = initial_state(model)) {
 # step-by-step R loop. Returns the output table, the final state (to continue a run from), the
 # starting state and the water-balance summary.
 .run_pdm_core <- function(model, forcing, state) {
+  if (.is_multizone(model)) return(.multizone_run(model, forcing, state))
   .check_forcing(model, forcing)
   initial <- state
   if (.engine_supported(model, extended = TRUE)) {

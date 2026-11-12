@@ -1,3 +1,28 @@
+# pdmS7 0.23.0
+
+- **The multi-zone PDM** (PDM for PCs configuration guide, section 5): independent PDMs over
+  parts of the catchment, driven by the same rain, their flows added at the outlet. A
+  configuration with a `zones` list builds a `FlodeMultiZoneModel`; `run_pdm()`, calibration,
+  projects, reports and `compare_calibrations()` take it like a single-zone model. Each zone
+  runs on the compiled engine.
+- **A fast zone for flashy catchments.** `two_zone_config()` adds a small zone that makes quick
+  runoff only (split recharge with `alpha` 1, one linear surface store, a groundwater store it
+  never feeds). Every parameter is set; four are searched: its share of the area (0.01 to 0.3),
+  soil capacity, surface time constant and delay. Bounds and exclusions without a `zones.`
+  prefix apply to the main zone, so existing overrides carry over.
+- **Zones in the structure recommendation.** `calibrate_project(recommend = TRUE, zones =
+  c(1, 2))` and `recommend_structure(components = c(..., "zones"))` add a last step comparing one
+  zone with two, by the usual rule: two zones only if better on validation by more than the tie
+  tolerance and not pinned at a bound. `zones = 2` adds the fast zone without a comparison.
+  Forecast updating, hindcasts, the events workbench and PDM for PCs files stay single-zone.
+- **The rain adds up across the zones.** Each zone takes the catchment-average rain depth over its
+  own area, and the zones' areas sum to the catchment's. The rainfall factor `fc` is one
+  catchment-wide setting at the top of the configuration, locked at 1 by default and, if
+  unlocked, searched as a single parameter for every zone. Giving it both at the top and in a
+  zone is refused.
+- **New article: the two-zone PDM.** When one zone is not enough, how the fast zone is built and
+  locked, a worked example on a made-up flashy catchment, and how to read the result.
+
 # pdmS7 0.22.1
 
 - **A logo**, in `man/figures/logo.png`, shown in the README and on the website.
