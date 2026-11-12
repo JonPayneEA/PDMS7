@@ -28,5 +28,9 @@ jobs:
           extra-packages: any::testthat, local::.
           needs: check
       - name: Tests
-        run: testthat::test_local(stop_on_failure = TRUE, reporter = "summary")
+        # Against the package installed above, so the tests do not recompile it from source.
+        run: |
+          library(pdmS7)
+          testthat::test_dir("tests/testthat", package = "pdmS7", load_package = "installed",
+                             stop_on_failure = TRUE, reporter = "summary")
         shell: Rscript {0}
