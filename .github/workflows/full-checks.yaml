@@ -1,0 +1,13 @@
+# The full Flode checks: R CMD check with the articles on Windows and Ubuntu, current and
+# previous R, plus coverage and lint. Slow (about an hour), so run by hand from the Actions tab
+# while the package is experimental; restore the push and pull_request triggers near release.
+name: Flode Tier 1 full checks
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  ci:
+    uses: JonPayneEA/flode_code_styles/.github/workflows/r-package-ci.yaml@028eae437bddce685a8e436312d31f290c3de715
+    with:
+      tier: 1
+      coverage-threshold: 70

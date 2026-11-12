@@ -6,9 +6,10 @@ with machine-learning models on equal terms. **New here?** Start with
 [Where to start](https://jonpayneea.github.io/PDMS7/articles/reading-paths.html), which gives a
 reading order for modellers, Stewards, Owners, forecasters and the LSTM team.
 
-pdmS7 is **Tier 1 (experimental)** under the Flode governance tiers. CI runs R CMD check on
-Windows and Ubuntu, which blocks a merge, and lint and coverage, which report without
-blocking. It remains a standalone package, with `reach.hydro` as its proposed Flode home.
+pdmS7 is **Tier 1 (experimental)** under the Flode governance tiers. Each pull request runs
+the test suite on Ubuntu (`tests.yaml`). The full Flode checks, R CMD check with the articles
+on Windows and Ubuntu plus lint and coverage, run by hand from the Actions tab
+(`full-checks.yaml`). It remains a standalone package, with `reach.hydro` as its proposed Flode home.
 Human maintainer attribution, independent review and catchment validation are
 outstanding; this is not a declaration of operational approval.
 
@@ -358,6 +359,6 @@ rcmdcheck::rcmdcheck(args = c("--no-manual"), error_on = "warning")
 ```
 
 The shared Flode CI workflow is pinned to the style repository commit recorded
-in [the review](docs/tier3-review.md), now with `tier: 1`. CI configuration is provided;
+in [the review](docs/tier3-review.md), now with `tier: 1`, in `full-checks.yaml`. CI configuration is provided;
 remote CI has not been run in a hosted repository. The review distinguishes
 completed local checks from outstanding human governance requirements.
