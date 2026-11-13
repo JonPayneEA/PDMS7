@@ -1051,7 +1051,7 @@ static void run(const pdm_params* in, const double* rain, const double* pet,
       ext_fluxes[2 * n_steps + t] = x.spring;
       ext_fluxes[3 * n_steps + t] = in->extension.enabled ? x.deficit : 0;
       ext_fluxes[4 * n_steps + t] = in->extension.enabled && p->ys > 0 ?
-        p->hw - p->ys * x.deficit / 1000 : NAN;
+        p->hw - p->ys * x.deficit : NAN;
     }
   }
 #undef COL

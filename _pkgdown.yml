@@ -76,6 +76,7 @@ articles:
   contents:
   - model-options
   - reading-responses
+  - groundwater-extension
   - two-zone-pdm
   - starting-states
 - title: Calibration
@@ -183,6 +184,7 @@ reference:
   - cubic_routing
   - power_routing
   - groundwater_extension
+  - fit_well_level
   - two_zone_config
   - routing_flow
   - storage_for_flow

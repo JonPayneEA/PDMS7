@@ -99,7 +99,7 @@ test_that("the extended model reduces to the standard one and keeps its water ba
   dry <- out$groundwater_mm <= 0
   expect_true(all(out$baseflow_out_mm[dry & c(FALSE, utils::head(dry, -1))] == 0))
   expect_equal(out$abstraction_mm, rep(0.01 * 1 + 0.05, nrow(out)))
-  expect_equal(out$well_level_m, 80 - 0.02 * (500 - out$groundwater_mm) / 1000)
+  expect_equal(out$well_level_m, 80 - 0.02 * (500 - out$groundwater_mm))
   expect_true(is.na(run_pdm(pdm_from_config(ext_config(ku = 3000)), ext_forcing(48))$output$
                       well_level_m[1]))
 })

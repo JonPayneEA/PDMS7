@@ -47,9 +47,12 @@
 #' water balance counts it as a gain. `alpha_b` must lie below 1; there is no lower limit in the
 #' model, and calibration searches -1 to 0.9 unless told otherwise.
 #'
-#' **Well level.** The storage deficit is `D = Sbmax - S` (Eq. 8), and the depth to the water
-#' table `W = Ys D` (Eq. 11). With the datum `hw`, the height of the ground at the well (m), the
-#' modelled well level is `hw - W`, in m.
+#' **Well level.** The storage deficit is `D = Sbmax - S` (Eq. 8), in mm, and the depth to the
+#' water table `W = Ys D` (Eq. 11), in m, so `Ys` is metres of water table per mm of deficit:
+#' `1 / (1000 Sy)` for an aquifer of specific yield `Sy` (0.02 for a specific yield of 5%). With
+#' the datum `hw`, the height of the ground at the well (m), the modelled well level is `hw - W`,
+#' in m. [fit_well_level()] fits `Ys` and `hw` to an observed well. (Before 0.27.0 the depth was
+#' divided by a further 1000, so modelled well levels barely moved.)
 #'
 #' The exponential store cannot be extended: it needs positive flow at all times, so it cannot
 #' run dry (scientific guide, Appendices A and B).
@@ -78,7 +81,8 @@
 #' @param ca Constant abstraction, mm/h.
 #' @param fa Factor on the recorded abstraction.
 #' @param smax_b Maximum groundwater storage, mm, for the deficit and well level.
-#' @param ys Specific yield of the aquifer; 0 (the default) for no well level.
+#' @param ys Well factor, m of water-table depth per mm of storage deficit (PDM for PCs
+#'   `wellfac`): `1 / (1000 Sy)` for a specific yield `Sy`; 0 (the default) for no well level.
 #' @param hw Well level datum: the height of the ground at the well, m.
 #' @return A `FlodeExtendedGroundwater` store.
 #' @references Moore, R.J. and Bell, V.A. (2002). Incorporation of groundwater losses and well

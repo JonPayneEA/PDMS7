@@ -66,6 +66,9 @@ Model options:
 - [Reading the response](https://jonpayneea.github.io/PDMS7/articles/reading-responses.html):
   a training guide to what each soil store, recharge rule and groundwater store does to the flow,
   and what to look for in a river's record
+- [Using the groundwater extension](https://jonpayneea.github.io/PDMS7/articles/groundwater-extension.html):
+  abstraction, losses below the gauge, springs and well levels: preparing the data, calibrating
+  and checking
 - [The two-zone PDM](https://jonpayneea.github.io/PDMS7/articles/two-zone-pdm.html):
   a small fast zone for catchments with a sharp spike, and how to tell whether it earns its place
 - [Starting a run: cold, warm and hot](https://jonpayneea.github.io/PDMS7/articles/starting-states.html)

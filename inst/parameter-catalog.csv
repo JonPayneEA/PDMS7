@@ -61,5 +61,5 @@ groundwater_extension,alpha_b,alpha_b,1,<1,0,UKCEH (2022) scientific guide secti
 groundwater_extension,ca,cA,mm/h,real,0,UKCEH (2022) scientific guide Eq 9,UKCEH (2022) Table 3
 groundwater_extension,fa,fA,1,>=0,1,UKCEH (2022) scientific guide Eq 9,UKCEH (2022) Table 3
 groundwater_extension,smax_b,Smax_b,mm,>=0,1641,UKCEH (2022) scientific guide Eq 8,UKCEH (2022) Table 3
-groundwater_extension,ys,Ys,1,>=0,0.0204,UKCEH (2022) scientific guide Eq 11,UKCEH (2022) Table 3
+groundwater_extension,ys,Ys,m/mm,>=0,0.0204,UKCEH (2022) scientific guide Eq 11,UKCEH (2022) Table 3
 groundwater_extension,hw,hw,m,real,83.76,UKCEH (2022) scientific guide section 3.5,UKCEH (2022) Table 3

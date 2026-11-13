@@ -214,7 +214,7 @@ scientific guide, section 3) adds them to a linear, quadratic or cubic groundwat
 | Negative storage | none | The store may fall below zero; outflow stops when it empties and restarts once recharge refills it: ephemeral flow |
 | Underflow | `ku` (h), `dbu` (mm) | A lower outlet, `dbu` below the baseflow outlet, drains `(S + dbu) / ku` beneath the gauge |
 | External springs | `alpha_b` | A share of the store's outflow leaves the catchment; a negative share brings water in |
-| Well level | `smax_b` (mm), `ys`, `hw` (m) | The storage deficit and a modelled well level, for comparison with boreholes; no effect on flow |
+| Well level | `smax_b` (mm), `ys` (m/mm), `hw` (m) | The storage deficit and a modelled well level, for comparison with boreholes; no effect on flow |
 
 ```{r extension}
 cfg <- pdm_presets("standard")
@@ -229,7 +229,8 @@ loop. Its parameters are searched only when the configuration sets them, because
 warns they cannot be pinned down from flow alone: abstraction records or well levels are
 needed. It cannot extend the exponential store, which can never run dry, and is not offered
 with demand recharge. [Model equations](model-equations.html#the-groundwater-extension) gives
-the equations.
+the equations, and [Using the groundwater extension](groundwater-extension.html) shows how to
+prepare the data, calibrate it and fit a well level.
 
 # Several zones
 
