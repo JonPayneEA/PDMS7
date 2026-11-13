@@ -934,7 +934,8 @@ in all. A batch of hundreds of basins at 15 minutes is a matter of minutes.
 the authors' reference code. Its tests check it on records with known storms and responses. It
 was also checked against the authors' MATLAB code, run in Octave, on three synthetic records:
 two years of hourly data from a fast and a slow catchment, and ten years of daily data. The
-response times and all 663 event windows were identical. That check cannot run when this page
+response times and all 663 event windows (with `independent = FALSE`, the published method's
+events, before floods are merged) were identical. That check cannot run when this page
 is built, so its result is stated here rather than computed.
 
 # References
