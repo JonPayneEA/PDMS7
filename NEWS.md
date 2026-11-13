@@ -16,6 +16,13 @@
   one. `calibrate_project()` uses its `cores` for every search's starts as well as for the
   structure comparisons, so two starts on two cores take about half the time. The default is
   the `pdmS7.cores` option, or 1.
+- **The report shows how the structure was chosen.** A new section draws the structure
+  recommendation as a flow, one row per component: every option with its validation score, the
+  choice, the equally good, the options set aside with a parameter at a bound and the option
+  the step started from, with each step's reason beneath. It is rebuilt from the log alone, so
+  projects already calibrated get it on their next `build_report()`.
+- **Run totals in the report.** Model runs and elapsed time for each structure step, each
+  calibration stage and the project in all, with the seconds a run took.
 
 # pdmS7 0.23.0
 

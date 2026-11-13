@@ -34,6 +34,6 @@ Collate: 'utils.R' 'distributions.R' 'distributions_part3.R' 'distributions_part
         'app.R' 'app_server.R' 'app_events.R' 'compare_structures.R' 'batch.R' 'response_time.R' 'hindcast.R'
         'staged.R' 'extrapolation.R' 'synthetic_rain.R' 'synthetic_catchment.R' 'synthetic_basins.R' 'events.R' 'event_objective.R' 'event_screen.R' 'event_states.R' 'recession.R' 'calibration_checks.R' 'workbench.R' 'recommend_structure.R' 'rainfall_merge.R' 'h19.R' 'zzz.R'
         'visuals.R' 'visuals_series.R' 'prepare.R' 'calibrate_project.R' 'visuals_calibration.R' 'water_balance.R'
-        'progress.R' 'flow_markers.R' 'pdm_inp.R' 'compare_calibrations.R' 'multizone.R' 'gauge_response.R'
+        'progress.R' 'flow_markers.R' 'pdm_inp.R' 'compare_calibrations.R' 'multizone.R' 'gauge_response.R' 'report_decisions.R'
 Config/roxygen2/version: 8.1.0
 RoxygenNote: 7.3.3

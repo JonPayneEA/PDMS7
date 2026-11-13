@@ -37,8 +37,11 @@ control.
 }
 \details{
 Sections, in reading order: project and roles; integrity (any failure is flagged at the
-top); data and scoring windows; model structure; the calibration path, as a tree of runs
-and a table of every run with its changes, scores, verdict and reasoning; the candidate,
+top); data and scoring windows; model structure; how the structure was chosen, as a flow of
+the recommendation's steps with every option's validation score and each choice's reason;
+the structure comparison; the calibration path, as a tree of runs and a table of every run
+with its changes, scores, verdict and reasoning; run totals, the model runs and elapsed time
+of each structure step and stage; the candidate,
 with hydrographs, flow-duration curves and a scatter for each window, a hydrograph for each
 held-back wettest year once tested, and the ten largest events of the record in any window,
 tabled and drawn with their rain; parameter
