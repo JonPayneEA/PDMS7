@@ -159,8 +159,8 @@ timing errors at 3, 1.5 and 1 response times.
 - **Per-gauge inputs to the model.** If `gauge_response()` on the raw gauges shows one gauge
   driving the spike, feed a zone from that gauge's area. Only on that evidence.
 - **Multi-input transfer functions.** A DBM-style transfer function with one input per gauge, to
-  estimate each gauge's share of the fast and slow responses jointly (Young, 2003; reference to be checked before it is cited elsewhere). After the
-  correlation checks, and only if they show something.
+  estimate each gauge's share of the fast and slow responses jointly (Young, 2003; to be checked
+  before it is cited elsewhere). After the correlation checks, and only if they show something.
 - **Calibration speed, held back by choice.** Calibrating at hourly and validating at 15 minutes,
   and forward-difference gradients, would each cut the cost substantially but change the results.
   Not without a before-and-after comparison.
