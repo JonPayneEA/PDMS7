@@ -1,6 +1,8 @@
 # Roadmap
 
-Updated 2026-11-02, after version 0.4.0.
+Updated 2026-11-02, after version 0.4.0. The [future directions](future-directions.md), written
+after the Beggearn Huish calibrations, set out the next work on input checks, catchment
+boundaries and model structure.
 
 ## Next
 

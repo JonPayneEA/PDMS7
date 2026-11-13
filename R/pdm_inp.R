@@ -47,6 +47,11 @@
 #' distribution (`loss` 4); exponential stores; a cubic surface store; and constant or
 #' pass-through stores (types 0 and -1).
 #'
+#' **To do: the exponential store.** It is a PDM option (Moore, 2007), and pdmS7 runs, calibrates
+#' and forecasts with it, and the structure recommendation may choose it. Its code and parameter
+#' layout in a PDM for PCs input file are still to be confirmed, so `write_pdm_inp()` refuses it
+#' for now. It will be added once an example file with an exponential store has been checked.
+#'
 #' @param path Path of the `*.inp` file.
 #' @param dt Model time step, hours.
 #' @return `read_pdm_inp()`: a configuration list for [pdm_from_config()], with attributes
@@ -375,6 +380,14 @@ write_pdm_inp <- function(config, path, title, event,
   # A surface cascade may have unequal stores, a baseflow cascade not; only the baseflow store
   # may be cubic.
   route <- function(x, surface) {
+    # To do: the exponential store (Moore, 2007) is a PDM option, but its code and parameter
+    # layout in a PDM for PCs input file are not yet confirmed. Add it once an example *.inp file
+    # with an exponential store has been checked, with a round-trip test like the others.
+    .check(!S7::S7_inherits(x, FlodeExponentialRouting), paste(
+      "The exponential store cannot be written to a PDM for PCs input file yet: its layout in",
+      "the file is still to be confirmed. The model runs, calibrates and forecasts in pdmS7 as",
+      "it is; for PDM for PCs, use the quadratic or cubic store meanwhile"
+    ))
     if (S7::S7_inherits(x, FlodeCascadeRouting)) {
       .check(surface || x@k1 == x@k2,
              "A cascade baseflow store needs equal time constants in a PDM input file")

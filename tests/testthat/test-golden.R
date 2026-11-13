@@ -309,7 +309,8 @@ test_that(
       for (engine in c("auto", "r")) {
         old <- options(pdmS7.engine = engine)
         ev <- find_events(series$rain_mm, series$flow_m3s, dt = ec$dt, rain_min = ec$rain_min,
-                          max_response_h = ec$h_max * ec$dt, area_km2 = ec$area_km2)
+                          max_response_h = ec$h_max * ec$dt, area_km2 = ec$area_km2,
+                          independent = FALSE)
         sc <- event_scores(ev, series$simulated_m3s, series$flow_m3s)
         options(old)
         label <- paste(ec$case, engine)
