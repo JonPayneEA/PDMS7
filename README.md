@@ -63,6 +63,9 @@ Model options:
 
 - [Choosing model components](https://jonpayneea.github.io/PDMS7/articles/model-options.html):
   the five capacity distributions, three recharge rules, routing forms and the solver
+- [Reading the response](https://jonpayneea.github.io/PDMS7/articles/reading-responses.html):
+  a training guide to what each soil store, recharge rule and groundwater store does to the flow,
+  and what to look for in a river's record
 - [The two-zone PDM](https://jonpayneea.github.io/PDMS7/articles/two-zone-pdm.html):
   a small fast zone for catchments with a sharp spike, and how to tell whether it earns its place
 - [Starting a run: cold, warm and hot](https://jonpayneea.github.io/PDMS7/articles/starting-states.html)

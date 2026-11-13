@@ -70,23 +70,36 @@ rest of that step.
 
 \strong{Underflow} leaves through a lower outlet below the gauge, linearly in the water above it:
 \code{qu = (S + Dbu) / ku} while \code{S > -Dbu} (Eq. 10, with \code{Dbu = Du - Sbmax}, the
-baseflow-underflow deficit). It is worked out from the storage at the start of the step and
-taken from the step's input, as the PDM does for evaporation and recharge; it never draws
-the store below the underflow outlet within the step. Neither source states how underflow is
-integrated within a step: this follows the model's convention for its other losses.
+baseflow-underflow deficit). Neither source states how underflow is integrated within a step.
+Here the store and both its outlets are integrated together, \verb{dS/dt = u - k max(S, 0)^m - qu},
+by RK4 with step doubling to the store's tolerances (\code{rtol}, \code{atol}), whatever its solver. Each
+outlet stops at its own threshold within the step, so neither draws the store below it, and
+the two share the water as the continuous equation does. (Before 0.26.0 the underflow was held
+at its start-of-step rate, which over a long step could drain the store well below its
+outlets.)
 
 \strong{External springs.} A fraction \code{alpha_b} of the store's outflow leaves the catchment as
 springs and the rest is baseflow at the outlet. A negative fraction brings water in: an
-inter-catchment exchange (scientific guide, section 4).
+inter-catchment exchange (scientific guide, section 4). The import is then \code{-alpha_b} times
+the store's release: the baseflow exceeds the release, the spring column is negative, and the
+water balance counts it as a gain. \code{alpha_b} must lie below 1; there is no lower limit in the
+model, and calibration searches -1 to 0.9 unless told otherwise.
 
 \strong{Well level.} The storage deficit is \code{D = Sbmax - S} (Eq. 8), and the depth to the water
 table \verb{W = Ys D} (Eq. 11). With the datum \code{hw}, the height of the ground at the well (m), the
 modelled well level is \code{hw - W}, in m.
 
 The exponential store cannot be extended: it needs positive flow at all times, so it cannot
-run dry (scientific guide, Appendices A and B). With a negative input the cubic store is
-stepped by Smith's method, Eqs. 4, 6 and 7, as published, whichever solver it uses for
-positive input.
+run dry (scientific guide, Appendices A and B).
+
+\strong{Negative input.} When abstraction exceeds recharge, the linear and quadratic stores cease
+flowing and drain by the exact published solutions (Eqs. B.1 to B.4). The cubic store follows
+its solver: with \code{solver = "smith"}, Smith's method as published (Eqs. 4, 6 and 7); with the
+adaptive solver, the continuous equation integrated to the store's tolerances, through the
+moment flow ceases and on into deficit by continuity. (Before 0.26.0 the adaptive cubic store
+switched to Smith's method whenever its input was negative.) Below zero there is no outflow and
+the store changes by continuity until it refills, then routes by its own solver for the rest
+of the step.
 
 Models with the extension run in the compiled engine, like the standard model, and give the
 same results as the step-by-step R loop. Starting from a flow (\code{\link[=initial_state_from_flow]{initial_state_from_flow()}})

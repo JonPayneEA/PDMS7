@@ -1,3 +1,34 @@
+# pdmS7 0.26.0
+
+Fixes from a review of the compiled core, with the R reference changed to match. Results change
+only for models with the groundwater extension that use underflow, or that drain an adaptive
+cubic store by abstraction, and for lognormal soil stores whose inverse previously failed
+silently. Every other model gives the same results as 0.25.0.
+
+- **The cubic store follows its solver with negative input.** With the groundwater extension, an
+  adaptive cubic store drained by abstraction switched to Smith's method, whatever its solver.
+  It now integrates the continuous equation through the moment flow ceases and on into deficit.
+  From 1 mm with k = 1 and 1 mm/h net abstraction over an hour, it ends at -0.164 mm (flow
+  ceasing after 0.836 h), where Smith's step gives +0.367 mm. The Smith solver keeps Smith's
+  published steps.
+- **Underflow is coupled with the main outlet.** Underflow was held at its start-of-step rate,
+  and its cap ignored the water leaving by the main outlet, so over a long step it could drain
+  the store well below both outlets (from 10 mm with two equal linear outlets of 1 h over 2 h, to
+  -4.5 mm). The store and both outlets are now integrated together, each outlet stopping at its
+  own threshold within the step: the same case ends at 10 exp(-4) = 0.183 mm, each outlet
+  releasing 4.908 mm.
+- **The lognormal inverse proves convergence.** It returned its last estimate after 200
+  iterations without checking it. It now returns only an estimate whose storage matches to
+  1e-12 (relative, at least 1 mm), and stops with an error otherwise.
+- **Documented, not changed:** the Smith solver's accuracy limits (`?cubic_routing`), the meaning
+  of a negative spring fraction (an import, counted as a gain in the water balance;
+  `?groundwater_extension`), the routing coefficient (`q = S^m / kb`, `k = 1 / kb` in the core),
+  and four conventions of the implementation in the model equations article: evaporation before
+  recharge, negative PET as condensation, discrete fractional delays, and interval-mean against
+  endpoint flow.
+- New regression tests against closed forms and an independent fine-step integration, through
+  the compiled core and the R loop.
+
 # pdmS7 0.25.0
 
 - **One event per flood by default.** `find_events()` now merges the events of one flood

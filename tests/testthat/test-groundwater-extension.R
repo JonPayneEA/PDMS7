@@ -154,11 +154,17 @@ test_that("the compiled engine matches the R loop", {
   expect_error(pdmS7:::pdm_engine_run(1, 0, 0.5, par, state, FALSE), "groundwater extension")
 })
 
-# Guards: underflow follows Eq. 10 from the start-of-step storage, and springs take their share
+# Guards: underflow follows Eq. 10, integrated with the main outlet, and springs take their share
 test_that("underflow and springs follow the published rules", {
   store <- groundwater_extension(linear_routing(100), ku = 1000, dbu = 30, alpha_b = 0.25)
   step <- .extended_step(store, 70, 0.2, 0, 1)
-  expect_equal(step$underflow, (70 + 30) / 1000)
+  # dS/dt = 0.2 - S / 100 - (S + 30) / 1000 = 0.17 - 0.011 S, so S relaxes to 0.17 / 0.011 and
+  # the underflow is (30 + mean S) / 1000 over the hour
+  a <- 0.011
+  target <- 0.17 / a
+  mean_s <- target + (70 - target) * (-expm1(-a)) / a
+  expect_equal(step$storage, target + (70 - target) * exp(-a), tolerance = 1e-9)
+  expect_equal(step$underflow, (30 + mean_s) / 1000, tolerance = 1e-8)
   expect_equal(step$spring / (step$spring + step$outflow), 0.25)
   expect_equal(70 + 0.2 - step$underflow - step$spring - step$outflow, step$storage)
   # Below the underflow outlet there is no underflow
