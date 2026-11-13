@@ -70,7 +70,8 @@ test_that("write_pdm_inp and read_pdm_inp round-trip", {
   expect_error(write_pdm_inp(base, tempfile(), "x", c("2010-10-01", "2011-10-01"),
                              optimised = "nope"), "not in the file")
   expo <- within(base, groundwater <- list(type = "exponential", a = 0.05, gamma = -5))
-  expect_error(write_pdm_inp(expo, tempfile(), "x", c("2010-10-01", "2011-10-01")), "stores")
+  expect_error(write_pdm_inp(expo, tempfile(), "x", c("2010-10-01", "2011-10-01")),
+               "exponential store cannot be written")
 })
 
 # Guards: what cannot be mapped faithfully is refused, not guessed

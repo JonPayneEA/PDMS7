@@ -75,6 +75,11 @@ it as \code{dt} (15 minutes by default).
 zones; demand recharge and the unrestricted split (runoff models 2 to 4); the power
 distribution (\code{loss} 4); exponential stores; a cubic surface store; and constant or
 pass-through stores (types 0 and -1).
+
+\strong{To do: the exponential store.} It is a PDM option (Moore, 2007), and pdmS7 runs, calibrates
+and forecasts with it, and the structure recommendation may choose it. Its code and parameter
+layout in a PDM for PCs input file are still to be confirmed, so \code{write_pdm_inp()} refuses it
+for now. It will be added once an example file with an exponential store has been checked.
 }
 \examples{
 cfg <- pdm_presets("standard")

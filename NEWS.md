@@ -9,6 +9,10 @@
   line behind `water_balance()`'s baseflow index. `independent = FALSE` gives the published
   method's events, one per burst of rain, as before; the golden-file check against the
   reference code uses it.
+- **The exponential store and PDM for PCs files: still to do.** The structure recommendation
+  keeps the exponential groundwater store among its options. `write_pdm_inp()` still refuses
+  it, now with a message saying why: its layout in a PDM for PCs input file is yet to be
+  confirmed. It will be added once an example file has been checked.
 
 # pdmS7 0.24.0
 
