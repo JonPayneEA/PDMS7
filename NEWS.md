@@ -5,6 +5,8 @@
   differ; flow duration curves and the monthly baseflow index for each recharge rule; days to
   halve against flow; recessions from small and large floods overlaid; a fingerprint table of
   every option; and three mystery hydrographs as exercises.
+- **The website has a light switch** and opens in dark mode: navy for dark, warm cream for light.
+  Figures adapt to the mode.
 
 # pdmS7 0.26.0
 
