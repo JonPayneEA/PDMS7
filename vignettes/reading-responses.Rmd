@@ -16,9 +16,20 @@ knitr::opts_chunk$set(
 logger::log_threshold(logger::WARN, namespace = "pdmS7")
 pal <- c("#236b83", "#a26421", "#5b8c3a", "#8a3b6b", "#444444")
 grey <- "#9aa7b0"
-panels <- function(n = 2) par(mfrow = c(1, n), mar = c(4, 4.2, 2.2, 0.8), cex.main = 0.95)
+panels <- function(n = 2, right = 0.8) {
+  par(mfrow = c(1, n), mar = c(4.6, 5.2, 2.2, right), cex.main = 0.95, mgp = c(3.6, 0.7, 0))
+}
 legend_in <- function(where, labels, lty = seq_along(labels)) {
-  legend(where, labels, col = pal[seq_along(labels)], lty = lty, lwd = 2, bty = "n", cex = 0.8)
+  legend(where, labels, col = pal[seq_along(labels)], lty = lty, lwd = 2.5, bty = "n", cex = 0.8)
+}
+# Labels at the right-hand end of each line, nudged apart so they do not overlap.
+end_labels <- function(x, ys, labels, log_y = FALSE) {
+  y <- if (log_y) log10(ys) else ys
+  o <- order(y)
+  gap <- diff(par("usr")[3:4]) * 0.06
+  for (k in seq_along(o)[-1]) y[o[k]] <- max(y[o[k]], y[o[k - 1]] + gap)
+  text(x, if (log_y) 10^y else y, labels, col = pal[seq_along(labels)], pos = 4, cex = 0.8,
+       xpd = TRUE)
 }
 ```
 
@@ -149,17 +160,41 @@ soil_runs <- lapply(dists, function(d) {
 })
 ```
 
-```{r soil-hydrographs, fig.height=4.2, fig.cap="Left: quick flow (surface route out) from the five storms, each model starting with its soil 30 per cent full. Right: the share of the catchment producing runoff."}
-panels()
-plot(NA, xlim = range(days), ylim = c(0, max(sapply(soil_runs, function(o) max(o$surface_out_mm)))),
-     xlab = "Day", ylab = "Quick flow (mm/h)", main = "Quick flow")
-for (i in seq_along(soil_runs)) lines(days, soil_runs[[i]]$surface_out_mm, col = pal[i], lwd = 1.6,
-                                      lty = i)
-legend_in("topright", names(soil_runs))
-plot(NA, xlim = range(days), ylim = c(0, 1), xlab = "Day", ylab = "Share of catchment",
-     main = "Contributing area")
+```{r soil-storms, fig.height=4.2, fig.cap="Quick flow from one storm on the dry catchment (left, 10 mm on day 2) and one in the wet spell (right, 30 mm on day 15), each model starting with its soil 30 per cent full. Note the different scales."}
+zoom <- function(day, title) {
+  rows <- which(days >= day & days <= day + 1.5)
+  hours <- (rows - rows[1])
+  top <- max(sapply(soil_runs, function(o) max(o$surface_out_mm[rows])))
+  plot(NA, xlim = c(0, max(hours)), ylim = c(0, top * 1.05), xlab = "Hours from the start of rain",
+       ylab = "Quick flow (mm/h)", main = title, las = 1)
+  for (i in seq_along(soil_runs)) {
+    lines(hours, soil_runs[[i]]$surface_out_mm[rows], col = pal[i], lwd = 2.5, lty = i)
+  }
+  peaks <- sapply(soil_runs, function(o) max(o$surface_out_mm[rows]))
+  at <- hours[which.max(soil_runs[[1]]$surface_out_mm[rows])]
+  end_labels(max(hours) * 1.02, peaks, sprintf("%s %.2f", names(soil_runs), peaks))
+}
+panels(right = 6.5)
+zoom(2, "Dry catchment: 10 mm")
+zoom(15, "Wet catchment: 30 mm")
+```
+
+The labels give each model's peak. On the dry catchment, the exponential and lognormal stores
+give a clear response and the triangular almost none. By the wet spell every model responds
+strongly, and the gap between them has narrowed.
+
+```{r soil-cumulative, fig.height=4.2, fig.cap="Left: quick flow added up over the 40 days. Right: the share of the catchment producing runoff."}
+panels(right = 6.5)
+total <- sapply(soil_runs, function(o) cumsum(o$surface_out_mm))
+plot(NA, xlim = c(0, 40), ylim = c(0, max(total)), xlab = "Day", ylab = "Quick flow so far (mm)",
+     main = "Quick flow, added up", las = 1)
+for (i in seq_along(soil_runs)) lines(days, total[, i], col = pal[i], lwd = 2.5, lty = i)
+end_labels(41, total[n, ], names(soil_runs))
+plot(NA, xlim = c(0, 40), ylim = c(0, 0.7), xlab = "Day", ylab = "Share of catchment",
+     main = "Contributing area", las = 1)
 for (i in seq_along(soil_runs)) lines(days, soil_runs[[i]]$saturated_fraction, col = pal[i],
-                                      lwd = 1.6, lty = i)
+                                      lwd = 2.5, lty = i)
+end_labels(41, sapply(soil_runs, function(o) o$saturated_fraction[n]), names(soil_runs))
 ```
 
 ```{r soil-ratios, fig.height=3.6, fig.cap="The share of each storm's rain that became direct runoff."}
@@ -167,7 +202,7 @@ storm_rows <- lapply(storm_days, function(d) which(days > d & days <= d + 1))
 ratios <- sapply(soil_runs, function(o) {
   vapply(storm_rows, function(r) sum(o$direct_runoff_mm[r]) / sum(forcing$rain[r]), numeric(1))
 })
-par(mar = c(4, 4.2, 1, 0.8))
+par(mar = c(4.6, 5.2, 1, 0.8), mgp = c(3.6, 0.7, 0))
 barplot(t(ratios), beside = TRUE, col = pal, border = NA, ylim = c(0, 1), las = 1,
         names.arg = sprintf("Day %d\n%g mm", storm_days, c(10, 20, 30, 30, 15)),
         ylab = "Direct runoff / rain")
@@ -193,7 +228,7 @@ how sharp that threshold is.
 
 ```{r soil-fill, fig.height=3.8, fig.cap="The share of 10 mm of rain that runs off at once, against how full the soil store is."}
 fill_share <- seq(0, 0.995, length.out = 200)
-par(mar = c(4, 4.2, 1, 0.8))
+par(mar = c(4.6, 5.2, 1, 0.8), mgp = c(3.6, 0.7, 0))
 plot(NA, xlim = c(0, 1), ylim = c(0, 1), xlab = "Soil store, share of its capacity",
      ylab = "Share of 10 mm that runs off", las = 1)
 for (i in seq_along(dists)) {
@@ -261,21 +296,24 @@ recharge_runs <- lapply(rules, function(r) {
 })
 ```
 
-```{r recharge-plots, fig.height=4.2, fig.cap="Left: the recharge each rule sends to groundwater; grey bands mark the storms. Right: the baseflow it produces. Every model starts in steady state at the same flow."}
-panels()
-top <- max(sapply(recharge_runs, function(o) max(o$groundwater_input_mm)))
-plot(NA, xlim = range(days), ylim = c(0, top), xlab = "Day", ylab = "Recharge (mm/h)",
-     main = "Recharge")
-for (d in storm_days) rect(d, 0, d + 0.4, top, col = adjustcolor(grey, 0.35), border = NA)
-for (i in seq_along(recharge_runs)) lines(days, recharge_runs[[i]]$groundwater_input_mm,
-                                          col = pal[i], lwd = 1.6, lty = i)
-legend_in("left", names(recharge_runs))
-plot(NA, xlim = range(days),
-     ylim = c(0, max(sapply(recharge_runs, function(o) max(o$baseflow_out_mm)))),
-     xlab = "Day", ylab = "Baseflow (mm/h)", main = "Baseflow")
-for (i in seq_along(recharge_runs)) lines(days, recharge_runs[[i]]$baseflow_out_mm, col = pal[i],
-                                          lwd = 1.6, lty = i)
+```{r recharge-plots, fig.height=4.2, fig.cap="Left: recharge to groundwater added up over the 40 days; grey bands mark the storms. Right: the baseflow it produces. Every model starts in steady state at the same flow."}
+panels(right = 5.5)
+cum <- sapply(recharge_runs, function(o) cumsum(o$groundwater_input_mm))
+plot(NA, xlim = c(0, 40), ylim = c(0, max(cum)), xlab = "Day", ylab = "Recharge so far (mm)",
+     main = "Recharge, added up", las = 1)
+for (d in storm_days) rect(d, 0, d + 0.4, max(cum), col = adjustcolor(grey, 0.35), border = NA)
+for (i in seq_along(recharge_runs)) lines(days, cum[, i], col = pal[i], lwd = 2.5, lty = i)
+end_labels(41, cum[n, ], names(recharge_runs))
+base <- sapply(recharge_runs, function(o) o$baseflow_out_mm)
+plot(NA, xlim = c(0, 40), ylim = c(0, max(base)), xlab = "Day", ylab = "Baseflow (mm/h)",
+     main = "Baseflow", las = 1)
+for (d in storm_days) rect(d, 0, d + 0.4, max(base), col = adjustcolor(grey, 0.35), border = NA)
+for (i in seq_along(recharge_runs)) lines(days, base[, i], col = pal[i], lwd = 2.5, lty = i)
+end_labels(41, base[n, ], names(recharge_runs))
 ```
+
+In the cumulative plot, a line that climbs only in steps, at the storms, is recharge from
+runoff; a line that keeps climbing between storms is drainage from the soil.
 
 ```{r recharge-fate}
 fate <- t(sapply(recharge_runs, function(o) {
@@ -346,67 +384,169 @@ route_series <- function(r, inflow, s) {
 }
 ```
 
-```{r stores-fill, fig.height=4.2, fig.cap="The same input to every store: 0.1 mm/h for 60 days, starting from an outflow of 0.01 mm/h, then nothing for 60 days. Left: outflow. Right: the same on a log scale, from the moment input stops."}
+```{r stores-fill, fig.height=4.2, fig.cap="The same input to every store: 0.1 mm/h for 60 days, starting from an outflow of 0.01 mm/h, then nothing for 60 days. Left: outflow. Right: each store's outflow as a share of the linear store's, which shows where they differ."}
 hours <- 24 * 120
 inflow <- c(rep(q0, 24 * 60), rep(0, 24 * 60))
 fill <- lapply(stores, function(r) route_series(r, inflow, storage_for_flow(r, q_start)))
 t_days <- seq_len(hours) / 24
-panels()
+panels(right = 6.5)
 plot(NA, xlim = c(0, 120), ylim = c(0, q0 * 1.05), xlab = "Day", ylab = "Outflow (mm/h)",
-     main = "Filling and draining")
+     main = "Filling and draining", las = 1)
 abline(h = q0, col = grey, lty = 3)
-for (i in seq_along(fill)) lines(t_days, fill[[i]], col = pal[i], lwd = 1.8, lty = i)
-legend_in("topright", names(fill))
-after <- t_days > 60
-plot(NA, xlim = c(60, 120), ylim = c(2e-3, q0 * 1.2), log = "y", xlab = "Day",
-     ylab = "Outflow (mm/h, log scale)", main = "The recession")
-for (i in seq_along(fill)) lines(t_days[after], fill[[i]][after], col = pal[i], lwd = 1.8, lty = i)
+abline(v = 60, col = grey, lty = 3)
+for (i in seq_along(fill)) lines(t_days, fill[[i]], col = pal[i], lwd = 2.5, lty = i)
+end_labels(122, sapply(fill, function(q) q[length(q)]), names(fill))
+ratio <- lapply(fill, function(q) q / fill$Linear)
+plot(NA, xlim = c(0, 120), ylim = range(unlist(ratio)), xlab = "Day",
+     ylab = "Outflow / linear store's", main = "Compared with the linear store", las = 1)
+abline(h = 1, col = pal[1], lwd = 2.5)
+abline(v = 60, col = grey, lty = 3)
+for (i in 2:4) lines(t_days, ratio[[i]], col = pal[i], lwd = 2.5, lty = i)
+end_labels(122, sapply(ratio, function(r) r[length(r)]), names(fill))
 ```
 
-The same input, the same start and the same water to fill, yet the shapes differ:
+Given the same water to fill, the four stores behave much alike: the store's form changes the
+shape of the response, not its size. The right-hand panel shows where they differ:
 
-- **Filling.** The linear store's outflow rises fastest at first, then slows as it nears the
-  input rate. The nonlinear stores start more slowly, then rise faster, an S-shaped curve, and
-  end closer to the input rate after 60 days.
-- **The recession.** On the log scale, the linear store's recession is a straight line: it
-  loses the same share of its flow each day. The nonlinear stores fall faster at first, then
-  flatten, crossing below and then above the linear line; the exponential store bends most.
-  After a few weeks they are the slower to drain.
+- **Filling.** The nonlinear stores lag at first, giving 25 to 40 per cent less outflow than
+  the linear store in the first weeks, then catch up and overtake it as they near the input
+  rate: an S-shaped rise, against the linear store's steady approach.
+- **Draining.** When input stops, the nonlinear stores fall faster at first, then flatten.
+  After about 40 days they give more flow than the linear store, and the gap keeps growing:
+  the long tail that the next section explains.
 
-## The recession signature
+## Recession curves: the store's fingerprint
 
-The shape of the recession is the clearest fingerprint a groundwater store leaves. Plotting how
-fast the flow falls against the flow itself, on log scales, turns each store into a straight
-line whose slope depends only on the store's form: 1 for the linear store, 1.5 for the
-quadratic, 5/3 for the cubic and 2 for the exponential.
+### What a recession curve is
 
-```{r master-recession, fig.height=4.2, fig.cap="Rate of fall against flow, on log scales, during the recessions above. Dashed: the slopes the store forms predict."}
-par(mar = c(4, 4.2, 2.2, 0.8), cex.main = 0.95)
-plot(NA, xlim = c(1e-3, q0), ylim = c(1e-7, 1e-2), log = "xy", xlab = "Flow q (mm/h)",
-     ylab = "Rate of fall -dq/dt (mm/h per h)", main = "Recession curves")
+After rain stops and the quick flow has passed, the river is fed only by the groundwater
+store draining. That falling limb is the **recession**. How fast the flow falls depends on how
+much water is left, and the form of the store sets that relationship. A recession curve
+measures it: for every point on a recession, the **rate of fall** (how many mm/h the flow drops
+per hour, `-dQ/dt`) against the **flow** at that moment (`Q`).
+
+```{r recession-explainer, fig.height=4.2, fig.cap="From hydrograph to recession curve. Left: a recession, with the slope of the hydrograph (the rate of fall) marked at three points. Right: the same three points as rate of fall against flow, on log scales. Every point of every recession goes on the right-hand plot."}
+r <- cubic_routing(kb = 3.375e7)
+q_ex <- route_series(r, rep(0, 24 * 90), storage_for_flow(r, 0.1))
+d_ex <- seq_along(q_ex) / 24
+marks <- c(5, 25, 70)
+panels()
+plot(d_ex, q_ex, type = "l", lwd = 2.5, col = pal[1], xlab = "Day", ylab = "Flow Q (mm/h)",
+     main = "A recession", las = 1, ylim = c(0, 0.1))
+fall_at <- function(day) {
+  i <- which.min(abs(d_ex - day))
+  c(q = q_ex[i], fall = q_ex[i - 1] - q_ex[i])
+}
+for (k in seq_along(marks)) {
+  p <- fall_at(marks[k])
+  span <- 12
+  segments(marks[k] - span, p[["q"]] + p[["fall"]] * 24 * span,
+           marks[k] + span, p[["q"]] - p[["fall"]] * 24 * span, col = pal[2], lwd = 2)
+  points(marks[k], p[["q"]], pch = 19, col = pal[2])
+  text(marks[k], p[["q"]], LETTERS[k], pos = 3, offset = 0.8, font = 2)
+}
+mid <- (q_ex[-1] + q_ex[-length(q_ex)]) / 2
+plot(mid, -diff(q_ex), log = "xy", type = "l", lwd = 2.5, col = pal[1], las = 1,
+     xlab = "Flow Q (mm/h)", ylab = "Rate of fall -dQ/dt (mm/h per h)", main = "Its recession curve")
+for (k in seq_along(marks)) {
+  p <- fall_at(marks[k])
+  points(p[["q"]], p[["fall"]], pch = 19, col = pal[2])
+  text(p[["q"]], p[["fall"]], LETTERS[k], pos = 3, offset = 0.8, font = 2)
+}
+```
+
+Early in the recession (A) the flow is high and falls fast; later (B, C) it is lower and falls
+more slowly. On log scales, the points line up along a straight line. That line is the
+recession curve.
+
+### How to read it
+
+- **The slope is the store's form.** The steeper the line, the more the rate of fall slows as
+  the flow drops. A linear store gives a slope of 1: the flow always loses the same share of
+  itself per day, so it halves in the same time whatever its level. Nonlinear stores give
+  steeper slopes, 1.5 for the quadratic, 5/3 for the cubic and 2 for the exponential: the
+  lower the flow, the longer it takes to halve, and the recession tails off.
+- **The height is the store's size.** At a given flow, a line higher up means a faster fall:
+  a smaller or quicker store. Flow divided by its rate of fall is the store's response time at
+  that flow, in hours. For a linear store it is the same at every flow; for a nonlinear store
+  it grows as the flow falls.
+
+The difference between the stores is clearest if they start alike. Below, all four start at
+the same flow, 0.1 mm/h, falling at the same rate (a response time of 500 hours), and drain
+with no more input.
+
+```{r recession-compare, fig.height=4.2, fig.cap="Four stores starting at the same flow and the same rate of fall, draining for 120 days. Left: the recessions on a log scale. Right: their recession curves, with the slopes the store forms predict (dashed)."}
+tau <- 500
+tangent <- list(
+  Linear = linear_routing(kb = q0 * tau / q0),
+  Quadratic = quadratic_routing(kb = (2 * q0 * tau)^2 / q0),
+  Cubic = cubic_routing(kb = (3 * q0 * tau)^3 / q0),
+  Exponential = FlodeExponentialRouting(a = 1 / (q0 * tau), gamma = log(q0))
+)
+drain <- lapply(tangent, function(r) route_series(r, rep(0, 24 * 120), storage_for_flow(r, q0)))
+t_drain <- seq_len(24 * 120) / 24
+panels(right = 6.5)
+plot(NA, xlim = c(0, 120), ylim = c(2e-4, q0), log = "y", xlab = "Day",
+     ylab = "Flow (mm/h, log scale)", main = "Recessions from the same start", las = 1)
+for (i in seq_along(drain)) lines(t_drain, drain[[i]], col = pal[i], lwd = 2.5, lty = i)
+end_labels(122, sapply(drain, function(q) q[length(q)]), names(drain), log_y = TRUE)
 slopes <- c(1, 1.5, 5 / 3, 2)
-for (i in seq_along(fill)) {
-  q <- fill[[i]][after]
+plot(NA, xlim = c(2e-4, q0), ylim = c(1e-8, 1e-3), log = "xy", xlab = "Flow Q (mm/h)",
+     ylab = "Rate of fall -dQ/dt (mm/h per h)", main = "Recession curves", las = 1)
+for (i in seq_along(drain)) {
+  q <- drain[[i]]
   fall <- -diff(q)
   mid <- (q[-1] + q[-length(q)]) / 2
-  ok <- fall > 0 & mid > 1.5e-3
-  lines(mid[ok], fall[ok], col = pal[i], lwd = 2, lty = i)
-  ref <- max(which(ok))
-  qq <- c(1e-3, q0)
-  lines(qq, fall[ref] * (qq / mid[ref])^slopes[i], col = adjustcolor(pal[i], 0.5), lty = 2)
+  lines(mid, fall, col = pal[i], lwd = 2.5, lty = i)
+  qq <- c(2e-4, q0)
+  lines(qq, fall[1] * (qq / mid[1])^slopes[i], col = adjustcolor(pal[i], 0.6), lty = 2)
 }
-legend("topleft", sprintf("%s (slope %s)", names(fill), c("1", "1.5", "5/3", "2")), col = pal,
-       lty = 1:4, lwd = 2, bty = "n", cex = 0.8)
+legend("bottomright", sprintf("%s, slope %s", names(drain), c("1", "1.5", "5/3", "2")),
+       col = pal, lty = 1:4, lwd = 2.5, bty = "n", cex = 0.8)
 ```
 
-`recession_analysis()` does this with an observed record, using only the dry spells, and
-suggests the store form whose slope matches best.
+From the same start, after 120 days the linear store is down to
+`r sprintf("%.4f", drain$Linear[length(drain$Linear)])` mm/h, while the cubic still gives
+`r sprintf("%.4f", drain$Cubic[length(drain$Cubic)])` mm/h and the exponential
+`r sprintf("%.4f", drain$Exponential[length(drain$Exponential)])` mm/h: thirty to fifty times
+more.
+That is the difference between a river that dries to a trickle in a long summer and one that
+keeps flowing.
 
-> **What to look for.** Take the dry-weather recessions of the observed flow and plot them on a
-> log scale. A straight line, the flow halving in the same number of days whatever its level,
-> means a linear store. A recession that falls fast from high flow and then flattens into a long
-> tail means a nonlinear store: cubic for most UK catchments with groundwater, exponential if the
-> tail barely falls through a long dry summer. `recession_analysis()` gives the slope.
+### Recession curves from a real river
+
+`recession_analysis()` builds the recession curve from an observed record, and
+`plot_recession()` draws it with a fitted model's alongside:
+
+```{r recession-usage, echo=TRUE, eval=FALSE}
+rec <- recession_analysis(flow, rain, dt = 0.25, time = time, months = c(11:12, 1:3))
+rec
+plot(rec)
+```
+
+A real record is noisier than these curves, and five things shape it:
+
+1. **Only true recessions count.** Points where rain fell, or soon after it while the quick
+   flow is still passing, are not the groundwater store draining. The function uses only
+   falling flow, some time after the last rain (three response times by default).
+2. **Average the flow first.** At 15-minute steps the rate of fall is mostly noise; the function
+   averages to daily flow by default.
+3. **Recharge between storms flattens the slope.** With standard recharge, the soil keeps feeding
+   groundwater through a recession, so the flow falls more slowly than the store alone would
+   make it, and the slope reads low. On made-up catchments the slope read 0.1 to 0.9 too low.
+   Read the store's form straight from the slope only where recharge stops between storms.
+4. **Evaporation steepens summer recessions.** Winter recessions, `months = c(11:12, 1:3)` above,
+   show the store more cleanly.
+5. **The slope is a check, not the choice.** In a benchmark of sixteen made-up catchments, the
+   slope found the true store in eight. Use it to check that a fitted model's low flows fall at
+   the right rate, and let the structure comparison choose the store.
+
+> **What to look for.** Plot the winter dry-weather recessions on a log scale. A straight line,
+> the flow halving in the same number of days whatever its level, points to a linear store. A
+> recession that falls fast from high flow and then flattens into a long tail points to a
+> nonlinear store: cubic for most UK catchments with groundwater, exponential if the tail barely
+> falls through a long dry spell. `plot_recession()` then shows whether the fitted model's
+> recessions match the river's.
 
 # Putting it together
 
