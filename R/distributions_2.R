@@ -61,7 +61,7 @@ S7::method(capacity_from_storage, FlodeLognormalCapacity) <- function(x, s) {
 # survival probability 1 - F(C), known exactly. S is increasing and concave, so Newton steps
 # from below never overshoot; a bracket and bisection guard against slow progress in the tail.
 # Converges to machine precision. Mirrored in src/pdm_core.c.
-.lognormal_inverse <- function(x, si) {
+.lognormal_inverse <- function(x, si, max_iter = 200L) {
   if (si == 0) {
     return(0)
   }
@@ -71,19 +71,22 @@ S7::method(capacity_from_storage, FlodeLognormalCapacity) <- function(x, s) {
   lo <- 0
   hi <- .lognormal_bracket(x, si)
   c <- min(si, hi)
-  for (i in seq_len(200L)) {
+  # Converged when the storage of the estimate matches si to tol, whatever the step size.
+  tol <- 1e-12 * max(1, si)
+  for (i in seq_len(max_iter)) {
     f <- storage_from_capacity(x, c) - si
-    if (f == 0) {
+    if (abs(f) <= tol) {
       return(c)
     }
     if (f < 0) lo <- c else hi <- c
     nxt <- .lognormal_newton(x, c, f, lo, hi)
-    if (abs(nxt - c) <= 4 * .Machine$double.eps * nxt) {
+    if (abs(nxt - c) <= 4 * .Machine$double.eps * nxt &&
+          abs(storage_from_capacity(x, nxt) - si) <= tol) {
       return(nxt)
     }
     c <- nxt
   }
-  c
+  stop("Lognormal inverse did not converge", call. = FALSE)
 }
 
 # Upper end of a bracket for the lognormal inverse: doubles from max(1, Smax) until it holds.

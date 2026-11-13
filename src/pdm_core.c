@@ -182,7 +182,7 @@ static double lognormal_storage(const dist_t* d, double c) {
 
 /* distributions_2.R, .lognormal_inverse: safeguarded Newton iteration. */
 static double lognormal_inverse(const dist_t* d, double si, pdm_error* e) {
-  double m, lo, hi, c, f, slope, next;
+  double m, lo, hi, c, f, slope, next, tol;
   int i;
   if (si == 0) return 0;
   m = d->smax;
@@ -194,16 +194,22 @@ static double lognormal_inverse(const dist_t* d, double si, pdm_error* e) {
     if (!check(e, isfinite(hi), "Could not bracket lognormal inverse")) return 0;
   }
   c = dmin(si, hi);
+  /* Converged when the storage of the estimate matches si to tol, whatever the step size. */
+  tol = 1e-12 * dmax(1.0, si);
   for (i = 0; i < 200; ++i) {
     f = lognormal_storage(d, c) - si;
-    if (f == 0) return c;
+    if (fabs(f) <= tol) return c;
     if (f < 0) lo = c; else hi = c;
     slope = pnorm_upper((log(c) - d->meanlog) / d->sdlog);
     next = c - f / slope;
     if (!(isfinite(next) && next > lo && next < hi)) next = (lo + hi) / 2;
-    if (fabs(next - c) <= 4 * DBL_EPSILON * next) return next;
+    if (fabs(next - c) <= 4 * DBL_EPSILON * next &&
+        fabs(lognormal_storage(d, next) - si) <= tol) {
+      return next;
+    }
     c = next;
   }
+  check(e, 0, "Lognormal inverse did not converge");
   return c;
 }
 
@@ -476,11 +482,101 @@ static double negative_input_storage(double m, double k, double s, double q, dou
   return s + (-expm1(-lambda * dt) / lambda) * (u - k * rpow(s, 3));
 }
 
+/* .extended_rate: the rate of change of the extended store, dS/dt = u - k max(S, 0)^m - qu,
+   with u the net input (recharge less abstraction, mm/h) and qu = (S + dbu) / ku the underflow
+   while the store is above the underflow outlet (S > -dbu), else 0. Both outlets stop at their
+   own thresholds; below zero the store changes by continuity. The main outlet's rate goes to
+   *q and the underflow rate to *qu. */
+static double extended_rate(const pdm_route* g, double ku, double dbu, double u, double s,
+                            double* q, double* qu) {
+  *q = s > 0 ? g->k * rpow(s, g->m) : 0.0;
+  *qu = (isfinite(ku) && s > -dbu) ? (s + dbu) / ku : 0.0;
+  return u - *q - *qu;
+}
+
+/* One classical RK4 step of length h for the storage and the volumes through the main outlet and
+   the underflow. RK4 weights the rates linearly, so the storage change equals the input less the
+   two volumes to rounding, and an outlet that never runs releases exactly nothing. */
+static void extended_rk4(const pdm_route* g, double ku, double dbu, double u, double s, double h,
+                         double* s_next, double* m_next, double* v_next) {
+  double qa, qb, qc, qd, ua, ub, uc, ud;
+  double a = extended_rate(g, ku, dbu, u, s, &qa, &ua);
+  double b = extended_rate(g, ku, dbu, u, s + h * a / 2, &qb, &ub);
+  double c = extended_rate(g, ku, dbu, u, s + h * b / 2, &qc, &uc);
+  double d = extended_rate(g, ku, dbu, u, s + h * c, &qd, &ud);
+  *s_next = s + h * (a + 2 * b + 2 * c + d) / 6;
+  *m_next = h * (qa + 2 * qb + 2 * qc + qd) / 6;
+  *v_next = h * (ua + 2 * ub + 2 * uc + ud) / 6;
+}
+
+/* .extended_adaptive: the storage after a step of the extended store, integrated with its main
+   outlet and underflow coupled, by RK4 with step doubling to the store's tolerances (as
+   power_adaptive). The steps shrink where an outlet stops, so threshold crossings are resolved.
+   The volumes through the main outlet and the underflow over the step go to *drained and *under.
+   Used for every store with underflow, and for the cubic store with the adaptive solver when
+   negative input drains a store that holds water. */
+static double extended_adaptive(const pdm_route* g, double ku, double dbu, double s, double u,
+                                double dt, double* drained, double* under, pdm_error* e) {
+  double time = 0, h = dt, one, one_m, one_v, half, half_m, half_v, two, two_m, two_v, err, tol;
+  int iterations = 0;
+  *drained = 0;
+  *under = 0;
+  while (time < dt) {
+    iterations += 1;
+    if (!check(e, iterations < 100000,
+               "Groundwater integration did not converge; adjust tolerances/parameters")) {
+      return s;
+    }
+    h = dmin(h, dt - time);
+    extended_rk4(g, ku, dbu, u, s, h, &one, &one_m, &one_v);
+    extended_rk4(g, ku, dbu, u, s, h / 2, &half, &half_m, &half_v);
+    extended_rk4(g, ku, dbu, u, half, h / 2, &two, &two_m, &two_v);
+    two_m = half_m + two_m;
+    two_v = half_v + two_v;
+    err = dmax(fabs(two - one), dmax(fabs(two_m - one_m), fabs(two_v - one_v))) / 15;
+    tol = g->atol + g->rtol * dmax(dmax(fabs(s), fabs(two)), dmax(*drained + two_m, *under + two_v));
+    if (isfinite(err) && isfinite(two) && err <= tol) {
+      s = two;
+      *drained = *drained + two_m;
+      *under = *under + two_v;
+      time = time + h;
+      if (dt - time < 1e-14 * dt) time = dt;
+      h = h * (err == 0 ? 2 : dmin(2.0, dmax(0.2, 0.9 * rpow(tol / err, 0.2))));
+    } else {
+      h = h / 2;
+    }
+    if (!check(e, h > DBL_EPSILON * dmax(dt, 1.0), "Groundwater integration step underflow")) {
+      return s;
+    }
+  }
+  return s;
+}
+
+static double extended_closed_form(const pdm_route* g, double s, double u, double dt,
+                                   pdm_error* e);
+
 /* .extended_storage: the storage at the end of a step with net input u (mm/h), which may be
-   negative. At or below zero the store changes by continuity until it refills, then routes
-   normally for the rest of the step. */
-static double extended_storage(const pdm_route* g, double s, double u, double dt,
-                               pdm_error* e) {
+   negative, and the volumes through the main outlet and the underflow, mm, in *drained and
+   *under. With underflow, or with the adaptive solver on a cubic store holding water whose input
+   is negative, the step is integrated by extended_adaptive. Otherwise the published closed
+   forms: exact for the linear and quadratic stores (Eqs. B.1 to B.4, A.5) and Smith's method for
+   the cubic store with the Smith solver (Eqs. B.5, A.8); at or below zero the store changes by
+   continuity until it refills, then routes normally for the rest of the step. */
+static double extended_storage(const pdm_route* g, double ku, double dbu, double s, double u,
+                               double dt, double* drained, double* under, pdm_error* e) {
+  double next;
+  if (isfinite(ku) || (g->m == 3 && !g->smith && s > 0 && u < 0)) {
+    return extended_adaptive(g, ku, dbu, s, u, dt, drained, under, e);
+  }
+  next = extended_closed_form(g, s, u, dt, e);
+  *under = 0;
+  *drained = dmax(0.0, s + u * dt - next);
+  return next;
+}
+
+/* The published closed forms for a step of the extended store without underflow. */
+static double extended_closed_form(const pdm_route* g, double s, double u, double dt,
+                                   pdm_error* e) {
   double store, q, cease, refill;
   if (s > 0 && u >= 0) {
     store = s;
@@ -502,25 +598,22 @@ static double extended_storage(const pdm_route* g, double s, double u, double dt
 }
 
 /* .extended_step: one step of the extended store with recharge rate d (mm/h) and recorded
-   abstraction over the step (mm). Underflow is worked out from the start-of-step storage and
-   never draws the store below the underflow outlet within the step. */
+   abstraction over the step (mm). Underflow and the main outlet drain the store together
+   (extended_storage), so neither draws it below its own outlet within the step. */
 static route_out extended_step(const pdm_params* in, double* store, double d,
                                double abstraction, double dt, ext_out* x, pdm_error* e) {
   const pdm_route* g = &in->groundwater;
   const pdm_extension* p = &in->extension;
   route_out r = {0, 0};
-  double s = store[0], a, above, qu, u, next, released;
+  double s = store[0], a, under, u, next, released;
   a = p->ca + p->fa * abstraction / dt;
-  above = dmax(0.0, s + p->dbu);
-  qu = isfinite(p->ku) ? dmin(above / p->ku, above / dt) : 0;
-  u = d - a - qu;
-  next = extended_storage(g, s, u, dt, e);
+  u = d - a;
+  next = extended_storage(g, p->ku, p->dbu, s, u, dt, &released, &under, e);
   if (e->code != PDM_OK) return r;
-  released = dmax(0.0, s + u * dt - next);
   r.outflow = (1 - p->alpha_b) * released;
   r.q_end = next <= 0 ? 0 : (1 - p->alpha_b) * (g->k * rpow(next, g->m));
   x->spring = p->alpha_b * released;
-  x->underflow = qu * dt;
+  x->underflow = under;
   x->abstraction = a * dt;
   x->deficit = p->smax_b - next;
   store[0] = next;

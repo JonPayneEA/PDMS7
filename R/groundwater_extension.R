@@ -32,23 +32,36 @@
 #'
 #' **Underflow** leaves through a lower outlet below the gauge, linearly in the water above it:
 #' `qu = (S + Dbu) / ku` while `S > -Dbu` (Eq. 10, with `Dbu = Du - Sbmax`, the
-#' baseflow-underflow deficit). It is worked out from the storage at the start of the step and
-#' taken from the step's input, as the PDM does for evaporation and recharge; it never draws
-#' the store below the underflow outlet within the step. Neither source states how underflow is
-#' integrated within a step: this follows the model's convention for its other losses.
+#' baseflow-underflow deficit). Neither source states how underflow is integrated within a step.
+#' Here the store and both its outlets are integrated together, `dS/dt = u - k max(S, 0)^m - qu`,
+#' by RK4 with step doubling to the store's tolerances (`rtol`, `atol`), whatever its solver. Each
+#' outlet stops at its own threshold within the step, so neither draws the store below it, and
+#' the two share the water as the continuous equation does. (Before 0.26.0 the underflow was held
+#' at its start-of-step rate, which over a long step could drain the store well below its
+#' outlets.)
 #'
 #' **External springs.** A fraction `alpha_b` of the store's outflow leaves the catchment as
 #' springs and the rest is baseflow at the outlet. A negative fraction brings water in: an
-#' inter-catchment exchange (scientific guide, section 4).
+#' inter-catchment exchange (scientific guide, section 4). The import is then `-alpha_b` times
+#' the store's release: the baseflow exceeds the release, the spring column is negative, and the
+#' water balance counts it as a gain. `alpha_b` must lie below 1; there is no lower limit in the
+#' model, and calibration searches -1 to 0.9 unless told otherwise.
 #'
 #' **Well level.** The storage deficit is `D = Sbmax - S` (Eq. 8), and the depth to the water
 #' table `W = Ys D` (Eq. 11). With the datum `hw`, the height of the ground at the well (m), the
 #' modelled well level is `hw - W`, in m.
 #'
 #' The exponential store cannot be extended: it needs positive flow at all times, so it cannot
-#' run dry (scientific guide, Appendices A and B). With a negative input the cubic store is
-#' stepped by Smith's method, Eqs. 4, 6 and 7, as published, whichever solver it uses for
-#' positive input.
+#' run dry (scientific guide, Appendices A and B).
+#'
+#' **Negative input.** When abstraction exceeds recharge, the linear and quadratic stores cease
+#' flowing and drain by the exact published solutions (Eqs. B.1 to B.4). The cubic store follows
+#' its solver: with `solver = "smith"`, Smith's method as published (Eqs. 4, 6 and 7); with the
+#' adaptive solver, the continuous equation integrated to the store's tolerances, through the
+#' moment flow ceases and on into deficit by continuity. (Before 0.26.0 the adaptive cubic store
+#' switched to Smith's method whenever its input was negative.) Below zero there is no outflow and
+#' the store changes by continuity until it refills, then routes by its own solver for the rest
+#' of the step.
 #'
 #' Models with the extension run in the compiled engine, like the standard model, and give the
 #' same results as the step-by-step R loop. Starting from a flow ([initial_state_from_flow()])
@@ -140,20 +153,35 @@ S7::method(route_step, FlodeExtendedGroundwater) <- function(x, storage, inflow,
   st <- x@store
   s <- storage
   a <- x@ca + x@fa * abstraction / dt
-  # Underflow from the start-of-step storage, never below the underflow outlet within the step.
-  above <- max(0, s + x@dbu)
-  qu <- if (is.finite(x@ku)) min(above / x@ku, above / dt) else 0
-  u <- d - a - qu
-  new <- .extended_storage(st, s, u, dt)
-  released <- max(0, s + u * dt - new)
+  u <- d - a
+  # The main outlet and the underflow drain the store together, each down to its own outlet.
+  solved <- .extended_solve(st, s, u, dt, x@ku, x@dbu)
+  new <- solved$storage
+  under <- solved$underflow
+  released <- solved$drained
   list(storage = new, outflow = (1 - x@alpha_b) * released,
        q_mean = (1 - x@alpha_b) * released / dt, q_end = routing_flow(x, new),
-       spring = x@alpha_b * released, underflow = qu * dt, abstraction = a * dt,
+       spring = x@alpha_b * released, underflow = under, abstraction = a * dt,
        deficit = x@smax_b - new)
 }
 
 # The storage at the end of a step with net input u (mm/h), which may be negative.
-.extended_storage <- function(st, s, u, dt) {
+# The end-of-step storage and the volumes through the main outlet and the underflow (mm). With
+# underflow, or with the adaptive solver on a cubic store holding water whose input is negative,
+# the step is integrated by .extended_adaptive(); otherwise the published closed forms (exact for
+# the linear and quadratic stores, Smith's method for the cubic store with the Smith solver), and
+# at or below zero continuity until the store refills, then a normal step.
+.extended_solve <- function(st, s, u, dt, ku = Inf, dbu = 0) {
+  if (is.finite(ku) || (st@m == 3 && st@solver != "smith" && s > 0 && u < 0)) {
+    return(.extended_adaptive(st, s, u, dt, ku, dbu))
+  }
+  new <- .extended_closed_form(st, s, u, dt)
+  list(storage = new, drained = max(0, s + u * dt - new), underflow = 0)
+}
+.extended_storage <- function(st, s, u, dt, ku = Inf, dbu = 0) {
+  .extended_solve(st, s, u, dt, ku, dbu)$storage
+}
+.extended_closed_form <- function(st, s, u, dt) {
   if (s > 0 && u >= 0) return(route_step(st, s, u, dt)$storage)
   if (s > 0) {
     k <- st@k
@@ -173,6 +201,60 @@ S7::method(route_step, FlodeExtendedGroundwater) <- function(x, storage, inflow,
 # Time to flow cessation with a negative input u, from storage s and outflow q (Appendix B):
 # Eq. B.1 (linear), B.3 (quadratic) and B.5 (cubic, Smith's method). Inf when Smith's step
 # never reaches zero.
+# dS/dt of the extended store: net input less the main outlet k max(S, 0)^m and, while the store
+# is above the underflow outlet (S > -dbu), the underflow (S + dbu) / ku. Returns the rate, the
+# main outlet's rate and the underflow rate.
+.extended_rate <- function(st, ku, dbu, u, s) {
+  q <- if (s > 0) st@k * s^st@m else 0
+  qu <- if (is.finite(ku) && s > -dbu) (s + dbu) / ku else 0
+  c(u - q - qu, q, qu)
+}
+# One classical RK4 step of length h for the storage and the volumes through the main outlet and
+# the underflow. RK4 weights the rates linearly, so the storage change equals the input less the
+# two volumes to rounding, and an outlet that never runs releases exactly nothing.
+.extended_rk4 <- function(st, ku, dbu, u, s, h) {
+  a <- .extended_rate(st, ku, dbu, u, s)
+  b <- .extended_rate(st, ku, dbu, u, s + h * a[[1]] / 2)
+  c <- .extended_rate(st, ku, dbu, u, s + h * b[[1]] / 2)
+  d <- .extended_rate(st, ku, dbu, u, s + h * c[[1]])
+  w <- h * (a + 2 * b + 2 * c + d) / 6
+  c(storage = s + w[[1]], drained = w[[2]], underflow = w[[3]])
+}
+# The extended store integrated over a step with its outlets coupled, by RK4 with step doubling
+# to the store's tolerances, as .power_adaptive(); steps shrink where an outlet stops.
+.extended_adaptive <- function(st, s, u, dt, ku, dbu) {
+  time <- 0
+  h <- dt
+  drained <- 0
+  under <- 0
+  iterations <- 0L
+  while (time < dt) {
+    iterations <- iterations + 1L
+    .check(iterations < 100000L,
+           "Groundwater integration did not converge; adjust tolerances/parameters")
+    h <- min(h, dt - time)
+    one <- .extended_rk4(st, ku, dbu, u, s, h)
+    half <- .extended_rk4(st, ku, dbu, u, s, h / 2)
+    two <- .extended_rk4(st, ku, dbu, u, half[["storage"]], h / 2)
+    two_m <- half[["drained"]] + two[["drained"]]
+    two_v <- half[["underflow"]] + two[["underflow"]]
+    err <- max(abs(two[["storage"]] - one[["storage"]]), abs(two_m - one[["drained"]]),
+               abs(two_v - one[["underflow"]])) / 15
+    tol <- st@atol + st@rtol * max(abs(s), abs(two[["storage"]]), drained + two_m, under + two_v)
+    if (is.finite(err) && is.finite(two[["storage"]]) && err <= tol) {
+      s <- two[["storage"]]
+      drained <- drained + two_m
+      under <- under + two_v
+      time <- time + h
+      if (dt - time < 1e-14 * dt) time <- dt
+      h <- h * (if (err == 0) 2 else min(2, max(0.2, 0.9 * (tol / err)^0.2)))
+    } else {
+      h <- h / 2
+    }
+    .check(h > .Machine$double.eps * max(dt, 1), "Groundwater integration step underflow")
+  }
+  list(storage = s, drained = drained, underflow = under)
+}
 .time_to_cessation <- function(m, k, s, q, u) {
   if (m == 1) return(-log(u / (u - q)) / k)
   if (m == 2) return(sqrt(1 / (-k * u)) * atan(sqrt(q / (-u))))
