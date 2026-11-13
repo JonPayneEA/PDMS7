@@ -1,4 +1,4 @@
-# Automatic calibration from start to finish
+# Calibrating a catchment from start to finish
 
 Automatic calibration means letting the computer find the model
 parameters that make the simulated river match the measured one. Done
@@ -113,8 +113,13 @@ Four things shape the search:
   search from several places, and keeping the best result, guards
   against settling in a poor one.
 
-[Automatic calibration,
-explained](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.md)
+Two parameters are held back by default. The rainfall factor `fc` stays
+at 1: a fitted factor would absorb the calibration years’ rainfall
+errors and carry them into operation. And a split recharge’s share is
+kept between 0.05 and 0.95, so no flow path is switched off.
+
+[How automatic calibration
+works](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.md)
 shows each of these at work.
 
 ## Step 3: choosing the structure
@@ -135,10 +140,11 @@ Tests on made-up catchments, where the true structure was known, showed
 what a record can tell apart. The recharge rule was found every time, by
 a clear margin. The groundwater store was found only by margins too
 small to survive real data, so the rule keeps the standard store unless
-another is clearly better. See [Choosing a model
-structure](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.md)
-and [What limits automatic
-calibration](https://jonpayneea.github.io/PDMS7/articles/calibration-study.md).
+another is clearly better. [How the model structure is
+chosen](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.md)
+sets out each step’s rule, with an example, and [Many
+catchments](https://jonpayneea.github.io/PDMS7/articles/large-sample.html#what-limits-automatic-calibration)
+the evidence.
 
 ## Step 4: calibrating in stages
 
@@ -215,6 +221,14 @@ log.](calibration-journey_files/figure-html/endgame-1.png)
 
 The last steps. Each is a separate, signed entry in the log.
 
+The candidate is the last stage’s fit, unless a fit already in hand
+scores better on the calibration years by more than the tie tolerance
+(0.02 in NSE): an earlier stage, or the structure comparison’s own fit
+of the chosen structure. A final events stage may trade a little overall
+fit for the floods; a larger loss means the stages ended worse than a
+fit already found, which is proposed instead, with the reason in the
+log.
+
 The candidate is proposed first, then validated, then tested, in that
 order and only once each. A model cannot be quietly re-tuned after its
 test has been seen, because the log shows the order in which things
@@ -280,19 +294,18 @@ entries[, c("id", "type")]
 checks <- calibration_checks(project, top = 5)
 checks$parameters[, c("path", "value", "lower", "upper", "at_bound")]
 #>                path        value lower   upper at_bound
-#> 1    distribution.b 4.460426e-01 5e-02 2.0e+00     <NA>
-#> 2        surface.k1 4.218624e+00 5e-01 7.2e+01     <NA>
-#> 3        surface.k2 2.800283e+00 5e-01 7.2e+01     <NA>
-#> 4                td 1.385175e+00 0e+00 6.0e+00     <NA>
-#> 5                fc 1.005471e+00 6e-01 1.6e+00     <NA>
-#> 6 distribution.cmax 3.017009e+02 2e+01 8.0e+02     <NA>
-#> 7       recharge.kg 4.182718e+03 1e+00 5.0e+03     <NA>
-#> 8    groundwater.kb 1.092101e+04 1e+02 1.0e+06     <NA>
+#> 1    distribution.b 4.617568e-01 5e-02       2     <NA>
+#> 2        surface.k1 4.223957e+00 5e-01      72     <NA>
+#> 3        surface.k2 2.418446e+00 5e-01      72     <NA>
+#> 4                td 1.385175e+00 0e+00       6     <NA>
+#> 5 distribution.cmax 3.063770e+02 2e+01     800     <NA>
+#> 6       recharge.kg 4.202691e+03 1e+00    5000     <NA>
+#> 7    groundwater.kb 3.900128e+04 1e+02 1000000     <NA>
 checks$summary[, c("period", "events", "median_peak_error", "median_timing_error_h")]
 #>        period events median_peak_error median_timing_error_h
-#> 1 calibration      5       -0.01894972                     0
-#> 2  validation      5       -0.04826028                     0
-#> 3     outside      5       -0.02385834                     0
+#> 1 calibration      5       0.017990908                     0
+#> 2  validation      5      -0.002985413                     0
+#> 3     outside      5       0.014803825                     0
 ```
 
 Each row is one entry, from the start of the project to the validation
@@ -304,13 +317,13 @@ a few percent of the measured peaks, and in the same hour.
 
 One number is a reminder of what a good fit does not prove. The events
 stage found a time delay of 1.4 hours, against the true 2 used to make
-the record. The two surface stores came out at 4.2 and 2.8 hours,
+the record. The two surface stores came out at 4.2 and 2.4 hours,
 against a true 2 and 4: the same two stores the other way round, which
 give the same flood, with the shorter delay making up the difference.
 The floods come out right; the parameters behind them are not unique.
 This is why the checks look at the floods themselves, and why [What
 limits automatic
-calibration](https://jonpayneea.github.io/PDMS7/articles/calibration-study.md)
+calibration](https://jonpayneea.github.io/PDMS7/articles/large-sample.html#what-limits-automatic-calibration)
 matters before reading too much into any one value.
 
 ## All of this in one call
@@ -366,14 +379,15 @@ catchments](https://jonpayneea.github.io/PDMS7/articles/many-catchments.md).
 
 ## Where to go next
 
-| To learn about                               | Read                                                                                                  |
-|----------------------------------------------|-------------------------------------------------------------------------------------------------------|
-| Preparing the data                           | [Getting started with data](https://jonpayneea.github.io/PDMS7/articles/data-preparation.md)          |
-| Every check, before and after calibrating    | [Checking the data and the events](https://jonpayneea.github.io/PDMS7/articles/checks.md)             |
-| How the search works, bounds, scores, starts | [Automatic calibration, explained](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.md)   |
-| Why a good score can hide bad floods         | [Getting the floods right](https://jonpayneea.github.io/PDMS7/articles/floods.md)                     |
-| The rain the model is given                  | [Catchment rainfall from gauges and radar](https://jonpayneea.github.io/PDMS7/articles/rainfall.md)   |
-| Choosing the structure                       | [Choosing a model structure](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.md)       |
-| What a record can and cannot tell            | [What limits automatic calibration](https://jonpayneea.github.io/PDMS7/articles/calibration-study.md) |
-| The log, trials and sign-off                 | [Logging a manual calibration](https://jonpayneea.github.io/PDMS7/articles/calibration-log.md)        |
-| Many catchments                              | [Calibrating many catchments](https://jonpayneea.github.io/PDMS7/articles/many-catchments.md)         |
+| To learn about                                       | Read                                                                                                                                 |
+|------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
+| Preparing the data                                   | [Getting started with data](https://jonpayneea.github.io/PDMS7/articles/data-preparation.md)                                         |
+| Every check, before and after calibrating            | [Checking the data and the events](https://jonpayneea.github.io/PDMS7/articles/checks.md)                                            |
+| How the search works, bounds, scores, starts         | [How automatic calibration works](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.md)                                   |
+| Why a good score can hide bad floods                 | [Getting the floods right](https://jonpayneea.github.io/PDMS7/articles/floods.md)                                                    |
+| The rain the model is given                          | [Catchment rainfall from gauges and radar](https://jonpayneea.github.io/PDMS7/articles/rainfall.md)                                  |
+| Choosing the structure                               | [How the model structure is chosen](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.md)                               |
+| Comparing with an older model, or a PDM for PCs file | [Comparing calibrations](https://jonpayneea.github.io/PDMS7/articles/comparing-calibrations.md)                                      |
+| What a record can and cannot tell                    | [What limits automatic calibration](https://jonpayneea.github.io/PDMS7/articles/large-sample.html#what-limits-automatic-calibration) |
+| The log, trials and sign-off                         | [Calibration records](https://jonpayneea.github.io/PDMS7/articles/calibration-log.md)                                                |
+| Many catchments                                      | [Calibrating many catchments](https://jonpayneea.github.io/PDMS7/articles/many-catchments.md)                                        |

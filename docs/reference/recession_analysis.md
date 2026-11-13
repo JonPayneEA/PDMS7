@@ -149,7 +149,7 @@ NSE. Use this analysis to check that a fitted model's low flows fall at
 the right rate
 ([`plot_recession()`](https://jonpayneea.github.io/PDMS7/reference/plot_recession.md)
 draws the record and the model together), not to choose its store; see
-the calibration study article.
+the article on many catchments (large-sample).
 
 ## References
 

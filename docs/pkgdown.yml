@@ -7,35 +7,35 @@ articles:
   auto-calibration: auto-calibration.html
   calibration-journey: calibration-journey.html
   calibration-log: calibration-log.html
-  calibration-study: calibration-study.html
-  calibration: calibration.html
   checks: checks.html
   choosing-structure: choosing-structure.html
+  comparing-calibrations: comparing-calibrations.html
   compiled-core: compiled-core.html
   data-preparation: data-preparation.html
-  events: events.html
   example-workflow: example-workflow.html
   extrapolation: extrapolation.html
   floods: floods.html
   forecast-updating: forecast-updating.html
   further-reading: further-reading.html
   glossary: glossary.html
+  groundwater-extension: groundwater-extension.html
   hindcasts: hindcasts.html
   large-sample: large-sample.html
-  log-structure: log-structure.html
   many-catchments: many-catchments.html
   model-equations: model-equations.html
   model-options: model-options.html
   pdm-explained: pdm-explained.html
   rainfall: rainfall.html
   reading-paths: reading-paths.html
+  reading-responses: reading-responses.html
   scoring: scoring.html
   snowpack-explained: snowpack-explained.html
   starting-states: starting-states.html
   steward-guide: steward-guide.html
   synthetic-rivers: synthetic-rivers.html
   troubleshooting: troubleshooting.html
-last_built: 2026-11-09T18:11Z
+  two-zone-pdm: two-zone-pdm.html
+last_built: 2026-11-13T22:31Z
 urls:
   reference: https://jonpayneea.github.io/PDMS7/reference
   article: https://jonpayneea.github.io/PDMS7/articles

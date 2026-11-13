@@ -78,6 +78,6 @@ fraction of the record.
 f <- tempfile(fileext = ".csv")
 writeLines(c("year,month,day,hour,minute,flow", "2021,3,1,9,0,1.2", "2021,3,1,9,15,1.3"), f)
 read_hydro_series(f)
-#> Hydrometric series from file1001426547c.csv: 2 rows, 2021-03-01 09:00 to 2021-03-01 09:15, step 15 min, 0 missing
+#> Hydrometric series from file5e9752db148.csv: 2 rows, 2021-03-01 09:00 to 2021-03-01 09:15, step 15 min, 0 missing
 #> Columns used: time year + month + day + hour + minute, value flow
 ```

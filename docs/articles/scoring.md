@@ -300,8 +300,35 @@ below.
 In a calibration project, thresholds may be given as river levels
 instead, and are converted to flows through a rating table registered
 with the data; a level outside the rating is refused rather than
-extrapolated. See [Logging a manual
-calibration](https://jonpayneea.github.io/PDMS7/articles/calibration-log.md).
+extrapolated. See [Calibration
+records](https://jonpayneea.github.io/PDMS7/articles/calibration-log.md).
+
+### Thresholds from the record
+
+A catchment without warning thresholds still has flows worth scoring a
+model against.
+[`flow_markers()`](https://jonpayneea.github.io/PDMS7/reference/flow_markers.md)
+works them out from the record itself:
+
+| Marker                  | Flow                                                                                                          | How often                                         |
+|-------------------------|---------------------------------------------------------------------------------------------------------------|---------------------------------------------------|
+| `QMED`                  | Median of the water-year maxima (October to September): the 2-year flood, as in the Flood Estimation Handbook | Reached about one year in two                     |
+| `0.5QMED`, any multiple | That fraction of QMED; 0.5 is near the threshold of a UK peaks-over-threshold series                          | A few times a year                                |
+| `Q1`, `Q5`, any `Q<p>`  | Exceeded `p` per cent of the time, from the flow duration curve                                               | Above Q1 about 3.6 days a year, above Q5 about 18 |
+
+``` r
+flow_markers(observed, dt = 0.25, time = forcing$time, markers = c("QMED", "0.5QMED", "Q1"))
+```
+
+A calibration project with no registered thresholds registers QMED, Q1
+and Q5 itself, from the calibration window alone (held-back years left
+out), so every run gets threshold scores and the validation and test
+data never shape the thresholds. The report marks them as worked out
+from the record. Two cautions: QMED from fewer than ten water years is
+uncertain, and
+[`flow_markers()`](https://jonpayneea.github.io/PDMS7/reference/flow_markers.md)
+warns; and exceedance markers count time, not floods, so a long wet
+winter spends many days above Q5 without a notable flood.
 
 ### The performance diagram
 

@@ -49,6 +49,6 @@ river <- synthetic_catchment(years = 2, dt = 1, seed = 1)
 events <- find_events(river$forcing$rain, river$observed, dt = 1)
 scores <- event_scores(events, river$true_flow, river$observed)
 summary(scores$peak_error)
-#>      Min.   1st Qu.    Median      Mean   3rd Qu.      Max. 
-#> -0.127720 -0.032203  0.001785 -0.001887  0.025619  0.168318 
+#>       Min.    1st Qu.     Median       Mean    3rd Qu.       Max. 
+#> -1.277e-01 -2.452e-02  3.929e-05 -3.592e-03  2.387e-02  1.414e-01 
 ```

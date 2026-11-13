@@ -24,7 +24,8 @@ calibrate_staged(
   soil_fraction = 0.5,
   log_offset = 0.01,
   start = c("flow", "soil"),
-  baseflow_fraction = 0.7
+  baseflow_fraction = 0.7,
+  cores = getOption("pdmS7.cores", 1L)
 )
 
 log_staged_calibration(
@@ -64,7 +65,7 @@ log_staged_calibration(
   Bounds table from
   [`calibration_bounds()`](https://jonpayneea.github.io/PDMS7/reference/calibration_bounds.md).
 
-- starts, seed, control, method:
+- starts, seed, control, method, cores:
 
   Passed to
   [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md)
@@ -118,8 +119,8 @@ observed <- run_pdm(pdm_from_config(truth), forcing)$output$q_m3s
 fit <- calibrate_staged(config, forcing, observed, warmup = 48,
                         control = list(maxit = 20))
 round(fit$parameters, 2)
-#>                fc distribution.cmax    distribution.b       recharge.kg 
-#>              0.76            139.07              2.00            667.85 
-#>    groundwater.kb        surface.k1        surface.k2 
-#>            100.00              3.76              3.76 
+#> distribution.cmax    distribution.b       recharge.kg    groundwater.kb 
+#>             31.59              2.00              9.48            100.00 
+#>        surface.k1        surface.k2 
+#>             72.00             72.00 
 ```

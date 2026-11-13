@@ -126,12 +126,12 @@ one_run <- system.time(
 c(seconds_per_run = signif(one_run, 2),
   estimated_minutes_for_8 = round(8 * 1500 * one_run / 60, 1))
 #>         seconds_per_run estimated_minutes_for_8 
-#>                  0.0031                  0.6000
+#>                  0.0045                  0.9000
 ```
 
 For a real batch, measure on a few catchments first; see the pilot
-script in
-[Calibration](https://jonpayneea.github.io/PDMS7/articles/calibration.md).
+script in [How automatic calibration
+works](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.html#several-starts).
 
 ## Running the batch
 
@@ -150,9 +150,9 @@ part <- do.call(calibrate_batch, c(list(basins, results, only = c("B01", "B02", 
 part
 #>     basin  state     step seconds message
 #>    <char> <char>   <char>   <num>  <char>
-#> 1:    B01   done complete     4.9        
-#> 2:    B02   done complete     3.7        
-#> 3:    B03   done complete     4.3
+#> 1:    B01   done complete     3.6        
+#> 2:    B02   done complete     5.4        
+#> 3:    B03   done complete     4.8
 ```
 
 Suppose the computer was switched off at this point, after three
@@ -170,11 +170,11 @@ status
 #> 1:    B01   done complete     0.0        
 #> 2:    B02   done complete     0.0        
 #> 3:    B03   done complete     0.0        
-#> 4:    B04   done complete     4.8        
-#> 5:    B05   done complete     5.0        
-#> 6:    B06   done complete     5.3        
-#> 7:    B07   done complete     3.7        
-#> 8:    B08   done complete     4.2
+#> 4:    B04   done complete     4.6        
+#> 5:    B05   done complete     4.2        
+#> 6:    B06   done complete     6.6        
+#> 7:    B07   done complete     5.3        
+#> 8:    B08   done complete     5.2
 ```
 
 The three finished catchments took a moment each: the batch read their
@@ -218,11 +218,11 @@ status
 #> 1:    B01   done complete     0.0        
 #> 2:    B02   done complete     0.0        
 #> 3:    B03   done complete     0.0        
-#> 4:    B04   done complete     4.8        
-#> 5:    B05   done complete     5.0        
+#> 4:    B04   done complete     4.6        
+#> 5:    B05   done complete     4.2        
 #> 6:    B06   done complete     0.0        
-#> 7:    B07   done complete     3.7        
-#> 8:    B08   done complete     4.2
+#> 7:    B07   done complete     5.3        
+#> 8:    B08   done complete     5.2
 ```
 
 The failed attempt is still on record in B06’s project, followed by the
@@ -235,8 +235,8 @@ would by hand: the water balance and slow stores first, then the fast
 stores, then a joint polish. Each stage is written to the catchment’s
 log as its own step, so a reviewer can see what each one changed. If the
 batch is interrupted part way through a catchment, the next run carries
-on from the last finished stage. [Automatic calibration,
-explained](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.md)
+on from the last finished stage. [How automatic calibration
+works](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.md)
 describes the stages.
 
 ``` r
@@ -280,14 +280,14 @@ table[, .(project, state, calibration = round(candidate_score, 3),
           validation = round(validation_score, 3))]
 #>    project  state calibration validation
 #>     <char> <char>       <num>      <num>
-#> 1:     B01   done       0.982      0.980
-#> 2:     B02   done       0.990      0.995
-#> 3:     B03   done       0.968      0.968
-#> 4:     B04   done       0.981      0.995
-#> 5:     B05   done       0.973      0.924
-#> 6:     B06   done       0.977      0.977
-#> 7:     B07   done       0.992      0.994
-#> 8:     B08   done       0.989      0.993
+#> 1:     B01   done       0.938      0.925
+#> 2:     B02   done       0.960      0.980
+#> 3:     B03   done       0.743      0.803
+#> 4:     B04   done       0.951      0.985
+#> 5:     B05   done       0.969      0.915
+#> 6:     B06   done       0.930      0.924
+#> 7:     B07   done       0.989      0.992
+#> 8:     B08   done       0.955      0.952
 ```
 
 ``` r
@@ -332,15 +332,15 @@ agreement <- do.call(rbind, lapply(table$project, function(id) {
 }))
 agreement$agree <- (agreement$worst - agreement$best) < 1e-3
 agreement
-#>   basin    best   worst finished agree
-#> 1   B01 0.01770 0.01850        0  TRUE
-#> 2   B02 0.01050 0.09760        3 FALSE
-#> 3   B03 0.03240 0.06460        0 FALSE
-#> 4   B04 0.01870 0.05760        0 FALSE
-#> 5   B05 0.02740 0.47600        2 FALSE
-#> 6   B06 0.02340 0.33700        0 FALSE
-#> 7   B07 0.00814 0.00878        1  TRUE
-#> 8   B08 0.01060 0.02460        1 FALSE
+#>   basin   best  worst finished agree
+#> 1   B01 0.0620 0.0648        3 FALSE
+#> 2   B02 0.0398 0.5900        2 FALSE
+#> 3   B03 0.2570 0.2630        2 FALSE
+#> 4   B04 0.0489 0.0511        0 FALSE
+#> 5   B05 0.0306 0.0307        2  TRUE
+#> 6   B06 0.0695 0.4630        2 FALSE
+#> 7   B07 0.0114 0.5220        2 FALSE
+#> 8   B08 0.0446 0.0459        0 FALSE
 ```
 
 `finished` counts the starts that ended because they could improve no
@@ -390,19 +390,19 @@ typical <- aggregate(cbind(typical_error = error) ~ parameter, data = pairs,
                      FUN = function(x) round(stats::median(x), 3))
 typical
 #>   parameter typical_error
-#> 1      cmax         0.079
-#> 2        fc         0.011
-#> 3    k_fast         0.362
-#> 4    k_slow         0.381
-#> 5        kg         0.029
+#> 1      cmax         2.636
+#> 2        fc         0.081
+#> 3    k_fast         0.408
+#> 4    k_slow         0.606
+#> 5        kg         0.153
 best <- typical$parameter[order(typical$typical_error)]
 ```
 
 The typical error is the middle value across catchments, as a fraction:
 0.01 means 1 per cent out. Here fc and kg come back almost exactly: they
 control how much water there is and how the river recedes, which every
-week of record shows. k_slow and k_fast are the furthest out, typically
-about 38 per cent, partly because this example stops each search after
+week of record shows. cmax and k_slow are the furthest out, typically
+about 264 per cent, partly because this example stops each search after
 25 steps, before most of them had finished. In other cases a parameter
 is badly off even when the fit is excellent, because the data hold
 little information about it: the size of a soil store that two autumn
@@ -411,14 +411,14 @@ months never fill, for example.
 The lesson for real catchments, where the truth is unknown: a good score
 does not prove the parameters are right. Longer records, the parameter
 sensitivity plots in each catchment’s report, and [staged
-calibration](https://jonpayneea.github.io/PDMS7/articles/calibration.md)
+calibration](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.html#calibrating-in-stages)
 all help.
 
 ## Checking the work
 
 Every catchment’s record can be checked for tampering, and reviewed and
-signed off like any other calibration (see [Logging a manual
-calibration](https://jonpayneea.github.io/PDMS7/articles/calibration-log.md)).
+signed off like any other calibration (see [Calibration
+records](https://jonpayneea.github.io/PDMS7/articles/calibration-log.md)).
 Start the review with the worst performers:
 
 ``` r
@@ -447,6 +447,6 @@ for (f in file.path(results, worst$project)) build_report(f)
 | Collect                  | `batch_results(results)`                                                                                                                                                                                 |
 | Review                   | [`verify_project()`](https://jonpayneea.github.io/PDMS7/reference/verify_project.md), [`build_report()`](https://jonpayneea.github.io/PDMS7/reference/build_report.md) on the worst first, then sign off |
 
-For many model structures in each catchment rather than one, see
-[Choosing a model
-structure](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.md).
+For many model structures in each catchment rather than one, see [How
+the model structure is
+chosen](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.md).

@@ -58,8 +58,8 @@ compiled core, measured as this article was built.
 ``` r
 round(timings, 1)
 #>         R   C
-#> PDM  1301 1.8
-#> PACK  211 0.6
+#> PDM  1909 2.8
+#> PACK  473 1.5
 ```
 
 The exact figures depend on the machine, but the ratio is in the
@@ -93,7 +93,7 @@ c(
                                       area_km2 = 50))
 )
 #>            default    lognormal_split exponential_routes 
-#>       0.000000e+00       1.421085e-13       0.000000e+00
+#>       2.842171e-14       1.278977e-13       0.000000e+00
 ```
 
 To run the R reference instead, for checking or debugging, set
@@ -190,9 +190,9 @@ runs can execute in parallel threads.
 
 ## Finding events from other languages
 
-The event functions of [Events in large
-samples](https://jonpayneea.github.io/PDMS7/articles/events.md) live in
-the same library: `pdm_dmca_rho()` for the response-time curve,
+The event functions of [Many
+catchments](https://jonpayneea.github.io/PDMS7/articles/large-sample.html#events-across-a-sample)
+live in the same library: `pdm_dmca_rho()` for the response-time curve,
 `pdm_find_events()` for the events, `pdm_event_summary()` for their
 totals and baseflow line, and `pdm_event_scores()` for a model’s scores
 on each event. They take only arrays of doubles and 64-bit integers, so
@@ -209,3 +209,13 @@ the JVM, Scala and Java use the Foreign Function and Memory API
 `tools/core/README.md` gives build commands for Linux, macOS and
 Windows, the structure sizes for each language, and how to check a new
 binding against the golden files.
+
+**Interface version 3** added the groundwater extension. `pdm_params`
+ends with a `pdm_extension` block (`enabled`, then `ku`, `dbu`,
+`alpha_b`, `ca`, `fa`, `smax_b`, `ys`, `hw`; 368 bytes in all), and
+`pdm_run_ext()` takes an abstraction series and writes the extension’s
+five columns (`abstraction_mm`, `underflow_mm`, `spring_mm`,
+`groundwater_deficit_mm`, `well_level_m`) to a table of their own.
+`pdm_run()` and its 24 columns are unchanged; set
+`extension.enabled = 0` and every older binding works as before, once
+its structure has the new block. `pdm_core_abi_version()` returns 3.

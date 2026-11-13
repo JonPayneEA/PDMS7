@@ -7,7 +7,7 @@ right. This guide takes you from Environment Agency sources to the three
 files pdmS7 reads, and ends with a checklist to run before every
 calibration.
 
-## What pdmS7 expects
+# What pdmS7 expects
 
 | File          | Columns                                        | Rules                                                                                                      |
 |---------------|------------------------------------------------|------------------------------------------------------------------------------------------------------------|
@@ -24,7 +24,7 @@ Three conventions matter more than any other:
 - **The step is fixed.** Every row is one step after the last: 15
   minutes, an hour or a day.
 
-## Step 1: get the data with reach.io
+# Step 1: get the data with reach.io
 
 [reach.io](https://github.com/JonPayneEA/reach.io) finds stations,
 downloads from the EA Hydrology API, keeps a Bronze store of raw data
@@ -49,7 +49,7 @@ reach.io’s `format_for_pdm()` writes the layout of the older PDM for PCs
 program, with separate year, month and day columns. pdmS7 reads plain
 CSV files with one `time` column, as below.
 
-## Step 2: use the quality flags
+# Step 2: use the quality flags
 
 reach.io’s Silver data carry a flag on every reading: 1 good, 2
 estimated, 3 suspect, 4 rejected. A simple rule serves most
@@ -76,9 +76,9 @@ flow
 #> 5   2.6       1   2.6
 ```
 
-## Step 3: get the time stamps right
+# Step 3: get the time stamps right
 
-### Start or end of the step
+## Start or end of the step
 
 Check how your source stamps its totals. If a 15-minute rainfall total
 is stamped at the **start** of its quarter hour, every value must move
@@ -102,7 +102,7 @@ The test: plot rain and flow for a few sharp storms. Flow cannot rise
 before the rain that causes it. If it appears to, the rain is stamped
 late or the flow early.
 
-### Summer time
+## Summer time
 
 Data exported from some systems is in local time. In local time the last
 Sunday in October has one hour twice and the last Sunday in March has
@@ -118,7 +118,7 @@ format(local, tz = "UTC", usetz = TRUE)
 Local 00:45 and 02:00 on that night are only 15 minutes apart in UTC:
 the hour that never happened has gone.
 
-### A fixed step
+## A fixed step
 
 Gaps in the time column itself, rather than missing values, break the
 fixed step. Fill them with explicit rows:
@@ -136,7 +136,7 @@ full
 #> 4 2024-01-01 00:45:00   1.3
 ```
 
-## Step 4: units and step length
+# Step 4: units and step length
 
 - **Rainfall** is already a depth per step. To change the step, add
   depths: four 15-minute totals make one hourly total.
@@ -147,9 +147,8 @@ full
 - **Levels** need a rating before they can be compared with modelled
   flow. Use reach.io’s `apply_rating()` and keep the rating with the
   data. Treat flows above the highest gauged flow with caution; for
-  warning thresholds set as levels, pdmS7’s
-  [`register_data()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
-  converts them through the rating and refuses levels outside it.
+  warning thresholds set as levels, pdmS7’s `register_data()` converts
+  them through the rating and refuses levels outside it.
 
 ``` r
 quarter <- data.frame(rain = c(0.2, 1.4, 0.6, 0, 0.1, 0, 0, 0),
@@ -161,7 +160,7 @@ data.frame(rain = tapply(quarter$rain, hour, sum), q_m3s = tapply(quarter$q_m3s,
 #> 2  0.1   3.0
 ```
 
-## Step 5: catchment rainfall
+# Step 5: catchment rainfall
 
 The model needs the rain falling on the whole catchment, not at one
 gauge. reach.io returns gauge series; combining them is your step. Three
@@ -191,7 +190,7 @@ Infill rainfall once, by one recorded method, before any model sees it,
 and keep a note of which steps were infilled. Never infill flow for
 scoring.
 
-## Step 6: potential evaporation
+# Step 6: potential evaporation
 
 PET has much less effect on floods than rainfall, but it controls how
 dry the soil gets in summer, and so how big the first autumn floods are.
@@ -210,7 +209,7 @@ rep(daily_pet / 96, 3)
 #> [1] 0.025 0.025 0.025
 ```
 
-## Step 7: write the files
+# Step 7: write the files
 
 ``` r
 folder <- file.path(tempdir(), "B01")
@@ -229,24 +228,23 @@ cat(readLines(file.path(folder, "forcing.csv"), n = 3), sep = "\n")
 #> 2024-01-01T00:30:00Z,1.4,0.025
 ```
 
-## The same steps with pdmS7’s functions
+# The same steps with pdmS7’s functions
 
 Steps 3 to 7 recur for every catchment, and each script that rewrites
 them is a new chance to misread a time column or a unit. pdmS7 has a
 function for each, and each one notes what it did on the series it
-returns. When the data are registered,
-[`register_data()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
-writes those notes into the calibration log, so a reviewer sees, for
-example, that 412 steps of evaporation were interpolated.
+returns. When the data are registered, `register_data()` writes those
+notes into the calibration log, so a reviewer sees, for example, that
+412 steps of evaporation were interpolated.
 
-| Step                                                                                       | Function                                                                                   |
-|--------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------|
-| Read an export: split year/month/day columns, one time column, or a date and a time column | [`read_hydro_series()`](https://jonpayneea.github.io/PDMS7/reference/read_hydro_series.md) |
-| Put every series on one grid over the period they share                                    | [`align_series()`](https://jonpayneea.github.io/PDMS7/reference/align_series.md)           |
-| Convert units: mm per hour or day, l/s, megalitres a day                                   | [`convert_units()`](https://jonpayneea.github.io/PDMS7/reference/convert_units.md)         |
-| Fill rain and evaporation gaps by a named rule, or stop and list them                      | [`fill_gaps()`](https://jonpayneea.github.io/PDMS7/reference/fill_gaps.md)                 |
-| Set negative rain to zero                                                                  | [`zero_negatives()`](https://jonpayneea.github.io/PDMS7/reference/zero_negatives.md)       |
-| Check totals, gaps, negatives and the runoff ratio                                         | [`check_inputs()`](https://jonpayneea.github.io/PDMS7/reference/check_inputs.md)           |
+| Step                                                                                       | Function              |
+|--------------------------------------------------------------------------------------------|-----------------------|
+| Read an export: split year/month/day columns, one time column, or a date and a time column | `read_hydro_series()` |
+| Put every series on one grid over the period they share                                    | `align_series()`      |
+| Convert units: mm per hour or day, l/s, megalitres a day                                   | `convert_units()`     |
+| Fill rain and evaporation gaps by a named rule, or stop and list them                      | `fill_gaps()`         |
+| Set negative rain to zero                                                                  | `zero_negatives()`    |
+| Check totals, gaps, negatives and the runoff ratio                                         | `check_inputs()`      |
 
 Here two exports in different layouts, one with a gap and one in litres
 a second, become registered data:
@@ -299,19 +297,17 @@ check_inputs(forcing, flow, area_km2 = 40, ranges = list(rain = c(0, 1e4), pet =
 The check prints what each step did. The ranges are opened up here only
 because the example is a single month; for a real record keep the
 defaults, which suit the British Isles. A flag under **CHECK** usually
-means the wrong units or the wrong area.
-[`calibrate_project()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_project.md)
-then takes the prepared `forcing` and `flow` through registration,
-staged calibration, candidate, validation and test in one call, with
-every step in the log.
+means the wrong units or the wrong area. `calibrate_project()` then
+takes the prepared `forcing` and `flow` through registration, staged
+calibration, candidate, validation and test in one call, with every step
+in the log.
 
-## The checklist
+# The checklist
 
 Run these before every calibration. Each takes a minute and each has
-caught a real error somewhere.
-[`check_inputs()`](https://jonpayneea.github.io/PDMS7/reference/check_inputs.md)
-covers most of them in one call; the code below shows what it checks,
-for data prepared some other way.
+caught a real error somewhere. `check_inputs()` covers most of them in
+one call; the code below shows what it checks, for data prepared some
+other way.
 
 ``` r
 f <- data.table::fread("forcing.csv")

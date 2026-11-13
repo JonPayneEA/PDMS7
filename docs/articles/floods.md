@@ -80,7 +80,7 @@ plain_checks <- calibration_checks(project, top = 10)
 
 The result scores 0.91. By most standards that is a good calibration.
 Yet on the ten largest floods of the validation year, the median peak is
-22% too low and comes 1.5 hours early, and only 1 of the ten peaks lies
+22% too low and comes 1.5 hours early, and only 2 of the ten peaks lies
 within 20% of what was measured.
 
 How can both be true? NSE counts every hour equally. In a year there are
@@ -121,7 +121,7 @@ It works in three steps:
 ``` r
 events <- find_events(forcing$rain, observed, forcing$time, dt = 1, area_km2 = 40)
 nrow(events)
-#> [1] 303
+#> [1] 236
 attr(events, "response")$response_h
 #> [1] 6
 shown <- which(forcing$time >= as.POSIXct("2020-12-01", tz = "UTC") &
@@ -144,6 +144,42 @@ them.](floods_files/figure-html/events-1.png)
 
 Part of the calibration year. Shaded: the flow windows of the events
 found. Dashed: the baseflow line beneath them.
+
+**How the method finds them.** The response time is the average lag
+between the centre of mass of rain and the centre of mass of the flow it
+produces. Rain and flow are each accumulated, and each cumulative series
+has its moving average subtracted, leaving its fluctuations. Over a
+window about twice the response time the two are most strongly
+anti-correlated, and that window gives the estimate (Giani and others,
+2021). At that window an event is under way wherever both rain and flow
+fluctuate: each such stretch is an event’s core, its edges are moved out
+to where the rain starts and stops and the flow starts to rise and
+finishes receding, and events that do not fit are dropped or merged. The
+one setting is `rain_min`, the smallest rain intensity that counts: by
+default 0.2 mm/h at an hourly step, the authors’ guidance for British
+catchments.
+
+The response time is not a time to peak. It is the timescale of the fast
+response: on constructed records it recovers the centre of mass of a
+symmetric response exactly, and falls short of one with a long recession
+tail. Use it to compare like with like, a catchment’s observed and
+simulated flow, or catchments with each other.
+
+**One event per flood.**
+[`find_events()`](https://jonpayneea.github.io/PDMS7/reference/find_events.md)
+counts each flood once by default (`independent = TRUE`), as the
+calibration does, by the rule of UK peaks-over-threshold series: two
+peaks are separate floods only if they are at least three response times
+apart and the flow between them falls below two-thirds of the smaller.
+Otherwise the fragments of one long flood would each count as an event.
+`separation` and `trough` loosen or tighten the rule;
+`independent = FALSE` gives the published method’s events, one per burst
+of rain.
+
+The method finds every burst of rain that moves the flow, small ones
+included: dozens of events a year. [Many
+catchments](https://jonpayneea.github.io/PDMS7/articles/large-sample.html#events-across-a-sample)
+finds and scores the events of a whole batch at once.
 
 ## Setting aside the events not to trust
 
@@ -175,8 +211,8 @@ wetter than its rain, or hide genuine rises.
 screened <- screen_events(events, observed)
 table(ifelse(screened$flags == "", "kept, no flags", screened$flags))
 #> 
-#> kept, no flags     small_rise 
-#>            272             31
+#> kept, no flags 
+#>            236
 ```
 
 Every event set aside here is a small rise: real enough, but too small
@@ -205,22 +241,21 @@ NSE within each event.
 ``` r
 plain_checks$parameters[, c("path", "value", "lower", "upper", "at_bound")]
 #>                path        value lower   upper at_bound
-#> 1                fc 9.941589e-01 6e-01 1.6e+00     <NA>
-#> 2 distribution.cmax 3.243278e+02 2e+01 8.0e+02     <NA>
-#> 3    distribution.b 5.504882e-01 5e-02 2.0e+00     <NA>
-#> 4       recharge.kg 1.454274e+03 1e+00 5.0e+03     <NA>
-#> 5        surface.k1 4.492965e+00 5e-01 7.2e+01     <NA>
-#> 6        surface.k2 4.492965e+00 5e-01 7.2e+01     <NA>
-#> 7    groundwater.kb 3.927410e+04 1e+02 1.0e+06     <NA>
+#> 1 distribution.cmax 3.165985e+02 2e+01     800     <NA>
+#> 2    distribution.b 5.195427e-01 5e-02       2     <NA>
+#> 3       recharge.kg 1.479728e+03 1e+00    5000     <NA>
+#> 4        surface.k1 4.491654e+00 5e-01      72     <NA>
+#> 5        surface.k2 4.491650e+00 5e-01      72     <NA>
+#> 6    groundwater.kb 3.737510e+04 1e+02 1000000     <NA>
 plain_checks$summary
-#>        period events median_peak_error median_timing_error_h
-#> 1 calibration     10        -0.2160157                  -1.0
-#> 2  validation     10        -0.2236472                  -1.5
-#> 3     outside     10        -0.2815621                  -1.0
-#>   share_peak_within_20pct median_event_nse screened_out
-#> 1                     0.4        0.7787168           13
-#> 2                     0.1        0.8091068           10
-#> 3                     0.0        0.7519518            8
+#>        period events median_peak_error median_abs_peak_error
+#> 1 calibration     10        -0.2130528             0.2130528
+#> 2  validation     10        -0.2248665             0.2248665
+#> 3     outside     10        -0.2819819             0.2819819
+#>   median_timing_error_h share_peak_within_20pct median_event_nse screened_out
+#> 1                  -1.0                     0.4        0.7781121            0
+#> 2                  -1.5                     0.2        0.8095439            0
+#> 3                  -1.0                     0.0        0.7740847            0
 ```
 
 Here no parameter is at a bound, so the first check passes. The second
@@ -259,6 +294,57 @@ screening, scored on three things at once:
 
 The first counts fully and the other two half each, by default.
 
+### Which events
+
+By default the events stage fits the largest half of the calibration
+events, by observed peak (`event_share = 0.5`). A share is simple but
+arbitrary: in a wet record half the events includes floods that matter,
+in a dry one it reaches down into ripples. A flow says what matters
+directly. `event_share` can name one:
+
+| `event_share`     | Fits every event whose observed peak reaches                                               |
+|-------------------|--------------------------------------------------------------------------------------------|
+| `0.5` (default)   | the largest half, whatever their size                                                      |
+| `"0.5QMED"`       | half the median annual flood, near the threshold of a UK peaks-over-threshold series       |
+| `"QMED"`          | the median annual flood: a handful of events in a decade                                   |
+| `"Q1"`            | the flow exceeded 1 per cent of the time                                                   |
+| `"Flood Warning"` | a threshold registered with the project, or a multiple of one such as `"0.8Flood Warning"` |
+| `c(peak = 12)`    | 12 m3/s                                                                                    |
+
+The markers come from the record itself
+([`flow_markers()`](https://jonpayneea.github.io/PDMS7/reference/flow_markers.md)):
+QMED is the median of the water-year maxima, October to September, as in
+the Flood Estimation Handbook, and `Q1` the flow exceeded 1 per cent of
+the time. A project with no registered thresholds registers QMED, Q1 and
+Q5 itself, worked out from the calibration window alone, so the
+validation and test data never shape them. Here are this catchment’s:
+
+``` r
+markers <- suppressWarnings(flow_markers(observed, dt = 1, time = forcing$time,
+                                         markers = c("QMED", "0.5QMED", "Q1", "Q5")))
+markers
+#>      name   value unit                                note
+#> 1    QMED 7.57069 flow       Median of 3 water-year maxima
+#> 2 0.5QMED 3.78534 flow 0.5 x Median of 3 water-year maxima
+#> 3      Q1 3.18469 flow        Flow exceeded 1% of the time
+#> 4      Q5 1.68633 flow        Flow exceeded 5% of the time
+peaks <- vapply(seq_len(nrow(events)), function(i) {
+  max(observed[events$flow_start[i]:events$flow_end[i]], na.rm = TRUE)
+}, numeric(1))
+data.frame(marker = markers$name, events_reaching = vapply(markers$value,
+                                                           function(q) sum(peaks >= q), 0))
+#>    marker events_reaching
+#> 1    QMED               1
+#> 2 0.5QMED              31
+#> 3      Q1              49
+#> 4      Q5             135
+```
+
+A floor that only a few events reach gives the search too little to
+learn from, and the fit can rest on luck; QMED alone suits a long
+record. `0.5QMED` is a sensible first choice. The objective’s
+description in the log says which events it fitted and why.
+
 **How it searches.** The timing part changes in whole steps: a peak is
 either one hour late or two, never 1.3. A search that feels for the
 slope of the ground finds no slope on a staircase, so this stage uses
@@ -290,14 +376,14 @@ data.frame(
   time_delay_h = c(0, fitted$td)
 )
 #>             calibration       nse median_peak_error median_timing_error_h
-#> 1       standard stages 0.9086598        -0.2236472                  -1.5
-#> 2 with the events stage 0.9937928         0.0109982                   0.0
+#> 1       standard stages 0.9086317        -0.2248665                  -1.5
+#> 2 with the events stage 0.9884694        -0.0277994                   0.0
 #>   peaks_within_20pct time_delay_h
-#> 1                0.1     0.000000
-#> 2                1.0     3.008451
+#> 1                0.2      0.00000
+#> 2                1.0      2.71637
 ```
 
-The events stage found a time delay of 3.01 hours, against a true 3.
+The events stage found a time delay of 2.72 hours, against a true 3.
 With the delay free to do its job, the surface stores no longer need to
 stretch, and the peaks in the validation year, which the calibration
 never saw, come out right in size and timing. The overall NSE rose too.

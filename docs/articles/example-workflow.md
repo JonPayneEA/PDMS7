@@ -193,11 +193,14 @@ explains every score and what it points to.
 
 Let the computer adjust the settings the scores point to: the drainage
 time constant `kg`, the two fast stores’ time constants, and the
-rainfall factor `fc` for good measure. The first half of the record is
-used to fit, and the second half is kept back to check.
+rainfall factor `fc`. The rainfall factor is locked at 1 by default,
+because a fitted factor carries the calibration years’ rainfall errors
+into operation; it is unlocked here because this made-up rain is known
+to be 10 per cent low. The first half of the record is used to fit, and
+the second half is kept back to check.
 
 ``` r
-bounds <- calibration_bounds(config)
+bounds <- calibration_bounds(config, overrides = list(fc = c(0.6, 1.6)))
 pick <- c("fc", "recharge.kg", "surface.k1", "surface.k2")
 bounds <- bounds[bounds$path %in% pick, ]
 fit <- calibrate_pdm(config, forcing[1:(24 * 45), ], observed$q_m3s[1:(24 * 45)],
@@ -234,8 +237,8 @@ fit.
 
 The scores in the table are on the second half only, which the
 calibration never saw: that is the honest measure of the improvement.
-[Automatic calibration,
-explained](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.md)
+[How automatic calibration
+works](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.md)
 covers the settings used here.
 
 ## 9. Save it
@@ -262,9 +265,9 @@ exactly the one that was calibrated.
 
 | To                                                       | Read                                                                                                                                                                                 |
 |----------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Keep a reviewable record of a calibration, with sign-off | [Logging a manual calibration](https://jonpayneea.github.io/PDMS7/articles/calibration-log.md)                                                                                       |
+| Keep a reviewable record of a calibration, with sign-off | [Calibration records](https://jonpayneea.github.io/PDMS7/articles/calibration-log.md)                                                                                                |
 | Calibrate many catchments the same way                   | [Calibrating many catchments](https://jonpayneea.github.io/PDMS7/articles/many-catchments.md)                                                                                        |
-| Compare model structures                                 | [Choosing a model structure](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.md)                                                                                      |
+| Compare model structures                                 | [How the model structure is chosen](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.md)                                                                               |
 | Add snow                                                 | [How the snow model works](https://jonpayneea.github.io/PDMS7/articles/snowpack-explained.md), then [`sim_snow_pdm()`](https://jonpayneea.github.io/PDMS7/reference/sim_snow_pdm.md) |
 | Use the model for forecasting                            | [Forecast updating](https://jonpayneea.github.io/PDMS7/articles/forecast-updating.md)                                                                                                |
 | Do all this without code                                 | [`calibration_app()`](https://jonpayneea.github.io/PDMS7/reference/calibration_app.md)                                                                                               |

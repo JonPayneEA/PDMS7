@@ -56,14 +56,22 @@ calibration_checks(
 
 A `pdm_calibration_checks` list of three data frames and the response
 times; printing it shows the parameters at a bound and the event
-summary. `parameters`: `path`, `value`, `lower`, `upper`, `scale` and
-`at_bound` (`"lower"`, `"upper"` or `NA`). `events`: every event with
-its `period` and the columns of
+summary. `parameters`: `path`, `value`, `lower`, `upper`, `scale`,
+`at_bound` (`"lower"`, `"upper"` or `NA`) and `note`, which says what a
+bound means where it switches part of the model off. A lower bound of
+zero is usually a natural value (no delay, no threshold) and is not
+flagged, except for a split recharge's `recharge.alpha`: at 0 every drop
+of direct runoff goes to groundwater and the surface stores carry
+nothing; at 1 none reaches groundwater. Events are taken one per flood
+(`find_events(independent = TRUE)`). `events`: every event with its
+`period` and the columns of
 [`event_scores()`](https://jonpayneea.github.io/PDMS7/reference/event_scores.md).
 `summary`: one row per window with `events` (the number summarised),
-`median_peak_error`, `median_timing_error_h`, `share_peak_within_20pct`
-and `median_event_nse`, and `screened_out`, the events of that window
-the screen left out. `response_h`: the response times estimated from the
+`median_peak_error`, `median_abs_peak_error` (the median size of the
+peak errors, so that errors of -50% and +50% do not cancel),
+`median_timing_error_h`, `share_peak_within_20pct` and
+`median_event_nse`, and `screened_out`, the events of that window the
+screen left out. `response_h`: the response times estimated from the
 observed and the simulated flow.
 
 ## Details

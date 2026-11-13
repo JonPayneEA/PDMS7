@@ -1,4 +1,4 @@
-# pdmS7 — configurable PDM for Flode conventions
+# pdmS7: configurable PDM for Flode conventions
 
 pdmS7 is a probability-distributed rainfall-runoff model (Moore, 2007)
 built to calibrate conceptual models fairly, record each calibration so
@@ -8,8 +8,11 @@ start](https://jonpayneea.github.io/PDMS7/articles/reading-paths.html),
 which gives a reading order for modellers, Stewards, Owners, forecasters
 and the LSTM team.
 
-Version 0.4.0 targets **Tier 3 engineering checks** for
-pseudo-operational use. It remains a standalone package, with
+pdmS7 is **Tier 1 (experimental)** under the Flode governance tiers.
+Each pull request runs the test suite on Ubuntu (`tests.yaml`). The full
+Flode checks, R CMD check with the articles on Windows and Ubuntu plus
+lint and coverage, run by hand from the Actions tab
+(`full-checks.yaml`). It remains a standalone package, with
 `reach.hydro` as its proposed Flode home. Human maintainer attribution,
 independent review and catchment validation are outstanding; this is not
 a declaration of operational approval.
@@ -81,33 +84,61 @@ Model options:
   components](https://jonpayneea.github.io/PDMS7/articles/model-options.html):
   the five capacity distributions, three recharge rules, routing forms
   and the solver
+- [Reading the
+  response](https://jonpayneea.github.io/PDMS7/articles/reading-responses.html):
+  a training guide to what each soil store, recharge rule and
+  groundwater store does to the flow, and what to look for in a river’s
+  record
+- [Using the groundwater
+  extension](https://jonpayneea.github.io/PDMS7/articles/groundwater-extension.html):
+  abstraction, losses below the gauge, springs and well levels:
+  preparing the data, calibrating and checking
+- [The two-zone
+  PDM](https://jonpayneea.github.io/PDMS7/articles/two-zone-pdm.html): a
+  small fast zone for catchments with a sharp spike, and how to tell
+  whether it earns its place
 - [Starting a run: cold, warm and
   hot](https://jonpayneea.github.io/PDMS7/articles/starting-states.html)
 
 Calibration:
 
-- [Automatic calibration from start to
+- [Calibrating a catchment from start to
   finish](https://jonpayneea.github.io/PDMS7/articles/calibration-journey.html):
   the whole journey in plain English, from the data to sign-off, with
   flow diagrams of each step and a small calibration run live
+- [How automatic calibration
+  works](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.html):
+  bounds and locked parameters, search scales, the three search methods,
+  several starts and their cost, the objectives (weighted scores and the
+  multi-objective trade-off), staged calibration, calibrating for
+  floods, and how the candidate is chosen
+- [How the model structure is
+  chosen](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.html):
+  the recharge rule, soil store and groundwater store, one at a time, by
+  a stated rule, then a full comparison carried through validation and a
+  final test
+- [Getting the floods
+  right](https://jonpayneea.github.io/PDMS7/articles/floods.html): why a
+  good score can hide bad floods; finding, checking and choosing the
+  events, by share or by a flow such as half QMED; calibrating and
+  inspecting them; the structure question
+- [Tailoring calibration to the largest events in the
+  app](https://jonpayneea.github.io/PDMS7/articles/app-events.html)
 - [Checking the data and the
   events](https://jonpayneea.github.io/PDMS7/articles/checks.html):
-  every check before and after calibrating, in the order to run them,
-  with a broken record to show each one firing
-- [Calibration: multi-start, budgets and staged
-  calibration](https://jonpayneea.github.io/PDMS7/articles/calibration.html)
-- [Automatic calibration,
-  explained](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.html):
-  in plain terms: bounds, search scales, the two search methods,
-  rewarding flood warnings, and calibrating in stages
+  every check before and after calibrating, in the order to run them
+- [Catchment rainfall from gauges and
+  radar](https://jonpayneea.github.io/PDMS7/articles/rainfall.html):
+  Thiessen polygons, multiquadric surfaces and conditional merging of
+  gauges with radar
 - [Scoring a
   simulation](https://jonpayneea.github.io/PDMS7/articles/scoring.html):
-  NSE, KGE, flow-duration signatures, and POD, FAR and CSI at warning
-  thresholds
-- [Choosing a model
-  structure](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.html):
-  calibrate the alternatives alike, rank on validation, and keep a final
-  test window
+  NSE, KGE, flow-duration signatures, POD, FAR and CSI at warning
+  thresholds, and thresholds from the record (QMED, Q1, Q5)
+- [Comparing calibrations and PDM for PCs
+  files](https://jonpayneea.github.io/PDMS7/articles/comparing-calibrations.html):
+  reading and writing `*.inp` files, and setting two calibrations side
+  by side
 - [Larger floods: extrapolation and the
   rating](https://jonpayneea.github.io/PDMS7/articles/extrapolation.html):
   the wettest years held back, the spread of equally good fits, and
@@ -115,43 +146,20 @@ Calibration:
 - [Calibrating many
   catchments](https://jonpayneea.github.io/PDMS7/articles/many-catchments.html):
   a step-by-step guide to
-  [`calibrate_batch()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md):
-  preparing folders, running, resuming after an interruption, fixing
-  failures, and reading the results
-- [Getting the floods
-  right](https://jonpayneea.github.io/PDMS7/articles/floods.html): in
-  plain English, why a good score can hide bad floods, and how to find,
-  check, calibrate and inspect the events, and what the record can say
-  about the model’s structure
-- [Catchment rainfall from gauges and
-  radar](https://jonpayneea.github.io/PDMS7/articles/rainfall.html):
-  Thiessen polygons, multiquadric surfaces and conditional merging of
-  gauges with radar, shown on a made-up storm, with how to judge them
-  and how to read H19 radar
-- [A large sample: what automatic calibration
-  recovers](https://jonpayneea.github.io/PDMS7/articles/large-sample.html):
-  30 synthetic catchments, each with its own climate and known truth,
-  calibrated as a batch
-- [What limits automatic calibration: a
-  study](https://jonpayneea.github.io/PDMS7/articles/calibration-study.html):
-  four searches checked against the truth, a fault in staged
-  calibration, and why `kb` cannot be recovered from flow records but
-  matters in severe droughts
-- [Events in large
-  samples](https://jonpayneea.github.io/PDMS7/articles/events.html):
-  finding rainfall-runoff events and response times objectively from the
-  records, and scoring models event by event across a batch
+  [`calibrate_batch()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md)
+- [Many catchments: what automatic calibration recovers, and what limits
+  it](https://jonpayneea.github.io/PDMS7/articles/large-sample.html): 30
+  synthetic catchments with known truths; which parameters a record pins
+  down, the search or the record as the limit, and events scored across
+  a batch
 
 Records and review:
 
-- [Logging a manual
-  calibration](https://jonpayneea.github.io/PDMS7/articles/calibration-log.html):
-  the audit trail from project start to sign-off, the report, and
-  tracing operational runs
-- [Inside the
-  logs](https://jonpayneea.github.io/PDMS7/articles/log-structure.html):
-  project folders, entries, the checksum chain, the run log and the
-  register
+- [Calibration
+  records](https://jonpayneea.github.io/PDMS7/articles/calibration-log.html):
+  the audit trail from project start to sign-off, the report, tracing
+  operational runs, and inside the logs: the folders, entries, checksum
+  chain and run log
 - [Reviewing a calibration: a Steward’s
   guide](https://jonpayneea.github.io/PDMS7/articles/steward-guide.html):
   what to check in the report, warning signs, and what signing off means
@@ -449,7 +457,8 @@ rcmdcheck::rcmdcheck(args = c("--no-manual"), error_on = "warning")
 
 The shared Flode CI workflow is pinned to the style repository commit
 recorded in [the
-review](https://jonpayneea.github.io/PDMS7/docs/tier3-review.md), with
-`tier: 3`. CI configuration is provided; remote CI has not been run in a
-hosted repository. The review distinguishes completed local checks from
-outstanding human governance requirements.
+review](https://jonpayneea.github.io/PDMS7/docs/tier3-review.md), now
+with `tier: 1`, in `full-checks.yaml`. CI configuration is provided;
+remote CI has not been run in a hosted repository. The review
+distinguishes completed local checks from outstanding human governance
+requirements.

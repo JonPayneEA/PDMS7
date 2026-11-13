@@ -21,6 +21,11 @@ Start there and change one component at a time.
 | Groundwater routing   | Power-law store (linear, quadratic, cubic or any exponent), exponential store, cascade | Cubic           |
 | Groundwater solver    | Adaptive Runge-Kutta, Smith approximation                                              | Adaptive        |
 
+For a training guide to how each option shows in the hydrograph, with
+like-for-like comparisons and what to look for in an observed record,
+see [Reading the
+response](https://jonpayneea.github.io/PDMS7/articles/reading-responses.md).
+
 ## The soil store: how fast does the catchment saturate?
 
 The capacity distribution describes how storage capacity varies across
@@ -224,6 +229,103 @@ dry spells.
 The surface path normally uses the cascade of two linear stores, which
 shapes the storm hydrograph’s rise and fall with two time constants,
 `k1` and `k2`. Either path can use any of the routing forms.
+
+## The groundwater extension
+
+Some catchments lose water the standard model cannot: pumped
+abstractions from the aquifer, streams that dry up in summer, flow that
+passes beneath the gauge, or springs that drain to a neighbouring
+catchment. The PDM’s groundwater extension (Moore and Bell, 2002; PDM
+for PCs scientific guide, section 3) adds them to a linear, quadratic or
+cubic groundwater store:
+
+| Process          | Parameters                           | What it does                                                                                                       |
+|------------------|--------------------------------------|--------------------------------------------------------------------------------------------------------------------|
+| Abstraction      | `ca` (mm/h), `fa`                    | Removes `ca + fa x` recorded abstraction from the store; the record is a forcing column `abstraction`, mm per step |
+| Negative storage | none                                 | The store may fall below zero; outflow stops when it empties and restarts once recharge refills it: ephemeral flow |
+| Underflow        | `ku` (h), `dbu` (mm)                 | A lower outlet, `dbu` below the baseflow outlet, drains `(S + dbu) / ku` beneath the gauge                         |
+| External springs | `alpha_b`                            | A share of the store’s outflow leaves the catchment; a negative share brings water in                              |
+| Well level       | `smax_b` (mm), `ys` (m/mm), `hw` (m) | The storage deficit and a modelled well level, for comparison with boreholes; no effect on flow                    |
+
+``` r
+cfg <- pdm_presets("standard")
+cfg$groundwater$extension <- list(ku = 12000, dbu = 400, ca = 0.002, smax_b = 1600,
+                                  ys = 0.02, hw = 84)
+model <- pdm_from_config(cfg)
+model@groundwater
+#> <pdmS7::FlodeExtendedGroundwater>
+#>  @ store  : <pdmS7::FlodePowerRouting>
+#>  .. @ k     : num 1e-04
+#>  .. @ m     : num 3
+#>  .. @ solver: chr "adaptive"
+#>  .. @ rtol  : num 1e-08
+#>  .. @ atol  : num 1e-10
+#>  @ ku     : num 12000
+#>  @ dbu    : num 400
+#>  @ alpha_b: num 0
+#>  @ ca     : num 0.002
+#>  @ fa     : num 1
+#>  @ smax_b : num 1600
+#>  @ ys     : num 0.02
+#>  @ hw     : num 84
+```
+
+The extension runs in the compiled engine and gives the same results as
+the step-by-step R loop. Its parameters are searched only when the
+configuration sets them, because the manual warns they cannot be pinned
+down from flow alone: abstraction records or well levels are needed. It
+cannot extend the exponential store, which can never run dry, and is not
+offered with demand recharge. [Model
+equations](https://jonpayneea.github.io/PDMS7/articles/model-equations.html#the-groundwater-extension)
+gives the equations, and [Using the groundwater
+extension](https://jonpayneea.github.io/PDMS7/articles/groundwater-extension.md)
+shows how to prepare the data, calibrate it and fit a well level.
+
+## Several zones
+
+Some catchments respond on three timescales: a sharp spike over a few
+hours, from impermeable or near-channel ground, then a slower flood
+hydrograph, then baseflow. One PDM has two routes, and a calibration
+then bends one of them to do two jobs. The multi-zone PDM (PDM for PCs
+configuration guide, section 5) divides the catchment into zones, each a
+complete PDM with its own area, parameters and delay, driven by the same
+rain; their flows add at the outlet.
+
+[`two_zone_config()`](https://jonpayneea.github.io/PDMS7/reference/two_zone_config.md)
+adds a fast zone to any single-zone configuration. Every parameter is
+set, and only four are searched: its share of the area, its soil
+capacity, its surface time constant and its delay. It sends no water to
+groundwater, so it cannot trade baseflow with the main zone.
+
+``` r
+cfg <- pdm_presets("standard")
+cfg$area_km2 <- 36.7
+two <- two_zone_config(cfg, share = 0.1)
+calibration_bounds(two)[, c("path", "lower", "upper")]
+#>                            path  lower   upper
+#> 1  zones.main.distribution.cmax  20.00 8.0e+02
+#> 2     zones.main.distribution.b   0.05 2.0e+00
+#> 3        zones.main.recharge.kg   1.00 5.0e+03
+#> 4         zones.main.surface.k1   0.50 7.2e+01
+#> 5         zones.main.surface.k2   0.50 7.2e+01
+#> 6     zones.main.groundwater.kb 100.00 1.0e+06
+#> 7              zones.fast.share   0.01 3.0e-01
+#> 8  zones.fast.distribution.cmax   1.00 1.0e+02
+#> 9         zones.fast.surface.kb   0.25 1.2e+01
+#> 10                zones.fast.td   0.00 6.0e+00
+```
+
+Parameters are addressed as `zones.main.surface.k1`, `zones.fast.share`
+and so on. In
+[`calibrate_project()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_project.md),
+`zones = c(1, 2)` lets the structure recommendation decide whether two
+zones earn their place ([How the model structure is
+chosen](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.md)).
+The rain adds up: each zone takes the catchment-average depth over its
+own area, and the rainfall factor `fc` is set once for every zone. [The
+two-zone
+PDM](https://jonpayneea.github.io/PDMS7/articles/two-zone-pdm.md) works
+through an example.
 
 ## Groundwater solver: adaptive or Smith
 

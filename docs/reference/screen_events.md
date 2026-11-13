@@ -104,5 +104,5 @@ screened <- screen_events(events, flow, min_rise = 0.5)
 table(screened$flags)
 #> 
 #>            small_rise 
-#>         92         24 
+#>         91          2 
 ```

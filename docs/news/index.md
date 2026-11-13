@@ -1,5 +1,446 @@
 # Changelog
 
+## pdmS7 0.27.0
+
+- **The modelled well level was 1000 times too flat.** The depth to the
+  water table is `W = Ys D` in metres, with the deficit `D` in mm and
+  `Ys` in m per mm (PDM for PCs `wellfac`), as UKCEH’s Table 3 values
+  need: with `Ys` 0.0204 and `Smax_b` 1641 mm the well ranges over
+  33.5 m. The core divided by a further 1000, so the well moved by
+  centimetres. Only the `well_level_m` column changes; the flow does
+  not. `Ys` is documented as the well factor, `1 / (1000 Sy)` for a
+  specific yield `Sy`, not as the specific yield itself.
+- **[`fit_well_level()`](https://jonpayneea.github.io/PDMS7/reference/fit_well_level.md)**
+  fits `ys` and `hw` to an observed well by least squares on the
+  modelled storage, after the flow is calibrated, with print and plot
+  methods.
+- **Using the groundwater extension**, a new how-to article: when the
+  extension is needed, preparing abstraction and well records, setting
+  it up, calibrating a made-up chalk winterbourne with a known answer,
+  checking the dry spells and the losses by route, and fitting the well.
+- **Reading the response** gains comparisons over a year of rain: runoff
+  ratio against soil wetness for every event; five soil stores scaled to
+  the same quick flow, whose floods still differ; flow duration curves
+  and the monthly baseflow index for each recharge rule; days to halve
+  against flow; recessions from small and large floods overlaid; a
+  fingerprint table of every option; and three mystery hydrographs as
+  exercises.
+- **The website has a light switch** and opens in dark mode: navy for
+  dark, warm cream for light. Figures adapt to the mode.
+
+## pdmS7 0.26.0
+
+Fixes from a review of the compiled core, with the R reference changed
+to match. Results change only for models with the groundwater extension
+that use underflow, or that drain an adaptive cubic store by
+abstraction, and for lognormal soil stores whose inverse previously
+failed silently. Every other model gives the same results as 0.25.0.
+
+- **The cubic store follows its solver with negative input.** With the
+  groundwater extension, an adaptive cubic store drained by abstraction
+  switched to Smith’s method, whatever its solver. It now integrates the
+  continuous equation through the moment flow ceases and on into
+  deficit. From 1 mm with k = 1 and 1 mm/h net abstraction over an hour,
+  it ends at -0.164 mm (flow ceasing after 0.836 h), where Smith’s step
+  gives +0.367 mm. The Smith solver keeps Smith’s published steps.
+- **Underflow is coupled with the main outlet.** Underflow was held at
+  its start-of-step rate, and its cap ignored the water leaving by the
+  main outlet, so over a long step it could drain the store well below
+  both outlets (from 10 mm with two equal linear outlets of 1 h over 2
+  h, to -4.5 mm). The store and both outlets are now integrated
+  together, each outlet stopping at its own threshold within the step:
+  the same case ends at 10 exp(-4) = 0.183 mm, each outlet releasing
+  4.908 mm.
+- **The lognormal inverse proves convergence.** It returned its last
+  estimate after 200 iterations without checking it. It now returns only
+  an estimate whose storage matches to 1e-12 (relative, at least 1 mm),
+  and stops with an error otherwise.
+- **Documented, not changed:** the Smith solver’s accuracy limits
+  ([`?cubic_routing`](https://jonpayneea.github.io/PDMS7/reference/cubic_routing.md)),
+  the meaning of a negative spring fraction (an import, counted as a
+  gain in the water balance;
+  [`?groundwater_extension`](https://jonpayneea.github.io/PDMS7/reference/groundwater_extension.md)),
+  the routing coefficient (`q = S^m / kb`, `k = 1 / kb` in the core),
+  and four conventions of the implementation in the model equations
+  article: evaporation before recharge, negative PET as condensation,
+  discrete fractional delays, and interval-mean against endpoint flow.
+- New regression tests against closed forms and an independent fine-step
+  integration, through the compiled core and the R loop.
+
+## pdmS7 0.25.0
+
+- **One event per flood by default.**
+  [`find_events()`](https://jonpayneea.github.io/PDMS7/reference/find_events.md)
+  now merges the events of one flood (`independent = TRUE`), as the
+  calibration, the report,
+  [`compare_calibrations()`](https://jonpayneea.github.io/PDMS7/reference/compare_calibrations.md),
+  the event workbench and
+  [`batch_events()`](https://jonpayneea.github.io/PDMS7/reference/batch_events.md)
+  already did. Two peaks are separate floods only if they are at least
+  `separation` (3) response times apart and the flow between them falls
+  below `trough` (2/3) of the smaller. Code that called
+  [`find_events()`](https://jonpayneea.github.io/PDMS7/reference/find_events.md)
+  without `independent` now gets fewer, whole-flood events, and so do
+  [`screen_events()`](https://jonpayneea.github.io/PDMS7/reference/screen_events.md)
+  lists,
+  [`gauge_response()`](https://jonpayneea.github.io/PDMS7/reference/gauge_response.md)
+  and the baseflow line behind
+  [`water_balance()`](https://jonpayneea.github.io/PDMS7/reference/water_balance.md)’s
+  baseflow index. `independent = FALSE` gives the published method’s
+  events, one per burst of rain, as before; the golden-file check
+  against the reference code uses it.
+- **The exponential store and PDM for PCs files: still to do.** The
+  structure recommendation keeps the exponential groundwater store among
+  its options.
+  [`write_pdm_inp()`](https://jonpayneea.github.io/PDMS7/reference/read_pdm_inp.md)
+  still refuses it, now with a message saying why: its layout in a PDM
+  for PCs input file is yet to be confirmed. It will be added once an
+  example file has been checked.
+
+## pdmS7 0.24.0
+
+- **Which gauge the river answers to.**
+  [`gauge_response()`](https://jonpayneea.github.io/PDMS7/reference/gauge_response.md)
+  takes each rain gauge on its own and correlates its rain with the rise
+  in flow, lag by lag: the gauge with the strongest correlation drives
+  the quick response. For the largest floods it names the gauge whose
+  rain best matches each rise, checks whether each gauge sees the big
+  storms as big, and counts the floods a gauge recorded almost nothing
+  for. A negative best lag, rain after the rise it caused, flags a clock
+  out. The slow response is not split this way: over days the gauges’
+  totals converge. Written up in *Checking the data and the events*.
+- **Faster calibration.** The compiled engine raises to the power 3 by
+  multiplication, not by the general power function: a model run with
+  the cubic groundwater store takes half the time (47 ms to 22 ms for
+  eight hourly years), with the same results. Other structures are
+  unchanged.
+- **Starts side by side.**
+  [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md)
+  and
+  [`calibrate_staged()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_staged.md)
+  take `cores`, and run the starts of a search in separate R processes,
+  with exactly the results of running them one by one.
+  [`calibrate_project()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_project.md)
+  uses its `cores` for every search’s starts as well as for the
+  structure comparisons, so two starts on two cores take about half the
+  time. The default is the `pdmS7.cores` option, or 1.
+- **The report shows how the structure was chosen.** A new section draws
+  the structure recommendation as a flow, one row per component: every
+  option with its validation score, the choice, the equally good, the
+  options set aside with a parameter at a bound and the option the step
+  started from, with each step’s reason beneath. It is rebuilt from the
+  log alone, so projects already calibrated get it on their next
+  [`build_report()`](https://jonpayneea.github.io/PDMS7/reference/build_report.md).
+- **Run totals in the report.** Model runs and elapsed time for each
+  structure step, each calibration stage and the project in all, with
+  the seconds a run took.
+
+## pdmS7 0.23.0
+
+- **The multi-zone PDM** (PDM for PCs configuration guide, section 5):
+  independent PDMs over parts of the catchment, driven by the same rain,
+  their flows added at the outlet. A configuration with a `zones` list
+  builds a `FlodeMultiZoneModel`;
+  [`run_pdm()`](https://jonpayneea.github.io/PDMS7/reference/run_pdm.md),
+  calibration, projects, reports and
+  [`compare_calibrations()`](https://jonpayneea.github.io/PDMS7/reference/compare_calibrations.md)
+  take it like a single-zone model. Each zone runs on the compiled
+  engine.
+- **A fast zone for flashy catchments.**
+  [`two_zone_config()`](https://jonpayneea.github.io/PDMS7/reference/two_zone_config.md)
+  adds a small zone that makes quick runoff only (split recharge with
+  `alpha` 1, one linear surface store, a groundwater store it never
+  feeds). Every parameter is set; four are searched: its share of the
+  area (0.01 to 0.3), soil capacity, surface time constant and delay.
+  Bounds and exclusions without a `zones.` prefix apply to the main
+  zone, so existing overrides carry over.
+- **Zones in the structure recommendation.**
+  `calibrate_project(recommend = TRUE, zones = c(1, 2))` and
+  `recommend_structure(components = c(..., "zones"))` add a last step
+  comparing one zone with two, by the usual rule: two zones only if
+  better on validation by more than the tie tolerance and not pinned at
+  a bound. `zones = 2` adds the fast zone without a comparison. Forecast
+  updating, hindcasts, the events workbench and PDM for PCs files stay
+  single-zone.
+- **The rain adds up across the zones.** Each zone takes the
+  catchment-average rain depth over its own area, and the zones’ areas
+  sum to the catchment’s. The rainfall factor `fc` is one catchment-wide
+  setting at the top of the configuration, locked at 1 by default and,
+  if unlocked, searched as a single parameter for every zone. Giving it
+  both at the top and in a zone is refused.
+- **New article: the two-zone PDM.** When one zone is not enough, how
+  the fast zone is built and locked, a worked example on a made-up
+  flashy catchment, and how to read the result.
+
+## pdmS7 0.22.1
+
+- **A logo**, in `man/figures/logo.png`, shown in the README and on the
+  website.
+- **Documentation reorganised.** The calibration articles are fewer and
+  say each thing once:
+  - *How automatic calibration works* now holds multi-start, budgets and
+    staged calibration (from the retired *Calibration* article), the
+    objectives, including how the weighted stages differ from
+    [`calibrate_pdm_multi()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm_multi.md)’s
+    multi-objective trade-off, the locked rainfall factor and the split
+    recharge bounds, and how the candidate is chosen.
+  - *How the model structure is chosen* opens with how
+    [`recommend_structure()`](https://jonpayneea.github.io/PDMS7/reference/recommend_structure.md)
+    chooses the recharge rule, soil store and groundwater store: the
+    order, the rule and a worked example.
+  - *Getting the floods right* explains how events are found (from the
+    retired *Events in large samples*) and how to choose them by a flow,
+    such as half QMED.
+  - *Many catchments: what automatic calibration recovers, and what
+    limits it* merges the large-sample article with the calibration
+    study and the batch half of the events article.
+  - *Calibration records* merges *Logging a manual calibration* and
+    *Inside the logs*.
+  - New: *Comparing calibrations and PDM for PCs files*.
+  - Model options, model equations, scoring and the C core article cover
+    the groundwater extension, thresholds from the record and interface
+    version 3. The retired pages redirect to the articles that replaced
+    them.
+
+## pdmS7 0.22.0
+
+- **PDM for PCs input files.**
+  [`read_pdm_inp()`](https://jonpayneea.github.io/PDMS7/reference/read_pdm_inp.md)
+  reads the model of a PDM for PCs `*.inp` file into a configuration,
+  and
+  [`write_pdm_inp()`](https://jonpayneea.github.io/PDMS7/reference/read_pdm_inp.md)
+  writes one, following the manual’s conventions: the cubic store’s `kb`
+  is the cube root of the time constant used, `k2 = 0` means equal
+  reservoirs, `tdly` may be given by its position, and the cubic store
+  uses Smith’s method. The groundwater extension block and its well
+  datum are read; the title, stations, events and optimised parameters
+  are kept as attributes; error-prediction, rating and raingauge
+  settings are noted, not used. The time step is not in the file, so it
+  is an argument. Several hydrological zones, demand recharge, the power
+  distribution and exponential stores are refused with a reason. The
+  manual’s two example files ship in `inst/examples`.
+- **[`compare_calibrations()`](https://jonpayneea.github.io/PDMS7/reference/compare_calibrations.md)**
+  runs two or more calibrated models, from configurations, YAML or
+  `*.inp` files, or project folders, on the same forcing from the same
+  start, and sets their parameters, scores by window, threshold scores
+  against flow markers and errors on the largest floods side by side;
+  [`plot()`](https://rdrr.io/r/graphics/plot.default.html) draws their
+  hydrographs for a flood or a window.
+- **[`calibrate_project()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_project.md)
+  proposes the best fit in hand.** It proposed the last stage whatever
+  it scored, so a staged search that ended worse than the structure
+  comparison’s own fit of the chosen structure threw the better fit away
+  (seen on Beggearn Huish: calibration NSE 0.898 proposed over 0.936).
+  The last stage is still proposed when it is within the tie tolerance
+  of the best fit, so an events stage keeps its small trade; otherwise
+  the best fit is, with the reason recorded in the candidate entry.
+- **Split recharge is searched over 0.05 to 0.95 by default**, not 0 to
+  1, so no search can switch a flow path off: at 0 every drop of direct
+  runoff goes to groundwater and the surface stores carry nothing.
+  `overrides = list(recharge.alpha = c(0, 1))` restores the full range;
+  the acceptance note on a path switched off now appears only at 0 or 1
+  exactly.
+- **The groundwater extension runs in the compiled engine.** Interface
+  version 3 of the C core (`src/pdm_core.h`) adds an extension block to
+  `pdm_params` and `pdm_run_ext()`, which takes an abstraction series
+  and writes the extension’s five columns to their own table.
+  `pdm_run()` and its 24 columns are unchanged. Simulation and
+  calibration of extended models now use the core, which gives the R
+  loop’s results exactly (checked for linear, quadratic, cubic and Smith
+  stores through drawdown below zero, a dry spell and refill), at
+  roughly 800 times the speed. The start from flow and state correction
+  of extended models stay on the R loop.
+- **Flow markers: thresholds from the record.**
+  [`flow_markers()`](https://jonpayneea.github.io/PDMS7/reference/flow_markers.md)
+  works out QMED (the median of water-year maxima, as in the Flood
+  Estimation Handbook), any multiple of it such as `0.5QMED`, and flow
+  duration exceedances such as `Q1` and `Q5`.
+  [`register_data()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
+  registers `QMED`, `Q1` and `Q5` when no thresholds are given (argument
+  `markers`; `NULL` for none), so every catchment gets threshold scores;
+  reports mark them as worked out from the record.
+- **Events chosen by a flow.** `event_share` in
+  [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md),
+  [`pdm_stages()`](https://jonpayneea.github.io/PDMS7/reference/pdm_stages.md)
+  and the project functions also takes a flow floor: a marker (`"Q1"`,
+  `"0.5QMED"`), a registered threshold’s name or a multiple of one, or
+  `c(peak = flow)`. Every event whose observed peak reaches it is then
+  fitted, rather than the largest share.
+
+## pdmS7 0.21.0
+
+- **Tier 1.** The package is declared Tier 1 (experimental) under the
+  Flode governance tiers: in CI and in every file header. Pull requests
+  run only the test suite, on Ubuntu. The full Flode checks (R CMD check
+  with the articles on four platforms, lint and coverage) run by hand
+  from the Actions tab, until the package nears release.
+- **The rainfall factor is locked during automatic calibration.**
+  [`calibration_bounds()`](https://jonpayneea.github.io/PDMS7/reference/calibration_bounds.md)
+  leaves `fc` out, so
+  [`calibrate_project()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_project.md),
+  [`compare_structures()`](https://jonpayneea.github.io/PDMS7/reference/compare_structures.md),
+  [`recommend_structure()`](https://jonpayneea.github.io/PDMS7/reference/recommend_structure.md),
+  [`pdm_stages()`](https://jonpayneea.github.io/PDMS7/reference/pdm_stages.md)
+  and
+  [`calibrate_batch()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md)
+  hold it at the configuration’s value, 1 in the presets. A calibrated
+  factor absorbs the calibration period’s rainfall errors and carries
+  them into operation, where the rain may come from other gauges or
+  another product. Unlock it by giving it bounds,
+  `overrides = list(fc = c(0.8, 1.2))`. Any other parameter is locked
+  with `exclude`, as before. The bounds table gains a `default` column
+  marking which parameters are locked by default. A run that searched
+  `fc` before now gives different results unless that override is added.
+- **The PDM groundwater extension**,
+  [`groundwater_extension()`](https://jonpayneea.github.io/PDMS7/reference/groundwater_extension.md),
+  as published in Moore and Bell
+  2002. and the PDM for PCs scientific guide (UKCEH, 2022, section 3 and
+        Appendix B), for catchments with pumped abstractions, ephemeral
+        streams and losses below or beyond the gauge. It wraps a linear,
+        quadratic or cubic groundwater store and adds:
+
+  - abstraction, `A = cA + fA Ar`, from a recorded series given as a
+    forcing column `abstraction` (mm per step);
+  - negative storage and flow cessation: the time to cessation within a
+    step and the storage after it are the published Eqs. B.1 to B.6,
+    checked against a fine-step solution (linear and quadratic exact;
+    cubic by Smith’s method, as published, within 0.003 mm at 15
+    minutes); below zero the storage changes by continuity, and flow
+    restarts once recharge refills it;
+  - underflow, `qu = (S + Dbu) / ku` (Eq. 10), from the start-of-step
+    storage like the model’s other losses, never below the underflow
+    outlet;
+  - external springs or inter-catchment exchange, a fraction `alpha_b`
+    of the store’s outflow;
+  - the storage deficit and well level, `hw - Ys (Sbmax - S)` in m (Eqs.
+    8 and 11). Set it in a configuration as
+    `groundwater: extension: {ku: ..., dbu: ...}`. With nothing set it
+    changes nothing: the flows equal the standard model’s. The water
+    balance, losses included, closes to rounding. Its flow parameters
+    are searched by calibration only when the configuration sets them,
+    so a loss the record cannot inform stays off. The exponential store
+    cannot be extended, since it cannot run dry, nor used with demand
+    recharge.
+- **Speed.** A model with the extension runs in R, not the compiled
+  engine: about 2.6 ms a step, so a 15-minute record of 17 years takes
+  about 25 minutes a run. It suits checking and short records; the
+  compiled version comes next, for calibration on long records.
+
+## pdmS7 0.20.0
+
+Fixes from the Beggearn Huish calibration.
+
+- **One event per flood.** At 15-minute steps, with a response time
+  under two hours, the event method cut a long flood fed by several
+  bursts of rain into an event per burst. On Beggearn Huish seven of the
+  ten “largest events” were slices of one flood, with event NSE down to
+  -234, and the events stage of the calibration fitted that flood
+  several times over: it lost 0.04 of NSE, 0.23 of log NSE and 16% of
+  the water balance, and the peaks were no better.
+  `find_events(independent = TRUE)` now merges events that belong to one
+  flood: those whose flow windows overlap, and those whose peaks are not
+  independent by the rule of UK peaks-over-threshold series (at least
+  three response times apart, with the flow between them falling below
+  two-thirds of the smaller peak; `separation` and `trough` set the
+  rule). The events objective and the events stage,
+  [`calibration_checks()`](https://jonpayneea.github.io/PDMS7/reference/calibration_checks.md),
+  the largest events of the report,
+  [`batch_events()`](https://jonpayneea.github.io/PDMS7/reference/batch_events.md)
+  and the Events tab of the app all use it. The default of
+  [`find_events()`](https://jonpayneea.github.io/PDMS7/reference/find_events.md)
+  is unchanged: the published method’s events, as checked against its
+  reference code.
+- **A flow path switched off is flagged.** A lower bound of zero is
+  usually a natural value, so
+  [`calibration_checks()`](https://jonpayneea.github.io/PDMS7/reference/calibration_checks.md)
+  did not flag parameters there. A split recharge’s `recharge.alpha` at
+  0, though, sends every drop of direct runoff to groundwater and leaves
+  the surface stores carrying nothing, as it did on Beggearn Huish,
+  where it was reported as “No parameter at a bound”. `alpha` at 0 or 1
+  is now flagged, with a note saying what it switches off, and
+  [`recommend_structure()`](https://jonpayneea.github.io/PDMS7/reference/recommend_structure.md)
+  sets aside a split recharge that ends there.
+
+## pdmS7 0.19.0
+
+- **Progress during long calibrations.**
+  [`calibrate_project()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_project.md)
+  said almost nothing between registering the data and the end, which on
+  a long record is hours, so there was no telling whether it was
+  running. It now reports its plan at the start; each structure step and
+  each calibration stage as it begins; each structure’s calibration and
+  validation scores and the time it took; and, after each structure
+  step, the time left at the pace so far. During any search,
+  [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md)
+  reports every minute or so how many model runs the current start has
+  made (out of how many, for DDS) and how long each takes.
+- **Comparisons on several cores** cannot write to the console, so each
+  structure’s progress goes to `progress.log` in the project folder, and
+  the console says so.
+- `options(pdmS7.progress_every = 0)` turns the minute-by-minute lines
+  off; any other number sets their interval in seconds.
+- **Report fix.** The candidate’s “Calibration window” hydrograph and
+  flow-duration figures showed the validation window: the figures were
+  drawn after the loop that made them, and every one saw its last
+  window. Each window’s figures now show that window.
+- **Report: the held-back wettest years** each get a hydrograph of
+  observed and simulated flow, once the test has scored them, beside the
+  table of their peaks.
+- **Report: the largest events.** A table and a figure of the ten
+  largest events of the record by observed peak, in whichever window
+  they fall, with each one’s window, peak error, timing error and event
+  NSE, and its rain.
+
+## pdmS7 0.18.1
+
+Fixes from a review of 0.18.0.
+
+- **[`calibrate_project()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_project.md)
+  without a validation window** now stops before the search when test
+  years are registered, or the wettest years are held back (the default
+  on a long record). The test scores a validated candidate, so before it
+  failed only after the whole calibration had run. Give `validation`, or
+  `wettest_years = 0`.
+- **A rerun of
+  [`calibrate_project()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_project.md)**
+  on a project that has a candidate now finishes whichever of the
+  validation, the test and (with `report = TRUE`) the report are
+  missing, instead of returning at once. A run interrupted after
+  proposing its candidate can be finished, and a report added later.
+- **[`recommend_structure()`](https://jonpayneea.github.io/PDMS7/reference/recommend_structure.md)**
+  broke ties on the size of the median peak error, so errors of -50% and
+  +50% cancelled to a perfect zero and beat a structure steadily within
+  10%. It now takes the median of the absolute errors.
+  [`calibration_checks()`](https://jonpayneea.github.io/PDMS7/reference/calibration_checks.md)
+  reports it in its summary as `median_abs_peak_error`.
+- **[`pdm_hindcast()`](https://jonpayneea.github.io/PDMS7/reference/pdm_hindcast.md)**
+  spread its forecast origins from the first to the last row of the
+  window, so a window with gaps, such as one leaving out held-back
+  years, was forecast inside them too. Origins now fall only on rows of
+  the window.
+
+## pdmS7 0.18.0
+
+- **`calibrate_project(recommend = TRUE)`** chooses the structure before
+  calibrating. The structure given is the starting point;
+  [`recommend_structure()`](https://jonpayneea.github.io/PDMS7/reference/recommend_structure.md)
+  then chooses the recharge rule, the soil store distribution and the
+  groundwater store in turn, each by a structure comparison on the
+  record, and the stages start from the calibration of the structure it
+  recommends. Every comparison and every choice, with its reason, is in
+  the project’s log. It needs a validation window and costs one
+  calibration per option compared.
+- **`stages` and `bounds` of
+  [`calibrate_project()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_project.md)**
+  may be functions of a configuration, such as
+  `function(config) pdm_stages(config, events = TRUE)`, so that they
+  suit whichever structure is chosen. New `overrides` and `exclude`
+  arguments set the search ranges for the default stages and bounds and
+  for every structure compared.
+- **[`recommend_structure()`](https://jonpayneea.github.io/PDMS7/reference/recommend_structure.md)**
+  gains `overrides` and `exclude`, passed to
+  [`compare_structures()`](https://jonpayneea.github.io/PDMS7/reference/compare_structures.md).
+
 ## pdmS7 0.17.1
 
 - **New article, “Tailoring calibration to the largest events in the

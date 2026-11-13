@@ -14,6 +14,9 @@ Construct a PDM from components, presets or a configuration file.
   : Read pdm config
 - [`write_pdm_config()`](https://jonpayneea.github.io/PDMS7/reference/write_pdm_config.md)
   : Write a PDM configuration to a YAML file
+- [`read_pdm_inp()`](https://jonpayneea.github.io/PDMS7/reference/read_pdm_inp.md)
+  [`write_pdm_inp()`](https://jonpayneea.github.io/PDMS7/reference/read_pdm_inp.md)
+  : Read and write PDM for PCs input files
 - [`load_pdm_model()`](https://jonpayneea.github.io/PDMS7/reference/load_pdm_model.md)
   : Load pdm model
 - [`parameter_catalog()`](https://jonpayneea.github.io/PDMS7/reference/parameter_catalog.md)
@@ -113,6 +116,16 @@ Surface and groundwater stores.
   : Cubic routing
 - [`power_routing()`](https://jonpayneea.github.io/PDMS7/reference/power_routing.md)
   : Power routing
+- [`groundwater_extension()`](https://jonpayneea.github.io/PDMS7/reference/groundwater_extension.md)
+  [`FlodeExtendedGroundwater()`](https://jonpayneea.github.io/PDMS7/reference/groundwater_extension.md)
+  : The PDM groundwater extension
+- [`fit_well_level()`](https://jonpayneea.github.io/PDMS7/reference/fit_well_level.md)
+  [`plot(`*`<pdm_well_fit>`*`)`](https://jonpayneea.github.io/PDMS7/reference/fit_well_level.md)
+  : Fit the well level to an observed well
+- [`two_zone_config()`](https://jonpayneea.github.io/PDMS7/reference/two_zone_config.md)
+  [`FlodeMultiZoneModel()`](https://jonpayneea.github.io/PDMS7/reference/two_zone_config.md)
+  [`FlodeMultiZoneState()`](https://jonpayneea.github.io/PDMS7/reference/two_zone_config.md)
+  : Multi-zone PDM
 - [`routing_flow()`](https://jonpayneea.github.io/PDMS7/reference/routing_flow.md)
   : Routing flow
 - [`storage_for_flow()`](https://jonpayneea.github.io/PDMS7/reference/storage_for_flow.md)
@@ -232,6 +245,8 @@ the result; each step is noted and recorded in the calibration log.
   : Score a simulation against observed flow
 - [`pdm_threshold_scores()`](https://jonpayneea.github.io/PDMS7/reference/pdm_threshold_scores.md)
   : Score threshold crossings
+- [`flow_markers()`](https://jonpayneea.github.io/PDMS7/reference/flow_markers.md)
+  : Flow thresholds from the record: QMED and flow duration markers
 - [`pareto_front()`](https://jonpayneea.github.io/PDMS7/reference/pareto_front.md)
   : Identify nondominated loss vectors
 
@@ -252,6 +267,9 @@ Calibrate several model structures alike and rank them on held-out data.
 - [`compare_structures()`](https://jonpayneea.github.io/PDMS7/reference/compare_structures.md)
   [`structure_comparison()`](https://jonpayneea.github.io/PDMS7/reference/compare_structures.md)
   : Compare model structures
+- [`compare_calibrations()`](https://jonpayneea.github.io/PDMS7/reference/compare_calibrations.md)
+  [`plot(`*`<pdm_comparison>`*`)`](https://jonpayneea.github.io/PDMS7/reference/compare_calibrations.md)
+  : Compare calibrated models on the same data
 - [`recommend_structure()`](https://jonpayneea.github.io/PDMS7/reference/recommend_structure.md)
   : Recommend a model structure
 - [`structure_set()`](https://jonpayneea.github.io/PDMS7/reference/structure_set.md)
@@ -324,6 +342,8 @@ model scores event by event.
   : Events and event scores across a batch
 - [`screen_events()`](https://jonpayneea.github.io/PDMS7/reference/screen_events.md)
   : Screen events before scoring a model on them
+- [`gauge_response()`](https://jonpayneea.github.io/PDMS7/reference/gauge_response.md)
+  : Which rain gauge the river answers to
 - [`event_states()`](https://jonpayneea.github.io/PDMS7/reference/event_states.md)
   [`run_events()`](https://jonpayneea.github.io/PDMS7/reference/event_states.md)
   : Rerun events on their own, from saved states

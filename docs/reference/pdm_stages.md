@@ -81,13 +81,13 @@ A list of stages.
 
 ## Details
 
-|                         |                                             |                            |
-|-------------------------|---------------------------------------------|----------------------------|
-| Stage                   | Fits                                        | Objective                  |
-| 1\. Volume and baseflow | `fc`, soil store, recharge, groundwater     | 1 - log NSE + volume error |
-| 2\. Fast response       | Surface stores and the store shape `b`      | 1 - NSE                    |
-| 3\. Polish              | Everything, over the full bounds            | 1 - NSE                    |
-| 4\. Events (optional)   | Surface stores, `b` and the time delay `td` | events objective           |
+|                         |                                               |                      |
+|-------------------------|-----------------------------------------------|----------------------|
+| Stage                   | Fits                                          | Objective            |
+| 1\. Volume and baseflow | Soil, recharge, groundwater; `fc` if unlocked | 1 - log NSE + volume |
+| 2\. Fast response       | Surface stores and the store shape `b`        | 1 - NSE              |
+| 3\. Polish              | Everything, over the full bounds              | 1 - NSE              |
+| 4\. Events (optional)   | Surface stores, `b` and the time delay `td`   | events objective     |
 
 Low flows and the total volume depend on the slow stores, and logs stop
 the floods dominating stage 1. Peak size and timing depend on the fast
@@ -151,7 +151,7 @@ str(pdm_stages(pdm_presets("standard")), max.level = 2)
 #> List of 3
 #>  $ :List of 5
 #>   ..$ name         : chr "volume and baseflow"
-#>   ..$ parameters   : chr [1:5] "fc" "distribution.cmax" "distribution.b" "recharge.kg" ...
+#>   ..$ parameters   : chr [1:4] "distribution.cmax" "distribution.b" "recharge.kg" "groundwater.kb"
 #>   ..$ objective    : chr "log_nse"
 #>   ..$ volume_weight: num 1
 #>   ..$ band         : NULL
@@ -163,7 +163,7 @@ str(pdm_stages(pdm_presets("standard")), max.level = 2)
 #>   ..$ band         : NULL
 #>  $ :List of 5
 #>   ..$ name         : chr "polish"
-#>   ..$ parameters   : chr [1:7] "fc" "distribution.cmax" "distribution.b" "recharge.kg" ...
+#>   ..$ parameters   : chr [1:6] "distribution.cmax" "distribution.b" "recharge.kg" "surface.k1" ...
 #>   ..$ objective    : chr "nse"
 #>   ..$ volume_weight: num 0
 #>   ..$ band         : NULL

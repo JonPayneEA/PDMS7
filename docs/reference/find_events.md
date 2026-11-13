@@ -17,7 +17,10 @@ find_events(
   dt = 1,
   rain_min = NULL,
   max_response_h = 150,
-  area_km2 = NULL
+  area_km2 = NULL,
+  independent = TRUE,
+  separation = 3,
+  trough = 2/3
 )
 ```
 
@@ -56,6 +59,27 @@ find_events(
 
   Optional catchment area, km2. With it, flow volumes are in mm and each
   event has a runoff ratio.
+
+- independent:
+
+  Merge the events of one flood into one. At short time steps a long
+  flood fed by several bursts of rain is cut into an event per burst,
+  each a slice of the same hydrograph, so a list of the largest events
+  counts one flood many times. With `independent = TRUE`, neighbouring
+  events are one flood unless their peaks are independent by the rule
+  used for UK peaks-over-threshold series: at least `separation`
+  response times apart, with the flow between them falling below
+  `trough` times the smaller peak; events whose flow windows overlap are
+  always one flood. Merged events span all their parts, and their rain,
+  peak and volumes are worked out afresh. This is the default. `FALSE`
+  gives the published method's events unchanged, an event per burst of
+  rain.
+
+- separation, trough:
+
+  The independence rule: the least gap between peaks, in response times,
+  and the share of the smaller peak the flow must fall below between
+  them.
 
 ## Value
 
@@ -132,11 +156,11 @@ events <- find_events(river$forcing$rain, river$observed, river$forcing$time, dt
 attr(events, "response")$response_h
 #> [1] 6
 head(events[, c("rain_start_time", "flow_end_time", "rain_mm", "runoff_ratio")])
-#>       rain_start_time       flow_end_time    rain_mm runoff_ratio
-#> 1 2010-10-02 22:00:00 2010-10-05 20:00:00  4.2046815   0.15251290
-#> 2 2010-10-06 11:00:00 2010-10-07 16:00:00 28.6964011   0.06469433
-#> 3 2010-10-12 20:00:00 2010-10-16 10:00:00 31.6119703   0.20820879
-#> 4 2010-10-16 17:00:00 2010-10-18 07:00:00  0.8105054   0.13843947
-#> 5 2010-10-20 15:00:00 2010-10-22 11:00:00  3.8803948   0.09834234
-#> 6 2010-10-22 13:00:00 2010-10-24 21:00:00 21.4094952   0.14424964
+#>       rain_start_time       flow_end_time   rain_mm runoff_ratio
+#> 1 2010-10-02 22:00:00 2010-10-05 20:00:00  4.204681   0.15251290
+#> 2 2010-10-06 11:00:00 2010-10-07 16:00:00 28.696401   0.06469433
+#> 3 2010-10-12 20:00:00 2010-10-18 07:00:00 32.945947   0.21424012
+#> 4 2010-10-20 15:00:00 2010-10-28 12:00:00 29.338894   0.21780040
+#> 5 2010-10-28 22:00:00 2010-10-30 06:00:00 19.380328   0.09502864
+#> 6 2010-10-30 07:00:00 2010-10-31 23:00:00 13.293663   0.12727539
 ```

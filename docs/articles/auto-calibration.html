@@ -5,22 +5,22 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Automatic calibration, explained • pdmS7</title>
-<script src="../deps/jquery-3.6.1/jquery-3.6.1.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<title>How automatic calibration works • pdmS7</title>
+<script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.1/jquery-3.6.1.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.4.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.4.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Automatic calibration, explained">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><script src="../extra.js"></script><meta property="og:title" content="How automatic calibration works">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
-    <nav class="navbar navbar-expand-lg fixed-top bg-light" data-bs-theme="light" aria-label="Site navigation"><div class="container">
+    <nav class="navbar navbar-expand-lg fixed-top " aria-label="Site navigation"><div class="container">
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.17.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.27.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -47,27 +47,27 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Model options</h6></li>
     <li><a class="dropdown-item" href="../articles/model-options.html">Choosing model components</a></li>
+    <li><a class="dropdown-item" href="../articles/reading-responses.html">Reading the response: what each model option does to the flow</a></li>
+    <li><a class="dropdown-item" href="../articles/groundwater-extension.html">Using the groundwater extension: abstraction, losses and wells</a></li>
+    <li><a class="dropdown-item" href="../articles/two-zone-pdm.html">The two-zone PDM: a fast zone for flashy catchments</a></li>
     <li><a class="dropdown-item" href="../articles/starting-states.html">Starting a run: cold, warm and hot</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Calibration</h6></li>
-    <li><a class="dropdown-item" href="../articles/calibration-journey.html">Automatic calibration from start to finish</a></li>
-    <li><a class="dropdown-item" href="../articles/checks.html">Checking the data and the events</a></li>
-    <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: multi-start, budgets and staged calibration</a></li>
+    <li><a class="dropdown-item" href="../articles/calibration-journey.html">Calibrating a catchment from start to finish</a></li>
+    <li><a class="dropdown-item" href="../articles/auto-calibration.html">How automatic calibration works</a></li>
+    <li><a class="dropdown-item" href="../articles/choosing-structure.html">How the model structure is chosen</a></li>
     <li><a class="dropdown-item" href="../articles/floods.html">Getting the floods right</a></li>
     <li><a class="dropdown-item" href="../articles/app-events.html">Tailoring calibration to the largest events in the app</a></li>
+    <li><a class="dropdown-item" href="../articles/checks.html">Checking the data and the events</a></li>
     <li><a class="dropdown-item" href="../articles/rainfall.html">Catchment rainfall from gauges and radar</a></li>
-    <li><a class="dropdown-item" href="../articles/auto-calibration.html">Automatic calibration, explained</a></li>
     <li><a class="dropdown-item" href="../articles/scoring.html">Scoring a simulation: from NSE to POD, FAR and CSI</a></li>
-    <li><a class="dropdown-item" href="../articles/choosing-structure.html">Choosing a model structure</a></li>
+    <li><a class="dropdown-item" href="../articles/comparing-calibrations.html">Comparing calibrations and PDM for PCs files</a></li>
     <li><a class="dropdown-item" href="../articles/extrapolation.html">Larger floods: extrapolation and the rating</a></li>
     <li><a class="dropdown-item" href="../articles/many-catchments.html">Calibrating many catchments</a></li>
-    <li><a class="dropdown-item" href="../articles/large-sample.html">A large sample: what automatic calibration recovers</a></li>
-    <li><a class="dropdown-item" href="../articles/calibration-study.html">What limits automatic calibration: a study</a></li>
-    <li><a class="dropdown-item" href="../articles/events.html">Events in large samples: finding them and scoring models on them</a></li>
+    <li><a class="dropdown-item" href="../articles/large-sample.html">Many catchments: what automatic calibration recovers, and what limits it</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Records and review</h6></li>
-    <li><a class="dropdown-item" href="../articles/calibration-log.html">Logging a manual calibration</a></li>
-    <li><a class="dropdown-item" href="../articles/log-structure.html">Inside the logs: projects, entries, checksums and the run log</a></li>
+    <li><a class="dropdown-item" href="../articles/calibration-log.html">Calibration records: logging a calibration, and what the logs hold</a></li>
     <li><a class="dropdown-item" href="../articles/steward-guide.html">Reviewing a calibration: a Steward's guide</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Forecasting</h6></li>
@@ -107,6 +107,14 @@
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json">
 </form></li>
 <li class="nav-item"><a class="external-link nav-link" href="https://github.com/JonPayneEA/PDMS7" aria-label="GitHub"><span class="fa fa-github"></span></a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-lightswitch" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true" aria-label="Light switch"><span class="fa fa-sun"></span></button>
+  <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdown-lightswitch">
+<li><button class="dropdown-item" data-bs-theme-value="light"><span class="fa fa-sun"></span> Light</button></li>
+    <li><button class="dropdown-item" data-bs-theme-value="dark"><span class="fa fa-moon"></span> Dark</button></li>
+    <li><button class="dropdown-item" data-bs-theme-value="auto"><span class="fa fa-adjust"></span> Auto</button></li>
+  </ul>
+</li>
       </ul>
 </div>
 
@@ -119,8 +127,7 @@
 
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
-
-      <h1>Automatic calibration, explained</h1>
+      <img src="../logo.png" class="logo" alt=""><h1>How automatic calibration works</h1>
                         <h4 data-toc-skip class="author">pdmS7
 documentation</h4>
             
@@ -151,10 +158,13 @@ feeling for the slope, or comparing a few points;</li>
 <strong>what “low” means</strong> is the <em>objective</em>: the
 score being minimised, such as 1 - NSE.</li>
 </ul>
-<p>This article takes each in turn, in plain terms, with an example. How
-many starting points to use and how long a calibration takes are covered
-in <a href="calibration.html">Calibration</a>; the scores themselves in
-<a href="scoring.html">Scoring a simulation</a>.</p>
+<p>This article takes each in turn, in plain terms, with an example:
+then how many starts to use and what a calibration costs, staged
+calibration, calibrating for floods, and how the final candidate is
+chosen. <a href="calibration-journey.html">Calibrating a catchment from
+start to finish</a> runs all of it in one call; <a href="choosing-structure.html">How the model structure is chosen</a>
+covers the choice of soil store, recharge and groundwater; the scores
+themselves are in <a href="scoring.html">Scoring a simulation</a>.</p>
 <p>The examples use a made-up catchment whose true parameters we know,
 with a Flood Warning threshold at 3.7 m3/s.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
@@ -201,23 +211,31 @@ package:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">show_bounds</span><span class="op">(</span><span class="fu"><a href="../reference/calibration_bounds.html">calibration_bounds</a></span><span class="op">(</span><span class="fu"><a href="../reference/pdm_presets.html">pdm_presets</a></span><span class="op">(</span><span class="st">"standard"</span><span class="op">)</span><span class="op">)</span>, note <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="co">#&gt;                path lower   upper  scale</span></span>
-<span><span class="co">#&gt; 1                fc   0.6     1.6 linear</span></span>
-<span><span class="co">#&gt; 2 distribution.cmax    20     800 linear</span></span>
-<span><span class="co">#&gt; 3    distribution.b  0.05       2 linear</span></span>
-<span><span class="co">#&gt; 4       recharge.kg     1    5000    log</span></span>
-<span><span class="co">#&gt; 5        surface.k1   0.5      72    log</span></span>
-<span><span class="co">#&gt; 6        surface.k2   0.5      72    log</span></span>
-<span><span class="co">#&gt; 7    groundwater.kb   100 1000000    log</span></span>
-<span><span class="co">#&gt;                                                                                note</span></span>
-<span><span class="co">#&gt; 1 Rainfall factor; outside this range question the rain gauge rather than the model</span></span>
-<span><span class="co">#&gt; 2                                                       Maximum store capacity (mm)</span></span>
-<span><span class="co">#&gt; 3                                       Shape: low values give a near-uniform store</span></span>
-<span><span class="co">#&gt; 4                             Recharge time constant (h); spans orders of magnitude</span></span>
-<span><span class="co">#&gt; 5                                              Time constant of the first store (h)</span></span>
-<span><span class="co">#&gt; 6                                             Time constant of the second store (h)</span></span>
-<span><span class="co">#&gt; 7                                                              Cubic store constant</span></span></code></pre></div>
-<p>If you know a catchment, move any fence, add a parameter to
-calibrate, or hold one fixed at its current value:</p>
+<span><span class="co">#&gt; 1 distribution.cmax    20     800 linear</span></span>
+<span><span class="co">#&gt; 2    distribution.b  0.05       2 linear</span></span>
+<span><span class="co">#&gt; 3       recharge.kg     1    5000    log</span></span>
+<span><span class="co">#&gt; 4        surface.k1   0.5      72    log</span></span>
+<span><span class="co">#&gt; 5        surface.k2   0.5      72    log</span></span>
+<span><span class="co">#&gt; 6    groundwater.kb   100 1000000    log</span></span>
+<span><span class="co">#&gt;                                                    note</span></span>
+<span><span class="co">#&gt; 1                           Maximum store capacity (mm)</span></span>
+<span><span class="co">#&gt; 2           Shape: low values give a near-uniform store</span></span>
+<span><span class="co">#&gt; 3 Recharge time constant (h); spans orders of magnitude</span></span>
+<span><span class="co">#&gt; 4                  Time constant of the first store (h)</span></span>
+<span><span class="co">#&gt; 5                 Time constant of the second store (h)</span></span>
+<span><span class="co">#&gt; 6                                  Cubic store constant</span></span></code></pre></div>
+<p>Two defaults guard against fits that look good for the wrong reasons.
+A split recharge’s share <code>recharge.alpha</code> is searched between
+0.05 and 0.95, never at 0 or 1, where one flow path would be switched
+off. And one parameter is missing on purpose: the rainfall factor
+<code>fc</code>. It is locked at its value in the configuration, 1
+unless you change it. A calibrated factor soaks up whatever was wrong
+with the rainfall totals in the calibration years, and then carries that
+correction into operation, where the rain may come from other gauges or
+another radar product and need none. Unlock it only when you know the
+rainfall’s bias and trust it to stay put, by giving it bounds.</p>
+<p>If you know a catchment, move any fence, add a parameter to calibrate
+(the rainfall factor here), or lock one at its current value:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">b</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calibration_bounds.html">calibration_bounds</a></span><span class="op">(</span><span class="fu"><a href="../reference/pdm_presets.html">pdm_presets</a></span><span class="op">(</span><span class="st">"standard"</span><span class="op">)</span>,</span>
 <span>                        overrides <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>fc <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.9</span>, <span class="fl">1.2</span><span class="op">)</span>, td <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">3</span><span class="op">)</span><span class="op">)</span>,</span>
@@ -278,7 +296,7 @@ evenly (top) and on a log scale (bottom), plotted on a log axis.
 <span>           model_runs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">even_fit</span><span class="op">$</span><span class="va">start_results</span><span class="op">$</span><span class="va">evaluations</span><span class="op">)</span>,</span>
 <span>                          <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">log_fit</span><span class="op">$</span><span class="va">start_results</span><span class="op">$</span><span class="va">evaluations</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;   scale     kg model_runs</span></span>
-<span><span class="co">#&gt; 1  even 555.16         33</span></span>
+<span><span class="co">#&gt; 1  even 555.16         78</span></span>
 <span><span class="co">#&gt; 2   log  40.00         33</span></span></code></pre></div>
 <p>Both find the right answer; the log-scale search gets there in about
 a third of the model runs. The bounds table marks which parameters
@@ -319,6 +337,13 @@ fog.</p>
 group towards the best</td>
 <td>Scores with sudden jumps or flat stretches</td>
 <td>Several times more model runs</td>
+</tr>
+<tr class="odd">
+<td><code>dds</code></td>
+<td>Perturbs a shrinking random subset of parameters from the best point
+so far (Tolson and Shoemaker, 2007)</td>
+<td>Many parameters, rough scores, a fixed budget of runs</td>
+<td>Exactly <code>maxit</code> runs per start</td>
 </tr>
 </tbody>
 </table>
@@ -361,6 +386,164 @@ useful.</p>
 a few points spread around, and moves towards the best of them, so it
 can walk across a flat step to the next one down. pdmS7 keeps every
 point it tries inside the fences.</p>
+</div>
+<div class="section level2">
+<h2 id="several-starts">Several starts<a class="anchor" aria-label="anchor" href="#several-starts"></a>
+</h2>
+<p>A search that feels for the slope stops at the first dip it reaches,
+which need not be the deepest. The two time constants of the surface
+cascade, <code>k1</code> and <code>k2</code>, show it plainly: a cascade
+of two linear stores gives exactly the same outflow with the two
+constants swapped, so the score has two equally good lowest points,
+mirror images about the diagonal.</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">11</span><span class="op">)</span></span>
+<span><span class="va">ms_n</span> <span class="op">&lt;-</span> <span class="fl">24</span> <span class="op">*</span> <span class="fl">90</span></span>
+<span><span class="va">ms_forcing</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  rain <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/Uniform.html" class="external-link">runif</a></span><span class="op">(</span><span class="va">ms_n</span><span class="op">)</span> <span class="op">&lt;</span> <span class="fl">0.06</span>, <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/GammaDist.html" class="external-link">rgamma</a></span><span class="op">(</span><span class="va">ms_n</span>, <span class="fl">0.7</span>, scale <span class="op">=</span> <span class="fl">4</span><span class="op">)</span>, <span class="fl">0</span><span class="op">)</span>,</span>
+<span>  pet <span class="op">=</span> <span class="fl">0.08</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">ms_truth</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pdm_presets.html">pdm_presets</a></span><span class="op">(</span><span class="st">"standard"</span><span class="op">)</span></span>
+<span><span class="va">ms_truth</span><span class="op">$</span><span class="va">area_km2</span> <span class="op">&lt;-</span> <span class="fl">50</span></span>
+<span><span class="va">ms_truth</span><span class="op">$</span><span class="va">surface</span><span class="op">$</span><span class="va">k1</span> <span class="op">&lt;-</span> <span class="fl">3</span></span>
+<span><span class="va">ms_truth</span><span class="op">$</span><span class="va">surface</span><span class="op">$</span><span class="va">k2</span> <span class="op">&lt;-</span> <span class="fl">12</span></span>
+<span><span class="va">ms_truth</span><span class="op">$</span><span class="va">recharge</span><span class="op">$</span><span class="va">kg</span> <span class="op">&lt;-</span> <span class="fl">400</span></span>
+<span><span class="va">ms_model</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pdm_from_config.html">pdm_from_config</a></span><span class="op">(</span><span class="va">ms_truth</span><span class="op">)</span></span>
+<span><span class="va">ms_observed</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_pdm.html">run_pdm</a></span><span class="op">(</span><span class="va">ms_model</span>, <span class="va">ms_forcing</span>, <span class="fu"><a href="../reference/initial_state_from_flow.html">initial_state_from_flow</a></span><span class="op">(</span><span class="va">ms_model</span>, <span class="fl">1</span>, <span class="fl">0.7</span><span class="op">)</span><span class="op">)</span><span class="op">$</span><span class="va">output</span><span class="op">$</span><span class="va">q_m3s</span> <span class="op">*</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">ms_n</span>, <span class="fl">0</span>, <span class="fl">0.05</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>Both constants are searched between 0.5 and 30 hours, from
+<code>k1 = k2 = 15</code>, which lies on the diagonal, with nine further
+random starts:</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">ms_config</span> <span class="op">&lt;-</span> <span class="va">ms_truth</span></span>
+<span><span class="va">ms_config</span><span class="op">$</span><span class="va">surface</span><span class="op">$</span><span class="va">k1</span> <span class="op">&lt;-</span> <span class="fl">15</span></span>
+<span><span class="va">ms_config</span><span class="op">$</span><span class="va">surface</span><span class="op">$</span><span class="va">k2</span> <span class="op">&lt;-</span> <span class="fl">15</span></span>
+<span><span class="va">ms_lower</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>surface.k1 <span class="op">=</span> <span class="fl">0.5</span>, surface.k2 <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></span>
+<span><span class="va">ms_upper</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>surface.k1 <span class="op">=</span> <span class="fl">30</span>, surface.k2 <span class="op">=</span> <span class="fl">30</span><span class="op">)</span></span>
+<span><span class="va">ms_fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calibrate_pdm.html">calibrate_pdm</a></span><span class="op">(</span><span class="va">ms_config</span>, <span class="va">ms_forcing</span>, <span class="va">ms_observed</span>, <span class="va">ms_lower</span>, <span class="va">ms_upper</span>,</span>
+<span>                        objective <span class="op">=</span> <span class="st">"nse"</span>, starts <span class="op">=</span> <span class="fl">10L</span>, seed <span class="op">=</span> <span class="fl">2</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>maxit <span class="op">=</span> <span class="fl">60</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">ms_fit</span><span class="op">$</span><span class="va">start_results</span></span>
+<span><span class="co">#&gt;     start  objective convergence evaluations   best surface.k1 surface.k2</span></span>
+<span><span class="co">#&gt;     &lt;int&gt;      &lt;num&gt;       &lt;int&gt;       &lt;int&gt; &lt;lgcl&gt;      &lt;num&gt;      &lt;num&gt;</span></span>
+<span><span class="co">#&gt;  1:     1 0.03259536           0          50  FALSE   6.817050   6.817050</span></span>
+<span><span class="co">#&gt;  2:     2 0.03122871           0          60  FALSE   3.049018  11.935294</span></span>
+<span><span class="co">#&gt;  3:     3 0.03122871           0          60  FALSE  11.935286   3.049017</span></span>
+<span><span class="co">#&gt;  4:     4 0.03122871           0         175  FALSE  11.935256   3.049026</span></span>
+<span><span class="co">#&gt;  5:     5 0.03122871           0          70  FALSE   3.049015  11.935297</span></span>
+<span><span class="co">#&gt;  6:     6 0.03122871           0          90  FALSE   3.049013  11.935293</span></span>
+<span><span class="co">#&gt;  7:     7 0.03122871           0          50  FALSE  11.935310   3.049015</span></span>
+<span><span class="co">#&gt;  8:     8 0.03122871           0          60   TRUE  11.935333   3.048998</span></span>
+<span><span class="co">#&gt;  9:     9 0.03122871           0          85  FALSE   3.049021  11.935290</span></span>
+<span><span class="co">#&gt; 10:    10 0.03122871           0          75  FALSE  11.935306   3.049015</span></span></code></pre></div>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">grid</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">30</span>, length.out <span class="op">=</span> <span class="fl">40</span><span class="op">)</span></span>
+<span><span class="va">ms_loss</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">k1</span>, <span class="va">k2</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">cfg</span> <span class="op">&lt;-</span> <span class="va">ms_config</span></span>
+<span>  <span class="va">cfg</span><span class="op">$</span><span class="va">surface</span><span class="op">$</span><span class="va">k1</span> <span class="op">&lt;-</span> <span class="va">k1</span></span>
+<span>  <span class="va">cfg</span><span class="op">$</span><span class="va">surface</span><span class="op">$</span><span class="va">k2</span> <span class="op">&lt;-</span> <span class="va">k2</span></span>
+<span>  <span class="va">model</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pdm_from_config.html">pdm_from_config</a></span><span class="op">(</span><span class="va">cfg</span><span class="op">)</span></span>
+<span>  <span class="co"># calibrate_pdm() starts every evaluation in steady state at the first observed flow; so does</span></span>
+<span>  <span class="co"># this.</span></span>
+<span>  <span class="va">sim</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_pdm.html">run_pdm</a></span><span class="op">(</span><span class="va">model</span>, <span class="va">ms_forcing</span>,</span>
+<span>                 <span class="fu"><a href="../reference/initial_state_from_flow.html">initial_state_from_flow</a></span><span class="op">(</span><span class="va">model</span>, <span class="va">ms_observed</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>, <span class="fl">0.7</span><span class="op">)</span><span class="op">)</span><span class="op">$</span><span class="va">output</span><span class="op">$</span><span class="va">q_m3s</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="op">(</span><span class="va">sim</span> <span class="op">-</span> <span class="va">ms_observed</span><span class="op">)</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span> <span class="op">/</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="op">(</span><span class="va">ms_observed</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">ms_observed</span><span class="op">)</span><span class="op">)</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span><span class="va">ms_surface</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/outer.html" class="external-link">outer</a></span><span class="op">(</span><span class="va">grid</span>, <span class="va">grid</span>, <span class="fu"><a href="https://rdrr.io/r/base/Vectorize.html" class="external-link">Vectorize</a></span><span class="op">(</span><span class="va">ms_loss</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span></span>
+<span><span class="va">unit</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">14.5</span>, <span class="fl">14.5</span><span class="op">)</span> <span class="op">/</span> <span class="fl">29.5</span>, <span class="fu"><a href="https://rdrr.io/r/base/t.html" class="external-link">t</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">replicate</a></span><span class="op">(</span><span class="fl">9</span>, <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/Uniform.html" class="external-link">runif</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">start_points</span> <span class="op">&lt;-</span> <span class="fl">0.5</span> <span class="op">+</span> <span class="va">unit</span> <span class="op">*</span> <span class="fl">29.5</span></span>
+<span><span class="va">tab</span> <span class="op">&lt;-</span> <span class="va">ms_fit</span><span class="op">$</span><span class="va">start_results</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span>mfrow <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span><span class="op">)</span>, mar <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">4</span>, <span class="fl">4</span>, <span class="fl">2</span>, <span class="fl">1</span><span class="op">)</span>, cex.main <span class="op">=</span> <span class="fl">0.95</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/contour.html" class="external-link">contour</a></span><span class="op">(</span><span class="va">grid</span>, <span class="va">grid</span>, <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log10</a></span><span class="op">(</span><span class="va">ms_surface</span><span class="op">)</span>, nlevels <span class="op">=</span> <span class="fl">14</span>, col <span class="op">=</span> <span class="st">"grey55"</span>, drawlabels <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>        xlab <span class="op">=</span> <span class="st">"k1 (hours)"</span>, ylab <span class="op">=</span> <span class="st">"k2 (hours)"</span>, main <span class="op">=</span> <span class="st">"Objective surface and start paths"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/arrows.html" class="external-link">arrows</a></span><span class="op">(</span><span class="va">start_points</span><span class="op">[</span>, <span class="fl">1</span><span class="op">]</span>, <span class="va">start_points</span><span class="op">[</span>, <span class="fl">2</span><span class="op">]</span>, <span class="va">tab</span><span class="op">$</span><span class="va">surface.k1</span>, <span class="va">tab</span><span class="op">$</span><span class="va">surface.k2</span>,</span>
+<span>       length <span class="op">=</span> <span class="fl">0.06</span>, col <span class="op">=</span> <span class="va">pal</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>, lwd <span class="op">=</span> <span class="fl">1.3</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/points.html" class="external-link">points</a></span><span class="op">(</span><span class="va">start_points</span>, pch <span class="op">=</span> <span class="fl">1</span>, col <span class="op">=</span> <span class="va">pal</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/points.html" class="external-link">points</a></span><span class="op">(</span><span class="va">tab</span><span class="op">$</span><span class="va">surface.k1</span>, <span class="va">tab</span><span class="op">$</span><span class="va">surface.k2</span>, pch <span class="op">=</span> <span class="fl">16</span>, col <span class="op">=</span> <span class="va">pal</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/points.html" class="external-link">points</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">12</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">12</span>, <span class="fl">3</span><span class="op">)</span>, pch <span class="op">=</span> <span class="fl">4</span>, cex <span class="op">=</span> <span class="fl">1.6</span>, lwd <span class="op">=</span> <span class="fl">2</span>, col <span class="op">=</span> <span class="va">pal</span><span class="op">[</span><span class="fl">4</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">tab</span><span class="op">$</span><span class="va">start</span>, <span class="va">tab</span><span class="op">$</span><span class="va">objective</span>, pch <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse</a></span><span class="op">(</span><span class="va">tab</span><span class="op">$</span><span class="va">best</span>, <span class="fl">16</span>, <span class="fl">1</span><span class="op">)</span>, col <span class="op">=</span> <span class="va">pal</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>, cex <span class="op">=</span> <span class="fl">1.3</span>,</span>
+<span>     xlab <span class="op">=</span> <span class="st">"Start"</span>, ylab <span class="op">=</span> <span class="st">"Final 1 - NSE"</span>, main <span class="op">=</span> <span class="st">"Final objective of each start"</span><span class="op">)</span></span></code></pre></div>
+<div class="figure">
+<img src="auto-calibration_files/figure-html/starts-surface-1.png" class="r-plt" alt="Left: contours of 1 - NSE over the two time constants, with each start's path from its starting point (open circle) to where it stopped (filled circle). Crosses mark the two true optima. Right: the final objective of each start; the filled point is the start returned." width="880"><p class="caption">
+Left: contours of 1 - NSE over the two time constants, with each start’s
+path from its starting point (open circle) to where it stopped (filled
+circle). Crosses mark the two true optima. Right: the final objective of
+each start; the filled point is the start returned.
+</p>
+</div>
+<p>Start 1, the configured point, slid along the diagonal and stopped at
+a saddle where <code>k1 = k2</code>: on the diagonal the slope points
+along it, not off it, so the search cannot see the better valleys either
+side. The random starts found one of the two true optima. A single start
+from this configuration would have stopped at the saddle with no
+warning.</p>
+<p><code>start_results</code> shows whether the starts agree:</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th>Column</th>
+<th>Meaning</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>objective</code></td>
+<td>Final objective of the start; for NSE, 1 - NSE</td>
+</tr>
+<tr class="even">
+<td><code>convergence</code></td>
+<td>0 normal; 1 iteration limit reached; 51 or 52 line search could make
+no further progress</td>
+</tr>
+<tr class="odd">
+<td><code>evaluations</code></td>
+<td>Model runs used, including the gradient calls <code>optim</code>
+leaves out of its own count</td>
+</tr>
+<tr class="even">
+<td><code>best</code></td>
+<td>The start returned</td>
+</tr>
+<tr class="odd">
+<td>One column per parameter</td>
+<td>Where the start ended</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>
+<strong>Starts agree on objective and parameters:</strong> a
+well-defined optimum; fewer starts would do.</li>
+<li>
+<strong>Starts agree on objective but not parameters,</strong> as
+here: the data cannot separate the parameters. Fix one or narrow the
+bounds.</li>
+<li>
+<strong>Starts disagree on objective:</strong> several dips. Keep
+enough starts to find the deepest reliably.</li>
+</ul>
+<div class="section level3">
+<h3 id="what-a-calibration-costs">What a calibration costs<a class="anchor" aria-label="anchor" href="#what-a-calibration-costs"></a>
+</h3>
+<pre><code>basins x starts x model runs per start x seconds per run / cores</code></pre>
+<p>Model runs per start depend on the number of parameters, the bounds
+and the catchment. Measure them on a pilot before committing compute:
+<code>inst/examples/pilot_calibration.R</code> calibrates a few basins
+with many starts and reports the start at which each found its best, the
+spread of objectives and a budget for the full run. Its synthetic dry
+run needs no data:</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Sys.setenv.html" class="external-link">Sys.setenv</a></span><span class="op">(</span>PILOT_SYNTHETIC <span class="op">=</span> <span class="st">"1"</span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/source.html" class="external-link">source</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"examples"</span>, <span class="st">"pilot_calibration.R"</span>, package <span class="op">=</span> <span class="st">"pdmS7"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>With the compiled engine, one run of 29 years at 15 minutes takes
+about a second on a 2.1 GHz Xeon. <code><a href="../reference/calibrate_pdm.html">calibrate_pdm()</a></code> runs its
+starts one after another; <code><a href="../reference/calibrate_batch.html">calibrate_batch()</a></code> and
+<code><a href="../reference/compare_structures.html">compare_structures()</a></code> spread basins or structures across
+cores with <code>cores</code>. Give each basin its own seed so that
+every run can be repeated exactly.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="objectives">Objectives<a class="anchor" aria-label="anchor" href="#objectives"></a>
@@ -427,7 +610,7 @@ CSI part comes in steps, this needs the comparing method,
 averaged.</p>
 <p>Here are the two side by side: first the overall fit alone, then the
 overall fit plus the Flood Warning:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">start</span> <span class="op">&lt;-</span> <span class="va">truth</span></span>
 <span><span class="va">start</span><span class="op">$</span><span class="va">fc</span> <span class="op">&lt;-</span> <span class="fl">0.9</span></span>
 <span><span class="va">start</span><span class="op">$</span><span class="va">surface</span><span class="op">$</span><span class="va">k1</span> <span class="op">&lt;-</span> <span class="fl">4</span></span>
@@ -482,6 +665,38 @@ threshold part with <code>method = "lbfgsb"</code> stops with an
 explanation, because it would quietly fail.</li>
 </ul>
 </div>
+<div class="section level3">
+<h3 id="one-weighted-score-or-a-trade-off">One weighted score, or a trade-off<a class="anchor" aria-label="anchor" href="#one-weighted-score-or-a-trade-off"></a>
+</h3>
+<p>Every objective above, and every stage below, is a single number.
+Where it combines several scores (log NSE with a volume error, NSE with
+CSI, the three parts of the events objective) the weights are chosen
+before the search, and the search finds the best parameter set for that
+one blend. This is multi-criteria calibration with the trade-off fixed
+in advance. It keeps the search fast, every result repeatable and the
+choice of weights recorded in the log.</p>
+<p>The alternative is to search for the trade-off itself.
+<code><a href="../reference/calibrate_pdm_multi.html">calibrate_pdm_multi()</a></code> scores every parameter set on several
+objectives at once, such as 1 - NSE, the log RMSE and the volume error,
+and returns the <em>nondominated</em> sets: those that no other set
+beats on every objective. They trace the front along which improving one
+score costs another. It is a tool for understanding a catchment, not
+part of the automatic calibration: nothing in a project or a batch calls
+it, and its front is approximate, limited to the sets it evaluated.</p>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">front</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calibrate_pdm_multi.html">calibrate_pdm_multi</a></span><span class="op">(</span></span>
+<span>  <span class="va">config</span>, <span class="va">forcing</span>, <span class="va">observed</span>,</span>
+<span>  lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>distribution.cmax <span class="op">=</span> <span class="fl">50</span>, surface.k1 <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span>,</span>
+<span>  upper <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>distribution.cmax <span class="op">=</span> <span class="fl">600</span>, surface.k1 <span class="op">=</span> <span class="fl">20</span><span class="op">)</span>,</span>
+<span>  objectives <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"nse_loss"</span>, <span class="st">"log_rmse"</span>, <span class="st">"abs_bias"</span><span class="op">)</span>,</span>
+<span>  scales <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>nse_loss <span class="op">=</span> <span class="fl">1</span>, log_rmse <span class="op">=</span> <span class="fl">0.5</span>, abs_bias <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span>,</span>
+<span>  n_samples <span class="op">=</span> <span class="fl">100</span>, starts <span class="op">=</span> <span class="fl">3</span>, seed <span class="op">=</span> <span class="fl">42</span>, warmup <span class="op">=</span> <span class="fl">240</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">front</span><span class="op">$</span><span class="va">pareto</span>    <span class="co"># the nondominated sets and their scores</span></span></code></pre></div>
+<p>Use it when the weights are the question: if the front shows that the
+best NSE costs 15 per cent of the volume, that is worth knowing before
+choosing <code>volume_weight</code>.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="calibrating-in-stages">Calibrating in stages<a class="anchor" aria-label="anchor" href="#calibrating-in-stages"></a>
@@ -504,8 +719,8 @@ does the same:</p>
 <tbody>
 <tr class="odd">
 <td>1. Volume and baseflow</td>
-<td>
-<code>fc</code>, the soil store, recharge and groundwater</td>
+<td>The soil store, recharge and groundwater, and <code>fc</code> if
+unlocked</td>
 <td>1 - log NSE, plus the volume error</td>
 </tr>
 <tr class="even">
@@ -532,10 +747,16 @@ polish kept close to that point could not undo it.
 bounds table: a split recharge adds its share to stage 1, an exponential
 store its two parameters. Each stage is a plain list, so you can move
 parameters between stages or drop the polish.</p>
+<p>Moore (2007, p. 490) describes a cheaper variant for sub-daily
+models: fit the water balance at a daily step over the whole record,
+then the fast response at 15 minutes on storm events alone, with the
+slow parameters fixed. Time constants are in hours and carry over
+between steps; demand recharge depends on the step and needs
+checking.</p>
 <p>Here both approaches start from the standard settings, a long way
 from the truth (NSE below zero). One calibrates all seven parameters at
 once, the other in stages:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">begin</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pdm_presets.html">pdm_presets</a></span><span class="op">(</span><span class="st">"standard"</span><span class="op">)</span></span>
 <span><span class="va">begin</span><span class="op">$</span><span class="va">area_km2</span> <span class="op">&lt;-</span> <span class="fl">50</span></span>
 <span><span class="va">b</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calibration_bounds.html">calibration_bounds</a></span><span class="op">(</span><span class="va">begin</span><span class="op">)</span></span>
@@ -557,14 +778,14 @@ once, the other in stages:</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">comparison</span>, <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt;                nse log_nse volume_error model_runs</span></span>
 <span><span class="co">#&gt; start       -0.954  -4.424       -0.283          0</span></span>
-<span><span class="co">#&gt; all_at_once  0.992   0.991        0.000       4395</span></span>
-<span><span class="co">#&gt; stage_1      0.967   0.976        0.000       1012</span></span>
-<span><span class="co">#&gt; stage_2      0.978   0.979        0.005        364</span></span>
-<span><span class="co">#&gt; staged       0.992   0.991        0.000       5246</span></span></code></pre></div>
+<span><span class="co">#&gt; all_at_once  0.992   0.991        0.000       2002</span></span>
+<span><span class="co">#&gt; stage_1      0.986   0.985        0.000       1152</span></span>
+<span><span class="co">#&gt; stage_2      0.988   0.988       -0.004        252</span></span>
+<span><span class="co">#&gt; staged       0.992   0.991        0.000       3549</span></span></code></pre></div>
 <p>In this example both reach the same answer: NSE 0.992 at once and
-0.992 in stages. Stage 1 alone reaches 0.967, which shows how much of
+0.992 in stages. Stage 1 alone reaches 0.986, which shows how much of
 the fit comes from the water balance and the slow stores. Staging took
-more model runs here, 5,246 against 4,395.</p>
+more model runs here, 3,549 against 2,002.</p>
 <p>So why stage? A made-up catchment with a known truth and clean data
 is the easy case. On real data, with rating errors at the top end and a
 long record of low flows, fitting everything to NSE at once can let the
@@ -578,9 +799,9 @@ catchments where the structure was exactly right, a polish kept within a
 quarter of each range (the default before version 0.8.0) left two
 catchments far short of their true parameters’ score. With the polish
 over the full bounds, staging and calibrating everything at once both
-came within 0.001 of the truth’s score in every catchment. <a href="calibration-study.html">What limits automatic calibration</a>
-describes the test. On synthetic data the two are equal, so the case for
-staging rests on real data, and on judgement.</p>
+came within 0.001 of the truth’s score in every catchment. <a href="large-sample.html#what-limits-automatic-calibration">Many
+catchments</a> describes the test. On synthetic data the two are equal,
+so the case for staging rests on real data, and on judgement.</p>
 <p>In a project, <code><a href="../reference/calibrate_staged.html">log_staged_calibration()</a></code> writes one
 <code>auto_calibration</code> entry per stage, each the parent of the
 next, with its stage recorded, and
@@ -603,7 +824,7 @@ of their ranges and routed the floods through the slow stores.</p>
 <code>pdm_stages(events = TRUE)</code> adds a fourth stage after the
 polish. It refits the fast response (the surface stores and
 <code>b</code>) and the time delay <code>td</code> on the largest events
-alone, found with <a href="events.html"><code>find_events()</code></a>.
+alone, found with <a href="floods.html#finding-the-events"><code>find_events()</code></a>.
 Its objective has three parts:</p>
 <table class="table">
 <colgroup>
@@ -638,10 +859,13 @@ time</td>
 </table>
 <p>Only the largest half of the calibration events count, by observed
 peak (<code>event_share</code>), so small events with noisy peaks do not
-steer it. The slow stores stay where stage 3 left them, which keeps the
-water balance. The timing part changes in whole steps, so this stage
-searches with DDS (<code>event_budget</code> model runs per start)
-rather than by slope.</p>
+steer it. <code>event_share</code> can instead name a flow: with
+<code>event_share = "0.5QMED"</code> every event whose observed peak
+reaches half the median annual flood is fitted, however many that is (<a href="floods.html#which-events">Getting the floods right</a>). The slow
+stores stay where stage 3 left them, which keeps the water balance. The
+timing part changes in whole steps, so this stage searches with DDS
+(<code>event_budget</code> model runs per start) rather than by
+slope.</p>
 <p><strong>The time delay.</strong> <code>td</code> is not in the
 default bounds, because it is usually fixed by eye. On a 15-minute step
 a fixed delay an hour out costs every peak. The events stage searches it
@@ -658,7 +882,7 @@ years).</p>
 <p>Here the catchment is the same, but the true model delays its outflow
 by 3 hours. The standard stages hold the delay at 0; the events stage
 may fit it:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">delayed</span> <span class="op">&lt;-</span> <span class="va">truth</span></span>
 <span><span class="va">delayed</span><span class="op">$</span><span class="va">td</span> <span class="op">&lt;-</span> <span class="fl">3</span></span>
 <span><span class="va">observed_late</span> <span class="op">&lt;-</span> <span class="fu">run</span><span class="op">(</span><span class="va">delayed</span>, start_flow <span class="op">=</span> <span class="fl">0.6</span><span class="op">)</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">n</span>, <span class="fl">0</span>, <span class="fl">0.03</span><span class="op">)</span><span class="op">)</span></span>
@@ -679,11 +903,11 @@ may fit it:</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind</a></span><span class="op">(</span>staged <span class="op">=</span> <span class="fu">event_view</span><span class="op">(</span><span class="va">plain</span><span class="op">$</span><span class="va">config</span><span class="op">)</span>, with_events_stage <span class="op">=</span> <span class="fu">event_view</span><span class="op">(</span><span class="va">with_events</span><span class="op">$</span><span class="va">config</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>      <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt;                     nse median_peak_error median_timing_error_h</span></span>
-<span><span class="co">#&gt; staged            0.837            -0.188                    -1</span></span>
-<span><span class="co">#&gt; with_events_stage 0.983             0.028                     0</span></span>
+<span><span class="co">#&gt; staged            0.833            -0.190                     0</span></span>
+<span><span class="co">#&gt; with_events_stage 0.986            -0.001                     0</span></span>
 <span><span class="co">#&gt;                   median_event_nse    td</span></span>
-<span><span class="co">#&gt; staged                       0.737 0.000</span></span>
-<span><span class="co">#&gt; with_events_stage            0.987 3.276</span></span></code></pre></div>
+<span><span class="co">#&gt; staged                       0.730 0.000</span></span>
+<span><span class="co">#&gt; with_events_stage            0.986 2.949</span></span></code></pre></div>
 <p>The standard stages cannot move the delay, so they bend the stores
 instead: the peaks come out low and early. The events stage finds a
 delay close to the true 3 hours, and both the peaks and the overall NSE
@@ -693,13 +917,31 @@ make it, and the events stage then shows the problem more plainly rather
 than solving it.</p>
 <p>In a project, <code><a href="../reference/calibrate_staged.html">log_staged_calibration()</a></code> takes the same
 stages, and the checks follow:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">stages</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pdm_stages.html">pdm_stages</a></span><span class="op">(</span><span class="va">structure</span>, events <span class="op">=</span> <span class="cn">TRUE</span>, thresholds <span class="op">=</span> <span class="st">"Flood Warning"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/calibrate_staged.html">log_staged_calibration</a></span><span class="op">(</span><span class="va">project</span>, parent <span class="op">=</span> <span class="fl">3</span>, reasoning <span class="op">=</span> <span class="st">"Staged, with an events stage."</span>,</span>
 <span>                       stages <span class="op">=</span> <span class="va">stages</span>, starts <span class="op">=</span> <span class="fl">2</span>, seed <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="va">checks</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calibration_checks.html">calibration_checks</a></span><span class="op">(</span><span class="va">project</span>, entry <span class="op">=</span> <span class="fl">7</span><span class="op">)</span></span>
 <span><span class="va">checks</span><span class="op">$</span><span class="va">parameters</span><span class="op">[</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">checks</span><span class="op">$</span><span class="va">parameters</span><span class="op">$</span><span class="va">at_bound</span><span class="op">)</span>, <span class="op">]</span>   <span class="co"># parameters at a bound</span></span>
 <span><span class="va">checks</span><span class="op">$</span><span class="va">summary</span>                                             <span class="co"># largest events, by window</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="choosing-the-candidate">Choosing the candidate<a class="anchor" aria-label="anchor" href="#choosing-the-candidate"></a>
+</h2>
+<p><code><a href="../reference/calibrate_project.html">calibrate_project()</a></code> ends by proposing one fit as the
+project’s candidate. It takes the last stage, unless another fit already
+in hand scores better on the project’s headline score (NSE unless
+registered otherwise) by more than the tie tolerance, 0.02 for NSE. The
+fits in hand are the earlier stages and, with
+<code>recommend = TRUE</code>, the structure comparison’s own fit of the
+chosen structure.</p>
+<p>The tolerance lets an events stage keep its small, deliberate trade
+of overall fit for the floods. A larger loss means the staged search
+ended worse than a fit it had already found, and the better fit is
+proposed instead, with the reason written into the candidate entry. On
+one real catchment the final stage scored calibration NSE 0.898 against
+the comparison’s 0.936 for the same structure; the rule would propose
+the comparison’s fit.</p>
 </div>
 <div class="section level2">
 <h2 id="in-a-calibration-project">In a calibration project<a class="anchor" aria-label="anchor" href="#in-a-calibration-project"></a>
@@ -711,7 +953,7 @@ everything a reviewer would need to repeat it exactly: the fences, the
 search scales, the method, the score and its weights, the starting
 points and seed, where every start ended, how many model runs it took,
 and why it was run.</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/calibration_log.html">log_auto_calibration</a></span><span class="op">(</span></span>
 <span>  <span class="va">project</span>, parent <span class="op">=</span> <span class="fl">7</span>,</span>
 <span>  lower <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>fc <span class="op">=</span> <span class="fl">0.7</span>, surface.k1 <span class="op">=</span> <span class="fl">0.5</span>, surface.k2 <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span>,</span>
@@ -765,17 +1007,29 @@ says</td>
 delay; add <code>thresholds</code> for warning flows</td>
 </tr>
 <tr class="even">
+<td>Weights are the question</td>
+<td>
+<code><a href="../reference/calibrate_pdm_multi.html">calibrate_pdm_multi()</a></code> for the trade-off between
+objectives</td>
+</tr>
+<tr class="odd">
 <td>Before accepting any calibration</td>
 <td>
 <code><a href="../reference/calibration_checks.html">calibration_checks()</a></code>: no parameter at a bound, peaks
 and timing acceptable in validation</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Comparing model structures</td>
 <td>
 <code><a href="../reference/compare_structures.html">compare_structures()</a></code> applies all of this the same way
-to each; see <a href="choosing-structure.html">Choosing a model
-structure</a>
+to each; see <a href="choosing-structure.html">How the model structure
+is chosen</a>
+</td>
+</tr>
+<tr class="odd">
+<td>Comparing finished calibrations, or a PDM for PCs model</td>
+<td>
+<code><a href="../reference/compare_calibrations.html">compare_calibrations()</a></code>; see <a href="comparing-calibrations.html">Comparing calibrations</a>
 </td>
 </tr>
 <tr class="even">

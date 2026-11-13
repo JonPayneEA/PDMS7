@@ -59,8 +59,8 @@ storage. pdmS7 checks it at every step.
 ## Calibration
 
 **Calibration.** Adjusting a model’s parameters so its flow matches
-measured flow. [Automatic calibration,
-explained](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.md).
+measured flow. [How automatic calibration
+works](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.md).
 
 **Bounds.** The lowest and highest value each parameter may take during
 a calibration.
@@ -106,8 +106,8 @@ Bartlett-Lewis), a Markov chain with gamma amounts, or resampling of a
 real record.
 
 **Structure.** The choice of components: capacity distribution, recharge
-rule and routing. [Choosing a model
-structure](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.md).
+rule and routing. [How the model structure is
+chosen](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.md).
 
 **Equifinality.** Different parameter sets giving almost equally good
 fits. It means the data do not pin those parameters down. A calibration
@@ -198,8 +198,8 @@ flow. **Skill** is measured against it: 0 is no better than persistence,
 ## Records and review
 
 **Calibration log.** The append-only, checksummed record of a
-calibration. [Logging a manual
-calibration](https://jonpayneea.github.io/PDMS7/articles/calibration-log.md).
+calibration. [Calibration
+records](https://jonpayneea.github.io/PDMS7/articles/calibration-log.md).
 
 **Entry.** One record in the log: project start, data registration,
 structure, trial, automatic calibration, note, candidate, validation,
