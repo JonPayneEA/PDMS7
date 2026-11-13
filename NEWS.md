@@ -7,6 +7,15 @@
   floods a gauge recorded almost nothing for. A negative best lag, rain after the rise it
   caused, flags a clock out. The slow response is not split this way: over days the gauges'
   totals converge. Written up in *Checking the data and the events*.
+- **Faster calibration.** The compiled engine raises to the power 3 by multiplication, not by
+  the general power function: a model run with the cubic groundwater store takes half the time
+  (47 ms to 22 ms for eight hourly years), with the same results. Other structures are
+  unchanged.
+- **Starts side by side.** `calibrate_pdm()` and `calibrate_staged()` take `cores`, and run the
+  starts of a search in separate R processes, with exactly the results of running them one by
+  one. `calibrate_project()` uses its `cores` for every search's starts as well as for the
+  structure comparisons, so two starts on two cores take about half the time. The default is
+  the `pdmS7.cores` option, or 1.
 
 # pdmS7 0.23.0
 

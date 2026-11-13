@@ -32,7 +32,8 @@ calibrate_pdm(
   events = NULL,
   event_weights = c(nse = 1, peak = 0.5, timing = 0.5),
   event_share = 0.5,
-  event_screen = list()
+  event_screen = list(),
+  cores = getOption("pdmS7.cores", 1L)
 )
 }
 \arguments{
@@ -151,6 +152,12 @@ a multiple of one such as \code{"0.5QMED"}, uses its registered flow.}
 
 \item{event_screen}{Settings for \code{\link[=screen_events]{screen_events()}}, which leaves out events with a rise lost
 in the baseflow, more quick flow than rain, or gaps; \code{NULL} scores every event.}
+
+\item{cores}{Number of R processes to run the starts in, side by side: the starts are
+independent, so the result is the same as running them one after another. Each process is a
+fresh R session (a socket cluster, which works on Windows) and takes a few seconds to start,
+so more than one core pays only for long records or large budgets. Defaults to the
+\code{pdmS7.cores} option, which \code{\link[=calibrate_project]{calibrate_project()}} sets from its own \code{cores}, or 1.}
 }
 \value{
 A list of config, model, parameters, objective, convergence, message, optim

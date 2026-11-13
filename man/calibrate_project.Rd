@@ -59,7 +59,9 @@ with \code{\link[=recommend_structure]{recommend_structure()}} before the stages
 \item{overrides, exclude}{Passed to \code{\link[=calibration_bounds]{calibration_bounds()}} for the default stages and bounds
 and, with \code{recommend = TRUE}, for every structure compared.}
 
-\item{cores}{Cores for the structure comparisons, with \code{recommend = TRUE}.}
+\item{cores}{Cores for the structure comparisons, with \code{recommend = TRUE}, and for the
+starts of every search, which run side by side with the same results (see
+\code{\link[=calibrate_pdm]{calibrate_pdm()}}).}
 
 \item{starts, seed, control, method}{Passed to \code{\link[=log_staged_calibration]{log_staged_calibration()}} and, with
 \code{recommend = TRUE}, to \code{\link[=recommend_structure]{recommend_structure()}}.}

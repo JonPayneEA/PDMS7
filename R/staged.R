@@ -214,7 +214,7 @@ pdm_stages <- function(config, overrides = NULL, exclude = NULL, polish = TRUE,
 #'   [calibrate_pdm()]: how the data are scored and how every trial starts.
 #' @param stages Stages from [pdm_stages()], or your own.
 #' @param bounds Bounds table from [calibration_bounds()].
-#' @param starts,seed,control,method Passed to [calibrate_pdm()] for every stage.
+#' @param starts,seed,control,method,cores Passed to [calibrate_pdm()] for every stage.
 #'
 #' @return `calibrate_staged()`: a list with `config`, `model`, `parameters` (every calibrated
 #'   value), and `stages`, one [calibrate_pdm()] result per stage with its `label`.
@@ -239,7 +239,7 @@ calibrate_staged <- function(config, forcing, observed, stages = pdm_stages(conf
                              seed = NULL, control = list(maxit = 200),
                              method = c("lbfgsb", "nelder_mead", "dds"), soil_fraction = 0.5,
                              log_offset = 0.01, start = c("flow", "soil"),
-                             baseflow_fraction = 0.7) {
+                             baseflow_fraction = 0.7, cores = getOption("pdmS7.cores", 1L)) {
   method <- match.arg(method)
   start <- match.arg(start)
   .check(is.list(stages) && length(stages) > 0, "stages must be a non-empty list")
@@ -264,7 +264,8 @@ calibrate_staged <- function(config, forcing, observed, stages = pdm_stages(conf
       threshold_score = stage$threshold_score %||% "csi",
       event_weights = stage$event_weights %||% .default_event_weights,
       event_share = stage$event_share %||% 0.5,
-      event_screen = if ("event_screen" %in% names(stage)) stage$event_screen else list()
+      event_screen = if ("event_screen" %in% names(stage)) stage$event_screen else list(),
+      cores = cores
     )
     fit$label <- .stage_label(i, stages)
     results[[i]] <- fit

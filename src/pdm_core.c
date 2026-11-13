@@ -69,6 +69,7 @@ static double dmax(double a, double b) { return a < b ? b : a; }
    with the R engine. */
 static double rpow(double x, double y) {
   if (y == 2.0) return x * x;
+  if (y == 3.0) return x * x * x;
   if (x == 1.0 || y == 0.0) return 1.0;
   if (x == 0.0) {
     if (y > 0.0) return 0.0;
