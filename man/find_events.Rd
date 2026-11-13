@@ -12,7 +12,7 @@ find_events(
   rain_min = NULL,
   max_response_h = 150,
   area_km2 = NULL,
-  independent = FALSE,
+  independent = TRUE,
   separation = 3,
   trough = 2/3
 )
@@ -43,8 +43,8 @@ hydrograph, so a list of the largest events counts one flood many times. With
 by the rule used for UK peaks-over-threshold series: at least \code{separation} response times
 apart, with the flow between them falling below \code{trough} times the smaller peak; events
 whose flow windows overlap are always one flood. Merged events span all their parts, and
-their rain, peak and volumes are worked out afresh. \code{FALSE}, the default, gives the
-published method's events unchanged.}
+their rain, peak and volumes are worked out afresh. This is the default. \code{FALSE} gives
+the published method's events unchanged, an event per burst of rain.}
 
 \item{separation, trough}{The independence rule: the least gap between peaks, in response
 times, and the share of the smaller peak the flow must fall below between them.}

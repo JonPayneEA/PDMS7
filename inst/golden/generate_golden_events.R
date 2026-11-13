@@ -59,7 +59,8 @@ for (i in seq_len(nrow(cases))) {
   write_table(data.frame(rain_mm = r$rain, flow_m3s = r$flow, simulated_m3s = r$simulated),
               paste0(name, "_events_series.csv"))
   ev <- find_events(r$rain, r$flow, dt = cases$dt[i], rain_min = cases$rain_min[i],
-                    max_response_h = cases$h_max[i] * cases$dt[i], area_km2 = cases$area_km2[i])
+                    max_response_h = cases$h_max[i] * cases$dt[i], area_km2 = cases$area_km2[i],
+                    independent = FALSE)
   scored <- event_scores(ev, r$simulated, r$flow)
   # Positions are 0-based, as at the C interface.
   expected <- data.frame(

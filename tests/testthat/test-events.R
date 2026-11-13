@@ -201,13 +201,13 @@ test_that("independent events merge the fragments of one flood", {
                    parts[1, , drop = FALSE])
 })
 
-# Guards: find_events keeps the published events by default and merges floods on request
-test_that("find_events merges floods only when asked", {
+# Guards: find_events merges the events of one flood by default, and not when told not to
+test_that("find_events merges the events of one flood by default", {
   river <- synthetic_catchment(years = 2, dt = 1, seed = 1)
   args <- list(river$forcing$rain, river$observed, river$forcing$time, dt = 1,
                area_km2 = river$truth$area_km2)
-  published <- do.call(find_events, args)
-  floods <- do.call(find_events, c(args, independent = TRUE))
+  published <- do.call(find_events, c(args, independent = FALSE))
+  floods <- do.call(find_events, args)
   expect_false(attr(published, "independent"))
   expect_true(attr(floods, "independent"))
   expect_lte(nrow(floods), nrow(published))

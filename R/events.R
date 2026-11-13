@@ -141,8 +141,8 @@ response_time_dmca <- function(rain, flow, dt = 1, max_response_h = 150) {
 #'   by the rule used for UK peaks-over-threshold series: at least `separation` response times
 #'   apart, with the flow between them falling below `trough` times the smaller peak; events
 #'   whose flow windows overlap are always one flood. Merged events span all their parts, and
-#'   their rain, peak and volumes are worked out afresh. `FALSE`, the default, gives the
-#'   published method's events unchanged.
+#'   their rain, peak and volumes are worked out afresh. This is the default. `FALSE` gives
+#'   the published method's events unchanged, an event per burst of rain.
 #' @param separation,trough The independence rule: the least gap between peaks, in response
 #'   times, and the share of the smaller peak the flow must fall below between them.
 #'
@@ -164,7 +164,7 @@ response_time_dmca <- function(rain, flow, dt = 1, max_response_h = 150) {
 #' @seealso [event_scores()], [batch_events()], [response_time_dmca()]
 #' @export
 find_events <- function(rain, flow, time = NULL, dt = 1, rain_min = NULL,
-                        max_response_h = 150, area_km2 = NULL, independent = FALSE,
+                        max_response_h = 150, area_km2 = NULL, independent = TRUE,
                         separation = 3, trough = 2 / 3) {
   rain_min <- rain_min %||% (0.2 * dt^-0.5)
   .check(.scalar(rain_min, 0, strict = TRUE), "rain_min must be a positive intensity, mm/h")

@@ -1,3 +1,15 @@
+# pdmS7 0.25.0
+
+- **One event per flood by default.** `find_events()` now merges the events of one flood
+  (`independent = TRUE`), as the calibration, the report, `compare_calibrations()`, the event
+  workbench and `batch_events()` already did. Two peaks are separate floods only if they are at
+  least `separation` (3) response times apart and the flow between them falls below `trough`
+  (2/3) of the smaller. Code that called `find_events()` without `independent` now gets fewer,
+  whole-flood events, and so do `screen_events()` lists, `gauge_response()` and the baseflow
+  line behind `water_balance()`'s baseflow index. `independent = FALSE` gives the published
+  method's events, one per burst of rain, as before; the golden-file check against the
+  reference code uses it.
+
 # pdmS7 0.24.0
 
 - **Which gauge the river answers to.** `gauge_response()` takes each rain gauge on its own and

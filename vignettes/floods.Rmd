@@ -167,10 +167,12 @@ constructed records it recovers the centre of mass of a symmetric response exact
 short of one with a long recession tail. Use it to compare like with like, a catchment's
 observed and simulated flow, or catchments with each other.
 
-**One event per flood.** Calibration counts each flood once (`independent = TRUE`), by the rule
-of UK peaks-over-threshold series: two peaks are separate floods only if they are at least
-three response times apart and the flow between them falls below two-thirds of the smaller.
-Otherwise the fragments of one long flood would each count as an event.
+**One event per flood.** `find_events()` counts each flood once by default
+(`independent = TRUE`), as the calibration does, by the rule of UK peaks-over-threshold series:
+two peaks are separate floods only if they are at least three response times apart and the
+flow between them falls below two-thirds of the smaller. Otherwise the fragments of one long
+flood would each count as an event. `separation` and `trough` loosen or tighten the rule;
+`independent = FALSE` gives the published method's events, one per burst of rain.
 
 The method finds every burst of rain that moves the flow, small ones included: dozens of
 events a year. [Many catchments](large-sample.html#events-across-a-sample) finds and scores
