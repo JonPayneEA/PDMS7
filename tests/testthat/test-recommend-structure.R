@@ -74,6 +74,39 @@ test_that("recommend_structure chooses and logs a note per step", {
                "components")
 })
 
+# Guards: the report's decision diagram and run totals are rebuilt from the log alone, and agree
+# with the recommendation and with the runs each calibration recorded
+test_that("the structure decisions and run totals are rebuilt from the log", {
+  p <- new_project() # nolint: object_usage_linter.
+  rec <- recommend_structure(p$folder, components = c("recharge", "groundwater"), starts = 1,
+                             control = list(maxit = 3), n_events = 3,
+                             reasoning = "Testing the decisions.")
+  entries <- .read_entries(p$folder)
+  steps <- .structure_decisions(p$folder, entries)
+  expect_identical(vapply(steps, `[[`, "", "component"), c("recharge", "groundwater"))
+  expect_identical(vapply(steps, `[[`, "", "choice"),
+                   c(rec$steps$recharge$choice, rec$steps$groundwater$choice))
+  expect_identical(steps[[1]]$reason, rec$steps$recharge$reason)
+  expect_identical(steps[[1]]$incumbent, "standard")
+  expect_identical(steps[[1]]$table$at_bound[order(steps[[1]]$table$structure)],
+                   rec$steps$recharge$table$at_bound[order(rec$steps$recharge$table$structure)])
+  expect_true(nzchar(.decision_tag(steps[[1]]$reason)))
+  file <- tempfile(fileext = ".png")
+  grDevices::png(file)
+  expect_silent(.plot_decisions(steps, list(stages = character(0), candidate = NULL)))
+  grDevices::dev.off()
+  unlink(file)
+  totals <- .run_totals(entries)
+  autos <- Filter(function(e) e$type == "auto_calibration", entries)
+  expect_identical(totals$part, c("Structure step: Recharge", "Structure step: Groundwater store",
+                                  "Total"))
+  expect_equal(totals$model_runs[3], sum(vapply(autos, function(e) e$evaluations, numeric(1))))
+  expect_equal(totals$calibrations[3], length(autos))
+  expect_true(all(totals$elapsed >= 0))
+  blocks <- .rpt_run_totals(entries)
+  expect_identical(blocks[[1]]$text, "Run totals")
+})
+
 # Guards: peak errors of -50% and +50% do not cancel; the tie-break uses their size
 test_that("the event summary gives the median size of the peak errors", {
   events <- data.frame(period = "validation", use = TRUE, observed_peak = 4:1,

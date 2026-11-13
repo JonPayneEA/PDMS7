@@ -90,7 +90,9 @@
 #'   with [recommend_structure()] before the stages.
 #' @param overrides,exclude Passed to [calibration_bounds()] for the default stages and bounds
 #'   and, with `recommend = TRUE`, for every structure compared.
-#' @param cores Cores for the structure comparisons, with `recommend = TRUE`.
+#' @param cores Cores for the structure comparisons, with `recommend = TRUE`, and for the
+#'   starts of every search, which run side by side with the same results (see
+#'   [calibrate_pdm()]).
 #' @param starts,seed,control,method Passed to [log_staged_calibration()] and, with
 #'   `recommend = TRUE`, to [recommend_structure()].
 #' @param catchment,gauge,purpose,owner,steward Passed to [start_calibration_project()]; the
@@ -124,6 +126,10 @@ calibrate_project <- function(project, forcing, observed, area_km2, calibration,
                               gauge = catchment, purpose = "PDM calibration", owner = NULL,
                               steward = NULL, report = FALSE, zones = 1, ...) {
   user <- .identity("custodian")$name
+  .check(.scalar(cores, 1) && cores == floor(cores), "cores must be a whole number of at least 1")
+  # Every search in the project runs its starts on these cores (calibrate_pdm()'s default).
+  old_cores <- options(pdmS7.cores = as.integer(cores))
+  on.exit(options(old_cores), add = TRUE)
   .check(is.character(project) && length(project) == 1L, "project must be a folder path")
   .check(isTRUE(recommend) || isFALSE(recommend), "recommend must be TRUE or FALSE")
   .check(is.numeric(zones) && length(zones) >= 1 && all(zones %in% c(1, 2)),

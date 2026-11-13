@@ -262,6 +262,7 @@ reference:
   - event_scores
   - batch_events
   - screen_events
+  - gauge_response
   - event_states
 - title: Catchment rainfall
   desc: Catchment-average rain from gauges and radar, by Thiessen polygons, multiquadric interpolation or conditional merging.

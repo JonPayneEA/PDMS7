@@ -19,7 +19,8 @@ calibrate_staged(
   soil_fraction = 0.5,
   log_offset = 0.01,
   start = c("flow", "soil"),
-  baseflow_fraction = 0.7
+  baseflow_fraction = 0.7,
+  cores = getOption("pdmS7.cores", 1L)
 )
 
 log_staged_calibration(
@@ -44,7 +45,7 @@ log_staged_calibration(
 
 \item{bounds}{Bounds table from \code{\link[=calibration_bounds]{calibration_bounds()}}.}
 
-\item{starts, seed, control, method}{Passed to \code{\link[=calibrate_pdm]{calibrate_pdm()}} for every stage.}
+\item{starts, seed, control, method, cores}{Passed to \code{\link[=calibrate_pdm]{calibrate_pdm()}} for every stage.}
 
 \item{project}{A calibration project folder.}
 

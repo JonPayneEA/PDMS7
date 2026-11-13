@@ -99,6 +99,11 @@
 #'   a multiple of one such as `"0.5QMED"`, uses its registered flow.
 #' @param event_screen Settings for [screen_events()], which leaves out events with a rise lost
 #' in the baseflow, more quick flow than rain, or gaps; `NULL` scores every event.
+#' @param cores Number of R processes to run the starts in, side by side: the starts are
+#' independent, so the result is the same as running them one after another. Each process is a
+#' fresh R session (a socket cluster, which works on Windows) and takes a few seconds to start,
+#' so more than one core pays only for long records or large budgets. Defaults to the
+#' `pdmS7.cores` option, which [calibrate_project()] sets from its own `cores`, or 1.
 #' @param archive Optional function of the full simulated flow returning one number. When given,
 #' every trial's parameters and that number are kept, and returned as `trials`. Calibration
 #' projects use it to record the headline score of each trial, from which the equally good
@@ -141,7 +146,7 @@ calibrate_pdm <- function(
   log_scale = character(0), volume_weight = 0, start = c("flow", "soil"),
   baseflow_fraction = 0.7, start_flow = NULL, archive = NULL, events = NULL,
   event_weights = c(nse = 1, peak = 0.5, timing = 0.5), event_share = 0.5,
-  event_screen = list()
+  event_screen = list(), cores = getOption("pdmS7.cores", 1L)
 ) {
   # Outline: check the arguments; map the parameters onto a unit box (log-scaled where asked);
   # build a loss function that runs the model and scores it; minimise that loss from each start;
@@ -151,6 +156,7 @@ calibrate_pdm <- function(
   method <- match.arg(method)
   start <- match.arg(start)
   .check(.scalar(volume_weight, 0), "volume_weight must be a nonnegative number")
+  .check(.scalar(cores, 1) && cores == floor(cores), "cores must be a whole number of at least 1")
   .check_threshold_objective(objective, method, thresholds, threshold_weight, threshold_score,
                              event_settings, observed, warmup)
   .check_calibration_args(forcing, observed, warmup, log_offset, lower, upper, starts, seed)
@@ -228,10 +234,12 @@ calibrate_pdm <- function(
   z_start <- .start_points(box$to_unit(initial), as.integer(starts), seed)
   # One optimisation per start. L-BFGS-B and DDS work on the unit box directly with bounds
   # [0, 1]; Nelder-Mead has no bounds, so it searches a logistic transform of the box instead.
-  # Each DDS start draws from its own seed, so a start's search does not depend on the others.
-  runs <- lapply(seq_along(z_start), function(i) {
+  # Each DDS start draws from its own seed, so a start's search does not depend on the others,
+  # and the starts can run side by side on several cores with the same results as one by one.
+  one_start <- function(i) {
     z <- z_start[[i]]
     counter$calls <- 0L
+    kept <- length(counter$trials)
     beat$start(i)
     fit <- switch(method,
       lbfgsb = stats::optim(z, loss, method = "L-BFGS-B", lower = rep(0, length(lower)),
@@ -239,8 +247,16 @@ calibrate_pdm <- function(
       nelder_mead = .nelder_mead_box(z, loss, control),
       dds = .seeded(if (!is.null(seed)) seed + i, .dds_box(z, loss, control))
     )
-    list(fit = fit, calls = counter$calls)
-  })
+    list(fit = fit, calls = counter$calls,
+         trials = counter$trials[seq_len(length(counter$trials) - kept) + kept])
+  }
+  workers <- min(as.integer(cores), length(z_start))
+  if (workers > 1L) {
+    .progress_say(sprintf("%d starts on %d cores", length(z_start), workers))
+  }
+  runs <- .run_jobs(seq_along(z_start), one_start, workers)
+  # Trials kept by each start, in start order, whichever process ran it.
+  counter$trials <- do.call(c, lapply(runs, `[[`, "trials"))
   out <- .calibration_result(runs, box, build, lower)
   # One warning, for the calibrated model, if its steady start cannot balance at the first flow.
   if (start == "flow") .start_state(out$model, start, start_flow, baseflow_fraction, soil_fraction)

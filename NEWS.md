@@ -1,3 +1,29 @@
+# pdmS7 0.24.0
+
+- **Which gauge the river answers to.** `gauge_response()` takes each rain gauge on its own and
+  correlates its rain with the rise in flow, lag by lag: the gauge with the strongest
+  correlation drives the quick response. For the largest floods it names the gauge whose rain
+  best matches each rise, checks whether each gauge sees the big storms as big, and counts the
+  floods a gauge recorded almost nothing for. A negative best lag, rain after the rise it
+  caused, flags a clock out. The slow response is not split this way: over days the gauges'
+  totals converge. Written up in *Checking the data and the events*.
+- **Faster calibration.** The compiled engine raises to the power 3 by multiplication, not by
+  the general power function: a model run with the cubic groundwater store takes half the time
+  (47 ms to 22 ms for eight hourly years), with the same results. Other structures are
+  unchanged.
+- **Starts side by side.** `calibrate_pdm()` and `calibrate_staged()` take `cores`, and run the
+  starts of a search in separate R processes, with exactly the results of running them one by
+  one. `calibrate_project()` uses its `cores` for every search's starts as well as for the
+  structure comparisons, so two starts on two cores take about half the time. The default is
+  the `pdmS7.cores` option, or 1.
+- **The report shows how the structure was chosen.** A new section draws the structure
+  recommendation as a flow, one row per component: every option with its validation score, the
+  choice, the equally good, the options set aside with a parameter at a bound and the option
+  the step started from, with each step's reason beneath. It is rebuilt from the log alone, so
+  projects already calibrated get it on their next `build_report()`.
+- **Run totals in the report.** Model runs and elapsed time for each structure step, each
+  calibration stage and the project in all, with the seconds a run took.
+
 # pdmS7 0.23.0
 
 - **The multi-zone PDM** (PDM for PCs configuration guide, section 5): independent PDMs over

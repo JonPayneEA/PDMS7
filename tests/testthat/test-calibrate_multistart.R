@@ -207,3 +207,25 @@ test_that(
     expect_lt(fit$value, 1e-3)
   }
 )
+
+# Guards: starts run on several cores give exactly the result of running them one by one,
+# including every start's row and the archive of trials
+test_that("starts on several cores match starts run one by one", {
+  skip_on_cran()
+  f <- data.frame(rain = rep(c(0, 8, 3, 0, 0, 1), 20), pet = 0.05)
+  cfg <- pdm_presets("standard")
+  q <- run_pdm(pdm_from_config(cfg), f)$output$q_m3s
+  fit <- function(cores, method) {
+    calibrate_pdm(cfg, f, q, lower = c(fc = 0.8, "surface.k1" = 1),
+                  upper = c(fc = 1.2, "surface.k1" = 6), method = method, starts = 3L, seed = 2,
+                  control = list(maxit = 15), archive = function(x) sum(x), cores = cores)
+  }
+  for (method in c("lbfgsb", "dds")) {
+    one <- fit(1L, method)
+    two <- fit(2L, method)
+    expect_identical(two$parameters, one$parameters)
+    expect_identical(two$start_results, one$start_results)
+    expect_identical(two$trials, one$trials)
+  }
+  expect_error(fit(0, "dds"), "cores")
+})
