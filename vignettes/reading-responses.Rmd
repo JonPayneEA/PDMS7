@@ -87,6 +87,19 @@ days <- seq_len(n) / 24
 storm_days <- c(2, 9, 13, 15, 18)
 ```
 
+```{r year}
+# A year of hourly rain with seasonal evaporation, for the comparisons that need one
+year_rain <- synthetic_rain("2020-10-01", years = 1, dt = 1, seed = 3)
+year <- data.frame(time = year_rain$time, rain = year_rain$rain, pet = year_rain$pet)
+ny <- nrow(year)
+# Each model runs the year twice and keeps the second, so its stores start as the year left them
+run_year <- function(model) {
+  first <- run_pdm(model, year, initial_state(model, soil_fraction = 0.5))
+  run_pdm(model, year, first$state)$output
+}
+to_m3s <- 20 / 3.6
+```
+
 All the runs below use the same rain: `r length(storm_days)` storms over `r n / 24` days, at
 an hourly step. The first, 10 mm, falls on a dry catchment. Then come 20 mm, two 30 mm storms
 two days apart, and 15 mm, as the catchment wets up. Potential evaporation is a steady
@@ -240,6 +253,103 @@ for (i in seq_along(dists)) {
 legend_in("topleft", names(dists))
 ```
 
+## A year of storms, as an event table sees it
+
+The short sequence shows the idea; a year of rain shows it as you would see it in a real record.
+Each point below is one event found by `find_events()` in a year of simulated flow, placed by
+how wet the soil was when its rain began and how much of the rain came back as quick flow.
+
+```{r soil-year}
+soil_year <- lapply(dists, function(d) run_year(pdm_model(distribution = d, area_km2 = 20)))
+soil_events <- lapply(seq_along(dists), function(i) {
+  o <- soil_year[[i]]
+  ev <- find_events(year$rain, o$q_m3s, year$time, dt = 1, area_km2 = 20)
+  ev <- ev[ev$rain_mm >= 5, ]
+  data.frame(wet = o$soil_mm[ev$rain_start] / capacity_mean(dists[[i]]),
+             ratio = ev$runoff_ratio)
+})
+```
+
+```{r soil-scatter, fig.height=4.4, fig.cap="Every event of at least 5 mm in a year: its runoff ratio against the soil store's fill when its rain began. Lines: the median in bands of soil fill."}
+par(mar = c(4.6, 5.2, 1, 6.5), mgp = c(3.6, 0.7, 0))
+plot(NA, xlim = c(0, 1), ylim = c(0, 0.8), xlab = "Soil store at the start of the rain, share of capacity",
+     ylab = "Event runoff ratio", las = 1)
+bands <- seq(0, 1, by = 0.1)
+for (i in seq_along(soil_events)) {
+  e <- soil_events[[i]]
+  points(e$wet, e$ratio, col = adjustcolor(pal[i], 0.35), pch = 16, cex = 0.7)
+  med <- tapply(e$ratio, cut(e$wet, bands), stats::median)
+  mid <- bands[-1] - 0.05
+  ok <- is.finite(med)
+  lines(mid[ok], med[ok], col = pal[i], lwd = 2.5, lty = i)
+}
+last <- sapply(soil_events, function(e) stats::median(e$ratio[e$wet > stats::quantile(e$wet, 0.8)]))
+end_labels(1.01, last, names(dists))
+```
+
+In an observed record you can draw the same plot with the event table and a proxy for wetness,
+such as the baseflow at the start of each event. A cloud that sits near zero until the soil is
+half full, then climbs, points to a threshold-like store: Pareto with a small `b`, or
+triangular. One that gives a clear ratio even from dry soil points to the exponential or
+lognormal store, whose shallow stores fill first.
+
+## The same water, different floods
+
+A calibration that fits the total volume can still get the floods wrong. Below, each
+distribution's capacities are scaled so that all five give exactly the same quick flow over
+the year as the Pareto store. Their floods still differ.
+
+```{r soil-equal}
+scaled <- function(name, s) {
+  switch(name,
+    Pareto = FlodeParetoCapacity(0, dists$Pareto@cmax * s, 0.4),
+    Rectangular = FlodeRectangularCapacity(0, dists$Rectangular@cmax * s),
+    Triangular = FlodeTriangularCapacity(0, dists$Triangular@cmax * s),
+    Exponential = FlodeExponentialCapacity(dists$Exponential@mean * s),
+    Lognormal = FlodeLognormalCapacity(dists$Lognormal@meanlog + log(s), 1)
+  )
+}
+quick_total <- function(d) sum(run_year(pdm_model(distribution = d, area_km2 = 20))$surface_out_mm)
+target <- quick_total(dists$Pareto)
+factors <- vapply(names(dists), function(nm) {
+  if (nm == "Pareto") return(1)
+  stats::uniroot(function(s) quick_total(scaled(nm, s)) - target, c(0.3, 6), tol = 1e-4)$root
+}, numeric(1))
+equal_runs <- lapply(names(dists), function(nm) {
+  run_year(pdm_model(distribution = scaled(nm, factors[[nm]]), area_km2 = 20))
+})
+names(equal_runs) <- names(dists)
+floods <- find_events(year$rain, equal_runs$Pareto$q_m3s, year$time, dt = 1, area_km2 = 20)
+floods <- floods[order(floods$peak_flow, decreasing = TRUE)[1:6], ]
+peaks <- sapply(equal_runs, function(o) {
+  vapply(seq_len(nrow(floods)), function(k) {
+    max(o$q_m3s[floods$flow_start[k]:floods$flow_end[k]])
+  }, numeric(1))
+})
+```
+
+```{r soil-equal-plot, fig.height=4, fig.cap="The six largest floods of the year, with every distribution scaled to give the same total quick flow. Each line is one distribution; the storms are in date order."}
+order_date <- order(floods$flow_start)
+par(mar = c(4.6, 5.2, 1, 6.5), mgp = c(3.6, 0.7, 0))
+plot(NA, xlim = c(1, 6), ylim = range(peaks), xaxt = "n", xlab = "", las = 1,
+     ylab = "Flood peak (m3/s)")
+axis(1, at = 1:6, labels = format(floods$rain_start_time[order_date], "%d %b"), cex.axis = 0.85)
+for (i in seq_along(equal_runs)) {
+  lines(1:6, peaks[order_date, i], col = pal[i], lwd = 2.5, lty = i, type = "b", pch = 16)
+}
+end_labels(6.1, peaks[order_date[6], ], names(equal_runs))
+```
+
+```{r soil-equal-numbers, include=FALSE}
+spread <- apply(peaks, 1, function(x) (max(x) - min(x)) / mean(x))
+```
+
+With the same year's quick flow, the flood peaks still differ by up to
+`r round(100 * max(spread))` per cent between distributions, in a pattern that changes from
+storm to storm with how wet the catchment was. The scaling needed was large: the exponential
+store's mean capacity had to change by a factor of `r sprintf("%.2f", factors[["Exponential"]])`
+to match. Volume alone cannot choose the distribution; the floods can.
+
 > **What to look for.** Compare the runoff ratios of similar storms in dry and wet conditions,
 > using `find_events()` and the event table. Small dry-weather storms giving a clear response,
 > and a ratio that rises steadily with wetness, point to many shallow stores: a larger Pareto
@@ -340,6 +450,55 @@ knitr::kable(data.frame(
   to evaporate.
 
 The amounts depend on the parameter values chosen here; the shapes are what each rule gives.
+
+## Through a year: low flows and the seasons
+
+Forty days of storms cannot show how each rule carries the river through summer. A year can.
+
+```{r recharge-year}
+recharge_year <- lapply(rules, function(r) {
+  run_year(pdm_model(recharge = r, groundwater = cubic_routing(kb = 20000), area_km2 = 20))
+})
+```
+
+```{r recharge-fdc, fig.height=4.2, fig.cap="Left: flow duration curves over the year, every flow ranked from highest to lowest, on a log scale; dotted lines mark Q70 and Q95. Right: the baseflow index by month, the slow route's share of each month's flow."}
+panels(right = 5.5)
+exceed <- (seq_len(ny) - 0.5) / ny * 100
+fdc <- sapply(recharge_year, function(o) sort(o$q_m3s, decreasing = TRUE))
+plot(NA, xlim = c(0, 100), ylim = range(fdc[fdc > 0]), log = "y", las = 1,
+     xlab = "Share of time flow is exceeded (%)", ylab = "Flow (m3/s, log scale)",
+     main = "Flow duration curves")
+abline(v = c(70, 95), col = grey, lty = 3)
+for (i in seq_along(recharge_year)) lines(exceed, fdc[, i], col = pal[i], lwd = 2.5, lty = i)
+end_labels(101, fdc[ny, ], names(recharge_year), log_y = TRUE)
+month <- factor(format(year$time, "%b"), levels = month.abb[c(10:12, 1:9)])
+bfi <- sapply(recharge_year, function(o) {
+  tapply(o$baseflow_out_mm, month, sum) / tapply(o$baseflow_out_mm + o$surface_out_mm, month, sum)
+})
+par(mar = c(4.6, 4.6, 2.2, 0.8))
+barplot(t(bfi), beside = TRUE, col = pal[1:3], border = NA, ylim = c(0, 1.2), las = 2,
+        yaxt = "n", ylab = "Baseflow index", main = "Baseflow index by month", cex.names = 0.8)
+axis(2, at = seq(0, 1, 0.2), las = 1)
+legend("top", names(recharge_year), fill = pal[1:3], border = NA, bty = "n", horiz = TRUE,
+       cex = 0.8)
+```
+
+```{r recharge-year-numbers, include=FALSE}
+q95 <- apply(fdc, 2, function(x) x[ceiling(0.95 * ny)])
+```
+
+The rules part company at the low-flow end of the duration curve, where the river is fed only
+by groundwater. Q95, the flow exceeded 95 per cent of the time, is
+`r sprintf("%.3f", q95[["Standard"]])` m3/s with standard recharge,
+`r sprintf("%.3f", q95[["Split"]])` with split and `r sprintf("%.3f", q95[["Demand"]])` with
+demand. Standard recharge keeps groundwater fed from the soil into summer; split recharge
+starves it once storms stop running off. Demand recharge gives the highest flows for most of the
+year but falls away in late summer, once the soil it draws on is dry.
+
+The monthly baseflow index tells the rules apart at once, but hardly changes with the season:
+about half the flow under split recharge, more than nine-tenths under standard, nearly all
+under demand. Each rule fixes the share; the season sets only how much water there is to
+share.
 
 > **What to look for.** Watch how baseflow behaves after a storm. Baseflow that keeps rising for
 > days after the rain has stopped, then falls slowly, is soil drainage: standard recharge.
@@ -513,6 +672,55 @@ more.
 That is the difference between a river that dries to a trickle in a long summer and one that
 keeps flowing.
 
+### Halving time: the recession in days
+
+The recession curve says the same thing in a form that is easy to picture: **how long the flow
+takes to halve**, at each flow. A linear store takes the same time whatever the flow. A
+nonlinear store takes longer and longer as the flow falls.
+
+```{r halving, fig.height=4.2, fig.cap="How many days each store's flow takes to halve, at each flow, from the recessions above. Flow on a log scale."}
+par(mar = c(4.6, 5.2, 1, 6.5), mgp = c(3.6, 0.7, 0))
+halving <- lapply(drain, function(q) {
+  mid <- (q[-1] + q[-length(q)]) / 2
+  list(q = mid, days = log(2) * mid / (-diff(q)) / 24)
+})
+plot(NA, xlim = c(3e-4, q0), ylim = c(0, max(sapply(halving, function(h) max(h$days)))),
+     log = "x", las = 1, xlab = "Flow Q (mm/h, log scale)", ylab = "Days to halve")
+for (i in seq_along(halving)) lines(halving[[i]]$q, halving[[i]]$days, col = pal[i], lwd = 2.5,
+                                    lty = i)
+end_labels(q0 * 1.05, sapply(halving, function(h) h$days[1]), names(halving))
+```
+
+All four start at about `r round(halving$Linear$days[1])` days to halve. The linear store stays
+there. By the end of its recession the cubic store takes
+`r round(max(halving$Cubic$days))` days and the exponential
+`r round(max(halving$Exponential$days))`. Staff can read halving times straight off a log-scale
+hydrograph: a recession that halves every two weeks in March and every two months in September
+is a nonlinear store.
+
+### Recessions after small and large floods
+
+A quick test on an observed record: lay the recessions after floods of different sizes over
+each other, each scaled by its starting flow. A linear store gives the same curve every time.
+A nonlinear store falls faster, at first, after a large flood than after a small one.
+
+```{r small-large, fig.height=4.2, fig.cap="Recessions from three starting flows, each divided by its starting flow. Left: the linear store, whose recessions coincide. Right: the cubic store, whose recession after the largest flood falls fastest."}
+starts <- c(Large = 0.1, Medium = 0.03, Small = 0.01)
+panels(right = 5.5)
+for (nm in c("Linear", "Cubic")) {
+  r <- tangent[[nm]]
+  plot(NA, xlim = c(0, 60), ylim = c(0.05, 1), log = "y", las = 1, xlab = "Days since the start",
+       ylab = "Flow / starting flow (log scale)", main = paste(nm, "store"))
+  ends <- numeric(0)
+  for (k in seq_along(starts)) {
+    q <- route_series(r, rep(0, 24 * 60), storage_for_flow(r, starts[k]))
+    lines(seq_along(q) / 24, q / starts[k], col = pal[k], lwd = 2.5, lty = k)
+    ends <- c(ends, q[length(q)] / starts[k])
+  }
+  end_labels(61, ends, names(starts), log_y = TRUE)
+}
+```
+
 ### Recession curves from a real river
 
 `recession_analysis()` builds the recession curve from an observed record, and
@@ -548,6 +756,66 @@ A real record is noisier than these curves, and five things shape it:
 > falls through a long dry spell. `plot_recession()` then shows whether the fitted model's
 > recessions match the river's.
 
+# Fingerprints
+
+The same measures for every option, each changed one at a time from a common model and run
+over the same year. These are measures you can take from an observed record, so the table is a
+guide to which option a river resembles.
+
+```{r fingerprints}
+base_d <- dists$Pareto
+base_r <- FlodeStandardRecharge(kg = 400, bg = 1, st = 0)
+base_g <- tangent$Cubic
+variants <- c(
+  lapply(dists, function(d) list(d = d, r = base_r, g = base_g)),
+  lapply(rules, function(r) list(d = base_d, r = r, g = base_g)),
+  lapply(tangent, function(g) list(d = base_d, r = base_r, g = g))
+)
+group <- rep(c("Soil store", "Recharge", "Groundwater"),
+             c(length(dists), length(rules), length(tangent)))
+day <- as.Date(year$time)
+daily_rain <- tapply(year$rain, day, sum)
+measure <- function(o) {
+  q <- o$q_m3s
+  dq <- tapply(q, day, mean)
+  dry <- stats::filter(daily_rain < 0.5, rep(1, 4), sides = 1) == 4
+  falling <- c(FALSE, diff(dq) < 0)
+  use <- which(dry & falling)
+  half <- log(2) * dq[use] / (dq[use - 1] - dq[use])
+  c(flow_mm = sum(q) * 3.6 / 20, peak_m3s = max(q),
+    bfi = sum(o$baseflow_out_mm) / sum(o$baseflow_out_mm + o$surface_out_mm),
+    q95_q50 = unname(stats::quantile(q, 0.05) / stats::quantile(q, 0.5)),
+    halving_days = stats::median(half, na.rm = TRUE))
+}
+prints <- t(sapply(variants, function(v) {
+  measure(run_year(pdm_model(distribution = v$d, recharge = v$r, groundwater = v$g,
+                             area_km2 = 20)))
+}))
+```
+
+```{r fingerprint-table}
+knitr::kable(data.frame(
+  component = group, option = rownames(prints),
+  annual_flow_mm = round(prints[, "flow_mm"]), peak_m3s = round(prints[, "peak_m3s"], 2),
+  baseflow_index = round(prints[, "bfi"], 2), q95_over_q50 = round(prints[, "q95_q50"], 2),
+  dry_halving_days = round(prints[, "halving_days"], 1)
+), row.names = FALSE, caption = paste(
+  "One option changed at a time from a common model (Pareto soil store, standard recharge,",
+  "cubic groundwater store), over the same year. Q95/Q50 is the low-flow index: higher means",
+  "better-sustained low flows. Dry halving time is the median days to halve on falling days",
+  "after four dry days."))
+```
+
+Read the table by column. The soil store options differ most in the peak; the recharge rules
+in the baseflow index and the low-flow index; the groundwater stores in the low-flow index and
+the dry-weather halving time. That is where to look in a record for each choice.
+
+The recharge rules also change the annual flow, from `r round(prints["Split", "flow_mm"])` mm
+with split recharge to `r round(prints["Demand", "flow_mm"])` mm with demand. Water left in the
+soil store evaporates; water sent on to groundwater does not. So the rule decides the water
+balance as well as the shape of the hydrograph, and a model that runs short of water year
+after year may have the wrong rule rather than the wrong rain.
+
 # Putting it together
 
 The table gathers what to look for, and how to represent it.
@@ -563,6 +831,9 @@ The table gathers what to look for, and how to represent it.
 | Recessions are straight lines on a log scale | a linear store | linear groundwater store |
 | Recessions fall fast, then flatten into a long tail | a nonlinear store | cubic store (or quadratic) |
 | A tail that barely falls through a dry summer | a very slow, deep store | exponential store |
+| Tiny event runoff ratios, yet a large and steady river | water reaching the river by the slow route | standard recharge from a threshold-like soil store |
+| Each storm lifts the whole flow, with little separate spike | recharge almost as fast as runoff | demand recharge |
+| The model runs short of water year after year, with good shapes | water left in the soil and evaporated | a recharge rule that sends more water on, once the rain and the area are checked |
 | A sharp spike on top of a slower flood hydrograph | two quick timescales | a two-zone model ([The two-zone PDM](two-zone-pdm.html)) |
 
 Three cautions:
@@ -576,3 +847,89 @@ Three cautions:
 3. **The structure recommendation does this comparison for you,** on validation data, and the
    report shows why it chose each component. Use this article to judge whether its choice makes
    sense for the river you know. See [How the model structure is chosen](choosing-structure.html).
+
+# Exercises: mystery hydrographs
+
+Each record below was made by a model with one option from each component. The options are not
+named. Use the clues in this article to work out which, then open the answer.
+
+```{r mysteries}
+mysteries <- list(
+  A = list(d = dists$Exponential, r = FlodeSplitRecharge(alpha = 0.5), g = tangent$Linear),
+  B = list(d = FlodeParetoCapacity(0, 165, 0.1), r = base_r, g = base_g),
+  C = list(d = dists$Rectangular, r = FlodeDemandRecharge(alpha = 0.5, beta = 1.5, qsat = 0.3),
+           g = tangent$Exponential)
+)
+mystery_runs <- lapply(mysteries, function(v) {
+  run_year(pdm_model(distribution = v$d, recharge = v$r, groundwater = v$g, area_km2 = 20))
+})
+draw_mystery <- function(o, label) {
+  panels(right = 2)
+  q <- o$q_m3s
+  plot(year$time, q, type = "l", log = "y", col = pal[1], lwd = 1.2, las = 1,
+       xlab = "", ylab = "Flow (m3/s, log scale)", main = paste0("Mystery ", label, ": the year"))
+  ev <- find_events(year$rain, q, year$time, dt = 1, area_km2 = 20)
+  ev <- ev[ev$rain_mm >= 5, ]
+  plot(ev$rain_start_time, ev$runoff_ratio, pch = 16, col = pal[2], las = 1, ylim = c(0, 1),
+       xlab = "", ylab = "Event runoff ratio", main = "Its events")
+}
+```
+
+**Mystery A**
+
+```{r mystery-a, fig.height=4}
+draw_mystery(mystery_runs$A, "A")
+```
+
+1. Do small storms on a dry catchment give a response?
+2. After a storm, does baseflow keep rising, or fall at once?
+3. On the log scale, are the dry-weather recessions straight or curved?
+
+<details><summary>Answer A</summary>
+
+An **exponential** soil store, **split** recharge and a **linear** groundwater store. Every event
+returns a share of its rain, even in a dry summer: many shallow stores. The flow drops back
+after each storm with no slow rise between them: recharge only from runoff. The recessions are
+straight on the log scale, halving in the same time at any level: a linear store.
+
+</details>
+
+**Mystery B**
+
+```{r mystery-b, fig.height=4}
+draw_mystery(mystery_runs$B, "B")
+```
+
+1. How much of each storm's rain comes back as quick flow?
+2. Yet how large is the flow, and what shape does it take through the year?
+
+<details><summary>Answer B</summary>
+
+A **Pareto store with a small `b`** (0.1), **standard** recharge and a **cubic** groundwater store.
+Storms return almost nothing as quick flow, in winter as in summer: a threshold-like store that
+sheds little until it is nearly full, and standard recharge drains it before it fills. Yet the
+river is never low. The water reaches it by the slow route, so the flow swells and shrinks in
+smooth arcs over weeks: soil drainage into a nonlinear store. A chalk or sandstone river looks
+like this.
+
+</details>
+
+**Mystery C**
+
+```{r mystery-c, fig.height=4}
+draw_mystery(mystery_runs$C, "C")
+```
+
+1. Does each storm give a sharp spike, or lift the whole flow?
+2. Compare how fast the flow falls after a rise with how fast it falls in late summer.
+
+<details><summary>Answer C</summary>
+
+A **rectangular** soil store, **demand** recharge and an **exponential** groundwater store. Each
+storm lifts the whole flow, with little of a separate spike: demand recharge pulls water from
+the soil whenever groundwater has room, so it reaches the river by the slow route almost as fast
+as runoff. Few storms count as events, and their ratios are low and scattered. A high rise
+halves in two or three weeks; the late-summer recession, from a lower flow, takes about twice
+as long: an exponential store, quicker when full and slower when low.
+
+</details>

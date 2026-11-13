@@ -1,3 +1,11 @@
+# pdmS7 (development version)
+
+- **Reading the response** gains comparisons over a year of rain: runoff ratio against soil
+  wetness for every event; five soil stores scaled to the same quick flow, whose floods still
+  differ; flow duration curves and the monthly baseflow index for each recharge rule; days to
+  halve against flow; recessions from small and large floods overlaid; a fingerprint table of
+  every option; and three mystery hydrographs as exercises.
+
 # pdmS7 0.26.0
 
 Fixes from a review of the compiled core, with the R reference changed to match. Results change
