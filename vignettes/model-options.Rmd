@@ -35,6 +35,10 @@ groundwater store. Start there and change one component at a time.
 | Groundwater routing | Power-law store (linear, quadratic, cubic or any exponent), exponential store, cascade | Cubic |
 | Groundwater solver | Adaptive Runge-Kutta, Smith approximation | Adaptive |
 
+For a training guide to how each option shows in the hydrograph, with like-for-like comparisons
+and what to look for in an observed record, see
+[Reading the response](reading-responses.html).
+
 # The soil store: how fast does the catchment saturate?
 
 The capacity distribution describes how storage capacity varies across the catchment. Its
