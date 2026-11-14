@@ -2,6 +2,24 @@ url: https://jonpayneea.github.io/PDMS7/
 
 template:
   bootstrap: 5
+  light-switch: true
+  bslib:
+    # Light mode: warm paper
+    bg: "#f4f0e6"
+    fg: "#2b2b2b"
+    primary: "#1f5f7a"
+    navbar-light-bg: "#e8e2d4"
+    # Dark mode: river navy
+    body-bg-dark: "#0f1b2a"
+    body-color-dark: "#dce6f0"
+    body-secondary-bg-dark: "#16263a"
+    body-tertiary-bg-dark: "#132234"
+    body-emphasis-color-dark: "#f2f6fa"
+    border-color-dark: "#2a3d55"
+    link-color-dark: "#5bb8e0"
+    link-hover-color-dark: "#8fd0ec"
+    code-color-dark: "#f0a8c8"
+    navbar-dark-bg: "#0b1522"
 
 navbar:
   structure:
@@ -58,6 +76,7 @@ articles:
   contents:
   - model-options
   - reading-responses
+  - groundwater-extension
   - two-zone-pdm
   - starting-states
 - title: Calibration
@@ -165,6 +184,7 @@ reference:
   - cubic_routing
   - power_routing
   - groundwater_extension
+  - fit_well_level
   - two_zone_config
   - routing_flow
   - storage_for_flow

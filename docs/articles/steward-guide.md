@@ -13,7 +13,7 @@ which opens in a browser, or on the Report tab of
 [Logging a manual
 calibration](https://jonpayneea.github.io/PDMS7/articles/calibration-log.md)
 shows how a project is built; [Inside the
-logs](https://jonpayneea.github.io/PDMS7/articles/log-structure.md)
+logs](https://jonpayneea.github.io/PDMS7/articles/calibration-log.html#inside-the-logs)
 explains the files.
 
 ## Your role
@@ -77,6 +77,19 @@ Is the model structure reasonable for the catchment, and is the
 reasoning recorded? If a structure comparison was run, the report ranks
 the structures on the validation window: a structure chosen despite
 ranking low needs a stated reason.
+
+If the structure was recommended step by step, *How the structure was
+chosen* draws the decisions: one row per component, every option with
+its validation score, the choice filled, the equally good outlined, and
+options set aside with a parameter at a bound in grey. Under the figure,
+each step’s reason in words. Check that each choice follows the rule it
+states: a step that kept its starting option should say the others were
+within the tie tolerance; a step that changed should say by how much the
+new option was better.
+
+*Run totals* gives the model runs and the elapsed time of each step and
+stage. It says what the search cost, and a step with far fewer runs than
+its neighbours is worth asking about.
 
 ### 4. Calibration path
 

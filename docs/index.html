@@ -6,23 +6,24 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <title>Configurable Probability Distributed Rainfall Runoff Model • pdmS7</title>
-<script src="deps/jquery-3.6.1/jquery-3.6.1.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<script src="lightswitch.js"></script><script src="deps/jquery-3.6.1/jquery-3.6.1.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
 <script src="deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.4.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.4.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="Configurable Probability Distributed Rainfall Runoff Model">
+<script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><script src="extra.js"></script><meta property="og:title" content="Configurable Probability Distributed Rainfall Runoff Model">
 <meta name="description" content="An independent, configurable implementation of the Probability Distributed Model described by Moore (2007) &lt;doi:10.5194/hess-11-483-2007&gt;. S7 components provide five capacity distributions, three recharge schemes, reservoir routing, PACK snow processing, multi-objective calibration, and forecast updating. Explicit water accounting and source notes distinguish numerical choices from the paper.">
 <meta property="og:description" content="An independent, configurable implementation of the Probability Distributed Model described by Moore (2007) &lt;doi:10.5194/hess-11-483-2007&gt;. S7 components provide five capacity distributions, three recharge schemes, reservoir routing, PACK snow processing, multi-objective calibration, and forecast updating. Explicit water accounting and source notes distinguish numerical choices from the paper.">
+<meta property="og:image" content="https://jonpayneea.github.io/PDMS7/logo.png">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
-    <nav class="navbar navbar-expand-lg fixed-top bg-light" data-bs-theme="light" aria-label="Site navigation"><div class="container">
+    <nav class="navbar navbar-expand-lg fixed-top " aria-label="Site navigation"><div class="container">
 
     <a class="navbar-brand me-2" href="index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.18.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.27.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -49,27 +50,27 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Model options</h6></li>
     <li><a class="dropdown-item" href="articles/model-options.html">Choosing model components</a></li>
+    <li><a class="dropdown-item" href="articles/reading-responses.html">Reading the response: what each model option does to the flow</a></li>
+    <li><a class="dropdown-item" href="articles/groundwater-extension.html">Using the groundwater extension: abstraction, losses and wells</a></li>
+    <li><a class="dropdown-item" href="articles/two-zone-pdm.html">The two-zone PDM: a fast zone for flashy catchments</a></li>
     <li><a class="dropdown-item" href="articles/starting-states.html">Starting a run: cold, warm and hot</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Calibration</h6></li>
-    <li><a class="dropdown-item" href="articles/calibration-journey.html">Automatic calibration from start to finish</a></li>
-    <li><a class="dropdown-item" href="articles/checks.html">Checking the data and the events</a></li>
-    <li><a class="dropdown-item" href="articles/calibration.html">Calibration: multi-start, budgets and staged calibration</a></li>
+    <li><a class="dropdown-item" href="articles/calibration-journey.html">Calibrating a catchment from start to finish</a></li>
+    <li><a class="dropdown-item" href="articles/auto-calibration.html">How automatic calibration works</a></li>
+    <li><a class="dropdown-item" href="articles/choosing-structure.html">How the model structure is chosen</a></li>
     <li><a class="dropdown-item" href="articles/floods.html">Getting the floods right</a></li>
     <li><a class="dropdown-item" href="articles/app-events.html">Tailoring calibration to the largest events in the app</a></li>
+    <li><a class="dropdown-item" href="articles/checks.html">Checking the data and the events</a></li>
     <li><a class="dropdown-item" href="articles/rainfall.html">Catchment rainfall from gauges and radar</a></li>
-    <li><a class="dropdown-item" href="articles/auto-calibration.html">Automatic calibration, explained</a></li>
     <li><a class="dropdown-item" href="articles/scoring.html">Scoring a simulation: from NSE to POD, FAR and CSI</a></li>
-    <li><a class="dropdown-item" href="articles/choosing-structure.html">Choosing a model structure</a></li>
+    <li><a class="dropdown-item" href="articles/comparing-calibrations.html">Comparing calibrations and PDM for PCs files</a></li>
     <li><a class="dropdown-item" href="articles/extrapolation.html">Larger floods: extrapolation and the rating</a></li>
     <li><a class="dropdown-item" href="articles/many-catchments.html">Calibrating many catchments</a></li>
-    <li><a class="dropdown-item" href="articles/large-sample.html">A large sample: what automatic calibration recovers</a></li>
-    <li><a class="dropdown-item" href="articles/calibration-study.html">What limits automatic calibration: a study</a></li>
-    <li><a class="dropdown-item" href="articles/events.html">Events in large samples: finding them and scoring models on them</a></li>
+    <li><a class="dropdown-item" href="articles/large-sample.html">Many catchments: what automatic calibration recovers, and what limits it</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Records and review</h6></li>
-    <li><a class="dropdown-item" href="articles/calibration-log.html">Logging a manual calibration</a></li>
-    <li><a class="dropdown-item" href="articles/log-structure.html">Inside the logs: projects, entries, checksums and the run log</a></li>
+    <li><a class="dropdown-item" href="articles/calibration-log.html">Calibration records: logging a calibration, and what the logs hold</a></li>
     <li><a class="dropdown-item" href="articles/steward-guide.html">Reviewing a calibration: a Steward's guide</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Forecasting</h6></li>
@@ -109,6 +110,14 @@
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="search.json">
 </form></li>
 <li class="nav-item"><a class="external-link nav-link" href="https://github.com/JonPayneEA/PDMS7" aria-label="GitHub"><span class="fa fa-github"></span></a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-lightswitch" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true" aria-label="Light switch"><span class="fa fa-sun"></span></button>
+  <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdown-lightswitch">
+<li><button class="dropdown-item" data-bs-theme-value="light"><span class="fa fa-sun"></span> Light</button></li>
+    <li><button class="dropdown-item" data-bs-theme-value="dark"><span class="fa fa-moon"></span> Dark</button></li>
+    <li><button class="dropdown-item" data-bs-theme-value="auto"><span class="fa fa-adjust"></span> Auto</button></li>
+  </ul>
+</li>
       </ul>
 </div>
 
@@ -117,10 +126,12 @@
 </nav><div class="container template-home">
 <div class="row">
   <main id="main" class="col-md-9"><div class="section level1">
-<div class="page-header"><h1 id="pdms7--configurable-pdm-for-flode-conventions">pdmS7 — configurable PDM for Flode conventions<a class="anchor" aria-label="anchor" href="#pdms7--configurable-pdm-for-flode-conventions"></a>
-</h1></div>
+<div class="page-header">
+<img src="logo.png" class="logo" alt=""><h1 id="pdms7-configurable-pdm-for-flode-conventions-">pdmS7: configurable PDM for Flode conventions <a class="anchor" aria-label="anchor" href="#pdms7-configurable-pdm-for-flode-conventions-"></a>
+</h1>
+</div>
 <p>pdmS7 is a probability-distributed rainfall-runoff model (Moore, 2007) built to calibrate conceptual models fairly, record each calibration so it can be defended, and compare the result with machine-learning models on equal terms. <strong>New here?</strong> Start with <a href="https://jonpayneea.github.io/PDMS7/articles/reading-paths.html">Where to start</a>, which gives a reading order for modellers, Stewards, Owners, forecasters and the LSTM team.</p>
-<p>Version 0.4.0 targets <strong>Tier 3 engineering checks</strong> for pseudo-operational use. It remains a standalone package, with <code>reach.hydro</code> as its proposed Flode home. Human maintainer attribution, independent review and catchment validation are outstanding; this is not a declaration of operational approval.</p>
+<p>pdmS7 is <strong>Tier 1 (experimental)</strong> under the Flode governance tiers. Each pull request runs the test suite on Ubuntu (<code>tests.yaml</code>). The full Flode checks, R CMD check with the articles on Windows and Ubuntu plus lint and coverage, run by hand from the Actions tab (<code>full-checks.yaml</code>). It remains a standalone package, with <code>reach.hydro</code> as its proposed Flode home. Human maintainer attribution, independent review and catchment validation are outstanding; this is not a declaration of operational approval.</p>
 <p>The model implements Moore (2007), <a href="https://doi.org/10.5194/hess-11-483-2007" class="external-link">doi:10.5194/hess-11-483-2007</a>, with all five Appendix A capacity distributions, three recharge schemes, six routing choices, calibration, restartable states, and forecast updating.</p>
 <div class="section level2">
 <h2 id="install">Install<a class="anchor" aria-label="anchor" href="#install"></a>
@@ -160,42 +171,45 @@
 <ul>
 <li>
 <a href="https://jonpayneea.github.io/PDMS7/articles/model-options.html">Choosing model components</a>: the five capacity distributions, three recharge rules, routing forms and the solver</li>
+<li>
+<a href="https://jonpayneea.github.io/PDMS7/articles/reading-responses.html">Reading the response</a>: a training guide to what each soil store, recharge rule and groundwater store does to the flow, and what to look for in a river’s record</li>
+<li>
+<a href="https://jonpayneea.github.io/PDMS7/articles/groundwater-extension.html">Using the groundwater extension</a>: abstraction, losses below the gauge, springs and well levels: preparing the data, calibrating and checking</li>
+<li>
+<a href="https://jonpayneea.github.io/PDMS7/articles/two-zone-pdm.html">The two-zone PDM</a>: a small fast zone for catchments with a sharp spike, and how to tell whether it earns its place</li>
 <li><a href="https://jonpayneea.github.io/PDMS7/articles/starting-states.html">Starting a run: cold, warm and hot</a></li>
 </ul>
 <p>Calibration:</p>
 <ul>
 <li>
-<a href="https://jonpayneea.github.io/PDMS7/articles/calibration-journey.html">Automatic calibration from start to finish</a>: the whole journey in plain English, from the data to sign-off, with flow diagrams of each step and a small calibration run live</li>
+<a href="https://jonpayneea.github.io/PDMS7/articles/calibration-journey.html">Calibrating a catchment from start to finish</a>: the whole journey in plain English, from the data to sign-off, with flow diagrams of each step and a small calibration run live</li>
 <li>
-<a href="https://jonpayneea.github.io/PDMS7/articles/checks.html">Checking the data and the events</a>: every check before and after calibrating, in the order to run them, with a broken record to show each one firing</li>
-<li><a href="https://jonpayneea.github.io/PDMS7/articles/calibration.html">Calibration: multi-start, budgets and staged calibration</a></li>
+<a href="https://jonpayneea.github.io/PDMS7/articles/auto-calibration.html">How automatic calibration works</a>: bounds and locked parameters, search scales, the three search methods, several starts and their cost, the objectives (weighted scores and the multi-objective trade-off), staged calibration, calibrating for floods, and how the candidate is chosen</li>
 <li>
-<a href="https://jonpayneea.github.io/PDMS7/articles/auto-calibration.html">Automatic calibration, explained</a>: in plain terms: bounds, search scales, the two search methods, rewarding flood warnings, and calibrating in stages</li>
+<a href="https://jonpayneea.github.io/PDMS7/articles/choosing-structure.html">How the model structure is chosen</a>: the recharge rule, soil store and groundwater store, one at a time, by a stated rule, then a full comparison carried through validation and a final test</li>
 <li>
-<a href="https://jonpayneea.github.io/PDMS7/articles/scoring.html">Scoring a simulation</a>: NSE, KGE, flow-duration signatures, and POD, FAR and CSI at warning thresholds</li>
+<a href="https://jonpayneea.github.io/PDMS7/articles/floods.html">Getting the floods right</a>: why a good score can hide bad floods; finding, checking and choosing the events, by share or by a flow such as half QMED; calibrating and inspecting them; the structure question</li>
+<li><a href="https://jonpayneea.github.io/PDMS7/articles/app-events.html">Tailoring calibration to the largest events in the app</a></li>
 <li>
-<a href="https://jonpayneea.github.io/PDMS7/articles/choosing-structure.html">Choosing a model structure</a>: calibrate the alternatives alike, rank on validation, and keep a final test window</li>
+<a href="https://jonpayneea.github.io/PDMS7/articles/checks.html">Checking the data and the events</a>: every check before and after calibrating, in the order to run them</li>
+<li>
+<a href="https://jonpayneea.github.io/PDMS7/articles/rainfall.html">Catchment rainfall from gauges and radar</a>: Thiessen polygons, multiquadric surfaces and conditional merging of gauges with radar</li>
+<li>
+<a href="https://jonpayneea.github.io/PDMS7/articles/scoring.html">Scoring a simulation</a>: NSE, KGE, flow-duration signatures, POD, FAR and CSI at warning thresholds, and thresholds from the record (QMED, Q1, Q5)</li>
+<li>
+<a href="https://jonpayneea.github.io/PDMS7/articles/comparing-calibrations.html">Comparing calibrations and PDM for PCs files</a>: reading and writing <code>*.inp</code> files, and setting two calibrations side by side</li>
 <li>
 <a href="https://jonpayneea.github.io/PDMS7/articles/extrapolation.html">Larger floods: extrapolation and the rating</a>: the wettest years held back, the spread of equally good fits, and flows above the highest gauging</li>
 <li>
-<a href="https://jonpayneea.github.io/PDMS7/articles/many-catchments.html">Calibrating many catchments</a>: a step-by-step guide to <code><a href="reference/calibrate_batch.html">calibrate_batch()</a></code>: preparing folders, running, resuming after an interruption, fixing failures, and reading the results</li>
+<a href="https://jonpayneea.github.io/PDMS7/articles/many-catchments.html">Calibrating many catchments</a>: a step-by-step guide to <code><a href="reference/calibrate_batch.html">calibrate_batch()</a></code>
+</li>
 <li>
-<a href="https://jonpayneea.github.io/PDMS7/articles/floods.html">Getting the floods right</a>: in plain English, why a good score can hide bad floods, and how to find, check, calibrate and inspect the events, and what the record can say about the model’s structure</li>
-<li>
-<a href="https://jonpayneea.github.io/PDMS7/articles/rainfall.html">Catchment rainfall from gauges and radar</a>: Thiessen polygons, multiquadric surfaces and conditional merging of gauges with radar, shown on a made-up storm, with how to judge them and how to read H19 radar</li>
-<li>
-<a href="https://jonpayneea.github.io/PDMS7/articles/large-sample.html">A large sample: what automatic calibration recovers</a>: 30 synthetic catchments, each with its own climate and known truth, calibrated as a batch</li>
-<li>
-<a href="https://jonpayneea.github.io/PDMS7/articles/calibration-study.html">What limits automatic calibration: a study</a>: four searches checked against the truth, a fault in staged calibration, and why <code>kb</code> cannot be recovered from flow records but matters in severe droughts</li>
-<li>
-<a href="https://jonpayneea.github.io/PDMS7/articles/events.html">Events in large samples</a>: finding rainfall-runoff events and response times objectively from the records, and scoring models event by event across a batch</li>
+<a href="https://jonpayneea.github.io/PDMS7/articles/large-sample.html">Many catchments: what automatic calibration recovers, and what limits it</a>: 30 synthetic catchments with known truths; which parameters a record pins down, the search or the record as the limit, and events scored across a batch</li>
 </ul>
 <p>Records and review:</p>
 <ul>
 <li>
-<a href="https://jonpayneea.github.io/PDMS7/articles/calibration-log.html">Logging a manual calibration</a>: the audit trail from project start to sign-off, the report, and tracing operational runs</li>
-<li>
-<a href="https://jonpayneea.github.io/PDMS7/articles/log-structure.html">Inside the logs</a>: project folders, entries, the checksum chain, the run log and the register</li>
+<a href="https://jonpayneea.github.io/PDMS7/articles/calibration-log.html">Calibration records</a>: the audit trail from project start to sign-off, the report, tracing operational runs, and inside the logs: the folders, entries, checksum chain and run log</li>
 <li>
 <a href="https://jonpayneea.github.io/PDMS7/articles/steward-guide.html">Reviewing a calibration: a Steward’s guide</a>: what to check in the report, warning signs, and what signing off means</li>
 </ul>
@@ -394,7 +408,7 @@
 <span><span class="fu"><a href="https://rdrr.io/r/base/stopifnot.html" class="external-link">stopifnot</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="fu">lintr</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/lintr/man/lint.html" class="external-link">lint_package</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">==</span> <span class="fl">0</span><span class="op">)</span></span>
 <span><span class="fu">renv</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/renv/man/status.html" class="external-link">status</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="fu">rcmdcheck</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/rcmdcheck/man/rcmdcheck.html" class="external-link">rcmdcheck</a></span><span class="op">(</span>args <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"--no-manual"</span><span class="op">)</span>, error_on <span class="op">=</span> <span class="st">"warning"</span><span class="op">)</span></span></code></pre></div>
-<p>The shared Flode CI workflow is pinned to the style repository commit recorded in <a href="docs/tier3-review.html">the review</a>, with <code>tier: 3</code>. CI configuration is provided; remote CI has not been run in a hosted repository. The review distinguishes completed local checks from outstanding human governance requirements.</p>
+<p>The shared Flode CI workflow is pinned to the style repository commit recorded in <a href="docs/tier3-review.html">the review</a>, now with <code>tier: 1</code>, in <code>full-checks.yaml</code>. CI configuration is provided; remote CI has not been run in a hosted repository. The review distinguishes completed local checks from outstanding human governance requirements.</p>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="links">

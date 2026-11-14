@@ -304,9 +304,9 @@ needs to see and own the choice.
 - [Checking the data and the
   events](https://jonpayneea.github.io/PDMS7/articles/checks.md): checks
   to run before trusting any event.
-- [Logging a manual
-  calibration](https://jonpayneea.github.io/PDMS7/articles/calibration-log.md):
+- [Calibration
+  records](https://jonpayneea.github.io/PDMS7/articles/calibration-log.md):
   what each entry records, and the rest of the app.
-- [Automatic calibration from start to
+- [Calibrating a catchment from start to
   finish](https://jonpayneea.github.io/PDMS7/articles/calibration-journey.md):
   the stages, including the events stage.

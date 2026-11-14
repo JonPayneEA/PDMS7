@@ -5,7 +5,7 @@ Component of the configurable Moore (2007) rainfall-runoff framework.
 ## Usage
 
 ``` r
-pdm_step(model, state, rain, pet)
+pdm_step(model, state, rain, pet, abstraction = 0)
 ```
 
 ## Arguments
@@ -26,6 +26,13 @@ pdm_step(model, state, rain, pet)
 
   Interval potential evaporation depth in mm. Negative values are
   condensation and add their whole depth to the soil store.
+
+- abstraction:
+
+  Recorded abstraction over the interval, mm, for a model with the
+  groundwater extension
+  ([`groundwater_extension()`](https://jonpayneea.github.io/PDMS7/reference/groundwater_extension.md));
+  negative for a gain.
 
 ## Value
 

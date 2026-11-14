@@ -41,7 +41,8 @@ register_data(
   test = NULL,
   highest_gauged_m3s = NULL,
   wettest_years = 2,
-  tie_tolerance = 0.02
+  tie_tolerance = 0.02,
+  markers = c("QMED", "Q1", "Q5")
 )
 
 select_structure(project, configuration, reasoning)
@@ -180,7 +181,8 @@ reopen_project(project, reason)
   `unit`: `flow` (m3/s) or `level` (m, converted to flow through
   `rating`). Every run is then also scored with
   [`pdm_threshold_scores()`](https://jonpayneea.github.io/PDMS7/reference/pdm_threshold_scores.md),
-  under names such as `csi:Flood Warning`.
+  under names such as `csi:Flood Warning`. Without thresholds, the
+  `markers` are registered instead.
 
 - rating:
 
@@ -209,6 +211,18 @@ reopen_project(project, reason)
   Parameter sets whose calibration headline score lies within this of
   the best count as equally good, in the headline's own units (0.02 for
   NSE).
+
+- markers:
+
+  Flow markers of
+  [`flow_markers()`](https://jonpayneea.github.io/PDMS7/reference/flow_markers.md)
+  registered as thresholds when `thresholds` is `NULL`, worked out from
+  the calibration window alone, held-back years left out, so no
+  validation or test data shape them: by default `QMED`, `Q1` and `Q5`,
+  so every catchment gets threshold scores and an event floor to fit to.
+  QMED needs times in `forcing` and two complete water years, and is
+  left out otherwise, as is any marker that cannot be worked out. `NULL`
+  registers none.
 
 - configuration:
 
@@ -338,7 +352,7 @@ old <- options(pdmS7.user = "A Hydrologist", pdmS7.role = "custodian")
 start_calibration_project(folder, catchment = "Example", gauge = "00000",
   purpose = "Illustration", area_km2 = 50, owner = "Deputy Director",
   steward = "A Steward")
-#> INFO [2026-11-08 23:53:24] Started calibration project example-project in /tmp/RtmpR3cJNz/example-project
+#> INFO [2026-11-13 22:32:00] Started calibration project example-project in /tmp/RtmpQqN5Vg/example-project
 set.seed(1)
 forcing <- data.frame(rain = ifelse(runif(500) < 0.1, rexp(500, 0.3), 0), pet = 0.1)
 truth <- pdm_presets("standard")
@@ -346,19 +360,19 @@ truth$area_km2 <- 50
 observed <- run_pdm(pdm_from_config(truth), forcing)$output$q_m3s
 register_data(folder, forcing, observed, calibration = c(101, 350),
   validation = c(351, 500), wettest_years = 0)
-#> INFO [2026-11-08 23:53:24] Registered data 0002: 500 rows
+#> INFO [2026-11-13 22:32:00] Registered data 0002: 500 rows
 select_structure(folder, truth, reasoning = "Standard structure as a starting point")
 #> Warning: Column name 'time' (colClasses[[1]][1]) not found
-#> INFO [2026-11-08 23:53:24] Structure 0003: nse 0.1513
+#> INFO [2026-11-13 22:32:00] Structure 0003: nse 0.1513
 log_trial(folder, parent = 3, changes = c(surface.k1 = 3), verdict = "worse",
   reasoning = "Testing a slower first store")
 #> Warning: Column name 'time' (colClasses[[1]][1]) not found
-#> INFO [2026-11-08 23:53:24] Trial 0004 from 0003: nse 0.1122
+#> INFO [2026-11-13 22:32:00] Trial 0004 from 0003: nse 0.1122
 project_trials(folder)
 #>        id               type parent            timestamp        author
 #>    <char>             <char> <char>               <char>        <char>
-#> 1:   0003 structure_selected   <NA> 2026-11-08T23:53:24Z A Hydrologist
-#> 2:   0004              trial   0003 2026-11-08T23:53:24Z A Hydrologist
+#> 1:   0003 structure_selected   <NA> 2026-11-13T22:32:00Z A Hydrologist
+#> 2:   0004              trial   0003 2026-11-13T22:32:00Z A Hydrologist
 #>              changes verdict                              reasoning       nse
 #>               <char>  <char>                                 <char>     <num>
 #> 1:                      <NA> Standard structure as a starting point 0.1512671
@@ -371,6 +385,42 @@ project_trials(folder)
 #>           <num>            <num>      <num>      <num>     <num>     <num>
 #> 1:   -0.8228641        0.8228641 -0.7120517 -0.7137379 0.6841290 0.8463010
 #> 2:   -0.8229208        0.8229208 -0.7571941 -0.7446864 0.5848666 0.8297538
+#>    pod:Q1 far:Q1 csi:Q1 bias:Q1 observed_events:Q1 simulated_events:Q1 hits:Q1
+#>     <num>  <num>  <num>   <num>              <num>               <num>   <num>
+#> 1:      0     NA      0       0                  1                   0       0
+#> 2:      0     NA      0       0                  1                   0       0
+#>    misses:Q1 false_alarms:Q1 crossing_error_h:Q1 abs_crossing_error_h:Q1
+#>        <num>           <num>               <num>                   <num>
+#> 1:         1               0                  NA                      NA
+#> 2:         1               0                  NA                      NA
+#>    peak_timing_error_h:Q1 peak_error:Q1 duration_error_h:Q1 volume_error:Q1
+#>                     <num>         <num>               <num>           <num>
+#> 1:                     NA            NA                  NA              NA
+#> 2:                     NA            NA                  NA              NA
+#>    pod_step:Q1 far_step:Q1 csi_step:Q1 bias_step:Q1 pofd_step:Q1 ets_step:Q1
+#>          <num>       <num>       <num>        <num>        <num>       <num>
+#> 1:           0          NA           0            0            0           0
+#> 2:           0          NA           0            0            0           0
+#>    pss_step:Q1 pod:Q5 far:Q5 csi:Q5 bias:Q5 observed_events:Q5
+#>          <num>  <num>  <num>  <num>   <num>              <num>
+#> 1:           0    0.5      0    0.5     0.5                  2
+#> 2:           0    0.5      0    0.5     0.5                  2
+#>    simulated_events:Q5 hits:Q5 misses:Q5 false_alarms:Q5 crossing_error_h:Q5
+#>                  <num>   <num>     <num>           <num>               <num>
+#> 1:                   1       1         1               0                   1
+#> 2:                   1       1         1               0                   2
+#>    abs_crossing_error_h:Q5 peak_timing_error_h:Q5 peak_error:Q5
+#>                      <num>                  <num>         <num>
+#> 1:                       1                      0    -0.7120517
+#> 2:                       2                      0    -0.7571941
+#>    duration_error_h:Q5 volume_error:Q5 pod_step:Q5 far_step:Q5 csi_step:Q5
+#>                  <num>           <num>       <num>       <num>       <num>
+#> 1:                  -8      -0.9681774   0.3076923           0   0.3076923
+#> 2:                 -10      -0.9944299   0.1538462           0   0.1538462
+#>    bias_step:Q5 pofd_step:Q5 ets_step:Q5 pss_step:Q5
+#>           <num>        <num>       <num>       <num>
+#> 1:    0.3076923            0   0.2964353   0.3076923
+#> 2:    0.1538462            0   0.1470223   0.1538462
 options(old)
 unlink(folder, recursive = TRUE)
 ```

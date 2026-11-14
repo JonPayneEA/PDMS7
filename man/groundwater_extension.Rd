@@ -47,7 +47,8 @@ for an import. At most 1.}
 
 \item{smax_b}{Maximum groundwater storage, mm, for the deficit and well level.}
 
-\item{ys}{Specific yield of the aquifer; 0 (the default) for no well level.}
+\item{ys}{Well factor, m of water-table depth per mm of storage deficit (PDM for PCs
+\code{wellfac}): \verb{1 / (1000 Sy)} for a specific yield \code{Sy}; 0 (the default) for no well level.}
 
 \item{hw}{Well level datum: the height of the ground at the well, m.}
 }
@@ -85,9 +86,12 @@ the store's release: the baseflow exceeds the release, the spring column is nega
 water balance counts it as a gain. \code{alpha_b} must lie below 1; there is no lower limit in the
 model, and calibration searches -1 to 0.9 unless told otherwise.
 
-\strong{Well level.} The storage deficit is \code{D = Sbmax - S} (Eq. 8), and the depth to the water
-table \verb{W = Ys D} (Eq. 11). With the datum \code{hw}, the height of the ground at the well (m), the
-modelled well level is \code{hw - W}, in m.
+\strong{Well level.} The storage deficit is \code{D = Sbmax - S} (Eq. 8), in mm, and the depth to the
+water table \verb{W = Ys D} (Eq. 11), in m, so \code{Ys} is metres of water table per mm of deficit:
+\verb{1 / (1000 Sy)} for an aquifer of specific yield \code{Sy} (0.02 for a specific yield of 5\%). With
+the datum \code{hw}, the height of the ground at the well (m), the modelled well level is \code{hw - W},
+in m. \code{\link[=fit_well_level]{fit_well_level()}} fits \code{Ys} and \code{hw} to an observed well. (Before 0.27.0 the depth was
+divided by a further 1000, so modelled well levels barely moved.)
 
 The exponential store cannot be extended: it needs positive flow at all times, so it cannot
 run dry (scientific guide, Appendices A and B).

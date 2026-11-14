@@ -147,7 +147,7 @@ flow <- run_pdm(pdm_from_config(config), forcing)$output$q_m3s
 wb <- water_balance(forcing, flow, area_km2 = 20)
 wb
 #> Water balance over 4.0 years with flow: rain 694 mm, potential evaporation 548 mm, flow 414 mm a year
-#> Runoff ratio 0.60; loss over potential evaporation 0.51; baseflow index 0.76
+#> Runoff ratio 0.60; loss over potential evaporation 0.51; baseflow index 0.71
 #>  year complete rain pet flow ratio loss_pet flag
 #>  2020     100%  914 549  553  0.60     0.66     
 #>  2021     100%  576 547  352  0.61     0.41     

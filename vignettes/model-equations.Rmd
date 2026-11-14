@@ -151,7 +151,8 @@ interval is routed normally. With underflow $q_u=(S+D_{bu})/k_u$ (Eq. 10) the st
 outlets are integrated together, $dS/dt=u-k\max(S,0)^m-q_u$ with $q_u$ zero at or below
 $S=-D_{bu}$, so each outlet stops at its own threshold within the interval. A share $\alpha_b$ of the outflow
 leaves as springs, so the baseflow at the outlet is $(1-\alpha_b)\,kS^m$. The storage deficit
-is $D=S^b_{max}-S$, and the modelled well level $h_w-Y_sD/1000$ m.
+is $D=S^b_{max}-S$ mm, and the modelled well level $h_w-Y_sD$ m, where $Y_s$ is metres of
+water table per mm of deficit, $1/(1000\,S_y)$ for a specific yield $S_y$.
 
 ## Delay and discharge
 

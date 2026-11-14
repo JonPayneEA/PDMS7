@@ -18,6 +18,7 @@ put in on purpose, so that each check can be seen to fire.
 | Before registering | Water balance by year | Does each year fit the water and energy limits, and does any year or period stand apart? | [`water_balance()`](https://jonpayneea.github.io/PDMS7/reference/water_balance.md)                                                       |
 | Before calibrating | Event balance         | Did each event shed less quick flow than its rain?                                       | [`find_events()`](https://jonpayneea.github.io/PDMS7/reference/find_events.md), [`plot()`](https://rdrr.io/r/graphics/plot.default.html) |
 | Before calibrating | Event screening       | Which events are too small, gappy or doubtful to judge by?                               | [`screen_events()`](https://jonpayneea.github.io/PDMS7/reference/screen_events.md)                                                       |
+| Before calibrating | Gauge response        | Which gauge does the quick response follow; is any clock out or any gauge dry?           | [`gauge_response()`](https://jonpayneea.github.io/PDMS7/reference/gauge_response.md)                                                     |
 | After calibrating  | Parameters            | Did the search press against a limit?                                                    | [`calibration_checks()`](https://jonpayneea.github.io/PDMS7/reference/calibration_checks.md)                                             |
 | After calibrating  | Peaks and timing      | Are the largest floods the right size, at the right time?                                | [`calibration_checks()`](https://jonpayneea.github.io/PDMS7/reference/calibration_checks.md)                                             |
 | After calibrating  | The stages            | Did each stage do its job, and did the starts agree?                                     | [`calibration_path()`](https://jonpayneea.github.io/PDMS7/reference/calibration_path.md)                                                 |
@@ -77,8 +78,9 @@ check_inputs(forcing, flow, area_km2 = 2.5)
 
 The water balance is impossible, and the check says so before any
 calibration is spent on it. A model given this area would need ten times
-the rain it has; the search would push the rainfall factor to its limit
-and still fall short.
+the rain it has. No store can make up that difference, and a rainfall
+factor unlocked for the search would reach its limit and still fall
+short.
 
 ### Year by year: the water balance
 
@@ -96,7 +98,7 @@ or runs of years, that stand apart from the rest:
 wb <- water_balance(forcing, flow, area_km2 = 25)
 wb
 #> Water balance over 5.0 years with flow: rain 712 mm, potential evaporation 548 mm, flow 438 mm a year
-#> Runoff ratio 0.62; loss over potential evaporation 0.50; baseflow index 0.68
+#> Runoff ratio 0.62; loss over potential evaporation 0.50; baseflow index 0.67
 #>  year complete rain pet flow ratio loss_pet flag
 #>  2020     100%  710 549  498  0.70     0.39     
 #>  2021     100%  706 547  430  0.61     0.51     
@@ -156,7 +158,7 @@ record changed, and why, before calibrating; or calibrate on one side of
 the change only.
 
 [`water_balance()`](https://jonpayneea.github.io/PDMS7/reference/water_balance.md)
-also returns the baseflow index, here 0.68: the share of flow beneath
+also returns the baseflow index, here 0.67: the share of flow beneath
 the baseflow line of the events. It is close to the standard UK index
 from five-day minima, about 0.2 on clay and 0.9 on chalk. A value far
 from what the geology suggests is worth questioning before the
@@ -189,10 +191,10 @@ the soil, some reaches groundwater.
 events <- screen_events(find_events(forcing$rain, flow, forcing$time, dt = 1, area_km2 = 25),
                         flow)
 nrow(events)
-#> [1] 527
+#> [1] 480
 summary(events$runoff_ratio)
 #>    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-#> 0.00000 0.09943 0.15605 0.16554 0.23292 0.42403
+#>  0.0000  0.1123  0.1680  0.1771  0.2381  0.4240
 ```
 
 ``` r
@@ -238,7 +240,7 @@ does not learn to make floods from nothing:
 flagged <- bad_events[grepl("quickflow_above_rain", bad_events$flags), ]
 flagged[, c("rain_start_time", "rain_mm", "quickflow_mm", "runoff_ratio", "use")]
 #>        rain_start_time  rain_mm quickflow_mm runoff_ratio   use
-#> 39 2020-02-13 13:00:00 1.019897     7.941785     7.786851 FALSE
+#> 37 2020-02-13 13:00:00 1.019897     7.941785     7.786851 FALSE
 ```
 
 A gauge that recorded nothing at all for a storm is caught differently:
@@ -269,6 +271,111 @@ too much weight. The rainfall article, [Catchment rainfall from gauges
 and radar](https://jonpayneea.github.io/PDMS7/articles/rainfall.md),
 shows how to weigh gauges and radar so that each storm’s rain is right.
 
+### Which gauge the river answers to
+
+Catchment rain is an average of gauges, and the average can hide a gauge
+that matters more than the rest, a gauge whose clock is out, or a gauge
+that missed the storms.
+[`gauge_response()`](https://jonpayneea.github.io/PDMS7/reference/gauge_response.md)
+takes each gauge on its own and asks how closely the river’s quick
+response follows it. It is the cross-correlation analysis long used in
+karst hydrology (Larocque et al., 1998), applied gauge by gauge.
+
+The rise in flow from one step to the next is moved almost only by quick
+runoff. So for each gauge, the correlation of its rain with the rise a
+few hours later says how well that gauge explains the spikes, and the
+lag of the strongest correlation says when. Then, for each of the twenty
+largest floods, the gauge whose rain best matches the rise wins the
+flood.
+
+Here, three gauges over a catchment of 30 km². The town gauge sits over
+the 15 per cent of the catchment that sheds rain at once; the hill and
+moor gauges cover the rest. The moor gauge’s logger runs an hour late,
+and the hill gauge’s funnel blocked during the largest storm.
+
+``` r
+make <- function(seed) synthetic_rain("2019-10-01", years = 2, dt = 1, seed = seed)
+common <- make(1)
+gauges <- data.frame(town = 0.5 * common$rain + 0.5 * make(2)$rain,
+                     hill = 0.5 * common$rain + 0.5 * make(3)$rain,
+                     moor = 0.5 * common$rain + 0.5 * make(4)$rain)
+catchment <- two_zone_config(within(pdm_presets("standard"), area_km2 <- 30), share = 0.15)
+catchment$zones$fast$surface$kb <- 0.6
+zoned <- pdm_from_config(catchment)
+zoned_start <- initial_state_from_flow(zoned, 0.5, 0.7)
+river <- function(zone, rain) {
+  f <- data.frame(time = common$time, rain = rain, pet = common$pet)
+  run_pdm(zoned@zones[[zone]], f, zoned_start@states[[zone]])$output$q_m3s
+}
+set.seed(3)
+gauged <- (river("main", (gauges$hill + gauges$moor) / 2) + river("fast", gauges$town)) *
+  exp(rnorm(nrow(gauges), 0, 0.03))
+
+recorded <- gauges
+recorded$moor <- c(0, gauges$moor[-nrow(gauges)])          # the logger an hour late
+storms <- find_events(rowMeans(gauges), gauged, common$time)
+blocked <- storms[which.max(storms$peak_flow), ]
+recorded$hill[blocked$rain_start:blocked$rain_end] <- 0            # the funnel blocked
+answers <- gauge_response(recorded, gauged, common$time, area_km2 = 30, max_lag_h = 24)
+answers
+#> Gauge response: 3 gauges, 20 events
+#>  gauge lag_h    r event_wins event_share size_r dry_events
+#>   town     0 0.65          9        0.45   0.70          0
+#>   hill     0 0.43          1        0.05   0.53          1
+#>   moor    -1 0.44         10        0.50   0.52          0
+```
+
+``` r
+plot(answers)
+```
+
+![Each gauge's rain against the rise in flow, by lag. The dot marks each
+gauge's strongest
+correlation.](checks_files/figure-html/gauges-plot-1.png)
+
+Each gauge’s rain against the rise in flow, by lag. The dot marks each
+gauge’s strongest correlation.
+
+The table reads in three ways.
+
+- **Which gauge drives the spike.** The town gauge’s correlation, `r`,
+  stands clearly above the others’. Correlations between gauges blur the
+  differences, since much of the rain falls on all of them, so read the
+  ranking and the gap, not the value alone. The flood-by-flood wins are
+  a rougher count over twenty floods, and the large floods are mostly
+  the main zone’s work.
+- **A clock out.** Rain cannot follow the flow it causes, yet the moor
+  gauge’s strongest correlation comes an hour *before* the rise: its
+  clock is late, or the flow’s is early. A lag that differs from the
+  neighbours’ by a whole number of hours points the same way. Check the
+  logger’s time zone and summer-time handling ([Preparing the
+  data](https://jonpayneea.github.io/PDMS7/articles/data-preparation.md)).
+- **A gauge that missed the storms.** `dry_events` counts floods in
+  which a gauge recorded under a tenth of the median gauge. The hill
+  gauge’s blocked funnel shows here, in its lower `size_r`, and in the
+  event table:
+
+``` r
+answers$events[nzchar(answers$events$dry),
+               c("rain_start_time", "dry", "town.rain_mm", "hill.rain_mm", "moor.rain_mm")]
+#>        rain_start_time  dry town.rain_mm hill.rain_mm moor.rain_mm
+#> 17 2021-04-07 14:00:00 hill     18.22444            0     17.71393
+```
+
+If one gauge clearly drives the spike, as here, that is evidence for a
+fast zone fed by that gauge’s area ([The two-zone
+PDM](https://jonpayneea.github.io/PDMS7/articles/two-zone-pdm.md)), and
+for weighting that gauge well in the catchment rain. If no gauge stands
+out, the catchment average is the right input.
+
+The same analysis cannot say which gauge drives the slow response.
+Baseflow answers to the rain of many storms over days or weeks, and over
+such spans the gauges’ totals converge, so every gauge correlates with
+it alike. Long-term drift between gauges is a matter for the double-mass
+curve of
+[`water_balance()`](https://jonpayneea.github.io/PDMS7/reference/water_balance.md),
+above.
+
 ## After calibrating: the checks a score hides
 
 A calibration run end to end, as [Automatic calibration from start to
@@ -291,17 +398,16 @@ calibrate_project(project, forcing, flow, area_km2 = 25,
 checks <- calibration_checks(project, top = 10)
 checks
 #> Acceptance checks. Response time 3.00 h observed, 2.00 h simulated
-#> PARAMETERS AT A BOUND (the structure may be bent to fit; review before use):
-#>   recharge.kg                4782 at its upper bound (searched 1 to 5000)
+#> No parameter at a bound
 #> Largest events in each window:
-#>       period events median_peak_error median_timing_error_h
-#>  calibration     10             -0.12                    -1
-#>   validation     10             -0.07                     0
-#>      outside     10             -0.07                    -1
-#>  share_peak_within_20pct median_event_nse screened_out
-#>                      0.9             0.96           10
-#>                      1.0             0.96            9
-#>                      0.9             0.96           13
+#>       period events median_peak_error median_abs_peak_error
+#>  calibration     10             -0.13                  0.13
+#>   validation     10             -0.10                  0.10
+#>      outside     10             -0.13                  0.13
+#>  median_timing_error_h share_peak_within_20pct median_event_nse screened_out
+#>                     -1                     0.8             0.96            6
+#>                      0                     0.9             0.96            3
+#>                     -1                     0.9             0.96            4
 ```
 
 ### Parameters at a limit
@@ -325,12 +431,12 @@ catchment does. Widening the range lets the fault hide better; finding
 it is the cure. A lower bound of zero, such as no time delay, is not
 flagged: zero is a value, not a limit.
 
-Here recharge.kg is flagged: it ended at 4780, at the upper end of a
-range of 1 to 5000. Not every parameter pressed to an edge is a fault in
-the data: some barely change the flow, and the search moves them because
-nothing pulls them back. The recharge and groundwater constants are the
-usual drifters; [What limits automatic
-calibration](https://jonpayneea.github.io/PDMS7/articles/calibration-study.md)
+Nothing is flagged here, but recharge.kg ends 98% of the way along its
+range, close to its end. Not every parameter pressed to an edge is a
+fault in the data: some barely change the flow, and the search moves
+them because nothing pulls them back. The recharge and groundwater
+constants are the usual drifters; [What limits automatic
+calibration](https://jonpayneea.github.io/PDMS7/articles/large-sample.html#what-limits-automatic-calibration)
 shows which parameters a record can and cannot pin down. Before widening
 a range, ask which: a parameter that matters and sits at its limit
 points to a fault elsewhere; one that does not matter can be fixed at a
@@ -361,7 +467,7 @@ How late each simulated peak comes, against its size.
 
 The score over the whole record is dominated by the many hours of
 ordinary flow. These two plots look only at the floods. Here the peaks
-run 11% low in the median, while NSE on the calibration window is 0.98:
+run 12% low in the median, while NSE on the calibration window is 0.98:
 a short calibration that has the timing right and the size wrong, which
 is just what the events stage is for. Peaks consistently low, or
 consistently late, outweigh a good score: see [Getting the floods
@@ -375,10 +481,10 @@ by eye.
 path <- calibration_path(project)
 path
 #> Calibration path: 3 automatic calibrations
-#>   0004  1 of 3: volume and baseflow        NSE 0.946, log NSE 0.963, volume -0.0%, 1749 runs
-#>   0005  2 of 3: fast response              NSE 0.976, log NSE 0.974, volume +0.3%, 203 runs
-#>   0006  3 of 3: polish                     NSE 0.977, log NSE 0.973, volume +0.2%, 630 runs
-#> Candidate NSE by window: calibration 0.977, validation 0.975
+#>   0004  1 of 3: volume and baseflow        NSE 0.946, log NSE 0.963, volume -0.0%, 846 runs
+#>   0005  2 of 3: fast response              NSE 0.976, log NSE 0.974, volume +0.3%, 224 runs
+#>   0006  3 of 3: polish                     NSE 0.976, log NSE 0.972, volume -0.6%, 533 runs
+#> Candidate NSE by window: calibration 0.976, validation 0.976
 plot(path)
 ```
 
@@ -438,3 +544,10 @@ Every plot here also draws in ggplot2: replace
 to get a ggplot to change or combine.
 [`pdm_save()`](https://jonpayneea.github.io/PDMS7/reference/pdm_save.md)
 writes any of them at report, slide or journal size.
+
+## References
+
+Larocque, M., Mangin, A., Razack, M. and Banton, O. (1998). Contribution
+of correlation and spectral analyses to the regional study of a large
+karst aquifer (Charente, France). *Journal of Hydrology*, 205(3-4),
+217-231. <doi:10.1016/S0022-1694(97)00155-8>.

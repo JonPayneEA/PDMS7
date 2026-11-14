@@ -33,7 +33,8 @@ calibrate_pdm(
   events = NULL,
   event_weights = c(nse = 1, peak = 0.5, timing = 0.5),
   event_share = 0.5,
-  event_screen = list()
+  event_screen = list(),
+  cores = getOption("pdmS7.cores", 1L)
 )
 ```
 
@@ -220,7 +221,14 @@ calibrate_pdm(
 
 - event_share:
 
-  Share of the events, largest observed peak first, that are scored.
+  Share of the events, largest observed peak first, that are scored. Or
+  a flow floor, so that every event whose observed peak reaches it is
+  scored: a marker of
+  [`flow_markers()`](https://jonpayneea.github.io/PDMS7/reference/flow_markers.md)
+  such as `"Q1"` or `"0.5QMED"`, worked out from `observed`, or
+  `c(peak = 12.5)` for a flow in m3/s. In a project, the name of a
+  registered threshold, or a multiple of one such as `"0.5QMED"`, uses
+  its registered flow.
 
 - event_screen:
 
@@ -228,6 +236,17 @@ calibrate_pdm(
   [`screen_events()`](https://jonpayneea.github.io/PDMS7/reference/screen_events.md),
   which leaves out events with a rise lost in the baseflow, more quick
   flow than rain, or gaps; `NULL` scores every event.
+
+- cores:
+
+  Number of R processes to run the starts in, side by side: the starts
+  are independent, so the result is the same as running them one after
+  another. Each process is a fresh R session (a socket cluster, which
+  works on Windows) and takes a few seconds to start, so more than one
+  core pays only for long records or large budgets. Defaults to the
+  `pdmS7.cores` option, which
+  [`calibrate_project()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_project.md)
+  sets from its own `cores`, or 1.
 
 ## Value
 

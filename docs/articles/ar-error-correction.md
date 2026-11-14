@@ -249,9 +249,9 @@ model’s own time to peak, from
 [`pdm_response_time()`](https://jonpayneea.github.io/PDMS7/reference/pdm_response_time.md),
 and the response time estimated from the records alone by
 [`response_time_dmca()`](https://jonpayneea.github.io/PDMS7/reference/response_time_dmca.md)
-([Events in large
-samples](https://jonpayneea.github.io/PDMS7/articles/events.md)). The
-second needs no model, but it measures the timescale of the fast
+([Many
+catchments](https://jonpayneea.github.io/PDMS7/articles/large-sample.html#events-across-a-sample)).
+The second needs no model, but it measures the timescale of the fast
 response, which is usually shorter than the time to peak. Two things
 decide between them: whether the set is stable, and whether it forecasts
 well.
@@ -327,8 +327,9 @@ sample <- synthetic_basins(basins, n = 8, years = 2, dt = 1, seed = 21)
 old <- options(pdmS7.user = "Ann Custodian", pdmS7.role = "custodian")
 limited <- identical(toupper(Sys.getenv("_R_CHECK_LIMIT_CORES_")), "TRUE")
 cores <- if (limited) 2L else min(4L, max(1L, parallel::detectCores() - 1L))
+# The made-up basins' rain is biased by a known factor, so the rainfall factor is searched.
 status <- calibrate_batch(basins, output, starts = 2, control = list(maxit = 30),
-                          cores = cores)
+                          overrides = list(fc = c(0.6, 1.6)), cores = cores)
 options(old)
 stable_set <- function(h) tryCatch(ar_from_response_time(h, 1), error = function(e) NULL)
 per_basin <- lapply(sample$basin, function(id) {
@@ -467,8 +468,8 @@ hindcast shows it helps.
 ``` r
 arma <- fit_error_updater(observed[calibration], simulated[calibration], order = c(2, 1))
 c(ar = round(arma$updater@ar, 3), ma = round(arma$updater@ma, 3))
-#>    ar1    ar2     ma 
-#>  1.251 -0.256  0.138
+#>   ar1   ar2    ma 
+#> 0.042 0.946 0.958
 ```
 
 ## Additive or log errors

@@ -1,4 +1,4 @@
-# Choosing a model structure
+# How the model structure is chosen
 
 The structure of a model, its soil store, recharge rule and routing, is
 a modelling decision like any other, and a reviewer may ask why this
@@ -8,11 +8,111 @@ better one.
 [`compare_structures()`](https://jonpayneea.github.io/PDMS7/reference/compare_structures.md)
 gives that answer, and logs it.
 
-This article compares eight structures on a synthetic catchment whose
-true structure is known, then carries the chosen one through validation
+This article first explains how
+[`recommend_structure()`](https://jonpayneea.github.io/PDMS7/reference/recommend_structure.md)
+chooses the soil store, recharge rule and groundwater store, step by
+step. It then compares eight structures on a synthetic catchment whose
+true structure is known, and carries the chosen one through validation
 and a final test. The [component
 guide](https://jonpayneea.github.io/PDMS7/articles/model-options.md)
-explains what each structure does.
+explains what each component does.
+
+## How the structure is chosen
+
+[`recommend_structure()`](https://jonpayneea.github.io/PDMS7/reference/recommend_structure.md)
+chooses the structure one component at a time, as a hydrologist would,
+and writes down why. `calibrate_project(recommend = TRUE)` calls it
+before the staged calibration. Each step changes one component and holds
+the others at what the steps before chose:
+
+| Step | Component               | Options compared                                        |
+|------|-------------------------|---------------------------------------------------------|
+| 1    | Recharge rule           | standard, split, demand                                 |
+| 2    | Soil store distribution | Pareto, rectangular, triangular, exponential, lognormal |
+| 3    | Groundwater store       | cubic, quadratic, linear, exponential                   |
+
+**Why this order.** It follows what a record can tell apart. On made-up
+catchments whose true structure is known ([What automatic calibration
+recovers](https://jonpayneea.github.io/PDMS7/articles/large-sample.md)),
+the recharge rule was identified every time, by margins of 0.08 or more
+in log NSE, and the groundwater store only by margins too small to
+trust. Deciding the clearest question first means the later, harder
+choices are made on a structure that is already right where the record
+can say so.
+
+**What each step does.** Every option is calibrated alike, by
+[`compare_structures()`](https://jonpayneea.github.io/PDMS7/reference/compare_structures.md):
+the same objective, starts, seed and iteration limit, bounds from
+[`calibration_bounds()`](https://jonpayneea.github.io/PDMS7/reference/calibration_bounds.md)
+for its own components, on the calibration window. Each is then scored
+on the validation window, which no calibration saw. One rule then makes
+the choice:
+
+1.  **Set aside any option bent to fit.** An option that ended with a
+    parameter at a bound of its search range is not describing the
+    catchment; the search pushed it as far as it could go. It is set
+    aside, unless every option did. (Split recharge cannot end at a
+    share of 0 or 1, which would switch a flow path off: its search
+    range is 0.05 to 0.95.)
+2.  **Find the equally good.** Every remaining option within the tie
+    tolerance of the best validation score counts as equally good: 0.02
+    in NSE unless the project registered another. A smaller difference
+    is a tie, not a result; another seed or another winter could reorder
+    them.
+3.  **Keep the current component if it is among them.** The record
+    cannot justify a change. This makes the recommendation conservative:
+    where the record is silent, as it usually is about the groundwater
+    store, the standard structure stays.
+4.  **Otherwise, break the tie on the floods.** Among the equally good,
+    the option with the smallest median peak error on the largest
+    validation events wins, then the one with fewer parameters.
+
+**An example.** On one catchment the groundwater step compared:
+
+| Option          | Parameters | Calibration NSE | Validation NSE |
+|-----------------|------------|-----------------|----------------|
+| exponential     | 8          | 0.9362          | 0.9172         |
+| quadratic       | 7          | 0.9387          | 0.9171         |
+| linear          | 7          | 0.9165          | 0.8923         |
+| cubic (current) | 7          | 0.8826          | 0.8369         |
+
+The exponential and quadratic stores are equally good, 0.0001 apart. The
+current cubic store is not among them, 0.08 behind, so rule 3 does not
+keep it. Rule 4 chose the exponential store for its smaller median peak
+error on the largest validation floods. Had their peak errors been
+equal, the quadratic store would have won on fewer parameters.
+
+Every comparison is logged, and each step’s choice and reason is written
+as a note, so the recommendation is part of the audit trail:
+
+``` r
+rec <- recommend_structure(project, reasoning = "First choice of structure.")
+rec                           # one line per step: choice and reason
+rec$steps$recharge$table      # the comparison, with at_bound and equally_good
+```
+
+**Zones, if asked.** With `zones = c(1, 2)` in
+[`calibrate_project()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_project.md),
+a fourth step compares the structure chosen as one zone with the same
+structure plus a small fast zone, by the same rule ([Choosing model
+components](https://jonpayneea.github.io/PDMS7/articles/model-options.html#several-zones);
+worked through in [The two-zone
+PDM](https://jonpayneea.github.io/PDMS7/articles/two-zone-pdm.md)). Use
+it where one PDM cannot give a sharp spike and a slower flood hydrograph
+at once: the signs are a split recharge share at its lower bound and
+surface stores at their caps in every fit.
+
+**What it does not choose.** The surface routing stays a cascade of two
+linear stores, the standard and almost always adequate. The groundwater
+extension is not tried automatically: it needs abstraction data or a
+reason to expect losses, and its parameters cannot be pinned down from
+flow alone. Add it to the configuration when the catchment calls for it
+([Choosing model
+components](https://jonpayneea.github.io/PDMS7/articles/model-options.html#the-groundwater-extension)).
+
+The rest of this article runs a full comparison by hand, on a made-up
+catchment, and carries the chosen structure through validation and a
+final test.
 
 ## The catchment
 
@@ -94,17 +194,19 @@ constant of 10 hours gets as much attention as one of 1,000.
 ``` r
 calibration_bounds(structures$lognormal)[, c("path", "lower", "upper", "scale")]
 #>                   path lower   upper  scale
-#> 1                   fc   0.6 1.6e+00 linear
-#> 2 distribution.meanlog   2.3 6.0e+00 linear
-#> 3   distribution.sdlog   0.1 2.0e+00 linear
-#> 4          recharge.kg   1.0 5.0e+03    log
-#> 5           surface.k1   0.5 7.2e+01    log
-#> 6           surface.k2   0.5 7.2e+01    log
-#> 7       groundwater.kb 100.0 1.0e+06    log
+#> 1 distribution.meanlog   2.3       6 linear
+#> 2   distribution.sdlog   0.1       2 linear
+#> 3          recharge.kg   1.0    5000    log
+#> 4           surface.k1   0.5      72    log
+#> 5           surface.k2   0.5      72    log
+#> 6       groundwater.kb 100.0 1000000    log
 ```
 
 Bounds can be overridden for a catchment you know, with `overrides`, or
-a parameter held fixed with `exclude`.
+a parameter held fixed with `exclude`. The rainfall factor `fc` is held
+at its configured value unless an override gives it bounds. This made-up
+catchment’s rain is known to be 10 per cent low, so the comparison below
+unlocks it.
 
 ## The comparison
 
@@ -115,21 +217,22 @@ turn.
 ``` r
 elapsed <- system.time(
   ranking <- compare_structures(project, structures, starts = 2, control = list(maxit = 30),
+                                overrides = list(fc = c(0.6, 1.6)),
                                 reasoning = "Which structure suits this catchment?")
 )[["elapsed"]]
 round(elapsed)
-#> [1] 34
+#> [1] 48
 ranking[, .(rank, structure, parameters, calibration = round(calibration, 4),
             validation = round(validation, 4), change = round(change, 4), starts_agree)]
 #>     rank               structure parameters calibration validation  change
 #>    <int>                  <char>      <int>       <num>      <num>   <num>
 #> 1:     1               lognormal          7      0.9962     0.9952 -0.0010
-#> 2:     2                   split          7      0.9861     0.9943  0.0082
+#> 2:     2                   split          7      0.9861     0.9942  0.0082
 #> 3:     3                standard          7      0.9958     0.9895 -0.0062
 #> 4:     4 exponential_groundwater          8      0.9957     0.9879 -0.0078
 #> 5:     5             rectangular          6      0.9950     0.9844 -0.0107
 #> 6:     6             exponential          6      0.9916     0.9795 -0.0121
-#> 7:     7                  demand          9      0.9453     0.9243 -0.0210
+#> 7:     7                  demand          9      0.9445     0.9276 -0.0169
 #> 8:     8              triangular          6      0.9198     0.8929 -0.0270
 #>    starts_agree
 #>          <lgcl>
@@ -165,7 +268,7 @@ on validation at the top.
 
 The true structure, `lognormal`, ranks first. It would be wrong to
 conclude much from that alone: 2 structures lie within 0.005 NSE of the
-top on validation, a spread of 9.2^{-4}. A difference that small is a
+top on validation, a spread of 9.7^{-4}. A difference that small is a
 tie, not a result; another seed or another few weeks of data could
 reorder them.
 
@@ -234,47 +337,6 @@ the mean of the two held-out scores. It doubles the cost.
 compare_structures(project, structures, starts = 4, cross_validate = TRUE, cores = 8,
                    reasoning = "Short record: rank on both held-out windows.")
 ```
-
-## One component at a time
-
-Comparing every combination of soil store, recharge rule and groundwater
-store means sixty calibrations.
-[`recommend_structure()`](https://jonpayneea.github.io/PDMS7/reference/recommend_structure.md)
-chooses one component at a time instead, the way a hydrologist would,
-and writes its reasons to the log as notes:
-
-``` r
-rec <- recommend_structure(project, reasoning = "First choice of structure.")
-rec
-rec$steps$recharge$table
-```
-
-The order follows what a record can tell apart. On made-up catchments
-([What limits automatic
-calibration](https://jonpayneea.github.io/PDMS7/articles/calibration-study.md))
-the recharge rule was identified every time, by margins of 0.08 or more
-in log NSE, and the groundwater store only by margins too small to
-trust. So the recharge rule comes first, then the soil store
-distribution, then the groundwater store, each step starting from the
-structure the step before chose.
-
-Each step compares its options with
-[`compare_structures()`](https://jonpayneea.github.io/PDMS7/reference/compare_structures.md)
-and chooses by one rule:
-
-1.  A structure that ended with a parameter at a bound of its search
-    range is set aside, as being bent to fit.
-2.  The rest are ranked on the validation window. Every structure within
-    the tie tolerance of the best (0.02 unless registered otherwise)
-    counts as equally good.
-3.  If the structure the step started from is among the equally good, it
-    is kept: the record cannot justify a change.
-4.  Otherwise the one with the smallest median peak error on the largest
-    validation events wins, then the one with fewer parameters.
-
-Rule 3 makes the recommendation conservative. Where the record is
-silent, as it usually is about the groundwater store, the standard
-structure stays, and the note says why.
 
 ## In the app and at scale
 

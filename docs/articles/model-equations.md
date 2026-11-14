@@ -132,6 +132,37 @@ Inflow is constant within an interval. The Smith recurrence is accurate
 only for steps up to about an hour; see [Choosing model
 components](https://jonpayneea.github.io/PDMS7/articles/model-options.md).
 
+### The groundwater extension
+
+For a linear, quadratic or cubic groundwater store $S$ with outflow
+$q = kS^{m}$ (Moore and Bell, 2002; PDM for PCs scientific guide,
+section 3 and Appendix B), the net input is recharge $d$ less
+abstraction,
+
+$$u = d - A,\qquad A = c_{A} + f_{A}A_{r},$$
+
+with $A_{r}$ the recorded abstraction rate. Without underflow, with
+$u < 0$ the store drains, and if it empties within the interval, flow
+ceases at
+
+$$T\prime = - \frac{1}{k}\ln\frac{u}{u - q}\ \text{(linear)},\qquad T\prime = \frac{1}{\sqrt{- ku}}\tan^{- 1}\sqrt{\frac{q}{- u}}\ \text{(quadratic)},\qquad T\prime = - \frac{\ln\left( 1 + \frac{3q}{u - q} \right)}{3kS^{2}}\ \text{(cubic, Smith)}$$
+
+(Eqs. B.1, B.3, B.5), after which $S$ falls by continuity, ending the
+interval at $u(\Delta t - T\prime)$. The cubic form is Smith’s, used
+with `solver = "smith"`; with the adaptive solver the cubic store
+integrates $dS/dt = u - kS^{3}$ to its tolerances through cessation.
+Below zero there is no outflow, and $S$ changes by continuity until
+recharge refills it; the rest of that interval is routed normally. With
+underflow $q_{u} = \left( S + D_{bu} \right)/k_{u}$ (Eq. 10) the store
+and both outlets are integrated together,
+$dS/dt = u - k\max(S,0)^{m} - q_{u}$ with $q_{u}$ zero at or below
+$S = - D_{bu}$, so each outlet stops at its own threshold within the
+interval. A share $\alpha_{b}$ of the outflow leaves as springs, so the
+baseflow at the outlet is $\left( 1 - \alpha_{b} \right)\, kS^{m}$. The
+storage deficit is $D = S_{max}^{b} - S$ mm, and the modelled well level
+$h_{w} - Y_{s}D$ m, where $Y_{s}$ is metres of water table per mm of
+deficit, $1/\left( 1000\, S_{y} \right)$ for a specific yield $S_{y}$.
+
 ### Delay and discharge
 
 After an outlet delay $t_{d}$ (fractional delays split water between
@@ -143,12 +174,47 @@ where $V$ are the routed depths in mm over the interval and $q_{c}$ is a
 constant external adjustment in m³/s that does not draw on the model’s
 stores.
 
+### Conventions of the implementation
+
+These are choices the published equations leave open, not departures
+from them.
+
+- **Evaporation before recharge.** Evaporation (Eq. 8) and recharge are
+  both requested from the soil storage at the start of the interval.
+  When the water available, storage plus corrected rain, cannot meet
+  both, evaporation is met first and recharge takes what remains:
+  $e = \min\left( e_{req},S + p \right)$ and
+  $d = \min\left( d_{req},\max(0,S + p - e) \right)$.
+- **Negative potential evaporation is condensation.** A negative PET
+  value joins the soil store at its full depth, however dry the soil, as
+  dew forms on surfaces whatever the soil moisture; Eq. 8’s
+  soil-moisture scaling applies only to positive PET.
+- **Fractional delays are discrete.** A delay of $t_{d}/\Delta t$
+  intervals that is not a whole number splits each interval’s water
+  between the two neighbouring whole-interval delays in proportion. This
+  conserves volume exactly but is a linear interpolation, not an exact
+  continuous time shift: a sharp peak is spread over two intervals.
+- **Interval mean and endpoint flow.** `q_m3s` is the mean discharge
+  over the interval, from the routed volumes. `q_end_m3s` is the
+  discharge at the end of the interval, from the store levels then (both
+  after the delay). The published endpoint routing equations, and any
+  comparison with an instantaneous gauged flow, should be checked
+  against `q_end_m3s`.
+- **Smith’s cubic step is approximate.** It linearises the outflow about
+  the storage at the start of the interval, and from an empty store
+  releases nothing in the first interval. It converges to the continuous
+  solution as the interval shrinks; the adaptive solver integrates the
+  continuous equation directly (see
+  [`?cubic_routing`](https://jonpayneea.github.io/PDMS7/reference/cubic_routing.md)).
+
 ### Water balance
 
-$$\epsilon = \text{old storage} + p - e - \text{natural outflow} - \text{new storage},$$
+$$\epsilon = \text{old storage} + p - e - \text{natural outflow} - \text{losses} - \text{new storage},$$
 
 with storage including the soil, routing stores and water in the delay
-queue. pdmS7 reports $\epsilon$ for every step; it is zero to rounding.
+queue, and losses the abstraction, underflow and springs of the
+groundwater extension (zero without it). pdmS7 reports $\epsilon$ for
+every step; it is zero to rounding.
 
 ### Forecast updating (Eq. 28-42)
 

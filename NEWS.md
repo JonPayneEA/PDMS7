@@ -1,10 +1,24 @@
-# pdmS7 (development version)
+# pdmS7 0.27.0
 
+- **The modelled well level was 1000 times too flat.** The depth to the water table is
+  `W = Ys D` in metres, with the deficit `D` in mm and `Ys` in m per mm (PDM for PCs `wellfac`),
+  as UKCEH's Table 3 values need: with `Ys` 0.0204 and `Smax_b` 1641 mm the well ranges over
+  33.5 m. The core divided by a further 1000, so the well moved by centimetres. Only the
+  `well_level_m` column changes; the flow does not. `Ys` is documented as the well factor,
+  `1 / (1000 Sy)` for a specific yield `Sy`, not as the specific yield itself.
+- **`fit_well_level()`** fits `ys` and `hw` to an observed well by least squares on the modelled
+  storage, after the flow is calibrated, with print and plot methods.
+- **Using the groundwater extension**, a new how-to article: when the extension is needed,
+  preparing abstraction and well records, setting it up, calibrating a made-up chalk
+  winterbourne with a known answer, checking the dry spells and the losses by route, and
+  fitting the well.
 - **Reading the response** gains comparisons over a year of rain: runoff ratio against soil
   wetness for every event; five soil stores scaled to the same quick flow, whose floods still
   differ; flow duration curves and the monthly baseflow index for each recharge rule; days to
   halve against flow; recessions from small and large floods overlaid; a fingerprint table of
   every option; and three mystery hydrographs as exercises.
+- **The website has a light switch** and opens in dark mode: navy for dark, warm cream for light.
+  Figures adapt to the mode.
 
 # pdmS7 0.26.0
 

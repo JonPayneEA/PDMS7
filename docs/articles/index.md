@@ -24,46 +24,46 @@
 
 - [Choosing model
   components](https://jonpayneea.github.io/PDMS7/articles/model-options.md):
+- [Reading the response: what each model option does to the
+  flow](https://jonpayneea.github.io/PDMS7/articles/reading-responses.md):
+- [Using the groundwater extension: abstraction, losses and
+  wells](https://jonpayneea.github.io/PDMS7/articles/groundwater-extension.md):
+- [The two-zone PDM: a fast zone for flashy
+  catchments](https://jonpayneea.github.io/PDMS7/articles/two-zone-pdm.md):
 - [Starting a run: cold, warm and
   hot](https://jonpayneea.github.io/PDMS7/articles/starting-states.md):
 
 ### Calibration
 
-- [Automatic calibration from start to
+- [Calibrating a catchment from start to
   finish](https://jonpayneea.github.io/PDMS7/articles/calibration-journey.md):
-- [Checking the data and the
-  events](https://jonpayneea.github.io/PDMS7/articles/checks.md):
-- [Calibration: multi-start, budgets and staged
-  calibration](https://jonpayneea.github.io/PDMS7/articles/calibration.md):
+- [How automatic calibration
+  works](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.md):
+- [How the model structure is
+  chosen](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.md):
 - [Getting the floods
   right](https://jonpayneea.github.io/PDMS7/articles/floods.md):
 - [Tailoring calibration to the largest events in the
   app](https://jonpayneea.github.io/PDMS7/articles/app-events.md):
+- [Checking the data and the
+  events](https://jonpayneea.github.io/PDMS7/articles/checks.md):
 - [Catchment rainfall from gauges and
   radar](https://jonpayneea.github.io/PDMS7/articles/rainfall.md):
-- [Automatic calibration,
-  explained](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.md):
 - [Scoring a simulation: from NSE to POD, FAR and
   CSI](https://jonpayneea.github.io/PDMS7/articles/scoring.md):
-- [Choosing a model
-  structure](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.md):
+- [Comparing calibrations and PDM for PCs
+  files](https://jonpayneea.github.io/PDMS7/articles/comparing-calibrations.md):
 - [Larger floods: extrapolation and the
   rating](https://jonpayneea.github.io/PDMS7/articles/extrapolation.md):
 - [Calibrating many
   catchments](https://jonpayneea.github.io/PDMS7/articles/many-catchments.md):
-- [A large sample: what automatic calibration
-  recovers](https://jonpayneea.github.io/PDMS7/articles/large-sample.md):
-- [What limits automatic calibration: a
-  study](https://jonpayneea.github.io/PDMS7/articles/calibration-study.md):
-- [Events in large samples: finding them and scoring models on
-  them](https://jonpayneea.github.io/PDMS7/articles/events.md):
+- [Many catchments: what automatic calibration recovers, and what limits
+  it](https://jonpayneea.github.io/PDMS7/articles/large-sample.md):
 
 ### Records and review
 
-- [Logging a manual
-  calibration](https://jonpayneea.github.io/PDMS7/articles/calibration-log.md):
-- [Inside the logs: projects, entries, checksums and the run
-  log](https://jonpayneea.github.io/PDMS7/articles/log-structure.md):
+- [Calibration records: logging a calibration, and what the logs
+  hold](https://jonpayneea.github.io/PDMS7/articles/calibration-log.md):
 - [Reviewing a calibration: a Steward's
   guide](https://jonpayneea.github.io/PDMS7/articles/steward-guide.md):
 

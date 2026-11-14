@@ -126,7 +126,7 @@ pdm_step <- function(model, state, rain, pet, abstraction = 0) {
     flux$underflow_mm <- ground$underflow
     flux$spring_mm <- ground$spring
     flux$groundwater_deficit_mm <- ground$deficit
-    flux$well_level_m <- if (g@ys > 0) g@hw - g@ys * ground$deficit / 1000 else NA_real_
+    flux$well_level_m <- if (g@ys > 0) g@hw - g@ys * ground$deficit else NA_real_
   }
   list(state = next_state, flux = flux)
 }

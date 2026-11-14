@@ -6,21 +6,21 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <title>Model equations • pdmS7</title>
-<script src="../deps/jquery-3.6.1/jquery-3.6.1.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.1/jquery-3.6.1.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.4.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.4.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Model equations">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><script src="../extra.js"></script><meta property="og:title" content="Model equations">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
-    <nav class="navbar navbar-expand-lg fixed-top bg-light" data-bs-theme="light" aria-label="Site navigation"><div class="container">
+    <nav class="navbar navbar-expand-lg fixed-top " aria-label="Site navigation"><div class="container">
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.17.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.27.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -47,27 +47,27 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Model options</h6></li>
     <li><a class="dropdown-item" href="../articles/model-options.html">Choosing model components</a></li>
+    <li><a class="dropdown-item" href="../articles/reading-responses.html">Reading the response: what each model option does to the flow</a></li>
+    <li><a class="dropdown-item" href="../articles/groundwater-extension.html">Using the groundwater extension: abstraction, losses and wells</a></li>
+    <li><a class="dropdown-item" href="../articles/two-zone-pdm.html">The two-zone PDM: a fast zone for flashy catchments</a></li>
     <li><a class="dropdown-item" href="../articles/starting-states.html">Starting a run: cold, warm and hot</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Calibration</h6></li>
-    <li><a class="dropdown-item" href="../articles/calibration-journey.html">Automatic calibration from start to finish</a></li>
-    <li><a class="dropdown-item" href="../articles/checks.html">Checking the data and the events</a></li>
-    <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: multi-start, budgets and staged calibration</a></li>
+    <li><a class="dropdown-item" href="../articles/calibration-journey.html">Calibrating a catchment from start to finish</a></li>
+    <li><a class="dropdown-item" href="../articles/auto-calibration.html">How automatic calibration works</a></li>
+    <li><a class="dropdown-item" href="../articles/choosing-structure.html">How the model structure is chosen</a></li>
     <li><a class="dropdown-item" href="../articles/floods.html">Getting the floods right</a></li>
     <li><a class="dropdown-item" href="../articles/app-events.html">Tailoring calibration to the largest events in the app</a></li>
+    <li><a class="dropdown-item" href="../articles/checks.html">Checking the data and the events</a></li>
     <li><a class="dropdown-item" href="../articles/rainfall.html">Catchment rainfall from gauges and radar</a></li>
-    <li><a class="dropdown-item" href="../articles/auto-calibration.html">Automatic calibration, explained</a></li>
     <li><a class="dropdown-item" href="../articles/scoring.html">Scoring a simulation: from NSE to POD, FAR and CSI</a></li>
-    <li><a class="dropdown-item" href="../articles/choosing-structure.html">Choosing a model structure</a></li>
+    <li><a class="dropdown-item" href="../articles/comparing-calibrations.html">Comparing calibrations and PDM for PCs files</a></li>
     <li><a class="dropdown-item" href="../articles/extrapolation.html">Larger floods: extrapolation and the rating</a></li>
     <li><a class="dropdown-item" href="../articles/many-catchments.html">Calibrating many catchments</a></li>
-    <li><a class="dropdown-item" href="../articles/large-sample.html">A large sample: what automatic calibration recovers</a></li>
-    <li><a class="dropdown-item" href="../articles/calibration-study.html">What limits automatic calibration: a study</a></li>
-    <li><a class="dropdown-item" href="../articles/events.html">Events in large samples: finding them and scoring models on them</a></li>
+    <li><a class="dropdown-item" href="../articles/large-sample.html">Many catchments: what automatic calibration recovers, and what limits it</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Records and review</h6></li>
-    <li><a class="dropdown-item" href="../articles/calibration-log.html">Logging a manual calibration</a></li>
-    <li><a class="dropdown-item" href="../articles/log-structure.html">Inside the logs: projects, entries, checksums and the run log</a></li>
+    <li><a class="dropdown-item" href="../articles/calibration-log.html">Calibration records: logging a calibration, and what the logs hold</a></li>
     <li><a class="dropdown-item" href="../articles/steward-guide.html">Reviewing a calibration: a Steward's guide</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Forecasting</h6></li>
@@ -107,6 +107,14 @@
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json">
 </form></li>
 <li class="nav-item"><a class="external-link nav-link" href="https://github.com/JonPayneEA/PDMS7" aria-label="GitHub"><span class="fa fa-github"></span></a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-lightswitch" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true" aria-label="Light switch"><span class="fa fa-sun"></span></button>
+  <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdown-lightswitch">
+<li><button class="dropdown-item" data-bs-theme-value="light"><span class="fa fa-sun"></span> Light</button></li>
+    <li><button class="dropdown-item" data-bs-theme-value="dark"><span class="fa fa-moon"></span> Dark</button></li>
+    <li><button class="dropdown-item" data-bs-theme-value="auto"><span class="fa fa-adjust"></span> Auto</button></li>
+  </ul>
+</li>
       </ul>
 </div>
 
@@ -119,8 +127,7 @@
 
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
-
-      <h1>Model equations</h1>
+      <img src="../logo.png" class="logo" alt=""><h1>Model equations</h1>
                         <h4 data-toc-skip class="author">pdmS7
 documentation</h4>
             
@@ -424,6 +431,60 @@ is a signed log-storage coordinate, not a tank</td>
 accurate only for steps up to about an hour; see <a href="model-options.html">Choosing model components</a>.</p>
 </div>
 <div class="section level3">
+<h3 id="the-groundwater-extension">The groundwater extension<a class="anchor" aria-label="anchor" href="#the-groundwater-extension"></a>
+</h3>
+<p>For a linear, quadratic or cubic groundwater store
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>S</mi><annotation encoding="application/x-tex">S</annotation></semantics></math>
+with outflow
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>q</mi><mo>=</mo><mi>k</mi><msup><mi>S</mi><mi>m</mi></msup></mrow><annotation encoding="application/x-tex">q=kS^m</annotation></semantics></math>
+(Moore and Bell, 2002; PDM for PCs scientific guide, section 3 and
+Appendix B), the net input is recharge
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>d</mi><annotation encoding="application/x-tex">d</annotation></semantics></math>
+less abstraction,</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>u</mi><mo>=</mo><mi>d</mi><mo>−</mo><mi>A</mi><mo>,</mo><mspace width="2.0em"></mspace><mi>A</mi><mo>=</mo><msub><mi>c</mi><mi>A</mi></msub><mo>+</mo><msub><mi>f</mi><mi>A</mi></msub><msub><mi>A</mi><mi>r</mi></msub><mo>,</mo></mrow><annotation encoding="application/x-tex">u=d-A,\qquad A=c_A+f_A A_r,</annotation></semantics></math></p>
+<p>with
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>A</mi><mi>r</mi></msub><annotation encoding="application/x-tex">A_r</annotation></semantics></math>
+the recorded abstraction rate. Without underflow, with
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>u</mi><mo>&lt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">u&lt;0</annotation></semantics></math>
+the store drains, and if it empties within the interval, flow ceases
+at</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>T</mi><mi>′</mi><mo>=</mo><mo>−</mo><mfrac><mn>1</mn><mi>k</mi></mfrac><mo>ln</mo><mfrac><mi>u</mi><mrow><mi>u</mi><mo>−</mo><mi>q</mi></mrow></mfrac><mspace width="0.222em"></mspace><mtext mathvariant="normal">(linear)</mtext><mo>,</mo><mspace width="2.0em"></mspace><mi>T</mi><mi>′</mi><mo>=</mo><mfrac><mn>1</mn><msqrt><mrow><mo>−</mo><mi>k</mi><mi>u</mi></mrow></msqrt></mfrac><msup><mo>tan</mo><mrow><mo>−</mo><mn>1</mn></mrow></msup><msqrt><mfrac><mi>q</mi><mrow><mo>−</mo><mi>u</mi></mrow></mfrac></msqrt><mspace width="0.222em"></mspace><mtext mathvariant="normal">(quadratic)</mtext><mo>,</mo><mspace width="2.0em"></mspace><mi>T</mi><mi>′</mi><mo>=</mo><mo>−</mo><mfrac><mrow><mo>ln</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>+</mo><mfrac><mrow><mn>3</mn><mi>q</mi></mrow><mrow><mi>u</mi><mo>−</mo><mi>q</mi></mrow></mfrac><mo stretchy="true" form="postfix">)</mo></mrow></mrow><mrow><mn>3</mn><mi>k</mi><msup><mi>S</mi><mn>2</mn></msup></mrow></mfrac><mspace width="0.222em"></mspace><mtext mathvariant="normal">(cubic, Smith)</mtext></mrow><annotation encoding="application/x-tex">T'=-\frac{1}{k}\ln\frac{u}{u-q}\ \text{(linear)},\qquad
+T'=\frac{1}{\sqrt{-ku}}\tan^{-1}\sqrt{\frac{q}{-u}}\ \text{(quadratic)},\qquad
+T'=-\frac{\ln\left(1+\frac{3q}{u-q}\right)}{3kS^2}\ \text{(cubic, Smith)}</annotation></semantics></math></p>
+<p>(Eqs. B.1, B.3, B.5), after which
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>S</mi><annotation encoding="application/x-tex">S</annotation></semantics></math>
+falls by continuity, ending the interval at
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>u</mi><mrow><mo stretchy="true" form="prefix">(</mo><mi>Δ</mi><mi>t</mi><mo>−</mo><mi>T</mi><mi>′</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">u(\Delta t-T')</annotation></semantics></math>.
+The cubic form is Smith’s, used with <code>solver = "smith"</code>; with
+the adaptive solver the cubic store integrates
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mi>S</mi><mi>/</mi><mi>d</mi><mi>t</mi><mo>=</mo><mi>u</mi><mo>−</mo><mi>k</mi><msup><mi>S</mi><mn>3</mn></msup></mrow><annotation encoding="application/x-tex">dS/dt=u-kS^3</annotation></semantics></math>
+to its tolerances through cessation. Below zero there is no outflow, and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>S</mi><annotation encoding="application/x-tex">S</annotation></semantics></math>
+changes by continuity until recharge refills it; the rest of that
+interval is routed normally. With underflow
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>q</mi><mi>u</mi></msub><mo>=</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>S</mi><mo>+</mo><msub><mi>D</mi><mrow><mi>b</mi><mi>u</mi></mrow></msub><mo stretchy="true" form="postfix">)</mo></mrow><mi>/</mi><msub><mi>k</mi><mi>u</mi></msub></mrow><annotation encoding="application/x-tex">q_u=(S+D_{bu})/k_u</annotation></semantics></math>
+(Eq. 10) the store and both outlets are integrated together,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mi>S</mi><mi>/</mi><mi>d</mi><mi>t</mi><mo>=</mo><mi>u</mi><mo>−</mo><mi>k</mi><mo>max</mo><msup><mrow><mo stretchy="true" form="prefix">(</mo><mi>S</mi><mo>,</mo><mn>0</mn><mo stretchy="true" form="postfix">)</mo></mrow><mi>m</mi></msup><mo>−</mo><msub><mi>q</mi><mi>u</mi></msub></mrow><annotation encoding="application/x-tex">dS/dt=u-k\max(S,0)^m-q_u</annotation></semantics></math>
+with
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>q</mi><mi>u</mi></msub><annotation encoding="application/x-tex">q_u</annotation></semantics></math>
+zero at or below
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mo>=</mo><mo>−</mo><msub><mi>D</mi><mrow><mi>b</mi><mi>u</mi></mrow></msub></mrow><annotation encoding="application/x-tex">S=-D_{bu}</annotation></semantics></math>,
+so each outlet stops at its own threshold within the interval. A share
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>α</mi><mi>b</mi></msub><annotation encoding="application/x-tex">\alpha_b</annotation></semantics></math>
+of the outflow leaves as springs, so the baseflow at the outlet is
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mo stretchy="true" form="prefix">(</mo><mn>1</mn><mo>−</mo><msub><mi>α</mi><mi>b</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow><mspace width="0.167em"></mspace><mi>k</mi><msup><mi>S</mi><mi>m</mi></msup></mrow><annotation encoding="application/x-tex">(1-\alpha_b)\,kS^m</annotation></semantics></math>.
+The storage deficit is
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>D</mi><mo>=</mo><msubsup><mi>S</mi><mrow><mi>m</mi><mi>a</mi><mi>x</mi></mrow><mi>b</mi></msubsup><mo>−</mo><mi>S</mi></mrow><annotation encoding="application/x-tex">D=S^b_{max}-S</annotation></semantics></math>
+mm, and the modelled well level
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>h</mi><mi>w</mi></msub><mo>−</mo><msub><mi>Y</mi><mi>s</mi></msub><mi>D</mi></mrow><annotation encoding="application/x-tex">h_w-Y_sD</annotation></semantics></math>
+m, where
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>Y</mi><mi>s</mi></msub><annotation encoding="application/x-tex">Y_s</annotation></semantics></math>
+is metres of water table per mm of deficit,
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mn>1</mn><mi>/</mi><mrow><mo stretchy="true" form="prefix">(</mo><mn>1000</mn><mspace width="0.167em"></mspace><msub><mi>S</mi><mi>y</mi></msub><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">1/(1000\,S_y)</annotation></semantics></math>
+for a specific yield
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>S</mi><mi>y</mi></msub><annotation encoding="application/x-tex">S_y</annotation></semantics></math>.</p>
+</div>
+<div class="section level3">
 <h3 id="delay-and-discharge">Delay and discharge<a class="anchor" aria-label="anchor" href="#delay-and-discharge"></a>
 </h3>
 <p>After an outlet delay
@@ -439,11 +500,55 @@ is a constant external adjustment in m³/s that does not draw on the
 model’s stores.</p>
 </div>
 <div class="section level3">
+<h3 id="conventions-of-the-implementation">Conventions of the implementation<a class="anchor" aria-label="anchor" href="#conventions-of-the-implementation"></a>
+</h3>
+<p>These are choices the published equations leave open, not departures
+from them.</p>
+<ul>
+<li>
+<strong>Evaporation before recharge.</strong> Evaporation (Eq. 8)
+and recharge are both requested from the soil storage at the start of
+the interval. When the water available, storage plus corrected rain,
+cannot meet both, evaporation is met first and recharge takes what
+remains:
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>e</mi><mo>=</mo><mo>min</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>e</mi><mrow><mi mathvariant="normal">r</mi><mi mathvariant="normal">e</mi><mi mathvariant="normal">q</mi></mrow></msub><mo>,</mo><mi>S</mi><mo>+</mo><mi>p</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">e=\min(e_{\mathrm{req}},S+p)</annotation></semantics></math>
+and
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><mo>=</mo><mo>min</mo><mrow><mo stretchy="true" form="prefix">(</mo><msub><mi>d</mi><mrow><mi mathvariant="normal">r</mi><mi mathvariant="normal">e</mi><mi mathvariant="normal">q</mi></mrow></msub><mo>,</mo><mo>max</mo><mrow><mo stretchy="true" form="prefix">(</mo><mn>0</mn><mo>,</mo><mi>S</mi><mo>+</mo><mi>p</mi><mo>−</mo><mi>e</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">d=\min(d_{\mathrm{req}},\max(0,S+p-e))</annotation></semantics></math>.</li>
+<li>
+<strong>Negative potential evaporation is condensation.</strong> A
+negative PET value joins the soil store at its full depth, however dry
+the soil, as dew forms on surfaces whatever the soil moisture; Eq. 8’s
+soil-moisture scaling applies only to positive PET.</li>
+<li>
+<strong>Fractional delays are discrete.</strong> A delay of
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>t</mi><mi>d</mi></msub><mi>/</mi><mi>Δ</mi><mi>t</mi></mrow><annotation encoding="application/x-tex">t_d/\Delta t</annotation></semantics></math>
+intervals that is not a whole number splits each interval’s water
+between the two neighbouring whole-interval delays in proportion. This
+conserves volume exactly but is a linear interpolation, not an exact
+continuous time shift: a sharp peak is spread over two intervals.</li>
+<li>
+<strong>Interval mean and endpoint flow.</strong> <code>q_m3s</code>
+is the mean discharge over the interval, from the routed volumes.
+<code>q_end_m3s</code> is the discharge at the end of the interval, from
+the store levels then (both after the delay). The published endpoint
+routing equations, and any comparison with an instantaneous gauged flow,
+should be checked against <code>q_end_m3s</code>.</li>
+<li>
+<strong>Smith’s cubic step is approximate.</strong> It linearises
+the outflow about the storage at the start of the interval, and from an
+empty store releases nothing in the first interval. It converges to the
+continuous solution as the interval shrinks; the adaptive solver
+integrates the continuous equation directly (see
+<code><a href="../reference/cubic_routing.html">?cubic_routing</a></code>).</li>
+</ul>
+</div>
+<div class="section level3">
 <h3 id="water-balance">Water balance<a class="anchor" aria-label="anchor" href="#water-balance"></a>
 </h3>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ϵ</mi><mo>=</mo><mtext mathvariant="normal">old storage</mtext><mo>+</mo><mi>p</mi><mo>−</mo><mi>e</mi><mo>−</mo><mtext mathvariant="normal">natural outflow</mtext><mo>−</mo><mtext mathvariant="normal">new storage</mtext><mo>,</mo></mrow><annotation encoding="application/x-tex">\epsilon=\text{old storage}+p-e-\text{natural outflow}-\text{new storage},</annotation></semantics></math></p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>ϵ</mi><mo>=</mo><mtext mathvariant="normal">old storage</mtext><mo>+</mo><mi>p</mi><mo>−</mo><mi>e</mi><mo>−</mo><mtext mathvariant="normal">natural outflow</mtext><mo>−</mo><mtext mathvariant="normal">losses</mtext><mo>−</mo><mtext mathvariant="normal">new storage</mtext><mo>,</mo></mrow><annotation encoding="application/x-tex">\epsilon=\text{old storage}+p-e-\text{natural outflow}-\text{losses}-\text{new storage},</annotation></semantics></math></p>
 <p>with storage including the soil, routing stores and water in the
-delay queue. pdmS7 reports
+delay queue, and losses the abstraction, underflow and springs of the
+groundwater extension (zero without it). pdmS7 reports
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>ϵ</mi><annotation encoding="application/x-tex">\epsilon</annotation></semantics></math>
 for every step; it is zero to rounding.</p>
 </div>

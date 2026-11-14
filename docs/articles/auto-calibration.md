@@ -1,4 +1,4 @@
-# Automatic calibration, explained
+# How automatic calibration works
 
 Automatic calibration means letting the computer try parameter values
 until the simulated flow matches the measured flow as well as it can.
@@ -15,11 +15,15 @@ point of a landscape in thick fog:
 - **what “low” means** is the *objective*: the score being minimised,
   such as 1 - NSE.
 
-This article takes each in turn, in plain terms, with an example. How
-many starting points to use and how long a calibration takes are covered
-in
-[Calibration](https://jonpayneea.github.io/PDMS7/articles/calibration.md);
-the scores themselves in [Scoring a
+This article takes each in turn, in plain terms, with an example: then
+how many starts to use and what a calibration costs, staged calibration,
+calibrating for floods, and how the final candidate is chosen.
+[Calibrating a catchment from start to
+finish](https://jonpayneea.github.io/PDMS7/articles/calibration-journey.md)
+runs all of it in one call; [How the model structure is
+chosen](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.md)
+covers the choice of soil store, recharge and groundwater; the scores
+themselves are in [Scoring a
 simulation](https://jonpayneea.github.io/PDMS7/articles/scoring.md).
 
 The examples use a made-up catchment whose true parameters we know, with
@@ -72,25 +76,34 @@ comes with the package:
 ``` r
 show_bounds(calibration_bounds(pdm_presets("standard")), note = TRUE)
 #>                path lower   upper  scale
-#> 1                fc   0.6     1.6 linear
-#> 2 distribution.cmax    20     800 linear
-#> 3    distribution.b  0.05       2 linear
-#> 4       recharge.kg     1    5000    log
-#> 5        surface.k1   0.5      72    log
-#> 6        surface.k2   0.5      72    log
-#> 7    groundwater.kb   100 1000000    log
-#>                                                                                note
-#> 1 Rainfall factor; outside this range question the rain gauge rather than the model
-#> 2                                                       Maximum store capacity (mm)
-#> 3                                       Shape: low values give a near-uniform store
-#> 4                             Recharge time constant (h); spans orders of magnitude
-#> 5                                              Time constant of the first store (h)
-#> 6                                             Time constant of the second store (h)
-#> 7                                                              Cubic store constant
+#> 1 distribution.cmax    20     800 linear
+#> 2    distribution.b  0.05       2 linear
+#> 3       recharge.kg     1    5000    log
+#> 4        surface.k1   0.5      72    log
+#> 5        surface.k2   0.5      72    log
+#> 6    groundwater.kb   100 1000000    log
+#>                                                    note
+#> 1                           Maximum store capacity (mm)
+#> 2           Shape: low values give a near-uniform store
+#> 3 Recharge time constant (h); spans orders of magnitude
+#> 4                  Time constant of the first store (h)
+#> 5                 Time constant of the second store (h)
+#> 6                                  Cubic store constant
 ```
 
-If you know a catchment, move any fence, add a parameter to calibrate,
-or hold one fixed at its current value:
+Two defaults guard against fits that look good for the wrong reasons. A
+split recharge’s share `recharge.alpha` is searched between 0.05 and
+0.95, never at 0 or 1, where one flow path would be switched off. And
+one parameter is missing on purpose: the rainfall factor `fc`. It is
+locked at its value in the configuration, 1 unless you change it. A
+calibrated factor soaks up whatever was wrong with the rainfall totals
+in the calibration years, and then carries that correction into
+operation, where the rain may come from other gauges or another radar
+product and need none. Unlock it only when you know the rainfall’s bias
+and trust it to stay put, by giving it bounds.
+
+If you know a catchment, move any fence, add a parameter to calibrate
+(the rainfall factor here), or lock one at its current value:
 
 ``` r
 b <- calibration_bounds(pdm_presets("standard"),
@@ -156,7 +169,7 @@ data.frame(scale = c("even", "log"),
            model_runs = c(sum(even_fit$start_results$evaluations),
                           sum(log_fit$start_results$evaluations)))
 #>   scale     kg model_runs
-#> 1  even 555.16         33
+#> 1  even 555.16         78
 #> 2   log  40.00         33
 ```
 
@@ -177,10 +190,11 @@ list them in `log_scale`.
 [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md)
 has two ways of moving through the fog.
 
-| Method                 | How it moves                                                                               | Good for                                   | Cost                          |
-|------------------------|--------------------------------------------------------------------------------------------|--------------------------------------------|-------------------------------|
-| `lbfgsb` (the default) | Feels which way the ground slopes and steps downhill                                       | Smooth scores: NSE, RMSE, log RMSE         | Fewest model runs             |
-| `nelder_mead`          | Keeps a small group of points, compares their scores, and moves the group towards the best | Scores with sudden jumps or flat stretches | Several times more model runs |
+| Method                 | How it moves                                                                                             | Good for                                              | Cost                           |
+|------------------------|----------------------------------------------------------------------------------------------------------|-------------------------------------------------------|--------------------------------|
+| `lbfgsb` (the default) | Feels which way the ground slopes and steps downhill                                                     | Smooth scores: NSE, RMSE, log RMSE                    | Fewest model runs              |
+| `nelder_mead`          | Keeps a small group of points, compares their scores, and moves the group towards the best               | Scores with sudden jumps or flat stretches            | Several times more model runs  |
+| `dds`                  | Perturbs a shrinking random subset of parameters from the best point so far (Tolson and Shoemaker, 2007) | Many parameters, rough scores, a fixed budget of runs | Exactly `maxit` runs per start |
 
 Which one to use depends on the shape of the ground. Most scores are
 like a smooth hillside: change a parameter a little and the score
@@ -226,6 +240,149 @@ The comparing method does not need slopes. It looks at the scores of a
 few points spread around, and moves towards the best of them, so it can
 walk across a flat step to the next one down. pdmS7 keeps every point it
 tries inside the fences.
+
+## Several starts
+
+A search that feels for the slope stops at the first dip it reaches,
+which need not be the deepest. The two time constants of the surface
+cascade, `k1` and `k2`, show it plainly: a cascade of two linear stores
+gives exactly the same outflow with the two constants swapped, so the
+score has two equally good lowest points, mirror images about the
+diagonal.
+
+``` r
+set.seed(11)
+ms_n <- 24 * 90
+ms_forcing <- data.frame(
+  rain = ifelse(stats::runif(ms_n) < 0.06, stats::rgamma(ms_n, 0.7, scale = 4), 0),
+  pet = 0.08
+)
+ms_truth <- pdm_presets("standard")
+ms_truth$area_km2 <- 50
+ms_truth$surface$k1 <- 3
+ms_truth$surface$k2 <- 12
+ms_truth$recharge$kg <- 400
+ms_model <- pdm_from_config(ms_truth)
+ms_observed <- run_pdm(ms_model, ms_forcing, initial_state_from_flow(ms_model, 1, 0.7))$output$q_m3s *
+  exp(stats::rnorm(ms_n, 0, 0.05))
+```
+
+Both constants are searched between 0.5 and 30 hours, from
+`k1 = k2 = 15`, which lies on the diagonal, with nine further random
+starts:
+
+``` r
+ms_config <- ms_truth
+ms_config$surface$k1 <- 15
+ms_config$surface$k2 <- 15
+ms_lower <- c(surface.k1 = 0.5, surface.k2 = 0.5)
+ms_upper <- c(surface.k1 = 30, surface.k2 = 30)
+ms_fit <- calibrate_pdm(ms_config, ms_forcing, ms_observed, ms_lower, ms_upper,
+                        objective = "nse", starts = 10L, seed = 2, control = list(maxit = 60))
+ms_fit$start_results
+#>     start  objective convergence evaluations   best surface.k1 surface.k2
+#>     <int>      <num>       <int>       <int> <lgcl>      <num>      <num>
+#>  1:     1 0.03259536           0          50  FALSE   6.817050   6.817050
+#>  2:     2 0.03122871           0          60  FALSE   3.049018  11.935294
+#>  3:     3 0.03122871           0          60  FALSE  11.935286   3.049017
+#>  4:     4 0.03122871           0         175  FALSE  11.935256   3.049026
+#>  5:     5 0.03122871           0          70  FALSE   3.049015  11.935297
+#>  6:     6 0.03122871           0          90  FALSE   3.049013  11.935293
+#>  7:     7 0.03122871           0          50  FALSE  11.935310   3.049015
+#>  8:     8 0.03122871           0          60   TRUE  11.935333   3.048998
+#>  9:     9 0.03122871           0          85  FALSE   3.049021  11.935290
+#> 10:    10 0.03122871           0          75  FALSE  11.935306   3.049015
+```
+
+``` r
+grid <- seq(0.5, 30, length.out = 40)
+ms_loss <- function(k1, k2) {
+  cfg <- ms_config
+  cfg$surface$k1 <- k1
+  cfg$surface$k2 <- k2
+  model <- pdm_from_config(cfg)
+  # calibrate_pdm() starts every evaluation in steady state at the first observed flow; so does
+  # this.
+  sim <- run_pdm(model, ms_forcing,
+                 initial_state_from_flow(model, ms_observed[1], 0.7))$output$q_m3s
+  sum((sim - ms_observed)^2) / sum((ms_observed - mean(ms_observed))^2)
+}
+ms_surface <- outer(grid, grid, Vectorize(ms_loss))
+set.seed(2)
+unit <- rbind(c(14.5, 14.5) / 29.5, t(replicate(9, stats::runif(2))))
+start_points <- 0.5 + unit * 29.5
+tab <- ms_fit$start_results
+par(mfrow = c(1, 2), mar = c(4, 4, 2, 1), cex.main = 0.95)
+contour(grid, grid, log10(ms_surface), nlevels = 14, col = "grey55", drawlabels = FALSE,
+        xlab = "k1 (hours)", ylab = "k2 (hours)", main = "Objective surface and start paths")
+arrows(start_points[, 1], start_points[, 2], tab$surface.k1, tab$surface.k2,
+       length = 0.06, col = pal[1], lwd = 1.3)
+points(start_points, pch = 1, col = pal[2])
+points(tab$surface.k1, tab$surface.k2, pch = 16, col = pal[1])
+points(c(3, 12), c(12, 3), pch = 4, cex = 1.6, lwd = 2, col = pal[4])
+plot(tab$start, tab$objective, pch = ifelse(tab$best, 16, 1), col = pal[1], cex = 1.3,
+     xlab = "Start", ylab = "Final 1 - NSE", main = "Final objective of each start")
+```
+
+![Left: contours of 1 - NSE over the two time constants, with each
+start's path from its starting point (open circle) to where it stopped
+(filled circle). Crosses mark the two true optima. Right: the final
+objective of each start; the filled point is the start
+returned.](auto-calibration_files/figure-html/starts-surface-1.png)
+
+Left: contours of 1 - NSE over the two time constants, with each start’s
+path from its starting point (open circle) to where it stopped (filled
+circle). Crosses mark the two true optima. Right: the final objective of
+each start; the filled point is the start returned.
+
+Start 1, the configured point, slid along the diagonal and stopped at a
+saddle where `k1 = k2`: on the diagonal the slope points along it, not
+off it, so the search cannot see the better valleys either side. The
+random starts found one of the two true optima. A single start from this
+configuration would have stopped at the saddle with no warning.
+
+`start_results` shows whether the starts agree:
+
+| Column                   | Meaning                                                                                  |
+|--------------------------|------------------------------------------------------------------------------------------|
+| `objective`              | Final objective of the start; for NSE, 1 - NSE                                           |
+| `convergence`            | 0 normal; 1 iteration limit reached; 51 or 52 line search could make no further progress |
+| `evaluations`            | Model runs used, including the gradient calls `optim` leaves out of its own count        |
+| `best`                   | The start returned                                                                       |
+| One column per parameter | Where the start ended                                                                    |
+
+- **Starts agree on objective and parameters:** a well-defined optimum;
+  fewer starts would do.
+- **Starts agree on objective but not parameters,** as here: the data
+  cannot separate the parameters. Fix one or narrow the bounds.
+- **Starts disagree on objective:** several dips. Keep enough starts to
+  find the deepest reliably.
+
+### What a calibration costs
+
+    basins x starts x model runs per start x seconds per run / cores
+
+Model runs per start depend on the number of parameters, the bounds and
+the catchment. Measure them on a pilot before committing compute:
+`inst/examples/pilot_calibration.R` calibrates a few basins with many
+starts and reports the start at which each found its best, the spread of
+objectives and a budget for the full run. Its synthetic dry run needs no
+data:
+
+``` r
+Sys.setenv(PILOT_SYNTHETIC = "1")
+source(system.file("examples", "pilot_calibration.R", package = "pdmS7"))
+```
+
+With the compiled engine, one run of 29 years at 15 minutes takes about
+a second on a 2.1 GHz Xeon.
+[`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md)
+runs its starts one after another;
+[`calibrate_batch()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md)
+and
+[`compare_structures()`](https://jonpayneea.github.io/PDMS7/reference/compare_structures.md)
+spread basins or structures across cores with `cores`. Give each basin
+its own seed so that every run can be repeated exactly.
 
 ## Objectives
 
@@ -317,6 +474,42 @@ Some guidance:
   `method = "lbfgsb"` stops with an explanation, because it would
   quietly fail.
 
+### One weighted score, or a trade-off
+
+Every objective above, and every stage below, is a single number. Where
+it combines several scores (log NSE with a volume error, NSE with CSI,
+the three parts of the events objective) the weights are chosen before
+the search, and the search finds the best parameter set for that one
+blend. This is multi-criteria calibration with the trade-off fixed in
+advance. It keeps the search fast, every result repeatable and the
+choice of weights recorded in the log.
+
+The alternative is to search for the trade-off itself.
+[`calibrate_pdm_multi()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm_multi.md)
+scores every parameter set on several objectives at once, such as 1 -
+NSE, the log RMSE and the volume error, and returns the *nondominated*
+sets: those that no other set beats on every objective. They trace the
+front along which improving one score costs another. It is a tool for
+understanding a catchment, not part of the automatic calibration:
+nothing in a project or a batch calls it, and its front is approximate,
+limited to the sets it evaluated.
+
+``` r
+front <- calibrate_pdm_multi(
+  config, forcing, observed,
+  lower = c(distribution.cmax = 50, surface.k1 = 0.5),
+  upper = c(distribution.cmax = 600, surface.k1 = 20),
+  objectives = c("nse_loss", "log_rmse", "abs_bias"),
+  scales = c(nse_loss = 1, log_rmse = 0.5, abs_bias = 0.1),
+  n_samples = 100, starts = 3, seed = 42, warmup = 240
+)
+front$pareto    # the nondominated sets and their scores
+```
+
+Use it when the weights are the question: if the front shows that the
+best NSE costs 15 per cent of the volume, that is worth knowing before
+choosing `volume_weight`.
+
 ## Calibrating in stages
 
 A hydrologist calibrating by hand rarely moves everything at once. They
@@ -327,7 +520,7 @@ does the same:
 
 | Stage                   | Fits                                                             | Objective                          |
 |-------------------------|------------------------------------------------------------------|------------------------------------|
-| 1\. Volume and baseflow | `fc`, the soil store, recharge and groundwater                   | 1 - log NSE, plus the volume error |
+| 1\. Volume and baseflow | The soil store, recharge and groundwater, and `fc` if unlocked   | 1 - log NSE, plus the volume error |
 | 2\. Fast response       | The surface stores, and the store shape `b` again                | 1 - NSE                            |
 | 3\. Polish              | Everything, over the full bounds, starting from stage 2’s values | 1 - NSE                            |
 
@@ -343,6 +536,12 @@ builds this list for any structure from the bounds table: a split
 recharge adds its share to stage 1, an exponential store its two
 parameters. Each stage is a plain list, so you can move parameters
 between stages or drop the polish.
+
+Moore (2007, p. 490) describes a cheaper variant for sub-daily models:
+fit the water balance at a daily step over the whole record, then the
+fast response at 15 minutes on storm events alone, with the slow
+parameters fixed. Time constants are in hours and carry over between
+steps; demand recharge depends on the step and needs checking.
 
 Here both approaches start from the standard settings, a long way from
 the truth (NSE below zero). One calibrates all seven parameters at once,
@@ -370,16 +569,16 @@ comparison <- rbind(
 round(comparison, 3)
 #>                nse log_nse volume_error model_runs
 #> start       -0.954  -4.424       -0.283          0
-#> all_at_once  0.992   0.991        0.000       4395
-#> stage_1      0.967   0.976        0.000       1012
-#> stage_2      0.978   0.979        0.005        364
-#> staged       0.992   0.991        0.000       5246
+#> all_at_once  0.992   0.991        0.000       2002
+#> stage_1      0.986   0.985        0.000       1152
+#> stage_2      0.988   0.988       -0.004        252
+#> staged       0.992   0.991        0.000       3549
 ```
 
 In this example both reach the same answer: NSE 0.992 at once and 0.992
-in stages. Stage 1 alone reaches 0.967, which shows how much of the fit
+in stages. Stage 1 alone reaches 0.986, which shows how much of the fit
 comes from the water balance and the slow stores. Staging took more
-model runs here, 5,246 against 4,395.
+model runs here, 3,549 against 2,002.
 
 So why stage? A made-up catchment with a known truth and clean data is
 the easy case. On real data, with rating errors at the top end and a
@@ -395,9 +594,8 @@ catchments where the structure was exactly right, a polish kept within a
 quarter of each range (the default before version 0.8.0) left two
 catchments far short of their true parameters’ score. With the polish
 over the full bounds, staging and calibrating everything at once both
-came within 0.001 of the truth’s score in every catchment. [What limits
-automatic
-calibration](https://jonpayneea.github.io/PDMS7/articles/calibration-study.md)
+came within 0.001 of the truth’s score in every catchment. [Many
+catchments](https://jonpayneea.github.io/PDMS7/articles/large-sample.html#what-limits-automatic-calibration)
 describes the test. On synthetic data the two are equal, so the case for
 staging rests on real data, and on judgement.
 
@@ -424,7 +622,7 @@ Four tools guard against it.
 **The events stage.** `pdm_stages(events = TRUE)` adds a fourth stage
 after the polish. It refits the fast response (the surface stores and
 `b`) and the time delay `td` on the largest events alone, found with
-[`find_events()`](https://jonpayneea.github.io/PDMS7/articles/events.md).
+[`find_events()`](https://jonpayneea.github.io/PDMS7/articles/floods.html#finding-the-events).
 Its objective has three parts:
 
 | Part                                          | Measures                                                                                                        | Default weight |
@@ -434,10 +632,14 @@ Its objective has three parts:
 | mean absolute timing error, in response times | hours between the peaks, divided by the catchment’s response time                                               | 0.5            |
 
 Only the largest half of the calibration events count, by observed peak
-(`event_share`), so small events with noisy peaks do not steer it. The
-slow stores stay where stage 3 left them, which keeps the water balance.
-The timing part changes in whole steps, so this stage searches with DDS
-(`event_budget` model runs per start) rather than by slope.
+(`event_share`), so small events with noisy peaks do not steer it.
+`event_share` can instead name a flow: with `event_share = "0.5QMED"`
+every event whose observed peak reaches half the median annual flood is
+fitted, however many that is ([Getting the floods
+right](https://jonpayneea.github.io/PDMS7/articles/floods.html#which-events)).
+The slow stores stay where stage 3 left them, which keeps the water
+balance. The timing part changes in whole steps, so this stage searches
+with DDS (`event_budget` model runs per start) rather than by slope.
 
 **The time delay.** `td` is not in the default bounds, because it is
 usually fixed by eye. On a 15-minute step a fixed delay an hour out
@@ -479,11 +681,11 @@ event_view <- function(config) {
 round(rbind(staged = event_view(plain$config), with_events_stage = event_view(with_events$config)),
       3)
 #>                     nse median_peak_error median_timing_error_h
-#> staged            0.837            -0.188                    -1
-#> with_events_stage 0.983             0.028                     0
+#> staged            0.833            -0.190                     0
+#> with_events_stage 0.986            -0.001                     0
 #>                   median_event_nse    td
-#> staged                       0.737 0.000
-#> with_events_stage            0.987 3.276
+#> staged                       0.730 0.000
+#> with_events_stage            0.986 2.949
 ```
 
 The standard stages cannot move the delay, so they bend the stores
@@ -506,6 +708,24 @@ checks <- calibration_checks(project, entry = 7)
 checks$parameters[!is.na(checks$parameters$at_bound), ]   # parameters at a bound
 checks$summary                                             # largest events, by window
 ```
+
+## Choosing the candidate
+
+[`calibrate_project()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_project.md)
+ends by proposing one fit as the project’s candidate. It takes the last
+stage, unless another fit already in hand scores better on the project’s
+headline score (NSE unless registered otherwise) by more than the tie
+tolerance, 0.02 for NSE. The fits in hand are the earlier stages and,
+with `recommend = TRUE`, the structure comparison’s own fit of the
+chosen structure.
+
+The tolerance lets an events stage keep its small, deliberate trade of
+overall fit for the floods. A larger loss means the staged search ended
+worse than a fit it had already found, and the better fit is proposed
+instead, with the reason written into the candidate entry. On one real
+catchment the final stage scored calibration NSE 0.898 against the
+comparison’s 0.936 for the same structure; the rule would propose the
+comparison’s fit.
 
 ## In a calibration project
 
@@ -531,13 +751,15 @@ log_auto_calibration(
 
 ## Which settings to use
 
-| Situation                                        | Settings                                                                                                                                                                                                                                   |
-|--------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| First calibration of a catchment                 | `objective = "nse"`, the default method, several starts, fences from [`calibration_bounds()`](https://jonpayneea.github.io/PDMS7/reference/calibration_bounds.md), log scale where the table says                                          |
-| Low flows matter most                            | `objective = "log_nse"` or `"log_rmse"`                                                                                                                                                                                                    |
-| Calibrating as a hydrologist would, step by step | [`calibrate_staged()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_staged.md), or [`log_staged_calibration()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_staged.md) in a project                                   |
-| A flood warning service                          | Add `thresholds` and use `method = "nelder_mead"`; keep NSE as the main score                                                                                                                                                              |
-| Peaks and timing matter most                     | `pdm_stages(events = TRUE)`, which also fits the time delay; add `thresholds` for warning flows                                                                                                                                            |
-| Before accepting any calibration                 | [`calibration_checks()`](https://jonpayneea.github.io/PDMS7/reference/calibration_checks.md): no parameter at a bound, peaks and timing acceptable in validation                                                                           |
-| Comparing model structures                       | [`compare_structures()`](https://jonpayneea.github.io/PDMS7/reference/compare_structures.md) applies all of this the same way to each; see [Choosing a model structure](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.md) |
-| Many catchments                                  | [`calibrate_batch()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md); see [Calibrating many catchments](https://jonpayneea.github.io/PDMS7/articles/many-catchments.md)                                                  |
+| Situation                                               | Settings                                                                                                                                                                                                                                          |
+|---------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| First calibration of a catchment                        | `objective = "nse"`, the default method, several starts, fences from [`calibration_bounds()`](https://jonpayneea.github.io/PDMS7/reference/calibration_bounds.md), log scale where the table says                                                 |
+| Low flows matter most                                   | `objective = "log_nse"` or `"log_rmse"`                                                                                                                                                                                                           |
+| Calibrating as a hydrologist would, step by step        | [`calibrate_staged()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_staged.md), or [`log_staged_calibration()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_staged.md) in a project                                          |
+| A flood warning service                                 | Add `thresholds` and use `method = "nelder_mead"`; keep NSE as the main score                                                                                                                                                                     |
+| Peaks and timing matter most                            | `pdm_stages(events = TRUE)`, which also fits the time delay; add `thresholds` for warning flows                                                                                                                                                   |
+| Weights are the question                                | [`calibrate_pdm_multi()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm_multi.md) for the trade-off between objectives                                                                                                               |
+| Before accepting any calibration                        | [`calibration_checks()`](https://jonpayneea.github.io/PDMS7/reference/calibration_checks.md): no parameter at a bound, peaks and timing acceptable in validation                                                                                  |
+| Comparing model structures                              | [`compare_structures()`](https://jonpayneea.github.io/PDMS7/reference/compare_structures.md) applies all of this the same way to each; see [How the model structure is chosen](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.md) |
+| Comparing finished calibrations, or a PDM for PCs model | [`compare_calibrations()`](https://jonpayneea.github.io/PDMS7/reference/compare_calibrations.md); see [Comparing calibrations](https://jonpayneea.github.io/PDMS7/articles/comparing-calibrations.md)                                             |
+| Many catchments                                         | [`calibrate_batch()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_batch.md); see [Calibrating many catchments](https://jonpayneea.github.io/PDMS7/articles/many-catchments.md)                                                         |

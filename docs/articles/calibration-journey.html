@@ -5,22 +5,22 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Automatic calibration from start to finish • pdmS7</title>
-<script src="../deps/jquery-3.6.1/jquery-3.6.1.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<title>Calibrating a catchment from start to finish • pdmS7</title>
+<script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.1/jquery-3.6.1.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.4.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.4.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Automatic calibration from start to finish">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><script src="../extra.js"></script><meta property="og:title" content="Calibrating a catchment from start to finish">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
-    <nav class="navbar navbar-expand-lg fixed-top bg-light" data-bs-theme="light" aria-label="Site navigation"><div class="container">
+    <nav class="navbar navbar-expand-lg fixed-top " aria-label="Site navigation"><div class="container">
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.17.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.27.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -47,27 +47,27 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Model options</h6></li>
     <li><a class="dropdown-item" href="../articles/model-options.html">Choosing model components</a></li>
+    <li><a class="dropdown-item" href="../articles/reading-responses.html">Reading the response: what each model option does to the flow</a></li>
+    <li><a class="dropdown-item" href="../articles/groundwater-extension.html">Using the groundwater extension: abstraction, losses and wells</a></li>
+    <li><a class="dropdown-item" href="../articles/two-zone-pdm.html">The two-zone PDM: a fast zone for flashy catchments</a></li>
     <li><a class="dropdown-item" href="../articles/starting-states.html">Starting a run: cold, warm and hot</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Calibration</h6></li>
-    <li><a class="dropdown-item" href="../articles/calibration-journey.html">Automatic calibration from start to finish</a></li>
-    <li><a class="dropdown-item" href="../articles/checks.html">Checking the data and the events</a></li>
-    <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: multi-start, budgets and staged calibration</a></li>
+    <li><a class="dropdown-item" href="../articles/calibration-journey.html">Calibrating a catchment from start to finish</a></li>
+    <li><a class="dropdown-item" href="../articles/auto-calibration.html">How automatic calibration works</a></li>
+    <li><a class="dropdown-item" href="../articles/choosing-structure.html">How the model structure is chosen</a></li>
     <li><a class="dropdown-item" href="../articles/floods.html">Getting the floods right</a></li>
     <li><a class="dropdown-item" href="../articles/app-events.html">Tailoring calibration to the largest events in the app</a></li>
+    <li><a class="dropdown-item" href="../articles/checks.html">Checking the data and the events</a></li>
     <li><a class="dropdown-item" href="../articles/rainfall.html">Catchment rainfall from gauges and radar</a></li>
-    <li><a class="dropdown-item" href="../articles/auto-calibration.html">Automatic calibration, explained</a></li>
     <li><a class="dropdown-item" href="../articles/scoring.html">Scoring a simulation: from NSE to POD, FAR and CSI</a></li>
-    <li><a class="dropdown-item" href="../articles/choosing-structure.html">Choosing a model structure</a></li>
+    <li><a class="dropdown-item" href="../articles/comparing-calibrations.html">Comparing calibrations and PDM for PCs files</a></li>
     <li><a class="dropdown-item" href="../articles/extrapolation.html">Larger floods: extrapolation and the rating</a></li>
     <li><a class="dropdown-item" href="../articles/many-catchments.html">Calibrating many catchments</a></li>
-    <li><a class="dropdown-item" href="../articles/large-sample.html">A large sample: what automatic calibration recovers</a></li>
-    <li><a class="dropdown-item" href="../articles/calibration-study.html">What limits automatic calibration: a study</a></li>
-    <li><a class="dropdown-item" href="../articles/events.html">Events in large samples: finding them and scoring models on them</a></li>
+    <li><a class="dropdown-item" href="../articles/large-sample.html">Many catchments: what automatic calibration recovers, and what limits it</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Records and review</h6></li>
-    <li><a class="dropdown-item" href="../articles/calibration-log.html">Logging a manual calibration</a></li>
-    <li><a class="dropdown-item" href="../articles/log-structure.html">Inside the logs: projects, entries, checksums and the run log</a></li>
+    <li><a class="dropdown-item" href="../articles/calibration-log.html">Calibration records: logging a calibration, and what the logs hold</a></li>
     <li><a class="dropdown-item" href="../articles/steward-guide.html">Reviewing a calibration: a Steward's guide</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Forecasting</h6></li>
@@ -107,6 +107,14 @@
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json">
 </form></li>
 <li class="nav-item"><a class="external-link nav-link" href="https://github.com/JonPayneEA/PDMS7" aria-label="GitHub"><span class="fa fa-github"></span></a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-lightswitch" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true" aria-label="Light switch"><span class="fa fa-sun"></span></button>
+  <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdown-lightswitch">
+<li><button class="dropdown-item" data-bs-theme-value="light"><span class="fa fa-sun"></span> Light</button></li>
+    <li><button class="dropdown-item" data-bs-theme-value="dark"><span class="fa fa-moon"></span> Dark</button></li>
+    <li><button class="dropdown-item" data-bs-theme-value="auto"><span class="fa fa-adjust"></span> Auto</button></li>
+  </ul>
+</li>
       </ul>
 </div>
 
@@ -119,8 +127,7 @@
 
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
-
-      <h1>Automatic calibration from start to finish</h1>
+      <img src="../logo.png" class="logo" alt=""><h1>Calibrating a catchment from start to finish</h1>
                         <h4 data-toc-skip class="author">pdmS7
 documentation</h4>
             
@@ -322,7 +329,12 @@ used.</li>
 Starting the search from several places, and keeping the best result,
 guards against settling in a poor one.</li>
 </ul>
-<p><a href="auto-calibration.html">Automatic calibration, explained</a>
+<p>Two parameters are held back by default. The rainfall factor
+<code>fc</code> stays at 1: a fitted factor would absorb the calibration
+years’ rainfall errors and carry them into operation. And a split
+recharge’s share is kept between 0.05 and 0.95, so no flow path is
+switched off.</p>
+<p><a href="auto-calibration.html">How automatic calibration works</a>
 shows each of these at work.</p>
 </div>
 <div class="section level2">
@@ -342,7 +354,10 @@ same rule, and the reason is written to the log.
 showed what a record can tell apart. The recharge rule was found every
 time, by a clear margin. The groundwater store was found only by margins
 too small to survive real data, so the rule keeps the standard store
-unless another is clearly better. See <a href="choosing-structure.html">Choosing a model structure</a> and <a href="calibration-study.html">What limits automatic calibration</a>.</p>
+unless another is clearly better. <a href="choosing-structure.html">How
+the model structure is chosen</a> sets out each step’s rule, with an
+example, and <a href="large-sample.html#what-limits-automatic-calibration">Many
+catchments</a> the evidence.</p>
 </div>
 <div class="section level2">
 <h2 id="step-4-calibrating-in-stages">Step 4: calibrating in stages<a class="anchor" aria-label="anchor" href="#step-4-calibrating-in-stages"></a>
@@ -433,6 +448,13 @@ calibration</a>.</p>
 The last steps. Each is a separate, signed entry in the log.
 </p>
 </div>
+<p>The candidate is the last stage’s fit, unless a fit already in hand
+scores better on the calibration years by more than the tie tolerance
+(0.02 in NSE): an earlier stage, or the structure comparison’s own fit
+of the chosen structure. A final events stage may trade a little overall
+fit for the floods; a larger loss means the stages ended worse than a
+fit already found, which is proposed instead, with the reason in the
+log.</p>
 <p>The candidate is proposed first, then validated, then tested, in that
 order and only once each. A model cannot be quietly re-tuned after its
 test has been seen, because the log shows the order in which things
@@ -494,19 +516,18 @@ log it leaves:</p>
 <span><span class="va">checks</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/calibration_checks.html">calibration_checks</a></span><span class="op">(</span><span class="va">project</span>, top <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
 <span><span class="va">checks</span><span class="op">$</span><span class="va">parameters</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"path"</span>, <span class="st">"value"</span>, <span class="st">"lower"</span>, <span class="st">"upper"</span>, <span class="st">"at_bound"</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="co">#&gt;                path        value lower   upper at_bound</span></span>
-<span><span class="co">#&gt; 1    distribution.b 4.460426e-01 5e-02 2.0e+00     &lt;NA&gt;</span></span>
-<span><span class="co">#&gt; 2        surface.k1 4.218624e+00 5e-01 7.2e+01     &lt;NA&gt;</span></span>
-<span><span class="co">#&gt; 3        surface.k2 2.800283e+00 5e-01 7.2e+01     &lt;NA&gt;</span></span>
-<span><span class="co">#&gt; 4                td 1.385175e+00 0e+00 6.0e+00     &lt;NA&gt;</span></span>
-<span><span class="co">#&gt; 5                fc 1.005471e+00 6e-01 1.6e+00     &lt;NA&gt;</span></span>
-<span><span class="co">#&gt; 6 distribution.cmax 3.017009e+02 2e+01 8.0e+02     &lt;NA&gt;</span></span>
-<span><span class="co">#&gt; 7       recharge.kg 4.182718e+03 1e+00 5.0e+03     &lt;NA&gt;</span></span>
-<span><span class="co">#&gt; 8    groundwater.kb 1.092101e+04 1e+02 1.0e+06     &lt;NA&gt;</span></span>
+<span><span class="co">#&gt; 1    distribution.b 4.617568e-01 5e-02       2     &lt;NA&gt;</span></span>
+<span><span class="co">#&gt; 2        surface.k1 4.223957e+00 5e-01      72     &lt;NA&gt;</span></span>
+<span><span class="co">#&gt; 3        surface.k2 2.418446e+00 5e-01      72     &lt;NA&gt;</span></span>
+<span><span class="co">#&gt; 4                td 1.385175e+00 0e+00       6     &lt;NA&gt;</span></span>
+<span><span class="co">#&gt; 5 distribution.cmax 3.063770e+02 2e+01     800     &lt;NA&gt;</span></span>
+<span><span class="co">#&gt; 6       recharge.kg 4.202691e+03 1e+00    5000     &lt;NA&gt;</span></span>
+<span><span class="co">#&gt; 7    groundwater.kb 3.900128e+04 1e+02 1000000     &lt;NA&gt;</span></span>
 <span><span class="va">checks</span><span class="op">$</span><span class="va">summary</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"period"</span>, <span class="st">"events"</span>, <span class="st">"median_peak_error"</span>, <span class="st">"median_timing_error_h"</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="co">#&gt;        period events median_peak_error median_timing_error_h</span></span>
-<span><span class="co">#&gt; 1 calibration      5       -0.01894972                     0</span></span>
-<span><span class="co">#&gt; 2  validation      5       -0.04826028                     0</span></span>
-<span><span class="co">#&gt; 3     outside      5       -0.02385834                     0</span></span></code></pre></div>
+<span><span class="co">#&gt; 1 calibration      5       0.017990908                     0</span></span>
+<span><span class="co">#&gt; 2  validation      5      -0.002985413                     0</span></span>
+<span><span class="co">#&gt; 3     outside      5       0.014803825                     0</span></span></code></pre></div>
 <p>Each row is one entry, from the start of the project to the
 validation of the candidate; the four automatic calibration entries are
 the four stages. In the parameter table, <code>at_bound</code> is empty
@@ -516,12 +537,13 @@ does. The largest floods in every window peak within a few percent of
 the measured peaks, and in the same hour.</p>
 <p>One number is a reminder of what a good fit does not prove. The
 events stage found a time delay of 1.4 hours, against the true 2 used to
-make the record. The two surface stores came out at 4.2 and 2.8 hours,
+make the record. The two surface stores came out at 4.2 and 2.4 hours,
 against a true 2 and 4: the same two stores the other way round, which
 give the same flood, with the shorter delay making up the difference.
 The floods come out right; the parameters behind them are not unique.
-This is why the checks look at the floods themselves, and why <a href="calibration-study.html">What limits automatic calibration</a>
-matters before reading too much into any one value.</p>
+This is why the checks look at the floods themselves, and why <a href="large-sample.html#what-limits-automatic-calibration">What limits
+automatic calibration</a> matters before reading too much into any one
+value.</p>
 </div>
 <div class="section level2">
 <h2 id="all-of-this-in-one-call">All of this in one call<a class="anchor" aria-label="anchor" href="#all-of-this-in-one-call"></a>
@@ -590,8 +612,8 @@ catchments</a>.</p>
 </tr>
 <tr class="odd">
 <td>How the search works, bounds, scores, starts</td>
-<td><a href="auto-calibration.html">Automatic calibration,
-explained</a></td>
+<td><a href="auto-calibration.html">How automatic calibration
+works</a></td>
 </tr>
 <tr class="even">
 <td>Why a good score can hide bad floods</td>
@@ -604,19 +626,24 @@ radar</a></td>
 </tr>
 <tr class="even">
 <td>Choosing the structure</td>
-<td><a href="choosing-structure.html">Choosing a model
-structure</a></td>
+<td><a href="choosing-structure.html">How the model structure is
+chosen</a></td>
 </tr>
 <tr class="odd">
-<td>What a record can and cannot tell</td>
-<td><a href="calibration-study.html">What limits automatic
-calibration</a></td>
+<td>Comparing with an older model, or a PDM for PCs file</td>
+<td><a href="comparing-calibrations.html">Comparing
+calibrations</a></td>
 </tr>
 <tr class="even">
-<td>The log, trials and sign-off</td>
-<td><a href="calibration-log.html">Logging a manual calibration</a></td>
+<td>What a record can and cannot tell</td>
+<td><a href="large-sample.html#what-limits-automatic-calibration">What
+limits automatic calibration</a></td>
 </tr>
 <tr class="odd">
+<td>The log, trials and sign-off</td>
+<td><a href="calibration-log.html">Calibration records</a></td>
+</tr>
+<tr class="even">
 <td>Many catchments</td>
 <td><a href="many-catchments.html">Calibrating many catchments</a></td>
 </tr>

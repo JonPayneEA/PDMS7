@@ -85,8 +85,8 @@ the data do not pin those parameters down (equifinality). More starts
 will not fix it. Staged calibration
 ([`calibrate_staged()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_staged.md)),
 which fits groups of parameters to the parts of the hydrograph they
-control, often helps. [Automatic calibration,
-explained](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.md).
+control, often helps. [How automatic calibration
+works](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.md).
 
 ### A threshold objective with the gradient method
 

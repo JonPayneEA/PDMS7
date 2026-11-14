@@ -153,6 +153,10 @@ timing errors at 3, 1.5 and 1 response times.
 - **The exponential store in PDM for PCs files.** `write_pdm_inp()` refuses it until its code
   and parameter layout in a `*.inp` file are confirmed. Needs an example file with an exponential
   store, or the page of the PDM for PCs manual that gives them.
+- **The cubic store's `kb` bound.** The default upper bound is 10^6 h mm2, but a slow chalk
+  store can need 10^7 or more (the groundwater extension guide's winterbourne uses 5 x 10^6).
+  Check the bounds against the slowest recessions in the benchmark catchments, and widen them
+  or derive them from the recession analysis.
 - **The structure diagram when every option is at a bound.** Greying every box hides the choice.
   Keep the normal colours, mark each box "at a bound" in words, and say that none could be set
   aside.

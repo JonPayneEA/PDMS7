@@ -5,22 +5,22 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Choosing a model structure • pdmS7</title>
-<script src="../deps/jquery-3.6.1/jquery-3.6.1.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<title>How the model structure is chosen • pdmS7</title>
+<script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.1/jquery-3.6.1.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.4.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.4.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Choosing a model structure">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><script src="../extra.js"></script><meta property="og:title" content="How the model structure is chosen">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
-    <nav class="navbar navbar-expand-lg fixed-top bg-light" data-bs-theme="light" aria-label="Site navigation"><div class="container">
+    <nav class="navbar navbar-expand-lg fixed-top " aria-label="Site navigation"><div class="container">
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.17.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.27.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -47,27 +47,27 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Model options</h6></li>
     <li><a class="dropdown-item" href="../articles/model-options.html">Choosing model components</a></li>
+    <li><a class="dropdown-item" href="../articles/reading-responses.html">Reading the response: what each model option does to the flow</a></li>
+    <li><a class="dropdown-item" href="../articles/groundwater-extension.html">Using the groundwater extension: abstraction, losses and wells</a></li>
+    <li><a class="dropdown-item" href="../articles/two-zone-pdm.html">The two-zone PDM: a fast zone for flashy catchments</a></li>
     <li><a class="dropdown-item" href="../articles/starting-states.html">Starting a run: cold, warm and hot</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Calibration</h6></li>
-    <li><a class="dropdown-item" href="../articles/calibration-journey.html">Automatic calibration from start to finish</a></li>
-    <li><a class="dropdown-item" href="../articles/checks.html">Checking the data and the events</a></li>
-    <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: multi-start, budgets and staged calibration</a></li>
+    <li><a class="dropdown-item" href="../articles/calibration-journey.html">Calibrating a catchment from start to finish</a></li>
+    <li><a class="dropdown-item" href="../articles/auto-calibration.html">How automatic calibration works</a></li>
+    <li><a class="dropdown-item" href="../articles/choosing-structure.html">How the model structure is chosen</a></li>
     <li><a class="dropdown-item" href="../articles/floods.html">Getting the floods right</a></li>
     <li><a class="dropdown-item" href="../articles/app-events.html">Tailoring calibration to the largest events in the app</a></li>
+    <li><a class="dropdown-item" href="../articles/checks.html">Checking the data and the events</a></li>
     <li><a class="dropdown-item" href="../articles/rainfall.html">Catchment rainfall from gauges and radar</a></li>
-    <li><a class="dropdown-item" href="../articles/auto-calibration.html">Automatic calibration, explained</a></li>
     <li><a class="dropdown-item" href="../articles/scoring.html">Scoring a simulation: from NSE to POD, FAR and CSI</a></li>
-    <li><a class="dropdown-item" href="../articles/choosing-structure.html">Choosing a model structure</a></li>
+    <li><a class="dropdown-item" href="../articles/comparing-calibrations.html">Comparing calibrations and PDM for PCs files</a></li>
     <li><a class="dropdown-item" href="../articles/extrapolation.html">Larger floods: extrapolation and the rating</a></li>
     <li><a class="dropdown-item" href="../articles/many-catchments.html">Calibrating many catchments</a></li>
-    <li><a class="dropdown-item" href="../articles/large-sample.html">A large sample: what automatic calibration recovers</a></li>
-    <li><a class="dropdown-item" href="../articles/calibration-study.html">What limits automatic calibration: a study</a></li>
-    <li><a class="dropdown-item" href="../articles/events.html">Events in large samples: finding them and scoring models on them</a></li>
+    <li><a class="dropdown-item" href="../articles/large-sample.html">Many catchments: what automatic calibration recovers, and what limits it</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Records and review</h6></li>
-    <li><a class="dropdown-item" href="../articles/calibration-log.html">Logging a manual calibration</a></li>
-    <li><a class="dropdown-item" href="../articles/log-structure.html">Inside the logs: projects, entries, checksums and the run log</a></li>
+    <li><a class="dropdown-item" href="../articles/calibration-log.html">Calibration records: logging a calibration, and what the logs hold</a></li>
     <li><a class="dropdown-item" href="../articles/steward-guide.html">Reviewing a calibration: a Steward's guide</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Forecasting</h6></li>
@@ -107,6 +107,14 @@
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json">
 </form></li>
 <li class="nav-item"><a class="external-link nav-link" href="https://github.com/JonPayneEA/PDMS7" aria-label="GitHub"><span class="fa fa-github"></span></a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-lightswitch" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true" aria-label="Light switch"><span class="fa fa-sun"></span></button>
+  <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdown-lightswitch">
+<li><button class="dropdown-item" data-bs-theme-value="light"><span class="fa fa-sun"></span> Light</button></li>
+    <li><button class="dropdown-item" data-bs-theme-value="dark"><span class="fa fa-moon"></span> Dark</button></li>
+    <li><button class="dropdown-item" data-bs-theme-value="auto"><span class="fa fa-adjust"></span> Auto</button></li>
+  </ul>
+</li>
       </ul>
 </div>
 
@@ -119,8 +127,7 @@
 
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
-
-      <h1>Choosing a model structure</h1>
+      <img src="../logo.png" class="logo" alt=""><h1>How the model structure is chosen</h1>
                         <h4 data-toc-skip class="author">pdmS7
 documentation</h4>
             
@@ -137,16 +144,158 @@ one. “It is the standard” is an answer; “we calibrated the alternatives
 alike and this one did best on data the calibration never saw” is a
 better one. <code><a href="../reference/compare_structures.html">compare_structures()</a></code> gives that answer, and
 logs it.</p>
-<p>This article compares eight structures on a synthetic catchment whose
-true structure is known, then carries the chosen one through validation
+<p>This article first explains how <code><a href="../reference/recommend_structure.html">recommend_structure()</a></code>
+chooses the soil store, recharge rule and groundwater store, step by
+step. It then compares eight structures on a synthetic catchment whose
+true structure is known, and carries the chosen one through validation
 and a final test. The <a href="model-options.html">component guide</a>
-explains what each structure does.</p>
+explains what each component does.</p>
+<div class="section level2">
+<h2 id="how-the-structure-is-chosen">How the structure is chosen<a class="anchor" aria-label="anchor" href="#how-the-structure-is-chosen"></a>
+</h2>
+<p><code><a href="../reference/recommend_structure.html">recommend_structure()</a></code> chooses the structure one
+component at a time, as a hydrologist would, and writes down why.
+<code>calibrate_project(recommend = TRUE)</code> calls it before the
+staged calibration. Each step changes one component and holds the others
+at what the steps before chose:</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th>Step</th>
+<th>Component</th>
+<th>Options compared</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td>Recharge rule</td>
+<td>standard, split, demand</td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td>Soil store distribution</td>
+<td>Pareto, rectangular, triangular, exponential, lognormal</td>
+</tr>
+<tr class="odd">
+<td>3</td>
+<td>Groundwater store</td>
+<td>cubic, quadratic, linear, exponential</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Why this order.</strong> It follows what a record can tell
+apart. On made-up catchments whose true structure is known (<a href="large-sample.html">What automatic calibration recovers</a>), the
+recharge rule was identified every time, by margins of 0.08 or more in
+log NSE, and the groundwater store only by margins too small to trust.
+Deciding the clearest question first means the later, harder choices are
+made on a structure that is already right where the record can say
+so.</p>
+<p><strong>What each step does.</strong> Every option is calibrated
+alike, by <code><a href="../reference/compare_structures.html">compare_structures()</a></code>: the same objective, starts,
+seed and iteration limit, bounds from <code><a href="../reference/calibration_bounds.html">calibration_bounds()</a></code>
+for its own components, on the calibration window. Each is then scored
+on the validation window, which no calibration saw. One rule then makes
+the choice:</p>
+<ol style="list-style-type: decimal">
+<li>
+<strong>Set aside any option bent to fit.</strong> An option that
+ended with a parameter at a bound of its search range is not describing
+the catchment; the search pushed it as far as it could go. It is set
+aside, unless every option did. (Split recharge cannot end at a share of
+0 or 1, which would switch a flow path off: its search range is 0.05 to
+0.95.)</li>
+<li>
+<strong>Find the equally good.</strong> Every remaining option
+within the tie tolerance of the best validation score counts as equally
+good: 0.02 in NSE unless the project registered another. A smaller
+difference is a tie, not a result; another seed or another winter could
+reorder them.</li>
+<li>
+<strong>Keep the current component if it is among them.</strong> The
+record cannot justify a change. This makes the recommendation
+conservative: where the record is silent, as it usually is about the
+groundwater store, the standard structure stays.</li>
+<li>
+<strong>Otherwise, break the tie on the floods.</strong> Among the
+equally good, the option with the smallest median peak error on the
+largest validation events wins, then the one with fewer parameters.</li>
+</ol>
+<p><strong>An example.</strong> On one catchment the groundwater step
+compared:</p>
+<table class="table">
+<thead><tr class="header">
+<th>Option</th>
+<th>Parameters</th>
+<th>Calibration NSE</th>
+<th>Validation NSE</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>exponential</td>
+<td>8</td>
+<td>0.9362</td>
+<td>0.9172</td>
+</tr>
+<tr class="even">
+<td>quadratic</td>
+<td>7</td>
+<td>0.9387</td>
+<td>0.9171</td>
+</tr>
+<tr class="odd">
+<td>linear</td>
+<td>7</td>
+<td>0.9165</td>
+<td>0.8923</td>
+</tr>
+<tr class="even">
+<td>cubic (current)</td>
+<td>7</td>
+<td>0.8826</td>
+<td>0.8369</td>
+</tr>
+</tbody>
+</table>
+<p>The exponential and quadratic stores are equally good, 0.0001 apart.
+The current cubic store is not among them, 0.08 behind, so rule 3 does
+not keep it. Rule 4 chose the exponential store for its smaller median
+peak error on the largest validation floods. Had their peak errors been
+equal, the quadratic store would have won on fewer parameters.</p>
+<p>Every comparison is logged, and each step’s choice and reason is
+written as a note, so the recommendation is part of the audit trail:</p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">rec</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/recommend_structure.html">recommend_structure</a></span><span class="op">(</span><span class="va">project</span>, reasoning <span class="op">=</span> <span class="st">"First choice of structure."</span><span class="op">)</span></span>
+<span><span class="va">rec</span>                           <span class="co"># one line per step: choice and reason</span></span>
+<span><span class="va">rec</span><span class="op">$</span><span class="va">steps</span><span class="op">$</span><span class="va">recharge</span><span class="op">$</span><span class="va">table</span>      <span class="co"># the comparison, with at_bound and equally_good</span></span></code></pre></div>
+<p><strong>Zones, if asked.</strong> With <code>zones = c(1, 2)</code>
+in <code><a href="../reference/calibrate_project.html">calibrate_project()</a></code>, a fourth step compares the
+structure chosen as one zone with the same structure plus a small fast
+zone, by the same rule (<a href="model-options.html#several-zones">Choosing model components</a>;
+worked through in <a href="two-zone-pdm.html">The two-zone PDM</a>). Use
+it where one PDM cannot give a sharp spike and a slower flood hydrograph
+at once: the signs are a split recharge share at its lower bound and
+surface stores at their caps in every fit.</p>
+<p><strong>What it does not choose.</strong> The surface routing stays a
+cascade of two linear stores, the standard and almost always adequate.
+The groundwater extension is not tried automatically: it needs
+abstraction data or a reason to expect losses, and its parameters cannot
+be pinned down from flow alone. Add it to the configuration when the
+catchment calls for it (<a href="model-options.html#the-groundwater-extension">Choosing model
+components</a>).</p>
+<p>The rest of this article runs a full comparison by hand, on a made-up
+catchment, and carries the chosen structure through validation and a
+final test.</p>
+</div>
 <div class="section level2">
 <h2 id="the-catchment">The catchment<a class="anchor" aria-label="anchor" href="#the-catchment"></a>
 </h2>
 <p>The “true” catchment has a lognormal soil store. The calibrator is
 not told.</p>
-<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">11</span><span class="op">)</span></span>
 <span><span class="va">n</span> <span class="op">&lt;-</span> <span class="fl">24</span> <span class="op">*</span> <span class="fl">75</span></span>
 <span><span class="va">time</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/as.POSIXlt.html" class="external-link">as.POSIXct</a></span><span class="op">(</span><span class="st">"2023-10-01"</span>, tz <span class="op">=</span> <span class="st">"UTC"</span><span class="op">)</span>, by <span class="op">=</span> <span class="fl">3600</span>, length.out <span class="op">=</span> <span class="va">n</span><span class="op">)</span></span>
@@ -172,7 +321,7 @@ final <strong>test</strong> window. Ranking structures on the validation
 window uses it up as an independent check, so the test window is kept
 back, scored once, at the end, by nothing but
 <code><a href="../reference/calibration_log.html">test_candidate()</a></code>.</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>pdmS7.user <span class="op">=</span> <span class="st">"Ann Hydrologist"</span>, pdmS7.role <span class="op">=</span> <span class="st">"custodian"</span><span class="op">)</span></span>
 <span><span class="va">project</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir</a></span><span class="op">(</span><span class="op">)</span>, <span class="st">"structure-choice"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/calibration_log.html">start_calibration_project</a></span><span class="op">(</span><span class="va">project</span>, catchment <span class="op">=</span> <span class="st">"Example Brook"</span>, gauge <span class="op">=</span> <span class="st">"99002"</span>,</span>
@@ -189,7 +338,7 @@ back, scored once, at the end, by nothing but
 <p><code><a href="../reference/structure_set.html">structure_set()</a></code> gives the standard PDM and seven
 variants, each one change from it, so each comparison answers one
 question.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">structures</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/structure_set.html">structure_set</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
 <span>  structure <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">structures</span><span class="op">)</span>,</span>
@@ -211,19 +360,21 @@ question.</p>
 within bounds from a table shipped with the package. Parameters that
 span orders of magnitude are searched on a log scale, so that a recharge
 constant of 10 hours gets as much attention as one of 1,000.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/calibration_bounds.html">calibration_bounds</a></span><span class="op">(</span><span class="va">structures</span><span class="op">$</span><span class="va">lognormal</span><span class="op">)</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"path"</span>, <span class="st">"lower"</span>, <span class="st">"upper"</span>, <span class="st">"scale"</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="co">#&gt;                   path lower   upper  scale</span></span>
-<span><span class="co">#&gt; 1                   fc   0.6 1.6e+00 linear</span></span>
-<span><span class="co">#&gt; 2 distribution.meanlog   2.3 6.0e+00 linear</span></span>
-<span><span class="co">#&gt; 3   distribution.sdlog   0.1 2.0e+00 linear</span></span>
-<span><span class="co">#&gt; 4          recharge.kg   1.0 5.0e+03    log</span></span>
-<span><span class="co">#&gt; 5           surface.k1   0.5 7.2e+01    log</span></span>
-<span><span class="co">#&gt; 6           surface.k2   0.5 7.2e+01    log</span></span>
-<span><span class="co">#&gt; 7       groundwater.kb 100.0 1.0e+06    log</span></span></code></pre></div>
+<span><span class="co">#&gt; 1 distribution.meanlog   2.3       6 linear</span></span>
+<span><span class="co">#&gt; 2   distribution.sdlog   0.1       2 linear</span></span>
+<span><span class="co">#&gt; 3          recharge.kg   1.0    5000    log</span></span>
+<span><span class="co">#&gt; 4           surface.k1   0.5      72    log</span></span>
+<span><span class="co">#&gt; 5           surface.k2   0.5      72    log</span></span>
+<span><span class="co">#&gt; 6       groundwater.kb 100.0 1000000    log</span></span></code></pre></div>
 <p>Bounds can be overridden for a catchment you know, with
 <code>overrides</code>, or a parameter held fixed with
-<code>exclude</code>.</p>
+<code>exclude</code>. The rainfall factor <code>fc</code> is held at its
+configured value unless an override gives it bounds. This made-up
+catchment’s rain is known to be 10 per cent low, so the comparison below
+unlocks it.</p>
 </div>
 <div class="section level2">
 <h2 id="the-comparison">The comparison<a class="anchor" aria-label="anchor" href="#the-comparison"></a>
@@ -231,24 +382,25 @@ constant of 10 hours gets as much attention as one of 1,000.</p>
 <p>Every structure gets the same objective, starts, seed and iteration
 limit. With <code>cores</code>, the structures run in parallel; here
 they run in turn.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">elapsed</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span></span>
 <span>  <span class="va">ranking</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/compare_structures.html">compare_structures</a></span><span class="op">(</span><span class="va">project</span>, <span class="va">structures</span>, starts <span class="op">=</span> <span class="fl">2</span>, control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>maxit <span class="op">=</span> <span class="fl">30</span><span class="op">)</span>,</span>
+<span>                                overrides <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>fc <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.6</span>, <span class="fl">1.6</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>                                reasoning <span class="op">=</span> <span class="st">"Which structure suits this catchment?"</span><span class="op">)</span></span>
 <span><span class="op">)</span><span class="op">[[</span><span class="st">"elapsed"</span><span class="op">]</span><span class="op">]</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">elapsed</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] 34</span></span>
+<span><span class="co">#&gt; [1] 48</span></span>
 <span><span class="va">ranking</span><span class="op">[</span>, <span class="fu">.</span><span class="op">(</span><span class="va">rank</span>, <span class="va">structure</span>, <span class="va">parameters</span>, calibration <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">calibration</span>, <span class="fl">4</span><span class="op">)</span>,</span>
 <span>            validation <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">validation</span>, <span class="fl">4</span><span class="op">)</span>, change <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">change</span>, <span class="fl">4</span><span class="op">)</span>, <span class="va">starts_agree</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="co">#&gt;     rank               structure parameters calibration validation  change</span></span>
 <span><span class="co">#&gt;    &lt;int&gt;                  &lt;char&gt;      &lt;int&gt;       &lt;num&gt;      &lt;num&gt;   &lt;num&gt;</span></span>
 <span><span class="co">#&gt; 1:     1               lognormal          7      0.9962     0.9952 -0.0010</span></span>
-<span><span class="co">#&gt; 2:     2                   split          7      0.9861     0.9943  0.0082</span></span>
+<span><span class="co">#&gt; 2:     2                   split          7      0.9861     0.9942  0.0082</span></span>
 <span><span class="co">#&gt; 3:     3                standard          7      0.9958     0.9895 -0.0062</span></span>
 <span><span class="co">#&gt; 4:     4 exponential_groundwater          8      0.9957     0.9879 -0.0078</span></span>
 <span><span class="co">#&gt; 5:     5             rectangular          6      0.9950     0.9844 -0.0107</span></span>
 <span><span class="co">#&gt; 6:     6             exponential          6      0.9916     0.9795 -0.0121</span></span>
-<span><span class="co">#&gt; 7:     7                  demand          9      0.9453     0.9243 -0.0210</span></span>
+<span><span class="co">#&gt; 7:     7                  demand          9      0.9445     0.9276 -0.0169</span></span>
 <span><span class="co">#&gt; 8:     8              triangular          6      0.9198     0.8929 -0.0270</span></span>
 <span><span class="co">#&gt;    starts_agree</span></span>
 <span><span class="co">#&gt;          &lt;lgcl&gt;</span></span>
@@ -260,7 +412,7 @@ they run in turn.</p>
 <span><span class="co">#&gt; 6:        FALSE</span></span>
 <span><span class="co">#&gt; 7:        FALSE</span></span>
 <span><span class="co">#&gt; 8:        FALSE</span></span></code></pre></div>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">k</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">ranking</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span>mar <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">4</span>, <span class="fl">12</span>, <span class="fl">0.6</span>, <span class="fl">0.6</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="cn">NA</span>, xlim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/range.html" class="external-link">range</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">ranking</span><span class="op">$</span><span class="va">calibration</span>, <span class="va">ranking</span><span class="op">$</span><span class="va">validation</span><span class="op">)</span><span class="op">)</span>, ylim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="va">k</span> <span class="op">+</span> <span class="fl">0.5</span><span class="op">)</span>,</span>
@@ -281,7 +433,7 @@ on validation at the top.
 </h2>
 <p>The true structure, <code>lognormal</code>, ranks first. It would be
 wrong to conclude much from that alone: 2 structures lie within 0.005
-NSE of the top on validation, a spread of 9.2^{-4}. A difference that
+NSE of the top on validation, a spread of 9.7^{-4}. A difference that
 small is a tie, not a result; another seed or another few weeks of data
 could reorder them.</p>
 <p>At the other end, <code>demand</code> and <code>triangular</code>
@@ -307,7 +459,7 @@ it more starts or iterations before ruling it out.</li>
 <p>Faced with a tie, prefer the simplest structure, the one with fewest
 parameters, among those within a stated margin of the best. Stating the
 margin in advance keeps the choice honest.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">margin</span> <span class="op">&lt;-</span> <span class="fl">0.005</span></span>
 <span><span class="va">tied</span> <span class="op">&lt;-</span> <span class="va">ranking</span><span class="op">[</span><span class="va">validation</span> <span class="op">&gt;=</span> <span class="va">ranking</span><span class="op">$</span><span class="va">validation</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">-</span> <span class="va">margin</span><span class="op">]</span></span>
 <span><span class="va">choice</span> <span class="op">&lt;-</span> <span class="va">tied</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/order.html" class="external-link">order</a></span><span class="op">(</span><span class="va">parameters</span>, <span class="va">rank</span><span class="op">)</span><span class="op">]</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span></span>
@@ -322,7 +474,7 @@ margin in advance keeps the choice honest.</p>
 <p>The chosen calibration becomes the candidate, is validated, and then,
 with structure and parameters fixed, is tested once on the window nobody
 has looked at.</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/calibration_log.html">propose_candidate</a></span><span class="op">(</span><span class="va">project</span>, entry <span class="op">=</span> <span class="va">choice</span><span class="op">$</span><span class="va">calibration_entry</span>,</span>
 <span>                  reasoning <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"Simplest structure within"</span>, <span class="va">margin</span>,</span>
 <span>                                    <span class="st">"NSE of the best on validation."</span><span class="op">)</span><span class="op">)</span></span>
@@ -345,45 +497,9 @@ ranking. <code>cross_validate = TRUE</code> also calibrates each
 structure on the validation window and scores it on the calibration
 window, and ranks on the mean of the two held-out scores. It doubles the
 cost.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/compare_structures.html">compare_structures</a></span><span class="op">(</span><span class="va">project</span>, <span class="va">structures</span>, starts <span class="op">=</span> <span class="fl">4</span>, cross_validate <span class="op">=</span> <span class="cn">TRUE</span>, cores <span class="op">=</span> <span class="fl">8</span>,</span>
 <span>                   reasoning <span class="op">=</span> <span class="st">"Short record: rank on both held-out windows."</span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level2">
-<h2 id="one-component-at-a-time">One component at a time<a class="anchor" aria-label="anchor" href="#one-component-at-a-time"></a>
-</h2>
-<p>Comparing every combination of soil store, recharge rule and
-groundwater store means sixty calibrations.
-<code><a href="../reference/recommend_structure.html">recommend_structure()</a></code> chooses one component at a time
-instead, the way a hydrologist would, and writes its reasons to the log
-as notes:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">rec</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/recommend_structure.html">recommend_structure</a></span><span class="op">(</span><span class="va">project</span>, reasoning <span class="op">=</span> <span class="st">"First choice of structure."</span><span class="op">)</span></span>
-<span><span class="va">rec</span></span>
-<span><span class="va">rec</span><span class="op">$</span><span class="va">steps</span><span class="op">$</span><span class="va">recharge</span><span class="op">$</span><span class="va">table</span></span></code></pre></div>
-<p>The order follows what a record can tell apart. On made-up catchments
-(<a href="calibration-study.html">What limits automatic calibration</a>)
-the recharge rule was identified every time, by margins of 0.08 or more
-in log NSE, and the groundwater store only by margins too small to
-trust. So the recharge rule comes first, then the soil store
-distribution, then the groundwater store, each step starting from the
-structure the step before chose.</p>
-<p>Each step compares its options with <code><a href="../reference/compare_structures.html">compare_structures()</a></code>
-and chooses by one rule:</p>
-<ol style="list-style-type: decimal">
-<li>A structure that ended with a parameter at a bound of its search
-range is set aside, as being bent to fit.</li>
-<li>The rest are ranked on the validation window. Every structure within
-the tie tolerance of the best (0.02 unless registered otherwise) counts
-as equally good.</li>
-<li>If the structure the step started from is among the equally good, it
-is kept: the record cannot justify a change.</li>
-<li>Otherwise the one with the smallest median peak error on the largest
-validation events wins, then the one with fewer parameters.</li>
-</ol>
-<p>Rule 3 makes the recommendation conservative. Where the record is
-silent, as it usually is about the groundwater store, the standard
-structure stays, and the note says why.</p>
 </div>
 <div class="section level2">
 <h2 id="in-the-app-and-at-scale">In the app and at scale<a class="anchor" aria-label="anchor" href="#in-the-app-and-at-scale"></a>

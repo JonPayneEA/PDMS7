@@ -18,6 +18,8 @@ recommend_structure(
   control = list(maxit = 100),
   method = "lbfgsb",
   cores = 1L,
+  overrides = NULL,
+  exclude = NULL,
   reasoning,
   note = TRUE
 )
@@ -33,7 +35,7 @@ recommend_structure(
 - components:
 
   Components to choose, in order, among `recharge`, `distribution` and
-  `groundwater`.
+  `groundwater`, and optionally `zones`, which must come last.
 
 - tolerance:
 
@@ -48,6 +50,15 @@ recommend_structure(
 
   Passed to
   [`compare_structures()`](https://jonpayneea.github.io/PDMS7/reference/compare_structures.md).
+
+- overrides, exclude:
+
+  Passed to
+  [`compare_structures()`](https://jonpayneea.github.io/PDMS7/reference/compare_structures.md),
+  and so to
+  [`calibration_bounds()`](https://jonpayneea.github.io/PDMS7/reference/calibration_bounds.md)
+  for every structure compared; an override must name a parameter every
+  structure has.
 
 - reasoning:
 
@@ -68,7 +79,7 @@ recommended, calibrated structure), `entry` (its calibration entry) and
 ## Details
 
 **The order** follows what the record can tell apart. On made-up
-catchments (see the calibration study article) the recharge rule was
+catchments (see the large-sample article) the recharge rule was
 identified every time, by wide margins; the groundwater store only by
 margins too small to trust. So the recharge rule comes first, then the
 soil store distribution, then the groundwater store, each step starting
@@ -91,6 +102,13 @@ from the calibrated structure the step before chose.
     peak error on the largest validation events wins
     ([`calibration_checks()`](https://jonpayneea.github.io/PDMS7/reference/calibration_checks.md)),
     then the one with fewer parameters.
+
+**Zones.** With `"zones"` among the components, a last step compares the
+structure chosen so far, as one zone, with the same structure plus a
+fast zone for a flashy part of the response
+([`two_zone_config()`](https://jonpayneea.github.io/PDMS7/reference/two_zone_config.md)),
+by the same rule: two zones replace one only if they are better on
+validation by more than the tolerance, and not pinned at a bound.
 
 Every comparison is logged in the project as usual, and each step's
 choice and reason is written as a note, so the recommendation is part of

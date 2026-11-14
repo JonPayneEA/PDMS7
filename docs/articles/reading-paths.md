@@ -28,14 +28,14 @@ explains any term along the way.
 5.  [Scoring a
     simulation](https://jonpayneea.github.io/PDMS7/articles/scoring.md):
     what each score shows.
-6.  [Automatic calibration,
-    explained](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.md),
+6.  [How automatic calibration
+    works](https://jonpayneea.github.io/PDMS7/articles/auto-calibration.md),
     including staged calibration.
-7.  [Logging a manual
-    calibration](https://jonpayneea.github.io/PDMS7/articles/calibration-log.md):
+7.  [Calibration
+    records](https://jonpayneea.github.io/PDMS7/articles/calibration-log.md):
     the record a Steward will review.
-8.  [Choosing a model
-    structure](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.md),
+8.  [How the model structure is
+    chosen](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.md),
     when the standard PDM may not suit.
 9.  [Larger floods: extrapolation and the
     rating](https://jonpayneea.github.io/PDMS7/articles/extrapolation.md):
@@ -54,11 +54,11 @@ covers the common errors.
 2.  [Scoring a
     simulation](https://jonpayneea.github.io/PDMS7/articles/scoring.md):
     enough to read the report’s scores.
-3.  [Logging a manual
-    calibration](https://jonpayneea.github.io/PDMS7/articles/calibration-log.md):
+3.  [Calibration
+    records](https://jonpayneea.github.io/PDMS7/articles/calibration-log.md):
     how the record is built.
 4.  [Inside the
-    logs](https://jonpayneea.github.io/PDMS7/articles/log-structure.md):
+    logs](https://jonpayneea.github.io/PDMS7/articles/calibration-log.html#inside-the-logs):
     what the checksums prove.
 5.  [Larger floods: extrapolation and the
     rating](https://jonpayneea.github.io/PDMS7/articles/extrapolation.md):
