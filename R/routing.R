@@ -111,7 +111,9 @@ FlodeCascadeRouting <- S7::new_class(
 #' Component of the configurable Moore (2007) rainfall-runoff framework.
 #'
 #' @param a Positive exponential-routing slope, per mm.
-#' @param gamma Finite exponential-routing log-flow intercept, flow measured in mm/hour.
+#' @param gamma Finite exponential-routing log-flow intercept, flow measured in mm/hour. It
+#'   fixes only the zero of the storage coordinate: the flow depends on `a` alone once the
+#'   store starts from a flow, so calibration holds `gamma` at its value.
 #'
 #' @return An S7 component object.
 #'

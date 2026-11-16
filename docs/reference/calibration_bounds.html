@@ -15,7 +15,7 @@ recharge and groundwater constants, are marked for log-scale search."><meta prop
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.27.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.27.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -160,60 +160,21 @@ come from different gauges or a different product. Search it only when the rainf
 is known and stable, by giving it bounds: <code>overrides = list(fc = c(0.8, 1.2))</code>, or the
 table's range <code>c(0.6, 1.6)</code>. The table's <code>default</code> column marks which parameters are locked
 in this way.</p>
+<p>The exponential store's <code>gamma</code> is locked too. In <code>q = exp(gamma + a S)</code> it only sets where
+the zero of <code>S</code> lies: the flow follows <code>dq/dt = a q (u - q)</code>, which has no <code>gamma</code> in it, so a
+run started from an observed flow is the same whatever <code>gamma</code> is. Searching it would spend a
+dimension of the search on a flat objective and report a value that means nothing.</p>
     </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu">calibration_bounds</span><span class="op">(</span><span class="fu"><a href="pdm_presets.html">pdm_presets</a></span><span class="op">(</span><span class="st">"standard"</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                path lower   upper  scale</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1 distribution.cmax 2e+01     800 linear</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2    distribution.b 5e-02       2 linear</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3       recharge.kg 1e+00    5000    log</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4        surface.k1 5e-01      72    log</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5        surface.k2 5e-01      72    log</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6    groundwater.kb 1e+02 1000000    log</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                                                    note</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1                           Maximum store capacity (mm)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2           Shape: low values give a near-uniform store</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3 Recharge time constant (h); spans orders of magnitude</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4                  Time constant of the first store (h)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5                 Time constant of the second store (h)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6                                  Cubic store constant</span>
-<span class="r-in"><span><span class="co"># Search the rainfall factor too</span></span></span>
-<span class="r-in"><span><span class="fu">calibration_bounds</span><span class="op">(</span><span class="fu"><a href="pdm_presets.html">pdm_presets</a></span><span class="op">(</span><span class="st">"standard"</span><span class="op">)</span>, overrides <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>fc <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.8</span>, <span class="fl">1.2</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                path lower   upper  scale</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1                fc 8e-01 1.2e+00 linear</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2 distribution.cmax 2e+01 8.0e+02 linear</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3    distribution.b 5e-02 2.0e+00 linear</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4       recharge.kg 1e+00 5.0e+03    log</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5        surface.k1 5e-01 7.2e+01    log</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6        surface.k2 5e-01 7.2e+01    log</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 7    groundwater.kb 1e+02 1.0e+06    log</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                                                                                note</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1 Rainfall factor; outside this range question the rain gauge rather than the model</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2                                                       Maximum store capacity (mm)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3                                       Shape: low values give a near-uniform store</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4                             Recharge time constant (h); spans orders of magnitude</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5                                              Time constant of the first store (h)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 6                                             Time constant of the second store (h)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 7                                                              Cubic store constant</span>
-<span class="r-in"><span><span class="co"># Lock the store's shape at 0.4</span></span></span>
-<span class="r-in"><span><span class="va">cfg</span> <span class="op">&lt;-</span> <span class="fu"><a href="pdm_presets.html">pdm_presets</a></span><span class="op">(</span><span class="st">"standard"</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="va">cfg</span><span class="op">$</span><span class="va">distribution</span><span class="op">$</span><span class="va">b</span> <span class="op">&lt;-</span> <span class="fl">0.4</span></span></span>
-<span class="r-in"><span><span class="fu">calibration_bounds</span><span class="op">(</span><span class="va">cfg</span>, exclude <span class="op">=</span> <span class="st">"distribution.b"</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                path lower   upper  scale</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1 distribution.cmax  20.0     800 linear</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2       recharge.kg   1.0    5000    log</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3        surface.k1   0.5      72    log</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4        surface.k2   0.5      72    log</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5    groundwater.kb 100.0 1000000    log</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>                                                    note</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 1                           Maximum store capacity (mm)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 2 Recharge time constant (h); spans orders of magnitude</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 3                  Time constant of the first store (h)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 4                 Time constant of the second store (h)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> 5                                  Cubic store constant</span>
-</code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">calibration_bounds</span><span class="op">(</span><span class="fu"><a href="pdm_presets.html">pdm_presets</a></span><span class="op">(</span><span class="st">"standard"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co"># Search the rainfall factor too</span></span>
+<span><span class="fu">calibration_bounds</span><span class="op">(</span><span class="fu"><a href="pdm_presets.html">pdm_presets</a></span><span class="op">(</span><span class="st">"standard"</span><span class="op">)</span>, overrides <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>fc <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.8</span>, <span class="fl">1.2</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co"># Lock the store's shape at 0.4</span></span>
+<span><span class="va">cfg</span> <span class="op">&lt;-</span> <span class="fu"><a href="pdm_presets.html">pdm_presets</a></span><span class="op">(</span><span class="st">"standard"</span><span class="op">)</span></span>
+<span><span class="va">cfg</span><span class="op">$</span><span class="va">distribution</span><span class="op">$</span><span class="va">b</span> <span class="op">&lt;-</span> <span class="fl">0.4</span></span>
+<span><span class="fu">calibration_bounds</span><span class="op">(</span><span class="va">cfg</span>, exclude <span class="op">=</span> <span class="st">"distribution.b"</span><span class="op">)</span></span></code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>

@@ -18,7 +18,7 @@ route,linear,kb,10,5000,log,Linear store time constant (h),search
 route,quadratic,kb,10,1e5,log,Quadratic store constant,search
 route,cubic,kb,100,1e6,log,Cubic store constant,search
 route,exponential,a,0.001,1,log,Exponential store rate (1/mm),search
-route,exponential,gamma,-15,0,linear,Exponential store offset (log mm/h),search
+route,exponential,gamma,-15,0,linear,Exponential store offset (log mm/h); only moves the zero of S and leaves the flow unchanged from a flow start; held at its value,fixed
 extension,extension,ku,100,1e6,log,Underflow time constant (h); searched only when set,search
 extension,extension,dbu,0,2000,linear,Baseflow-underflow deficit (mm); searched only when set,search
 extension,extension,alpha_b,-1,0.9,linear,Share of groundwater outflow lost to external springs; negative imports; searched only when set,search

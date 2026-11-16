@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.27.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.27.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -103,6 +103,11 @@
       <small>Source: <a href="https://github.com/JonPayneEA/PDMS7/blob/HEAD/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.27.1" id="pdms7-0271">pdmS7 0.27.1<a class="anchor" aria-label="anchor" href="#pdms7-0271"></a></h2>
+<ul><li>
+<strong>Calibration no longer searches the exponential store’s <code>gamma</code>.</strong> In <code>q = exp(gamma + a S)</code> the offset only sets where the zero of <code>S</code> lies; the flow follows <code>dq/dt = a q (u - q)</code>, which has no <code>gamma</code> in it. From a flow start, the default, two values of <code>gamma</code> give the same hydrograph to rounding, so the search spent a dimension on a flat objective and reported a value that meant nothing. <code><a href="../reference/calibration_bounds.html">calibration_bounds()</a></code> now holds it at its configured value; an override still unlocks it. Fitted flows do not change. The model equations article explains why, in symbols and in plain terms.</li>
+</ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.27.0" id="pdms7-0270">pdmS7 0.27.0<a class="anchor" aria-label="anchor" href="#pdms7-0270"></a></h2>
 <ul><li>

@@ -9,7 +9,9 @@ FlodeExponentialRouting(a = integer(0), gamma = integer(0))
 \arguments{
 \item{a}{Positive exponential-routing slope, per mm.}
 
-\item{gamma}{Finite exponential-routing log-flow intercept, flow measured in mm/hour.}
+\item{gamma}{Finite exponential-routing log-flow intercept, flow measured in mm/hour. It
+fixes only the zero of the storage coordinate: the flow depends on \code{a} alone once the
+store starts from a flow, so calibration holds \code{gamma} at its value.}
 }
 \value{
 An S7 component object.

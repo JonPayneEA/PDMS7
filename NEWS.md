@@ -1,3 +1,13 @@
+# pdmS7 0.27.1
+
+- **Calibration no longer searches the exponential store's `gamma`.** In `q = exp(gamma + a S)`
+  the offset only sets where the zero of `S` lies; the flow follows `dq/dt = a q (u - q)`, which
+  has no `gamma` in it. From a flow start, the default, two values of `gamma` give the same
+  hydrograph to rounding, so the search spent a dimension on a flat objective and reported a
+  value that meant nothing. `calibration_bounds()` now holds it at its configured value; an
+  override still unlocks it. Fitted flows do not change. The model equations article explains
+  why, in symbols and in plain terms.
+
 # pdmS7 0.27.0
 
 - **The modelled well level was 1000 times too flat.** The depth to the water table is
