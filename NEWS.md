@@ -9,6 +9,12 @@
   parameters carry back to the model's own step unchanged; later stages and every logged
   score use the full record. `log_auto_calibration()` gains `coarse_dt` too, and the entry
   records it.
+- On a synthetic 15-minute catchment with a known answer (eight years, the Beggearn Huish
+  structure), the three staged calibrations took 139 s by L-BFGS-B (NSE 0.9875 on calibration,
+  0.9869 on validation, the truth scoring 0.9874 and 0.9869), 84 s by DDS with 300 runs a stage
+  (0.9870 and 0.9863) and 66 s by DDS with stage 1 hourly (0.9870 and 0.9863). The hourly stage
+  1 cost nothing; DDS cost 0.0005 in NSE on this smooth synthetic case, which favours gradient
+  searches, and is to be weighed on real records.
 
 # pdmS7 0.29.0
 
