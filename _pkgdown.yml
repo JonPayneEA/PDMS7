@@ -251,6 +251,8 @@ reference:
   - boxcox_flow
   - flow_weights
   - pdm_sensitivity
+  - compare_forecasts
+  - split_sample_test
   - pdm_scorecard
   - pdm_threshold_scores
   - flow_markers

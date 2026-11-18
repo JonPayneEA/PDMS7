@@ -1,3 +1,16 @@
+# pdmS7 0.32.0
+
+- **Models chosen as forecasters.** `compare_forecasts()` hindcasts every candidate alike
+  ([pdm_hindcast()]) and ranks them by skill over persistence at the lead times that matter, or
+  by a threshold score, each with its best updating method at each lead or one method for all.
+  A model a little worse over the whole record but better a few hours ahead ranks higher, as it
+  should for forecasting. Print and plot methods.
+- **Stress tests.** `split_sample_test()` is the differential split-sample test: calibrate on
+  the drier half of the water years and score the wetter half, then the reverse (or the early
+  and late halves, `split = "halves"`). `parameter_drift()` calibrates each period of the
+  record on its own and shows each parameter's move as a share of its range: flat lines are
+  parameters the data determine, steady slopes a change in the catchment or the record.
+
 # pdmS7 0.31.0
 
 - **An objective that matches how flow errors behave.** `objective = "boxcox"` in
