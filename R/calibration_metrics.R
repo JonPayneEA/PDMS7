@@ -87,9 +87,11 @@ pdm_objectives <- function(simulated, observed,
 pareto_front <- function(losses) {
   .check(is.matrix(losses) && is.numeric(losses) && ncol(losses) > 0 &&
            all(is.finite(losses)), "losses must be a finite numeric matrix")
+  # Point i is dominated when some row is no worse on every loss and better on one. Each row is
+  # tested against the whole matrix at once, so a large archive stays quick.
+  k <- ncol(losses)
   vapply(seq_len(nrow(losses)), function(i) {
-    !any(vapply(setdiff(seq_len(nrow(losses)), i), function(j) {
-      all(losses[j, ] <= losses[i, ]) && any(losses[j, ] < losses[i, ])
-    }, logical(1)))
+    li <- matrix(losses[i, ], nrow(losses), k, byrow = TRUE)
+    !any(rowSums(losses <= li) == k & rowSums(losses < li) > 0)
   }, logical(1))
 }

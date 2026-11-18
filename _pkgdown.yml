@@ -86,6 +86,7 @@ articles:
   - auto-calibration
   - choosing-structure
   - floods
+  - trade-offs
   - app-events
   - checks
   - rainfall
@@ -242,6 +243,8 @@ reference:
   - pdm_stages
   - calibration_checks
   - calibrate_pdm_multi
+  - pareto_choose
+  - plot.pdm_pareto
   - pdm_objectives
   - pdm_scorecard
   - pdm_threshold_scores

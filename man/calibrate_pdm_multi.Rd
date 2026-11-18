@@ -18,7 +18,14 @@ calibrate_pdm_multi(
   seed = 1L,
   warmup = 0L,
   log_offset = 0.01,
-  control = list(maxit = 100)
+  control = list(maxit = 100),
+  method = c("lbfgsb", "dds"),
+  events = NULL,
+  event_share = 0.5,
+  event_screen = list(),
+  thresholds = NULL,
+  threshold_score = "csi",
+  event_settings = list(tolerance_h = 6, gap_h = 24, min_duration_h = 0)
 )
 }
 \arguments{
@@ -32,7 +39,7 @@ Optional time column contains POSIXct timestamps.}
 \item{lower, upper}{Named finite bounds with identical names/order. Coupled paths
 start with pdm. or snow., for example snow.melt_factor_mmh_c.}
 
-\item{objectives}{Metric names accepted by pdm_objectives.}
+\item{objectives}{Loss names from the table above.}
 
 \item{scales}{Positive named metric divisors in objective order. NULL uses ones;
 choose meaningful scales before interpreting weighted compromises.}
@@ -50,18 +57,73 @@ order. Rows are normalized to sum one. NULL uses individual objectives and equal
 
 \item{log_offset}{Positive offset for log-RMSE, m3/s.}
 
-\item{control}{Control list forwarded to stats::optim.}
+\item{control}{Control list: for L-BFGS-B, forwarded to stats::optim; for DDS, \code{maxit}
+model runs a refinement and \code{r} the step size.}
+
+\item{method}{\code{"lbfgsb"} or \code{"dds"}.}
+
+\item{events, event_share, event_screen}{How the events of the event objectives are chosen,
+as in \code{\link[=calibrate_pdm]{calibrate_pdm()}}.}
+
+\item{thresholds, threshold_score, event_settings}{For \code{threshold_loss}: flows in m3/s, the
+score, and how threshold events are matched, as in \code{\link[=calibrate_pdm]{calibrate_pdm()}}.}
 }
 \value{
-List with archive data.table, pareto data.table, corresponding configs,
-compromise (best equal/supplied final weight row), weights, scales, optimization
-status and failed evaluation count. Candidates are not posterior probabilities.
+A \code{pdm_pareto} list: \code{archive} (every evaluation, its raw and scaled losses and a
+\code{pareto} flag), \code{pareto} (the front's rows), \code{configs} (their configurations),
+\code{compromise} (the archived point best under the last weight row), \code{objectives},
+\code{weights}, \code{scales}, \code{method}, \code{optimization} (each refinement's status), \code{events} (how
+many events the event objectives score, when used) and \code{failed_evaluations}.
+Candidates are not posterior probabilities.
 }
 \description{
-Evaluates the initial configuration and seeded uniform candidates, then refines
-the best sampled starts for each weight vector with bounded L-BFGS-B. Retains
-every valid evaluated candidate and its raw metrics, normalized metrics and
-Pareto membership. This is an approximate sampled front, not a global optimality
-claim; nonconvex fronts may be missed by weighted searches. Use repeated seeds,
-sufficient search budgets and independent validation. Random state is restored.
+Searches for the trade-off between several objectives at once, and returns the Pareto
+front: every parameter set that no other beats on all of them. Instead of one best fit for
+one blend of objectives, the front shows what each gain costs, such as how much fit to the
+recessions is lost for better peaks, so the choice between them is made in the open.
+}
+\details{
+The search evaluates the configured point and \code{n_samples} uniform random points, then, for
+each row of \code{weights}, refines the \code{starts} best of them under that weighted, scaled sum:
+by L-BFGS-B (\code{method = "lbfgsb"}) or by dynamically dimensioned search (\code{method = "dds"},
+as in \code{\link[=calibrate_pdm]{calibrate_pdm()}}, \code{control$maxit} model runs a refinement). Every evaluation is kept
+in an archive, and the front is drawn from the whole archive. This is an approximate,
+sampled front, not a proof of optimality: weighted sums can miss the hollows of a
+non-convex front, so use several weight rows, repeated seeds and a validation period.
+
+\strong{Objectives}, all losses to be minimised:\tabular{ll}{
+   Name \tab Loss \cr
+   \code{nse_loss}, \code{rmse}, \code{log_rmse}, \code{kge_loss}, \code{abs_bias}, \code{peak_relative_error} \tab Whole record: see \code{\link[=pdm_objectives]{pdm_objectives()}} \cr
+   \code{event_nse_loss} \tab 1 - pooled event NSE over the chosen events \cr
+   \code{event_peak_error} \tab Mean absolute peak error over the chosen events \cr
+   \code{event_timing_error} \tab Mean absolute timing error over the chosen events, over the response time \cr
+   \code{threshold_loss} \tab 1 - the threshold score (\code{threshold_score}), averaged over \code{thresholds} \cr
+}
+
+
+The event terms are those of \code{objective = "events"} in \code{\link[=calibrate_pdm]{calibrate_pdm()}}, kept apart; the
+events are chosen the same way (\code{events}, \code{event_share}, \code{event_screen}). Timing and
+threshold scores change in steps, which a gradient cannot follow: they need \code{method = "dds"}.
+
+The result has class \code{pdm_pareto}: \code{\link[=plot.pdm_pareto]{plot.pdm_pareto()}} draws the front, and
+\code{\link[=pareto_choose]{pareto_choose()}} picks a configuration from it.
+}
+\examples{
+rain <- synthetic_rain("2021-01-01", years = 1, dt = 1, seed = 2)
+truth <- modifyList(pdm_presets("standard"), list(area_km2 = 20))
+flow <- run_pdm(pdm_from_config(truth), rain[c("rain", "pet")])$output$q_m3s
+start <- truth
+start$distribution$cmax <- 150
+front <- calibrate_pdm_multi(
+  start, rain[c("time", "rain", "pet")], flow,
+  lower = c(distribution.cmax = 80, surface.k1 = 2),
+  upper = c(distribution.cmax = 400, surface.k1 = 30),
+  objectives = c("nse_loss", "event_peak_error"), method = "dds", n_samples = 8,
+  starts = 1, control = list(maxit = 20), warmup = 24 * 30
+)
+plot(front)
+pareto_choose(front, objective = "event_peak_error")$scores
+}
+\seealso{
+\code{\link[=plot.pdm_pareto]{plot.pdm_pareto()}}, \code{\link[=pareto_choose]{pareto_choose()}}, \code{\link[=log_pareto_calibration]{log_pareto_calibration()}}
 }

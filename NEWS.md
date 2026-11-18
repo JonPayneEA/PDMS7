@@ -1,3 +1,23 @@
+# pdmS7 0.28.0
+
+- **Pareto calibration with event and threshold losses.** `calibrate_pdm_multi()` now takes
+  the three terms of the events objective as losses of their own (`event_nse_loss`,
+  `event_peak_error`, `event_timing_error`) and a threshold loss (`threshold_loss`), beside the
+  whole-record ones, and searches by DDS (`method = "dds"`) as well as L-BFGS-B. Losses that
+  change in steps, timing and thresholds, need DDS. The result has the class `pdm_pareto`.
+- **Plots of the front.** `plot()` and `autoplot()` draw each pair of objectives (every set
+  tried, the front, the pair's trade-off line and the compromise), parallel coordinates across
+  all of them, and the flows of the best set on each objective over the largest storm.
+- **`pareto_choose()`** takes one set from the front: the best on one objective, the best
+  under weights, or the compromise.
+- **`log_pareto_calibration()`** runs the search in a calibration project and logs the chosen
+  set as an automatic calibration, keeping the whole front in the entry; the report draws it
+  and lists its sets.
+- **Trade-offs**, a new article: calibrating on events alone, fitting and reading a front,
+  choosing from it and logging the choice.
+- The multi-objective search no longer writes parameter names into the configuration's
+  values, and the Pareto test is quicker on large archives.
+
 # pdmS7 0.27.1
 
 - **Calibration no longer searches the exponential store's `gamma`.** In `q = exp(gamma + a S)`

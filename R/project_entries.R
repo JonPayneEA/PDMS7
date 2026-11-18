@@ -24,6 +24,7 @@
 #' | `select_structure()` | `structure_selected` | Custodian |
 #' | `log_trial()` | `trial` | Custodian |
 #' | `log_auto_calibration()` | `auto_calibration` | Custodian |
+#' | `log_pareto_calibration()` | `auto_calibration` (with its Pareto front) | Custodian |
 #' | `log_note()` | `note` | Any |
 #' | `propose_candidate()` | `candidate` | Custodian |
 #' | `validate_candidate()` | `validation` | Custodian |
@@ -44,6 +45,12 @@
 #' validation window is scored once, by `validate_candidate()`, and an optional test window
 #' once more, by `test_candidate()`, after every choice is made. See
 #' [pdm_scorecard()] for the scores and [verify_project()] for the integrity checks.
+#'
+#' **Pareto calibration.** `log_pareto_calibration()` runs [calibrate_pdm_multi()] on the
+#' calibration window and logs the front point named by `choose` as an automatic
+#' calibration, keeping the whole front (each set's parameters and losses) in the entry, so
+#' the report draws it and the trade-off behind the choice stays on the record. The search
+#' runs each set from the model's default start; the logged scores are the project's own.
 #'
 #' **Extrapolation.** By default the two wettest water years in the calibration and
 #' validation windows (see [wettest_years()]) are held back: no calibration, trial or
