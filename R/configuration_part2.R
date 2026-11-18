@@ -433,15 +433,7 @@ calibrate_pdm <- function(
   for (i in seq_len(budget - 1L)) {
     chosen <- stats::runif(n) < 1 - log(i) / log(budget)
     if (!any(chosen)) chosen[sample.int(n, 1L)] <- TRUE
-    trial <- best
-    step <- trial[chosen] + r * stats::rnorm(sum(chosen))
-    low <- step < 0
-    step[low] <- -step[low]
-    step[low & step > 1] <- 0
-    high <- step > 1
-    step[high] <- 2 - step[high]
-    step[high & step < 0] <- 1
-    trial[chosen] <- step
+    trial <- .dds_perturb(best, chosen, r)
     value <- loss(trial)
     if (value <= best_value) {
       best <- trial
@@ -450,6 +442,21 @@ calibrate_pdm <- function(
   }
   list(par = best, value = best_value, counts = c(`function` = budget, gradient = NA),
        convergence = 0L, message = paste("DDS:", budget, "model runs"))
+}
+
+# One DDS step from `z` in the unit box: the chosen coordinates move by a normal step of sd r; a
+# step past a bound is reflected back inside, and one that overshoots the other bound goes to the
+# bound it crossed.
+.dds_perturb <- function(z, chosen, r) {
+  step <- z[chosen] + r * stats::rnorm(sum(chosen))
+  low <- step < 0
+  step[low] <- -step[low]
+  step[low & step > 1] <- 0
+  high <- step > 1
+  step[high] <- 2 - step[high]
+  step[high & step < 0] <- 1
+  z[chosen] <- step
+  z
 }
 
 # The threshold part of the objective: for each threshold, 1 - score (or the score itself for a

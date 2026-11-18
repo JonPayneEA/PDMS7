@@ -158,6 +158,7 @@ calibration_app <- function(project = NULL) {
     shiny::tabPanel("Events", .ui_events()),
     shiny::tabPanel("History", .ui_history()),
     shiny::tabPanel("Structures", .ui_structures()),
+    shiny::tabPanel("Trade-offs", .ui_pareto()),
     shiny::tabPanel("Report", .ui_report()),
     shiny::tabPanel("Sign-off", .ui_signoff())
   )

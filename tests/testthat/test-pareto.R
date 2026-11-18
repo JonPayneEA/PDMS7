@@ -52,7 +52,7 @@ test_that("choosing from the front", {
   expect_equal(pareto_choose(f)$row, 2L)
   expect_equal(pareto_choose(f)$config$p, 2)
   expect_error(pareto_choose(f, objective = "c"), "one of")
-  expect_error(pareto_choose(f, objective = "a", weights = c(a = 1)), "not both")
+  expect_error(pareto_choose(f, objective = "a", weights = c(a = 1)), "one of objective")
 })
 
 # Guards: the plots draw what the front holds
@@ -111,13 +111,13 @@ test_that("a perfect start is the whole front, with event and whole-record losse
   truth <- d$truth
   # Observed flow from the same simulator, so the truth scores exactly 0 on every loss and
   # nothing can beat it
-  obs <- .multi_simulator(truth, d$forcing)(truth)
+  obs <- .multi_simulator(truth, d$forcing, list(start = "soil"))(truth)
   front <- calibrate_pdm_multi(
     truth, d$forcing, obs, lower = c(fc = 0.6, surface.k1 = 1),
     upper = c(fc = 1.4, surface.k1 = truth$surface$k1 * 3),
     objectives = c("nse_loss", "event_nse_loss", "event_peak_error", "event_timing_error"),
     method = "dds", n_samples = 6, starts = 1, control = list(maxit = 8), warmup = 120,
-    event_share = 1
+    event_share = 1, start = "soil"
   )
   expect_s3_class(front, "pdm_pareto")
   expect_equal(nrow(front$pareto), 1L)
@@ -137,7 +137,8 @@ test_that("objective checks", {
     calibrate_pdm_multi(d$truth, d$forcing, d$observed, lower = c(fc = 0.6),
                         upper = c(fc = 1.4), n_samples = 1, starts = 1, ...)
   }
-  expect_error(run(objectives = c("nse_loss", "event_timing_error")), "method = \"dds\"")
+  expect_error(run(objectives = c("nse_loss", "event_timing_error"), method = "lbfgsb"),
+               "use method = \"padds\"")
   expect_error(run(objectives = c("nse_loss", "threshold_loss"), method = "dds"),
                "needs thresholds")
   expect_error(run(objectives = c("nse_loss", "nonsense")), "unique names")
@@ -167,4 +168,163 @@ test_that("a Pareto calibration in the calibration log", {
   pdf(NULL)
   on.exit(grDevices::dev.off(), add = TRUE)
   expect_no_error(blocks[[1]]$draw())
+})
+
+# Guards: PA-DDS draws sets from sparse parts of the front more often
+test_that("crowding distance weights", {
+  # Four sets on a straight front, (0,3) (1,2) (2,1) (3,0). On each objective the inner two
+  # have neighbours 2 apart on a range of 3: 2/3 each, 4/3 over both. The ends are infinite and
+  # get twice the largest finite distance, 8/3.
+  f <- rbind(c(0, 3), c(1, 2), c(2, 1), c(3, 0))
+  expect_equal(.crowding_weights(f), c(8, 4, 4, 8) / 3)
+})
+
+# Guards: PA-DDS fills in a front that weighted sums cannot reach
+test_that("PA-DDS finds the middle of a non-convex front", {
+  # Two losses of a point (z1, z2) in the unit square: f1 = z1 and f2 = 1 - z1^2 + z2. The
+  # front is z2 = 0, the curve f2 = 1 - f1^2, which bows out above the line from (0, 1) to
+  # (1, 0). Any weighted sum w1 f1 + w2 f2 is concave in z1, so its minimum lies at z1 = 0 or
+  # z1 = 1: a weighted search can only find the two ends.
+  evaluate <- function(z) c(z[1], 1 - z[1]^2 + z[2])
+  set.seed(5)
+  z <- matrix(stats::runif(20), ncol = 2)
+  f <- t(apply(z, 1, evaluate))
+  store <- new.env()
+  store$f <- NULL
+  logged <- function(z) {
+    v <- evaluate(z)
+    store$f <- rbind(store$f, v)
+    v
+  }
+  set.seed(6)
+  .padds(logged, z, f, list(maxit = 400))
+  front <- store$f[pareto_front(store$f), , drop = FALSE]
+  # Sets well inside the curve are found, close to it (f2 - (1 - f1^2) = z2, small)
+  inner <- front[front[, 1] > 0.3 & front[, 1] < 0.7, , drop = FALSE]
+  expect_gt(nrow(inner), 3L)
+  expect_lt(max(inner[, 2] - (1 - inner[, 1]^2)), 0.1)
+  # A weighted DDS refinement of the same losses, equal weights, ends at one end
+  set.seed(6)
+  fit <- .dds_box(c(0.5, 0.5), function(z) sum(evaluate(z)) / 2, list(maxit = 400))
+  expect_lt(min(fit$par[1], 1 - fit$par[1]), 0.1)
+})
+
+# Guards: PA-DDS chains on several cores give the answer they give one by one
+test_that("PA-DDS is the default and repeatable", {
+  d <- log_data(24 * 30)
+  run <- function(cores) {
+    calibrate_pdm_multi(d$truth, d$forcing, d$observed, lower = c(fc = 0.6, surface.k1 = 1),
+                        upper = c(fc = 1.4, surface.k1 = 20),
+                        objectives = c("nse_loss", "abs_bias"), n_samples = 4, starts = 2,
+                        control = list(maxit = 6), warmup = 48, seed = 3, cores = cores)
+  }
+  a <- run(1)
+  expect_equal(a$method, "padds")
+  expect_length(a$optimization, 2L)
+  expect_match(a$optimization[[1]]$message, "PA-DDS: 6 model runs")
+  # 1 configured + 4 samples + 2 chains x 6 runs, less exact repeats
+  expect_lte(nrow(a$archive), 17L)
+  expect_identical(a$pareto, run(1)$pareto)
+  skip_on_cran()
+  expect_identical(run(2)$pareto, a$pareto)
+})
+
+# Guards: the knee is the lowest total on the front's own 0-to-1 scales
+test_that("the knee of a front", {
+  # On the hand-built front, a runs 0.1 to 0.6 and b 0.05 to 0.5. On those scales the sets sit
+  # at (0, 1), (0.2, 1/3) and (1, 0): totals 1, 0.533 and 1, so the knee is set 2, the one
+  # furthest below the line from (0, 1) to (1, 0).
+  f <- fake_front()
+  expect_equal(pareto_choose(f, knee = TRUE)$row, 2L)
+  expect_equal(.pareto_pick(f, "knee")$row, 2L)
+  expect_equal(.pareto_pick(f, "b")$row, 3L)
+  expect_error(pareto_choose(f, objective = "a", knee = TRUE), "one of")
+})
+
+# Guards: a front scored on new rows, and the band of its flows
+test_that("scoring the front on a check period, and its band", {
+  d <- log_data(24 * 60)
+  truth <- d$truth
+  obs <- .multi_simulator(truth, d$forcing, list(start = "soil"))(truth)
+  front <- calibrate_pdm_multi(
+    truth, d$forcing, obs, lower = c(fc = 0.6), upper = c(fc = 1.4),
+    objectives = c("nse_loss", "abs_bias"), n_samples = 4, starts = 1,
+    control = list(maxit = 6), warmup = 120, start = "soil"
+  )
+  # The truth is the whole front, and it is perfect on any rows: both check losses 0
+  checked <- pareto_validate(front, d$forcing, obs, 1000:1400)
+  expect_equal(checked$validation_rows, c(1000, 1400))
+  expect_equal(unlist(checked$validation[, -1]), c(0, 0), ignore_attr = TRUE)
+  # One set on the front: its band has no width, and is the truth's flow
+  band <- pareto_band(front, d$forcing)
+  expect_equal(band$lower, band$upper)
+  expect_equal(band$compromise, obs)
+  pdf(NULL)
+  on.exit(grDevices::dev.off(), add = TRUE)
+  expect_invisible(plot(checked, "validation"))
+  expect_invisible(plot(front, "band", forcing = d$forcing, observed = obs))
+  expect_error(plot(front, "validation"), "pareto_validate")
+})
+
+# Guards: a project's front keeps a check period cut from the calibration window, never the
+# validation window
+test_that("a logged front with a check period", {
+  p <- new_project()
+  e <- log_pareto_calibration(p$folder, 3, lower = c(fc = 0.5), upper = c(fc = 1.5),
+                              objectives = c("nse_loss", "abs_bias"), choose = "knee",
+                              n_samples = 4, starts = 1, control = list(maxit = 6),
+                              check_share = 0.3, reasoning = "Check the trade-off")
+  # Calibration rows 121 to 700, 580 rows; 0.3 of them is 174, so rows 527 to 700 are checked
+  expect_equal(unlist(e$pareto$check_rows), c(527L, 700L))
+  expect_true(all(c("check_loss_nse_loss", "check_loss_abs_bias") %in% names(e$pareto$front)))
+  expect_true(all(verify_project(p$folder, rerun = TRUE)$ok))
+  blocks <- .rpt_pareto(e)
+  expect_equal(vapply(blocks, function(b) b$kind, character(1)),
+               c("figure", "figure", "table"))
+  expect_match(blocks[[1]]$caption, "the knee")
+})
+
+# Guards: a trade-off stage fits a front over the fast response and keeps its knee
+test_that("a trade-off stage in staged calibration", {
+  d <- log_data(24 * 40)
+  stages <- pdm_stages(d$truth, polish = FALSE, pareto = c("nse_loss", "event_peak_error"),
+                       pareto_budget = 6L, td_max = NULL)
+  last <- stages[[length(stages)]]
+  expect_equal(last$name, "trade-off")
+  expect_equal(last$objective, "pareto")
+  expect_equal(last$pareto$choose, "knee")
+  stages <- lapply(stages, function(s) {
+    s$control <- list(maxit = 6)
+    if (identical(s$objective, "pareto")) s$pareto$n_samples <- 3L
+    s
+  })
+  fit <- calibrate_staged(d$truth, d$forcing, d$observed, stages = stages, warmup = 48,
+                          control = list(maxit = 6))
+  trade <- fit$stages[[length(fit$stages)]]
+  expect_s3_class(trade$front, "pdm_pareto")
+  # The kept set is the knee of the stage's front
+  expect_equal(trade$chosen, pareto_choose(trade$front, knee = TRUE)$row)
+  expect_identical(fit$config, trade$config)
+  # In a project, the stage is logged with its front
+  p <- new_project()
+  stages <- pdm_stages(p$data$truth, polish = FALSE, pareto = c("nse_loss", "abs_bias"),
+                       td_max = NULL)
+  stages <- lapply(stages, function(s) {
+    s$control <- list(maxit = 4)
+    if (identical(s$objective, "pareto")) s$pareto$n_samples <- 3L
+    s
+  })
+  written <- log_staged_calibration(p$folder, 3, "Staged with a trade-off", stages = stages)
+  e <- written[[length(written)]]
+  expect_equal(e$objective, "pareto")
+  expect_match(e$stage, "trade-off")
+  expect_true(all(verify_project(p$folder, rerun = TRUE)$ok))
+})
+
+# Guards: a band of some sets only
+test_that("the band of chosen sets", {
+  f <- fake_front()
+  expect_error(pareto_band(f, data.frame(rain = 1, pet = 0)), "calibrate_pdm_multi")
+  f$settings <- list(start = "soil")
+  expect_error(pareto_band(f, data.frame(rain = 1, pet = 0), sets = 9), "rows of the front")
 })

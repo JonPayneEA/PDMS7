@@ -1,3 +1,27 @@
+# pdmS7 0.29.0
+
+- **Pareto-archived DDS** (PA-DDS; Asadzadeh and Tolson, 2013) is the new default search of
+  `calibrate_pdm_multi()`. It grows the front directly, keeping the sets no other beats and
+  favouring sparse parts of the front, so it fills in the hollows weighted sums cannot reach.
+  The weighted searches remain (`"dds"`, `"lbfgsb"`, and now `"nelder_mead"`).
+- **One trial engine.** `calibrate_pdm_multi()` now starts and runs every trial as
+  `calibrate_pdm()` does: the same start rules (`start`, `start_flow`, `baseflow_fraction`,
+  `soil_fraction`), the same engine, log-scaled parameters (`log_scale`), progress messages, and
+  chains on several cores with the same answer as on one. In a project the front is searched
+  from the project's own start, so it agrees with the logged scores. Fronts searched before
+  this version started from the model's default state, so a front may move slightly.
+- **`pareto_validate()`** scores every front set on rows the search never saw;
+  `plot(front, "validation")` sets calibration loss against it. `log_pareto_calibration()`
+  gains `check_share`, a check period cut from the end of the calibration window, so the
+  registered validation window still judges a model chosen without it. The report draws it.
+- **The knee:** `pareto_choose(front, knee = TRUE)`, or `choose = "knee"`, takes the set where
+  the trade-off turns sharpest, with no weights to choose.
+- **A trade-off stage:** `pdm_stages(pareto = c(...))` ends a staged calibration with a front
+  over the fast response and keeps its knee (or another choice), in memory and in a project.
+- **`pareto_band()`** and `plot(front, "band", ...)`: the range of flow across the front's sets.
+- **A Trade-offs tab in the app:** search and log a front, draw any pair of its objectives,
+  click a set to see its flow and scores against the logged one, and keep it as a trial.
+
 # pdmS7 0.28.0
 
 - **Pareto calibration with event and threshold losses.** `calibrate_pdm_multi()` now takes

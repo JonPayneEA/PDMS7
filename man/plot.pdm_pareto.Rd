@@ -7,7 +7,7 @@
 \usage{
 \method{plot}{pdm_pareto}(
   x,
-  type = c("pairs", "parallel", "flows"),
+  type = .pareto_types,
   objectives = NULL,
   forcing = NULL,
   observed = NULL,
@@ -17,7 +17,7 @@
 
 \method{autoplot}{pdm_pareto}(
   object,
-  type = c("pairs", "parallel", "flows"),
+  type = .pareto_types,
   objectives = NULL,
   forcing = NULL,
   observed = NULL,
@@ -32,10 +32,11 @@
 
 \item{objectives}{For \code{pairs} and \code{parallel}, the objectives to show; by default all.}
 
-\item{forcing, observed}{For \code{flows}, the forcing and observed flow of the calibration.}
+\item{forcing, observed}{For \code{flows} and \code{band}, the forcing and observed flow of the
+calibration.}
 
-\item{window}{For \code{flows}, the rows to draw; by default ten days round the highest
-observed flow.}
+\item{window}{For \code{flows} and \code{band}, the rows to draw; by default ten days round the
+highest observed flow.}
 
 \item{...}{Not used.}
 }
@@ -48,9 +49,11 @@ Three standard views of a front from \code{\link[=calibrate_pdm_multi]{calibrate
 \details{
 \tabular{ll}{
    \code{type} \tab Shows \cr
-   \code{pairs} \tab each pair of objectives: every evaluated set in grey, the front's sets, the trade-off line of the pair, and the compromise \cr
-   \code{parallel} \tab one line per front set across all the objectives, each axis from the front's best (0) to its worst (1); the compromise and the best set on each objective stand out \cr
-   \code{flows} \tab the observed flow and the simulated flow of the compromise and of the best set on each objective, over a window \cr
+   \code{pairs} \tab each pair of objectives: every set tried, the front, the pair's trade-off \cr
+   \code{parallel} \tab each front set as a line across all the objectives, 0 best to 1 worst \cr
+   \code{flows} \tab observed flow, the best set on each objective and the compromise, on a storm \cr
+   \code{validation} \tab each set's calibration loss against its loss on a check period \cr
+   \code{band} \tab the lowest and highest flow among the front's sets, on a storm \cr
 }
 
 
@@ -65,6 +68,14 @@ those objectives; lines that run side by side mark objectives that agree.
 
 \strong{The flows} show what the numbers mean: the same storm as the best sets for different
 objectives see it.
+
+\strong{The validation plot} needs \code{\link[=pareto_validate]{pareto_validate()}} first. Each panel is one objective: a
+set's loss on calibration across, on the check period up. Sets close to the dashed line
+keep their quality; sets well above it were good on the calibration rows only. The knee and
+the compromise are marked.
+
+\strong{The band} (\code{\link[=pareto_band]{pareto_band()}}) is the spread of flow among all the front's sets, run from
+the start of the record.
 }
 \examples{
 # See calibrate_pdm_multi().

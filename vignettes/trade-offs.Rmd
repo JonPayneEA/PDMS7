@@ -68,23 +68,37 @@ upper <- c(distribution.cmax = 400, surface.k1 = 40, distribution.b = 2)
 
 Four objectives, all losses to be minimised: `nse_loss` (1 - NSE, over the whole record),
 `event_peak_error` and `event_timing_error` (over the largest half of the events), and
-`abs_bias` (the volume error). Timing changes in whole steps, which a gradient cannot follow,
-so the search is by DDS.
+`abs_bias` (the volume error). The last six months are held out of the search, as a check
+period: the front will be scored on them later.
 
 ```{r fit}
+check <- seq.int(nrow(rain) - 24 * 182, nrow(rain))
+searched <- observed
+searched[check] <- NA
 front <- calibrate_pdm_multi(
-  start, rain[c("time", "rain", "pet")], observed, lower, upper,
+  start, rain[c("time", "rain", "pet")], searched, lower, upper,
   objectives = c("nse_loss", "event_peak_error", "event_timing_error", "abs_bias"),
-  method = "dds", n_samples = 30, starts = 1, control = list(maxit = 60),
-  warmup = 24 * 60, seed = 1
+  n_samples = 30, starts = 2, control = list(maxit = 150), warmup = 24 * 60, seed = 1
 )
 front
 ```
 
-The search samples 30 random sets, then refines the best of them five times: once for each
-objective alone and once for all four equally weighted. Every set it tries is kept, and the
-front is drawn from all of them. It is a sampled front, so a longer search or another seed may
-find a little more of it; it is not a proof that nothing better exists.
+The search starts with 30 random sets. Then two chains of Pareto-archived dynamically
+dimensioned search (PA-DDS) grow the front from them, 150 model runs each. A chain keeps the
+sets that no other set it has seen beats on every objective. At each step it nudges one of
+them, at first in many parameters at once and later in few, and keeps the result if nothing
+beats it. It nudges sets in the sparse parts of the front more often, so the front fills in
+evenly. Every set tried is kept, and the front is drawn from all of them. It is still a
+sampled front: a longer search or another seed may find a little more of it.
+
+Each trial starts as `calibrate_pdm()` starts it, in steady state at the first observed flow,
+so the front and a single-objective calibration of the same record are comparable. With
+`cores = 2` the two chains run side by side, with the same answer.
+
+The older way, minimising weighted sums of the objectives (`method = "dds"` and others), finds
+only the parts of a front that bulge towards the origin. Where the front has a hollow, every
+weighting lands on one side of it or the other, and the sets in the hollow, often the useful
+middle ground, are never found. PA-DDS has no weights, so it has no such blind spot.
 
 # Reading the front
 
@@ -97,9 +111,8 @@ plot(front)
 Each panel sets one objective against another. Grey points are every set tried; blue points
 are on the front of all four objectives; the blue line is the trade-off of that pair alone,
 and the orange point the compromise (the best set with all four equally weighted). A front
-that bends sharply, as event timing against 1 - NSE does here, means a gain on one costs
-little on the other until the bend, and a lot after it. A flat line means no trade-off: the
-volume error can be near zero across most of the range of NSE.
+that bends sharply means a gain on one objective costs little on the other until the bend, and
+a lot after it. A flat line means no trade-off between that pair.
 
 ## All the objectives at once
 
@@ -109,10 +122,8 @@ plot(front, "parallel")
 
 One line per set on the front, across the four objectives, each axis running from the front's
 best (0) to its worst (1). Lines that cross between two axes mark a trade-off; lines that run
-together mark objectives that agree. Here the set best on event timing is worst on NSE and
-peaks: the line crosses everything. The subtitle gives each axis's real range, which matters:
-event timing spans only 0.47 to 0.51 response times on the front, so its axis magnifies a
-small difference.
+together mark objectives that agree. The subtitle gives each axis's real range, which matters:
+an axis whose range is small magnifies a small difference.
 
 ## What the numbers mean on a storm
 
@@ -121,49 +132,107 @@ plot(front, "flows", forcing = rain, observed = observed)
 ```
 
 The largest flood of the record, as the best set on each objective and the compromise see it.
-The set best on timing gets its peaks at the right hour by doubling them; the set best on NSE
-and the compromise sit close to the observed flow. A number like 0.47 response times means
-little until it is drawn.
+A number like half a response time means little until it is drawn.
 
-# Choosing and logging
+## How much the choice matters
+
+```{r band}
+plot(front, "band", forcing = rain, observed = observed)
+```
+
+The blue lines are the lowest and highest flow among all the sets on the front, hour by hour.
+Every one of those sets is defensible by some balance of the objectives, so the width of the
+band is how much the flood depends on that choice. It is a band of plausible calibrations, not
+a confidence interval: it says nothing about errors in the rain or the rating.
+
+Here the band is wide because it includes the front's ends: on the largest flood one set
+overshoots the peak by a third and another misses two thirds of it, each because it is the best
+on some objective that does not care about peak size. Nobody would choose those sets for a
+flood model. `pareto_band(front, rain, sets = ...)` gives the band of the sets you would
+actually consider, such as those round the knee, which is much narrower.
+
+# Does the trade-off hold?
+
+The front was fitted on the first eighteen months. `pareto_validate()` scores every set on its
+front on the six months held out, by the same losses.
+
+```{r validate, fig.height=6}
+front <- pareto_validate(front, rain, observed, check)
+plot(front, "validation")
+```
+
+Each panel is one objective: a set's loss on the calibration rows across, on the check period
+up. Sets near the dashed line keep their quality on data the search never saw; sets well above
+it were good on the calibration rows only. A front whose order holds on the check period is a
+front whose trade-offs are real.
+
+Here the order holds for 1 - NSE, event peaks and event timing: sets good on calibration stay
+good. It does not hold for the volume error, which scatters: differences of a per cent or two
+in volume on the calibration rows say little about the next six months. That is worth knowing
+before paying for a small volume gain with anything else.
+
+# Choosing
 
 `pareto_choose()` takes one set from the front: the best on one objective, the best under
-weights of your own, or the compromise.
+weights of your own, the knee, or the compromise.
 
 ```{r choose}
+knee <- pareto_choose(front, knee = TRUE)
+knee$scores[, c("distribution.cmax", "surface.k1", "distribution.b", "loss_nse_loss",
+                "loss_event_peak_error", "loss_abs_bias")]
 peaks <- pareto_choose(front, objective = "event_peak_error")
-peaks$scores[, c("distribution.cmax", "surface.k1", "distribution.b", "loss_nse_loss",
-                 "loss_event_peak_error")]
 flood_weighted <- pareto_choose(front, weights = c(nse_loss = 1, event_peak_error = 2))
 ```
 
-The truth is `cmax` 300 mm, `b` 0.4 and `k1` 2 h. The set best on peaks comes close on the
-first two and finds `k1` exactly, but 2 h is also the lower bound of the search: a value on a
-bound may be held there by the bound, not by the data, so widen the bounds before trusting it.
+**The knee** is where the trade-off turns sharpest. Put each objective on the front's own scale,
+0 for its best and 1 for its worst, and take the set with the lowest total. With two objectives
+that is exactly the set furthest below the straight line joining the two ends of the front. It
+needs no weights, which makes it the natural rule for many catchments at once; but it depends
+on which sets made the front's ends, so look at the plot before trusting it.
 
-In a calibration project, `log_pareto_calibration()` runs the search on the registered
-calibration window and logs the chosen set as an automatic calibration. The entry keeps the
+The truth is `cmax` 300 mm, `b` 0.4 and `k1` 2 h. The knee is not the truth, and need not be:
+with noise on the flow and four objectives pulling different ways, the knee is the best balance
+of fit, not the best guess of the parameters. Note too that the truth's `k1` sits on the lower
+bound of the search; a value that lands on a bound may be held there by the bound, not by the
+data, so widen the bounds before trusting it.
+
+# In a calibration project
+
+`log_pareto_calibration()` runs the search on the registered calibration window, from the
+project's own start, and logs the chosen set as an automatic calibration. The entry keeps the
 whole front, every set's parameters and losses, so the report draws the front beside the
-chosen model and anyone reading the log later sees the trade-off behind the choice:
+chosen model and anyone reading the log later sees the trade-off behind the choice.
+`check_share` cuts a check period from the end of the calibration window; the registered
+validation window is never touched, so it still judges a model chosen without it.
 
 ```{r log, eval=FALSE}
 log_pareto_calibration(
   project, parent = "0003", lower = lower, upper = upper,
   objectives = c("nse_loss", "event_nse_loss", "event_peak_error", "abs_bias"),
-  choose = c(nse_loss = 1, event_nse_loss = 2, abs_bias = 1),
-  reasoning = "Floods weighted twice the whole record: the model is for flood warning"
+  choose = "knee", check_share = 0.25,
+  reasoning = "Flood warning: see what event fit costs the whole record, take the knee"
 )
 ```
+
+**As a stage.** A staged calibration can end with a front instead of one more single fit:
+`pdm_stages(config, pareto = c("nse_loss", "event_nse_loss", "abs_bias"))` adds a trade-off
+stage after the others. It searches only the fast response and the time delay, with the slow
+stores already fixed by the earlier stages, so a modest budget covers the front, and it keeps
+the knee unless `pareto_choose` says otherwise.
+
+**In the app.** The Trade-offs tab searches and logs a front, draws any pair of its objectives,
+and shows the flow and scores of whichever set you click, beside the logged one. If you prefer
+another set, keep it as a trial and carry on from there; the log records why.
 
 The chosen model then goes on like any other: propose it as the candidate, validate it, and
 test it on the held-back years.
 
 # Cautions
 
-- **Scales.** Weights blend losses in different units. `scales` divides each loss first, so
+- **Scales** matter only for weights and the compromise. `scales` divides each loss first, so
   that a weight of 1 means the same on each; set them to a loss you would call small, such as
-  0.05 for a volume error and 0.1 for 1 - NSE.
-- **Hollows.** Weighted sums find the convex parts of a front and can miss a hollow in it.
-  More weight rows (a matrix in `weights`) and more random samples fill it in.
-- **The front is fitted on the calibration window.** A set on the front can still fail on
-  validation; the front shows trade-offs, not reliability.
+  0.05 for a volume error and 0.1 for 1 - NSE. PA-DDS and the knee need none.
+- **The front is a sample.** Run a second seed; if its front lies on top of the first, the
+  search has covered it.
+- **The front is fitted on the calibration window.** Check it on a period it never saw before
+  choosing from it.
