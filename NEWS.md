@@ -1,3 +1,15 @@
+# pdmS7 0.30.0
+
+- **Faster staged calibration.** `pdm_stages()` gains `method` and `budget`: `method = "dds"`
+  searches stages 1 to 3 by DDS with `budget` model runs a start, instead of L-BFGS-B, whose
+  finite-difference gradients cost about two runs per parameter per iteration. And
+  `coarse_dt` fits stage 1, the water balance and the slow stores, on the record collapsed to
+  a coarser step (rain and evaporation summed, flow averaged, gaps kept as gaps): on a
+  15-minute record, `coarse_dt = 1` runs stage 1 four times faster. The slow stores'
+  parameters carry back to the model's own step unchanged; later stages and every logged
+  score use the full record. `log_auto_calibration()` gains `coarse_dt` too, and the entry
+  records it.
+
 # pdmS7 0.29.0
 
 - **Pareto-archived DDS** (PA-DDS; Asadzadeh and Tolson, 2013) is the new default search of

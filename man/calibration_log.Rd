@@ -104,7 +104,8 @@ log_auto_calibration(
   stage = NULL,
   event_weights = c(nse = 1, peak = 0.5, timing = 0.5),
   event_share = 0.5,
-  event_screen = list()
+  event_screen = list(),
+  coarse_dt = NULL
 )
 
 log_note(project, text, refers_to = NULL)
@@ -236,6 +237,11 @@ that cannot be worked out. \code{NULL} registers none.}
 \item{event_weights, event_share, event_screen}{Passed to \code{\link[=calibrate_pdm]{calibrate_pdm()}} with
 \code{objective = "events"}. In a project, the screen takes the registered highest gauged flow
 unless it names its own.}
+
+\item{coarse_dt}{For log_auto_calibration(): \code{NULL}, or a coarser step in hours on which to
+search, a whole number of the model's steps: rain and evaporation are summed over each
+coarse step and flow averaged; the logged scores use the full record. For parameters that
+do not depend on timing within the coarse step, such as the slow stores.}
 
 \item{refers_to}{Optional id of the entry a note concerns.}
 

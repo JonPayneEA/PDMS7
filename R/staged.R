@@ -56,6 +56,16 @@
 #' front is searched over a few parameters only, so a modest budget covers it. In a project the
 #' whole front is kept in the stage's entry.
 #'
+#' **Speed.** By default stages 1 to 3 search by L-BFGS-B, whose gradients cost about two model
+#' runs per parameter per iteration. `method = "dds"` searches them by DDS instead, with
+#' `budget` model runs a start, which on bumpy hydrological objectives usually finds as good a
+#' fit for fewer runs (Tolson and Shoemaker, 2007). `coarse_dt` fits stage 1, the water balance
+#' and the slow stores, on the record collapsed to a coarser step (rain and evaporation summed,
+#' flow averaged): `coarse_dt = 1` on a 15-minute record runs stage 1 four times faster. The
+#' slow stores' parameters are in hours and millimetres and do not depend on the timing within
+#' an hour, so they carry back to the model's own step unchanged; the later stages, and every
+#' logged score, use the full record.
+#'
 #' `thresholds` adds a threshold term ([calibrate_pdm()]) to the last stage, which then also uses
 #' DDS: a named vector of flows (m3/s) for [calibrate_staged()], or the names of thresholds
 #' registered in the project for [log_staged_calibration()].
@@ -86,6 +96,11 @@
 #' @param pareto Losses for a trade-off stage at the end, or `NULL` for none.
 #' @param pareto_choose Which front set the trade-off stage keeps.
 #' @param pareto_budget Model runs a chain in the trade-off stage.
+#' @param method `NULL` to keep each stage's own search, or `"dds"` (or `"lbfgsb"`,
+#'   `"nelder_mead"`) for stages 1 to 3.
+#' @param budget Model runs a start for stages 1 to 3 with `method = "dds"`.
+#' @param coarse_dt `NULL`, or the step in hours on which stage 1 is fitted, a whole number of
+#'   the model's steps.
 #'
 #' @return A list of stages.
 #' @examples
@@ -98,7 +113,7 @@ pdm_stages <- function(config, overrides = NULL, exclude = NULL, polish = TRUE,
                        event_screen = list(),
                        td_max = 6, event_budget = 300L, thresholds = NULL, threshold_weight = 1,
                        threshold_score = "csi", pareto = NULL, pareto_choose = "knee",
-                       pareto_budget = 300L) {
+                       pareto_budget = 300L, method = NULL, budget = 300L, coarse_dt = NULL) {
   # Sort the structure's parameters by the part of the hydrograph they control. The store shape b
   # appears in both stages: it affects the water balance and how sharply runoff responds.
   paths <- calibration_bounds(config, overrides, exclude)$path
@@ -120,6 +135,7 @@ pdm_stages <- function(config, overrides = NULL, exclude = NULL, polish = TRUE,
     stages[[3]] <- list(name = "polish", parameters = paths, objective = "nse",
                         volume_weight = 0, band = band)
   }
+  stages <- .stage_search(stages, method, budget, coarse_dt)
   if (events) {
     stages[[length(stages) + 1L]] <- .events_stage(fast, paths, exclude, td_max, event_budget,
                                                    event_weights, event_share, event_screen,
@@ -133,6 +149,24 @@ pdm_stages <- function(config, overrides = NULL, exclude = NULL, polish = TRUE,
   # A structure may leave a stage with nothing to fit (everything excluded); drop it.
   stages <- stages[vapply(stages, function(s) length(s$parameters) > 0, logical(1))]
   .with_thresholds(stages, thresholds, threshold_weight, threshold_score, event_budget)
+}
+
+# The search of the first stages: `method` and `budget` for each of them when a method is given,
+# and the first stage, the slow stores, on the coarse step `coarse_dt` when one is given.
+.stage_search <- function(stages, method, budget, coarse_dt) {
+  if (!is.null(method)) {
+    method <- match.arg(method, c("lbfgsb", "nelder_mead", "dds"))
+    .check(.whole(budget, 1, Inf), "budget must be a whole number of model runs")
+    for (i in seq_along(stages)) {
+      stages[[i]]$method <- method
+      if (method == "dds") stages[[i]]$control <- list(maxit = as.integer(budget))
+    }
+  }
+  if (!is.null(coarse_dt)) {
+    .check(.scalar(coarse_dt, 0, strict = TRUE), "coarse_dt must be a positive number of hours")
+    stages[[1L]]$coarse_dt <- coarse_dt
+  }
+  stages
 }
 
 # The trade-off stage: the fast response and the time delay, as in the events stage, searched for
@@ -298,6 +332,14 @@ calibrate_staged <- function(config, forcing, observed, stages = pdm_stages(conf
       current <- fit$config
       next
     }
+    if (!is.null(stage$coarse_dt)) {
+      fit <- .staged_coarse(stage, current, forcing, observed, b, warmup, starts, seed, control,
+                            method, soil_fraction, log_offset, start, baseflow_fraction, cores)
+      fit$label <- .stage_label(i, stages)
+      results[[i]] <- fit
+      current <- fit$config
+      next
+    }
     fit <- calibrate_pdm(
       current, forcing, observed, lower = b$lower, upper = b$upper, warmup = warmup,
       objective = stage$objective, control = stage$control %||% control,
@@ -322,6 +364,26 @@ calibrate_staged <- function(config, forcing, observed, stages = pdm_stages(conf
     parameters = vapply(paths, function(p) .path_get(current, p), numeric(1)),
     stages = results
   )
+}
+
+# A stage fitted on the coarse step: the record collapsed to `stage$coarse_dt`, the stage's
+# parameters fitted there, and the configuration put back on the model's own step. The slow
+# stores' parameters are in hours and millimetres, so they carry across unchanged.
+.staged_coarse <- function(stage, config, forcing, observed, b, warmup, starts, seed, control,
+                           method, soil_fraction, log_offset, start, baseflow_fraction, cores) {
+  cz <- .coarse_inputs(config, forcing, observed, warmup, stage$coarse_dt)
+  fit <- calibrate_pdm(
+    cz$config, cz$forcing, cz$observed, lower = b$lower, upper = b$upper, warmup = cz$warmup,
+    objective = stage$objective, control = stage$control %||% control,
+    soil_fraction = soil_fraction, starts = starts, seed = seed,
+    method = stage$method %||% method, log_scale = b$log_scale, log_offset = log_offset,
+    volume_weight = stage$volume_weight %||% 0, start = start,
+    baseflow_fraction = baseflow_fraction, cores = cores
+  )
+  fit$config$dt <- config$dt %||% 1
+  fit$model <- pdm_from_config(fit$config)
+  fit$coarse_dt <- stage$coarse_dt
+  fit
 }
 
 # A trade-off stage in memory: the front, and the set its rule chooses, shaped as a stage result.
@@ -404,7 +466,7 @@ log_staged_calibration <- function(project, parent, reasoning, stages = NULL, bo
     event_weights = stage$event_weights %||% .default_event_weights,
     event_share = stage$event_share %||% 0.5,
     event_screen = if ("event_screen" %in% names(stage)) stage$event_screen else list(),
-    stage = .stage_label(i, stages),
+    stage = .stage_label(i, stages), coarse_dt = stage$coarse_dt,
     reasoning = paste0(reasoning, " Stage ", .stage_label(i, stages), ".")
   )
 }

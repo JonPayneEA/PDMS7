@@ -22,7 +22,10 @@ pdm_stages(
   threshold_score = "csi",
   pareto = NULL,
   pareto_choose = "knee",
-  pareto_budget = 300L
+  pareto_budget = 300L,
+  method = NULL,
+  budget = 300L,
+  coarse_dt = NULL
 )
 }
 \arguments{
@@ -54,6 +57,14 @@ trade-off stage, the thresholds of a \code{threshold_loss} among its objectives.
 \item{pareto_choose}{Which front set the trade-off stage keeps.}
 
 \item{pareto_budget}{Model runs a chain in the trade-off stage.}
+
+\item{method}{\code{NULL} to keep each stage's own search, or \code{"dds"} (or \code{"lbfgsb"},
+\code{"nelder_mead"}) for stages 1 to 3.}
+
+\item{budget}{Model runs a start for stages 1 to 3 with \code{method = "dds"}.}
+
+\item{coarse_dt}{\code{NULL}, or the step in hours on which stage 1 is fitted, a whole number of
+the model's steps.}
 }
 \value{
 A list of stages.
@@ -102,6 +113,16 @@ chain, and the front set \code{pareto_choose} names kept: \code{"knee"} (the def
 needed), \code{"compromise"}, one objective, or weights. With the slow stores already fixed, the
 front is searched over a few parameters only, so a modest budget covers it. In a project the
 whole front is kept in the stage's entry.
+
+\strong{Speed.} By default stages 1 to 3 search by L-BFGS-B, whose gradients cost about two model
+runs per parameter per iteration. \code{method = "dds"} searches them by DDS instead, with
+\code{budget} model runs a start, which on bumpy hydrological objectives usually finds as good a
+fit for fewer runs (Tolson and Shoemaker, 2007). \code{coarse_dt} fits stage 1, the water balance
+and the slow stores, on the record collapsed to a coarser step (rain and evaporation summed,
+flow averaged): \code{coarse_dt = 1} on a 15-minute record runs stage 1 four times faster. The
+slow stores' parameters are in hours and millimetres and do not depend on the timing within
+an hour, so they carry back to the model's own step unchanged; the later stages, and every
+logged score, use the full record.
 
 \code{thresholds} adds a threshold term (\code{\link[=calibrate_pdm]{calibrate_pdm()}}) to the last stage, which then also uses
 DDS: a named vector of flows (m3/s) for \code{\link[=calibrate_staged]{calibrate_staged()}}, or the names of thresholds
