@@ -43,7 +43,7 @@
 #'
 #' | Name | Loss |
 #' |---|---|
-#' | `nse_loss`, `rmse`, `log_rmse`, `kge_loss`, `abs_bias`, `peak_relative_error` | See below |
+#' | `nse_loss`, `rmse`, `log_rmse`, `kge_loss`, `abs_bias`, `peak_relative_error`, `boxcox_loss` | See below |
 #' | `event_nse_loss` | 1 - pooled event NSE over the chosen events |
 #' | `event_peak_error` | Mean absolute peak error over the chosen events |
 #' | `event_timing_error` | Mean absolute timing error of the events, over the response time |
@@ -200,7 +200,7 @@ calibrate_pdm_multi <- function(config, forcing, observed, lower, upper,
 # The losses calibrate_pdm_multi() accepts: the whole-record ones of pdm_objectives(), the
 # three event terms, and the threshold loss.
 .multi_whole <- c("rmse", "log_rmse", "nse_loss", "kge_loss", "abs_bias",
-                  "peak_relative_error")
+                  "peak_relative_error", "boxcox_loss")
 .multi_event <- c(event_nse_loss = "nse", event_peak_error = "peak",
                   event_timing_error = "timing")
 .multi_allowed <- c(.multi_whole, names(.multi_event), "threshold_loss")

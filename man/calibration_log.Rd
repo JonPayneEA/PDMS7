@@ -90,7 +90,7 @@ log_auto_calibration(
   parent,
   lower,
   upper,
-  objective = c("nse", "rmse", "log_rmse", "log_nse", "threshold", "events"),
+  objective = c("nse", "rmse", "log_rmse", "log_nse", "boxcox", "threshold", "events"),
   starts = 1L,
   seed = NULL,
   control = list(maxit = 200),
@@ -105,7 +105,8 @@ log_auto_calibration(
   event_weights = c(nse = 1, peak = 0.5, timing = 0.5),
   event_share = 0.5,
   event_screen = list(),
-  coarse_dt = NULL
+  coarse_dt = NULL,
+  boxcox_lambda = 0.5
 )
 
 log_note(project, text, refers_to = NULL)
@@ -242,6 +243,8 @@ unless it names its own.}
 search, a whole number of the model's steps: rain and evaporation are summed over each
 coarse step and flow averaged; the logged scores use the full record. For parameters that
 do not depend on timing within the coarse step, such as the slow stores.}
+
+\item{boxcox_lambda}{For log_auto_calibration() with \code{objective = "boxcox"}: the power.}
 
 \item{refers_to}{Optional id of the entry a note concerns.}
 

@@ -11,7 +11,7 @@ calibrate_pdm(
   lower,
   upper,
   warmup = 0,
-  objective = c("rmse", "nse", "log_rmse", "log_nse", "threshold", "events"),
+  objective = c("rmse", "nse", "log_rmse", "log_nse", "boxcox", "threshold", "events"),
   flow = c("q_m3s", "q_end_m3s"),
   log_offset = 0.01,
   control = list(maxit = 200),
@@ -33,7 +33,9 @@ calibrate_pdm(
   event_weights = c(nse = 1, peak = 0.5, timing = 0.5),
   event_share = 0.5,
   event_screen = list(),
-  cores = getOption("pdmS7.cores", 1L)
+  cores = getOption("pdmS7.cores", 1L),
+  boxcox_lambda = 0.5,
+  weights = NULL
 )
 }
 \arguments{
@@ -54,7 +56,9 @@ surface.k1.}
 simulated.}
 
 \item{objective}{Calibration objective: rmse, nse (minimizes 1-NSE), log_rmse, log_nse
-(minimizes 1 minus NSE of log flows, which weights low flows), threshold (the threshold
+(minimizes 1 minus NSE of log flows, which weights low flows), boxcox (1 minus NSE of
+Box-Cox transformed flows, see \code{\link[=boxcox_flow]{boxcox_flow()}}: errors of about the same size at every flow,
+as least squares assumes, optionally weighted by \code{weights}), threshold (the threshold
 term alone; needs thresholds), or events, which scores only the largest events: see
 \code{events}.}
 
@@ -158,6 +162,11 @@ independent, so the result is the same as running them one after another. Each p
 fresh R session (a socket cluster, which works on Windows) and takes a few seconds to start,
 so more than one core pays only for long records or large budgets. Defaults to the
 \code{pdmS7.cores} option, which \code{\link[=calibrate_project]{calibrate_project()}} sets from its own \code{cores}, or 1.}
+
+\item{boxcox_lambda}{The Box-Cox power for \code{objective = "boxcox"}, 0 (log) to 1 (raw).}
+
+\item{weights}{For \code{objective = "boxcox"}: \code{NULL}, or one nonnegative weight for each
+observed flow, such as \code{\link[=flow_weights]{flow_weights()}} gives from rating uncertainty.}
 }
 \value{
 A list of config, model, parameters, objective, convergence, message, optim

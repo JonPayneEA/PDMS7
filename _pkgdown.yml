@@ -248,6 +248,9 @@ reference:
   - pareto_band
   - plot.pdm_pareto
   - pdm_objectives
+  - boxcox_flow
+  - flow_weights
+  - pdm_sensitivity
   - pdm_scorecard
   - pdm_threshold_scores
   - flow_markers

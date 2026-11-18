@@ -123,7 +123,7 @@ snow-PDM configuration runs through \code{\link[=sim_snow_pdm]{sim_snow_pdm()}} 
 
 \strong{Objectives}, all losses to be minimised:\tabular{ll}{
    Name \tab Loss \cr
-   \code{nse_loss}, \code{rmse}, \code{log_rmse}, \code{kge_loss}, \code{abs_bias}, \code{peak_relative_error} \tab See below \cr
+   \code{nse_loss}, \code{rmse}, \code{log_rmse}, \code{kge_loss}, \code{abs_bias}, \code{peak_relative_error}, \code{boxcox_loss} \tab See below \cr
    \code{event_nse_loss} \tab 1 - pooled event NSE over the chosen events \cr
    \code{event_peak_error} \tab Mean absolute peak error over the chosen events \cr
    \code{event_timing_error} \tab Mean absolute timing error of the events, over the response time \cr

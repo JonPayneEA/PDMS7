@@ -21,7 +21,8 @@
 #' in multi-objective calibration rather than combining raw metrics implicitly.
 #' @param simulated,observed Numeric aligned nonnegative discharge vectors.
 #' @param objectives Unique metric names: rmse, log_rmse, nse_loss, kge_loss,
-#' abs_bias, peak_relative_error.
+#' abs_bias, peak_relative_error, boxcox_loss (1 - NSE of Box-Cox flows, [boxcox_flow()]).
+#' @param lambda The Box-Cox power for boxcox_loss.
 #' @param warmup Nonnegative number of initial rows excluded from scoring.
 #' @param log_offset Positive discharge offset for logarithms, in m3/s.
 #' @return Named numeric loss vector.
@@ -33,7 +34,7 @@
 #   peak_relative_error   absolute relative error in the largest flow.
 pdm_objectives <- function(simulated, observed,
                            objectives = c("nse_loss", "log_rmse", "abs_bias"),
-                           warmup = 0L, log_offset = 0.01) {
+                           warmup = 0L, log_offset = 0.01, lambda = 0.5) {
   pair <- .objective_pairs(simulated, observed, objectives, warmup, log_offset)
   obs <- pair$obs
   sim <- pair$sim
@@ -48,14 +49,19 @@ pdm_objectives <- function(simulated, observed,
                (mean(sim) / mean(obs) - 1)^2)
       },
       abs_bias = abs(sum(sim) / sum(obs) - 1),
-      peak_relative_error = abs(max(sim) / max(obs) - 1)
+      peak_relative_error = abs(max(sim) / max(obs) - 1),
+      boxcox_loss = {
+        zo <- boxcox_flow(obs, lambda, log_offset)
+        sum((boxcox_flow(sim, lambda, log_offset) - zo)^2) / sum((zo - mean(zo))^2)
+      }
     )
   }, numeric(1))
 }
 
 # Checks the inputs of pdm_objectives() and returns the scored pairs.
 .objective_pairs <- function(simulated, observed, objectives, warmup, log_offset) {
-  allowed <- c("rmse", "log_rmse", "nse_loss", "kge_loss", "abs_bias", "peak_relative_error")
+  allowed <- c("rmse", "log_rmse", "nse_loss", "kge_loss", "abs_bias", "peak_relative_error",
+               "boxcox_loss")
   .check(.all_of(is.character(objectives), length(objectives) > 0, !anyDuplicated(objectives),
                  all(objectives %in% allowed)), "Invalid objectives")
   .check(.all_of(is.numeric(observed), is.numeric(simulated),

@@ -19,7 +19,7 @@
   kge_loss = "1 - KGE", abs_bias = "Volume error", peak_relative_error = "Largest-peak error",
   event_nse_loss = "1 - event NSE", event_peak_error = "Event peak error",
   event_timing_error = "Event timing error (response times)",
-  threshold_loss = "1 - threshold score"
+  threshold_loss = "1 - threshold score", boxcox_loss = "1 - Box-Cox NSE"
 )
 
 # Short names, for panel titles and the parallel axes.
@@ -27,7 +27,7 @@
   nse_loss = "1 - NSE", rmse = "RMSE", log_rmse = "Log RMSE", kge_loss = "1 - KGE",
   abs_bias = "Volume", peak_relative_error = "Largest peak", event_nse_loss = "1 - event NSE",
   event_peak_error = "Event peak", event_timing_error = "Event timing",
-  threshold_loss = "Thresholds"
+  threshold_loss = "Thresholds", boxcox_loss = "1 - Box-Cox NSE"
 )
 
 .pareto_label <- function(o, short = FALSE) {

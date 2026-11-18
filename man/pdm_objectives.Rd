@@ -9,18 +9,21 @@ pdm_objectives(
   observed,
   objectives = c("nse_loss", "log_rmse", "abs_bias"),
   warmup = 0L,
-  log_offset = 0.01
+  log_offset = 0.01,
+  lambda = 0.5
 )
 }
 \arguments{
 \item{simulated, observed}{Numeric aligned nonnegative discharge vectors.}
 
 \item{objectives}{Unique metric names: rmse, log_rmse, nse_loss, kge_loss,
-abs_bias, peak_relative_error.}
+abs_bias, peak_relative_error, boxcox_loss (1 - NSE of Box-Cox flows, \code{\link[=boxcox_flow]{boxcox_flow()}}).}
 
 \item{warmup}{Nonnegative number of initial rows excluded from scoring.}
 
 \item{log_offset}{Positive discharge offset for logarithms, in m3/s.}
+
+\item{lambda}{The Box-Cox power for boxcox_loss.}
 }
 \value{
 Named numeric loss vector.

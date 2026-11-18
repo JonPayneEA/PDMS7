@@ -1,3 +1,19 @@
+# pdmS7 0.31.0
+
+- **An objective that matches how flow errors behave.** `objective = "boxcox"` in
+  `calibrate_pdm()` (and `boxcox_loss` in `pdm_objectives()` and `calibrate_pdm_multi()`)
+  scores 1 - NSE on Box-Cox transformed flows (`boxcox_flow()`, power `boxcox_lambda`, 0.5 by
+  default). A gauge's errors, and a model's, grow with the flow, so least squares on the raw
+  flow counts the largest floods many times over; on the transformed scale the errors are
+  closer to the same size at every flow, as least squares assumes. `weights` lets flows count
+  by how well they are measured: `flow_weights()` turns a rating's relative uncertainty into
+  inverse-variance weights and discounts flows above the highest gauging.
+- **Global sensitivity.** `pdm_sensitivity()` measures how much each parameter matters across
+  its whole range with the others varying too: Morris screening (`mu_star`, `sigma`) or Sobol
+  first-order and total indices. Parameters the scores barely respond to are marked
+  `negligible`, candidates to fix at a regional value so the calibration keeps only what the
+  record can pin down. Print and plot methods.
+
 # pdmS7 0.30.0
 
 - **Faster staged calibration.** `pdm_stages()` gains `method` and `budget`: `method = "dds"`
