@@ -1,3 +1,18 @@
+# pdmS7 0.33.0
+
+- **Bayesian calibration.** `calibrate_bayes()` samples the posterior of the parameters with
+  DREAM(ZS) (ter Braak and Vrugt, 2008; Vrugt, 2016): the sets consistent with the record and
+  the priors, in proportion to how well they fit. The likelihood treats the errors on Box-Cox
+  flows as a lag-1 autoregression, its autocorrelation and variance set to their best values at
+  each set, so the strong step-to-step dependence of hourly errors does not make the posterior
+  falsely sure; `temper` flattens it further. A summary gives each parameter's mean, spread,
+  5%, 50% and 95% points and the Gelman-Rubin R-hat.
+- **Priors**: `prior_uniform()`, `prior_normal()` and `prior_lognormal()`, truncated to the
+  bounds, and `priors_from_table()`, which turns a table of predicted parameters (such as a
+  descriptor model's) into priors, widened on request.
+- **`posterior_band()`** runs sets drawn from the posterior and returns flow quantiles at each
+  step: the parameters' uncertainty alone, or with the fitted error added.
+
 # pdmS7 0.32.0
 
 - **Models chosen as forecasters.** `compare_forecasts()` hindcasts every candidate alike

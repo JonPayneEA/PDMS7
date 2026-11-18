@@ -253,6 +253,10 @@ reference:
   - pdm_sensitivity
   - compare_forecasts
   - split_sample_test
+  - calibrate_bayes
+  - prior_uniform
+  - priors_from_table
+  - posterior_band
   - pdm_scorecard
   - pdm_threshold_scores
   - flow_markers
