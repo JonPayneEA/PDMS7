@@ -1,3 +1,13 @@
+# pdmS7 0.35.0
+
+- **CAMELS-GB v2 as calibration input.** `camels_read()` reads a catchment's hourly table as
+  the Input_Analysis_Pipeline writes it; `camels_forcing()` cuts it to the hours with rain
+  (CEH-GEAR hourly ends in December 2016, the flow runs on to 2022), fills short gaps only when
+  asked, and keeps flow gaps unscored; `camels_windows()` splits the record into warm-up,
+  calibration, validation and test water years (for 1990 to 2016: calibration 1991 to 2007,
+  validation to 2012, test to 2016); `camels_batch_folders()` writes the screened catchments as
+  basin folders for `calibrate_batch()`, and leaves written folders alone on a rerun.
+
 # pdmS7 0.34.0
 
 - **Scores for ensemble and probability forecasts.** `ensemble_scores()`, by lead time: the
