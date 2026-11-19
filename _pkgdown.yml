@@ -87,7 +87,6 @@ articles:
   - choosing-structure
   - floods
   - trade-offs
-  - robust-calibration
   - app-events
   - checks
   - rainfall
@@ -96,6 +95,16 @@ articles:
   - extrapolation
   - many-catchments
   - large-sample
+- title: Robustness and uncertainty
+  navbar: Robustness and uncertainty
+  contents:
+  - robust-calibration
+  - fair-errors
+  - global-sensitivity
+  - forecast-choice
+  - stress-tests
+  - bayesian-calibration
+  - ensemble-verification
 - title: Records and review
   navbar: Records and review
   contents:

@@ -1,0 +1,139 @@
+---
+title: "Which parameters can the record determine? Global sensitivity"
+author: "pdmS7 documentation"
+vignette: >
+  %\VignetteIndexEntry{Which parameters can the record determine? Global sensitivity}
+  %\VignetteEngine{knitr::knitr}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+library(pdmS7)
+knitr::opts_chunk$set(
+  error = FALSE, collapse = TRUE, comment = "#>", fig.width = 8,
+  fig.height = 4.2, dpi = if (nzchar(Sys.getenv("IN_PKGDOWN"))) 110 else 60
+)
+logger::log_threshold(logger::WARN, namespace = "pdmS7")
+```
+
+Calibrate the same catchment twice and get two different sets of parameters with the same
+score: the commonest complaint about automatic calibration. Usually the search is not at fault.
+The record simply does not contain the information to fix some of the parameters: many values
+fit equally well, and each search stops at a different one. A sensitivity analysis finds those
+parameters before the calibration wastes effort on them.
+
+# Why one at a time is not enough
+
+The usual check moves one parameter at a time from the calibrated set and watches the score.
+That measures sensitivity at one point. A parameter can look unimportant there only because of
+where the others happen to sit: a slow groundwater store matters little if the recharge feeding
+it is small. A global analysis moves every parameter across its whole range, all together, and
+asks how much each one matters on average and whether its effect depends on the others.
+
+# A catchment and its bounds
+
+The synthetic catchment of [Counting every error fairly](fair-errors.html), with the bounds
+`calibration_bounds()` gives the standard structure (it holds the rainfall factor `fc` fixed
+unless asked otherwise):
+
+```{r data}
+rain <- synthetic_rain("2017-10-01", years = 3, dt = 1, seed = 5)
+truth <- modifyList(pdm_presets("standard"), list(area_km2 = 25))
+model <- pdm_from_config(truth)
+forcing <- rain[c("time", "rain", "pet")]
+set.seed(8)
+flow <- run_pdm(model, forcing[c("rain", "pet")], initial_state(model, 0.5))$output$q_m3s
+observed <- flow * exp(rnorm(length(flow), 0, 0.15))
+b <- calibration_bounds(truth)
+b[, c("path", "lower", "upper", "scale")]
+lower <- stats::setNames(b$lower, b$path)
+upper <- stats::setNames(b$upper, b$path)
+```
+
+# Morris screening
+
+Morris's method walks random paths through the parameter space, changing one parameter at a
+time by a fixed step, and records how much the score moves each time: an *elementary effect*.
+Two numbers summarise each parameter's effects:
+
+- `mu_star`, their mean size: how much the parameter matters;
+- `sigma`, their spread: how much that depends on the others, through interactions or a curved
+  response.
+
+It costs `r` paths of (parameters + 1) runs each, a few hundred runs here.
+
+```{r morris}
+m <- pdm_sensitivity(truth, forcing, observed, lower, upper,
+                     objectives = c("nse_loss", "boxcox_loss"), r = 15,
+                     log_scale = b$path[b$scale == "log"], warmup = 24 * 90, start = "soil")
+m
+plot(m)
+```
+
+The effects are measured per unit of each parameter's range, so they compare directly. Read
+them in two steps. First, which parameters stand out by `mu_star`. Second, which sit near zero:
+`negligible` marks those under 5% of the largest. A large `sigma` beside a large `mu_star` means
+the parameter's effect depends on the others.
+
+Here two parameters dwarf the rest: the recharge time constant `recharge.kg` and the groundwater
+store `groundwater.kb`. Their ranges are enormous (1 to 5,000 hours, and 100 to a million), and
+at the far ends of them the model drains far too fast or not at all, which wrecks any score. So
+they matter most, in the sense that a wrong value is ruinous; and by NSE they make the soil
+store `cmax`, a perfectly important parameter, look negligible beside them. The Box-Cox
+objective, which counts the low flows those stores govern, spreads its sensitivity more evenly.
+
+That is the first lesson of a global analysis: **sensitivity is relative to the ranges given.**
+A parameter allowed a huge range dominates, and hides the others. Before fixing anything marked
+negligible, narrow the ranges to what is physically plausible for the catchment and run it again.
+
+# Sobol indices
+
+Morris ranks the parameters; Sobol's method apportions the score's variance between them. Each
+parameter has two indices:
+
+- `first`: the share of the variance it explains alone;
+- `total`: the share it explains with all its interactions.
+
+A parameter whose total index is near zero can be fixed anywhere in its range without changing
+the score. It costs `n` x (parameters + 2) runs, so a few thousand for a usable answer; here a
+smaller one on four parameters.
+
+```{r sobol}
+four <- c("distribution.cmax", "distribution.b", "recharge.kg", "surface.k1")
+s <- pdm_sensitivity(truth, forcing, observed, lower[four], upper[four],
+                     objectives = "boxcox_loss", method = "sobol", n = 200,
+                     log_scale = intersect(four, b$path[b$scale == "log"]),
+                     warmup = 24 * 90, start = "soil")
+s
+plot(s)
+```
+
+Over these ranges the recharge time constant explains nearly all the variance of the score
+alone (a first-order index near 1), and `b` and the surface store fall below the 5% line: the
+same lesson again, that one parameter with a vast range crowds out the rest. When the
+first-order and total indices are close, a parameter acts alone; a total well above its
+first-order index means interactions. The indices of a small sample are rough, and can dip below
+zero, as `cmax`'s first-order index does here; a few thousand runs steady them.
+
+# From sensitivity to a better calibration
+
+1. Run Morris on the structure's full bounds, with the objective you will calibrate on.
+2. Fix the negligible parameters at a sensible value: the structure's default, a regional value,
+   or the descriptor model's prediction.
+3. Calibrate the rest. Fewer free parameters means fewer equally good answers, so repeated
+   calibrations, and calibrations of neighbouring catchments, agree.
+
+```{r fix, eval=FALSE}
+keep <- unique(m$parameter[!m$negligible])
+fit <- calibrate_pdm(truth, forcing, observed, lower[keep], upper[keep], objective = "boxcox")
+```
+
+# Cautions
+
+- **Sensitivity depends on the bounds.** A parameter given a narrow range looks unimportant.
+  Use the full plausible range.
+- **It depends on the record.** A dry record says little about the parameters of floods. Check
+  that the record holds the conditions the model will forecast.
+- **Negligible is not the same as unimportant to the forecast.** A parameter the record cannot
+  fix may still matter in a flood larger than any in the record. Fix it at a value that is
+  sensible for those floods.

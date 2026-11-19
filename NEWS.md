@@ -5,6 +5,12 @@
   ratio (near 1 when the ensemble is as wide as its errors), Brier scores for thresholds with
   their reliability and resolution (`brier_score()`, Murphy's decomposition), reliability tables
   and rank histograms, with plots of each.
+- **Robustness and uncertainty**, a new section of the website with an overview and six
+  articles: counting every error fairly (the Box-Cox objective, choosing its power, rating
+  weights), global sensitivity (and why a parameter with a vast range hides the others),
+  choosing a model as a forecaster, stress tests, Bayesian calibration, and ensemble
+  verification (CRPS, Brier scores, rank histograms and reliability, on ensembles of known
+  honesty first).
 - **Robust calibration**, a new article: the Box-Cox objective, global sensitivity, choosing
   models as forecasters, the split-sample test, Bayesian calibration with a predictive band, and
   checking that a probability forecast means what it says, all on one synthetic catchment. It
