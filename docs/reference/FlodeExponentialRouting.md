@@ -17,7 +17,9 @@ FlodeExponentialRouting(a = integer(0), gamma = integer(0))
 - gamma:
 
   Finite exponential-routing log-flow intercept, flow measured in
-  mm/hour.
+  mm/hour. It fixes only the zero of the storage coordinate: the flow
+  depends on `a` alone once the store starts from a flow, so calibration
+  holds `gamma` at its value.
 
 ## Value
 

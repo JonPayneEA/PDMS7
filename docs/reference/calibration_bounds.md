@@ -59,6 +59,13 @@ rainfall's bias is known and stable, by giving it bounds:
 `c(0.6, 1.6)`. The table's `default` column marks which parameters are
 locked in this way.
 
+The exponential store's `gamma` is locked too. In `q = exp(gamma + a S)`
+it only sets where the zero of `S` lies: the flow follows
+`dq/dt = a q (u - q)`, which has no `gamma` in it, so a run started from
+an observed flow is the same whatever `gamma` is. Searching it would
+spend a dimension of the search on a flat objective and report a value
+that means nothing.
+
 ## Examples
 
 ``` r

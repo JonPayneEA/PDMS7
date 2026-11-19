@@ -197,13 +197,12 @@ compare <- data.frame(
 )
 compare
 #>                     truth calibrated
-#> fc                    1.0   9.66e-01
-#> distribution.cmax   300.0   3.29e+02
-#> distribution.b        0.4   6.30e-01
-#> recharge.kg        4000.0   3.61e+03
-#> surface.k1           12.0   7.28e+00
-#> surface.k2           12.0   1.83e+01
-#> groundwater.kb    10000.0   1.44e+05
+#> distribution.cmax   300.0   3.67e+02
+#> distribution.b        0.4   5.73e-01
+#> recharge.kg        4000.0   4.11e+03
+#> surface.k1           12.0   6.72e+00
+#> surface.k2           12.0   1.91e+01
+#> groundwater.kb    10000.0   3.97e+04
 model <- pdm_from_config(fit$config)
 sim <- run_pdm(model, f[c("rain", "pet")],
                initial_state_from_flow(model, river$observed[1], 0.7))$output$q_m3s
@@ -211,12 +210,12 @@ later <- !cal
 c(nse_against_recorded = pdm_scorecard(sim[later], river$observed[later])[["nse"]],
   nse_against_truth = pdm_scorecard(sim[later], river$true_flow[later])[["nse"]])
 #> nse_against_recorded    nse_against_truth 
-#>            0.9900075            0.9965656
+#>            0.9876321            0.9937129
 ```
 
-The calibrated parameters are not the true ones: `kb` is 14 times too
+The calibrated parameters are not the true ones: `kb` is 4 times too
 large, and the two surface stores, both 12 hours in truth, come out at 7
-and 18 hours. Yet the fit scores 1.00 against the truth. Many parameter
+and 19 hours. Yet the fit scores 0.99 against the truth. Many parameter
 sets fit a record almost equally well; [Larger
 floods](https://jonpayneea.github.io/PDMS7/articles/extrapolation.md)
 shows where that matters.

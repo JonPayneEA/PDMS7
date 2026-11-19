@@ -23,7 +23,13 @@ pdm_stages(
   event_budget = 300L,
   thresholds = NULL,
   threshold_weight = 1,
-  threshold_score = "csi"
+  threshold_score = "csi",
+  pareto = NULL,
+  pareto_choose = "knee",
+  pareto_budget = 300L,
+  method = NULL,
+  budget = 300L,
+  coarse_dt = NULL
 )
 ```
 
@@ -73,7 +79,34 @@ pdm_stages(
 
 - thresholds, threshold_weight, threshold_score:
 
-  A threshold term for the last stage.
+  A threshold term for the last stage; for a trade-off stage, the
+  thresholds of a `threshold_loss` among its objectives.
+
+- pareto:
+
+  Losses for a trade-off stage at the end, or `NULL` for none.
+
+- pareto_choose:
+
+  Which front set the trade-off stage keeps.
+
+- pareto_budget:
+
+  Model runs a chain in the trade-off stage.
+
+- method:
+
+  `NULL` to keep each stage's own search, or `"dds"` (or `"lbfgsb"`,
+  `"nelder_mead"`) for stages 1 to 3.
+
+- budget:
+
+  Model runs a start for stages 1 to 3 with `method = "dds"`.
+
+- coarse_dt:
+
+  `NULL`, or the step in hours on which stage 1 is fitted, a whole
+  number of the model's steps.
 
 ## Value
 
@@ -81,13 +114,14 @@ A list of stages.
 
 ## Details
 
-|                         |                                               |                      |
-|-------------------------|-----------------------------------------------|----------------------|
-| Stage                   | Fits                                          | Objective            |
-| 1\. Volume and baseflow | Soil, recharge, groundwater; `fc` if unlocked | 1 - log NSE + volume |
-| 2\. Fast response       | Surface stores and the store shape `b`        | 1 - NSE              |
-| 3\. Polish              | Everything, over the full bounds              | 1 - NSE              |
-| 4\. Events (optional)   | Surface stores, `b` and the time delay `td`   | events objective     |
+|                          |                                               |                                  |
+|--------------------------|-----------------------------------------------|----------------------------------|
+| Stage                    | Fits                                          | Objective                        |
+| 1\. Volume and baseflow  | Soil, recharge, groundwater; `fc` if unlocked | 1 - log NSE + volume             |
+| 2\. Fast response        | Surface stores and the store shape `b`        | 1 - NSE                          |
+| 3\. Polish               | Everything, over the full bounds              | 1 - NSE                          |
+| 4\. Events (optional)    | Surface stores, `b` and the time delay `td`   | events objective                 |
+| 5\. Trade-off (optional) | As stage 4                                    | A Pareto front of several losses |
 
 Low flows and the total volume depend on the slow stores, and logs stop
 the floods dominating stage 1. Peak size and timing depend on the fast
@@ -114,6 +148,29 @@ stage 3 left them, so the water balance is kept. The time delay is not
 in the default bounds; stage 4 searches it from 0 to `td_max` hours. Its
 timing term changes in steps, so stage 4 uses DDS with `event_budget`
 model runs per start.
+
+`pareto` adds a trade-off stage at the end: the same parameters as the
+events stage, searched for a Pareto front of the named losses of
+[`calibrate_pdm_multi()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm_multi.md)
+(at least two, such as `c("nse_loss", "event_nse_loss", "abs_bias")`) by
+PA-DDS with `pareto_budget` model runs a chain, and the front set
+`pareto_choose` names kept: `"knee"` (the default, no weights needed),
+`"compromise"`, one objective, or weights. With the slow stores already
+fixed, the front is searched over a few parameters only, so a modest
+budget covers it. In a project the whole front is kept in the stage's
+entry.
+
+**Speed.** By default stages 1 to 3 search by L-BFGS-B, whose gradients
+cost about two model runs per parameter per iteration. `method = "dds"`
+searches them by DDS instead, with `budget` model runs a start, which on
+bumpy hydrological objectives usually finds as good a fit for fewer runs
+(Tolson and Shoemaker, 2007). `coarse_dt` fits stage 1, the water
+balance and the slow stores, on the record collapsed to a coarser step
+(rain and evaporation summed, flow averaged): `coarse_dt = 1` on a
+15-minute record runs stage 1 four times faster. The slow stores'
+parameters are in hours and millimetres and do not depend on the timing
+within an hour, so they carry back to the model's own step unchanged;
+the later stages, and every logged score, use the full record.
 
 `thresholds` adds a threshold term
 ([`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md))

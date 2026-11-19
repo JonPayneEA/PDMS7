@@ -6,21 +6,26 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <title>Synthetic rivers: try everything on a known answer • pdmS7</title>
-<script src="../deps/jquery-3.6.1/jquery-3.6.1.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<!-- favicons --><link rel="icon" type="image/png" sizes="96x96" href="../favicon-96x96.png">
+<link rel="icon" type="”image/svg+xml”" href="../favicon.svg">
+<link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
+<link rel="icon" sizes="any" href="../favicon.ico">
+<link rel="manifest" href="../site.webmanifest">
+<script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.1/jquery-3.6.1.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.4.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.4.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Synthetic rivers: try everything on a known answer">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><script src="../extra.js"></script><meta property="og:title" content="Synthetic rivers: try everything on a known answer">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
-    <nav class="navbar navbar-expand-lg fixed-top bg-light" data-bs-theme="light" aria-label="Site navigation"><div class="container">
+    <nav class="navbar navbar-expand-lg fixed-top " aria-label="Site navigation"><div class="container">
 
     <a class="navbar-brand me-2" href="../index.html">pdmS7</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.17.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.34.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -47,27 +52,37 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Model options</h6></li>
     <li><a class="dropdown-item" href="../articles/model-options.html">Choosing model components</a></li>
+    <li><a class="dropdown-item" href="../articles/reading-responses.html">Reading the response: what each model option does to the flow</a></li>
+    <li><a class="dropdown-item" href="../articles/groundwater-extension.html">Using the groundwater extension: abstraction, losses and wells</a></li>
+    <li><a class="dropdown-item" href="../articles/two-zone-pdm.html">The two-zone PDM: a fast zone for flashy catchments</a></li>
     <li><a class="dropdown-item" href="../articles/starting-states.html">Starting a run: cold, warm and hot</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Calibration</h6></li>
-    <li><a class="dropdown-item" href="../articles/calibration-journey.html">Automatic calibration from start to finish</a></li>
-    <li><a class="dropdown-item" href="../articles/checks.html">Checking the data and the events</a></li>
-    <li><a class="dropdown-item" href="../articles/calibration.html">Calibration: multi-start, budgets and staged calibration</a></li>
+    <li><a class="dropdown-item" href="../articles/calibration-journey.html">Calibrating a catchment from start to finish</a></li>
+    <li><a class="dropdown-item" href="../articles/auto-calibration.html">How automatic calibration works</a></li>
+    <li><a class="dropdown-item" href="../articles/choosing-structure.html">How the model structure is chosen</a></li>
     <li><a class="dropdown-item" href="../articles/floods.html">Getting the floods right</a></li>
+    <li><a class="dropdown-item" href="../articles/trade-offs.html">Trade-offs: calibrating to several objectives at once</a></li>
     <li><a class="dropdown-item" href="../articles/app-events.html">Tailoring calibration to the largest events in the app</a></li>
+    <li><a class="dropdown-item" href="../articles/checks.html">Checking the data and the events</a></li>
     <li><a class="dropdown-item" href="../articles/rainfall.html">Catchment rainfall from gauges and radar</a></li>
-    <li><a class="dropdown-item" href="../articles/auto-calibration.html">Automatic calibration, explained</a></li>
     <li><a class="dropdown-item" href="../articles/scoring.html">Scoring a simulation: from NSE to POD, FAR and CSI</a></li>
-    <li><a class="dropdown-item" href="../articles/choosing-structure.html">Choosing a model structure</a></li>
+    <li><a class="dropdown-item" href="../articles/comparing-calibrations.html">Comparing calibrations and PDM for PCs files</a></li>
     <li><a class="dropdown-item" href="../articles/extrapolation.html">Larger floods: extrapolation and the rating</a></li>
     <li><a class="dropdown-item" href="../articles/many-catchments.html">Calibrating many catchments</a></li>
-    <li><a class="dropdown-item" href="../articles/large-sample.html">A large sample: what automatic calibration recovers</a></li>
-    <li><a class="dropdown-item" href="../articles/calibration-study.html">What limits automatic calibration: a study</a></li>
-    <li><a class="dropdown-item" href="../articles/events.html">Events in large samples: finding them and scoring models on them</a></li>
+    <li><a class="dropdown-item" href="../articles/large-sample.html">Many catchments: what automatic calibration recovers, and what limits it</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Robustness and uncertainty</h6></li>
+    <li><a class="dropdown-item" href="../articles/robust-calibration.html">Robust calibration: an overview</a></li>
+    <li><a class="dropdown-item" href="../articles/fair-errors.html">Counting every error fairly: the Box-Cox objective</a></li>
+    <li><a class="dropdown-item" href="../articles/global-sensitivity.html">Which parameters can the record determine? Global sensitivity</a></li>
+    <li><a class="dropdown-item" href="../articles/forecast-choice.html">Choosing a model as a forecaster</a></li>
+    <li><a class="dropdown-item" href="../articles/stress-tests.html">Will the calibration hold? Stress tests</a></li>
+    <li><a class="dropdown-item" href="../articles/bayesian-calibration.html">How sure are we? Bayesian calibration</a></li>
+    <li><a class="dropdown-item" href="../articles/ensemble-verification.html">Is a probability forecast honest? Ensemble verification</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Records and review</h6></li>
-    <li><a class="dropdown-item" href="../articles/calibration-log.html">Logging a manual calibration</a></li>
-    <li><a class="dropdown-item" href="../articles/log-structure.html">Inside the logs: projects, entries, checksums and the run log</a></li>
+    <li><a class="dropdown-item" href="../articles/calibration-log.html">Calibration records: logging a calibration, and what the logs hold</a></li>
     <li><a class="dropdown-item" href="../articles/steward-guide.html">Reviewing a calibration: a Steward's guide</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Forecasting</h6></li>
@@ -107,6 +122,14 @@
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json">
 </form></li>
 <li class="nav-item"><a class="external-link nav-link" href="https://github.com/JonPayneEA/PDMS7" aria-label="GitHub"><span class="fa fa-github"></span></a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-lightswitch" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true" aria-label="Light switch"><span class="fa fa-sun"></span></button>
+  <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdown-lightswitch">
+<li><button class="dropdown-item" data-bs-theme-value="light"><span class="fa fa-sun"></span> Light</button></li>
+    <li><button class="dropdown-item" data-bs-theme-value="dark"><span class="fa fa-moon"></span> Dark</button></li>
+    <li><button class="dropdown-item" data-bs-theme-value="auto"><span class="fa fa-adjust"></span> Auto</button></li>
+  </ul>
+</li>
       </ul>
 </div>
 
@@ -119,8 +142,7 @@
 
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
-
-      <h1>Synthetic rivers: try everything on a known answer</h1>
+      <img src="../logo.png" class="logo" alt=""><h1>Synthetic rivers: try everything on a known answer</h1>
                         <h4 data-toc-skip class="author">pdmS7
 documentation</h4>
             
@@ -384,13 +406,12 @@ rest:</p>
 <span><span class="op">)</span></span>
 <span><span class="va">compare</span></span>
 <span><span class="co">#&gt;                     truth calibrated</span></span>
-<span><span class="co">#&gt; fc                    1.0   9.66e-01</span></span>
-<span><span class="co">#&gt; distribution.cmax   300.0   3.29e+02</span></span>
-<span><span class="co">#&gt; distribution.b        0.4   6.30e-01</span></span>
-<span><span class="co">#&gt; recharge.kg        4000.0   3.61e+03</span></span>
-<span><span class="co">#&gt; surface.k1           12.0   7.28e+00</span></span>
-<span><span class="co">#&gt; surface.k2           12.0   1.83e+01</span></span>
-<span><span class="co">#&gt; groundwater.kb    10000.0   1.44e+05</span></span>
+<span><span class="co">#&gt; distribution.cmax   300.0   3.67e+02</span></span>
+<span><span class="co">#&gt; distribution.b        0.4   5.73e-01</span></span>
+<span><span class="co">#&gt; recharge.kg        4000.0   4.11e+03</span></span>
+<span><span class="co">#&gt; surface.k1           12.0   6.72e+00</span></span>
+<span><span class="co">#&gt; surface.k2           12.0   1.91e+01</span></span>
+<span><span class="co">#&gt; groundwater.kb    10000.0   3.97e+04</span></span>
 <span><span class="va">model</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/pdm_from_config.html">pdm_from_config</a></span><span class="op">(</span><span class="va">fit</span><span class="op">$</span><span class="va">config</span><span class="op">)</span></span>
 <span><span class="va">sim</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/run_pdm.html">run_pdm</a></span><span class="op">(</span><span class="va">model</span>, <span class="va">f</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rain"</span>, <span class="st">"pet"</span><span class="op">)</span><span class="op">]</span>,</span>
 <span>               <span class="fu"><a href="../reference/initial_state_from_flow.html">initial_state_from_flow</a></span><span class="op">(</span><span class="va">model</span>, <span class="va">river</span><span class="op">$</span><span class="va">observed</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>, <span class="fl">0.7</span><span class="op">)</span><span class="op">)</span><span class="op">$</span><span class="va">output</span><span class="op">$</span><span class="va">q_m3s</span></span>
@@ -398,10 +419,10 @@ rest:</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>nse_against_recorded <span class="op">=</span> <span class="fu"><a href="../reference/pdm_scorecard.html">pdm_scorecard</a></span><span class="op">(</span><span class="va">sim</span><span class="op">[</span><span class="va">later</span><span class="op">]</span>, <span class="va">river</span><span class="op">$</span><span class="va">observed</span><span class="op">[</span><span class="va">later</span><span class="op">]</span><span class="op">)</span><span class="op">[[</span><span class="st">"nse"</span><span class="op">]</span><span class="op">]</span>,</span>
 <span>  nse_against_truth <span class="op">=</span> <span class="fu"><a href="../reference/pdm_scorecard.html">pdm_scorecard</a></span><span class="op">(</span><span class="va">sim</span><span class="op">[</span><span class="va">later</span><span class="op">]</span>, <span class="va">river</span><span class="op">$</span><span class="va">true_flow</span><span class="op">[</span><span class="va">later</span><span class="op">]</span><span class="op">)</span><span class="op">[[</span><span class="st">"nse"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
 <span><span class="co">#&gt; nse_against_recorded    nse_against_truth </span></span>
-<span><span class="co">#&gt;            0.9900075            0.9965656</span></span></code></pre></div>
-<p>The calibrated parameters are not the true ones: <code>kb</code> is
-14 times too large, and the two surface stores, both 12 hours in truth,
-come out at 7 and 18 hours. Yet the fit scores 1.00 against the truth.
+<span><span class="co">#&gt;            0.9876321            0.9937129</span></span></code></pre></div>
+<p>The calibrated parameters are not the true ones: <code>kb</code> is 4
+times too large, and the two surface stores, both 12 hours in truth,
+come out at 7 and 19 hours. Yet the fit scores 0.99 against the truth.
 Many parameter sets fit a record almost equally well; <a href="extrapolation.html">Larger floods</a> shows where that
 matters.</p>
 <p>Only on a synthetic river can the last line be computed: the score

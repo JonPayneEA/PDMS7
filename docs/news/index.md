@@ -1,5 +1,215 @@
 # Changelog
 
+## pdmS7 0.34.0
+
+- **Scores for ensemble and probability forecasts.**
+  [`ensemble_scores()`](https://jonpayneea.github.io/PDMS7/reference/ensemble_scores.md),
+  by lead time: the CRPS and its fair form
+  ([`crps_ensemble()`](https://jonpayneea.github.io/PDMS7/reference/crps_ensemble.md)),
+  its skill over the ensemble mean, the spread-skill ratio (near 1 when
+  the ensemble is as wide as its errors), Brier scores for thresholds
+  with their reliability and resolution
+  ([`brier_score()`](https://jonpayneea.github.io/PDMS7/reference/brier_score.md),
+  Murphy’s decomposition), reliability tables and rank histograms, with
+  plots of each.
+- **Robustness and uncertainty**, a new section of the website with an
+  overview and six articles: counting every error fairly (the Box-Cox
+  objective, choosing its power, rating weights), global sensitivity
+  (and why a parameter with a vast range hides the others), choosing a
+  model as a forecaster, stress tests, Bayesian calibration, and
+  ensemble verification (CRPS, Brier scores, rank histograms and
+  reliability, on ensembles of known honesty first).
+- **Robust calibration**, a new article: the Box-Cox objective, global
+  sensitivity, choosing models as forecasters, the split-sample test,
+  Bayesian calibration with a predictive band, and checking that a
+  probability forecast means what it says, all on one synthetic
+  catchment. It shows why the Box-Cox power should match the errors:
+  with errors proportional to flow, the log (power 0) gives an ensemble
+  as wide as its errors, the power 0.5 one too narrow at the highest
+  flows.
+
+## pdmS7 0.33.0
+
+- **Bayesian calibration.**
+  [`calibrate_bayes()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_bayes.md)
+  samples the posterior of the parameters with DREAM(ZS) (ter Braak and
+  Vrugt, 2008; Vrugt, 2016): the sets consistent with the record and the
+  priors, in proportion to how well they fit. The likelihood treats the
+  errors on Box-Cox flows as a lag-1 autoregression, its autocorrelation
+  and variance set to their best values at each set, so the strong
+  step-to-step dependence of hourly errors does not make the posterior
+  falsely sure; `temper` flattens it further. A summary gives each
+  parameter’s mean, spread, 5%, 50% and 95% points and the Gelman-Rubin
+  R-hat.
+- **Priors**:
+  [`prior_uniform()`](https://jonpayneea.github.io/PDMS7/reference/prior_uniform.md),
+  [`prior_normal()`](https://jonpayneea.github.io/PDMS7/reference/prior_uniform.md)
+  and
+  [`prior_lognormal()`](https://jonpayneea.github.io/PDMS7/reference/prior_uniform.md),
+  truncated to the bounds, and
+  [`priors_from_table()`](https://jonpayneea.github.io/PDMS7/reference/priors_from_table.md),
+  which turns a table of predicted parameters (such as a descriptor
+  model’s) into priors, widened on request.
+- **[`posterior_band()`](https://jonpayneea.github.io/PDMS7/reference/posterior_band.md)**
+  runs sets drawn from the posterior and returns flow quantiles at each
+  step: the parameters’ uncertainty alone, or with the fitted error
+  added.
+
+## pdmS7 0.32.0
+
+- **Models chosen as forecasters.**
+  [`compare_forecasts()`](https://jonpayneea.github.io/PDMS7/reference/compare_forecasts.md)
+  hindcasts every candidate alike (\[pdm_hindcast()\]) and ranks them by
+  skill over persistence at the lead times that matter, or by a
+  threshold score, each with its best updating method at each lead or
+  one method for all. A model a little worse over the whole record but
+  better a few hours ahead ranks higher, as it should for forecasting.
+  Print and plot methods.
+- **Stress tests.**
+  [`split_sample_test()`](https://jonpayneea.github.io/PDMS7/reference/split_sample_test.md)
+  is the differential split-sample test: calibrate on the drier half of
+  the water years and score the wetter half, then the reverse (or the
+  early and late halves, `split = "halves"`).
+  [`parameter_drift()`](https://jonpayneea.github.io/PDMS7/reference/split_sample_test.md)
+  calibrates each period of the record on its own and shows each
+  parameter’s move as a share of its range: flat lines are parameters
+  the data determine, steady slopes a change in the catchment or the
+  record.
+
+## pdmS7 0.31.0
+
+- **An objective that matches how flow errors behave.**
+  `objective = "boxcox"` in
+  [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md)
+  (and `boxcox_loss` in
+  [`pdm_objectives()`](https://jonpayneea.github.io/PDMS7/reference/pdm_objectives.md)
+  and
+  [`calibrate_pdm_multi()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm_multi.md))
+  scores 1 - NSE on Box-Cox transformed flows
+  ([`boxcox_flow()`](https://jonpayneea.github.io/PDMS7/reference/boxcox_flow.md),
+  power `boxcox_lambda`, 0.5 by default). A gauge’s errors, and a
+  model’s, grow with the flow, so least squares on the raw flow counts
+  the largest floods many times over; on the transformed scale the
+  errors are closer to the same size at every flow, as least squares
+  assumes. `weights` lets flows count by how well they are measured:
+  [`flow_weights()`](https://jonpayneea.github.io/PDMS7/reference/flow_weights.md)
+  turns a rating’s relative uncertainty into inverse-variance weights
+  and discounts flows above the highest gauging.
+- **Global sensitivity.**
+  [`pdm_sensitivity()`](https://jonpayneea.github.io/PDMS7/reference/pdm_sensitivity.md)
+  measures how much each parameter matters across its whole range with
+  the others varying too: Morris screening (`mu_star`, `sigma`) or Sobol
+  first-order and total indices. Parameters the scores barely respond to
+  are marked `negligible`, candidates to fix at a regional value so the
+  calibration keeps only what the record can pin down. Print and plot
+  methods.
+
+## pdmS7 0.30.0
+
+- **Faster staged calibration.**
+  [`pdm_stages()`](https://jonpayneea.github.io/PDMS7/reference/pdm_stages.md)
+  gains `method` and `budget`: `method = "dds"` searches stages 1 to 3
+  by DDS with `budget` model runs a start, instead of L-BFGS-B, whose
+  finite-difference gradients cost about two runs per parameter per
+  iteration. And `coarse_dt` fits stage 1, the water balance and the
+  slow stores, on the record collapsed to a coarser step (rain and
+  evaporation summed, flow averaged, gaps kept as gaps): on a 15-minute
+  record, `coarse_dt = 1` runs stage 1 four times faster. The slow
+  stores’ parameters carry back to the model’s own step unchanged; later
+  stages and every logged score use the full record.
+  [`log_auto_calibration()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
+  gains `coarse_dt` too, and the entry records it.
+- On a synthetic 15-minute catchment with a known answer (eight years,
+  the Beggearn Huish structure), the three staged calibrations took 139
+  s by L-BFGS-B (NSE 0.9875 on calibration, 0.9869 on validation, the
+  truth scoring 0.9874 and 0.9869), 84 s by DDS with 300 runs a stage
+  (0.9870 and 0.9863) and 66 s by DDS with stage 1 hourly (0.9870 and
+  0.9863). The hourly stage 1 cost nothing; DDS cost 0.0005 in NSE on
+  this smooth synthetic case, which favours gradient searches, and is to
+  be weighed on real records.
+
+## pdmS7 0.29.0
+
+- **Pareto-archived DDS** (PA-DDS; Asadzadeh and Tolson, 2013) is the
+  new default search of
+  [`calibrate_pdm_multi()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm_multi.md).
+  It grows the front directly, keeping the sets no other beats and
+  favouring sparse parts of the front, so it fills in the hollows
+  weighted sums cannot reach. The weighted searches remain (`"dds"`,
+  `"lbfgsb"`, and now `"nelder_mead"`).
+- **One trial engine.**
+  [`calibrate_pdm_multi()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm_multi.md)
+  now starts and runs every trial as
+  [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md)
+  does: the same start rules (`start`, `start_flow`,
+  `baseflow_fraction`, `soil_fraction`), the same engine, log-scaled
+  parameters (`log_scale`), progress messages, and chains on several
+  cores with the same answer as on one. In a project the front is
+  searched from the project’s own start, so it agrees with the logged
+  scores. Fronts searched before this version started from the model’s
+  default state, so a front may move slightly.
+- **[`pareto_validate()`](https://jonpayneea.github.io/PDMS7/reference/pareto_validate.md)**
+  scores every front set on rows the search never saw;
+  `plot(front, "validation")` sets calibration loss against it.
+  [`log_pareto_calibration()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
+  gains `check_share`, a check period cut from the end of the
+  calibration window, so the registered validation window still judges a
+  model chosen without it. The report draws it.
+- **The knee:** `pareto_choose(front, knee = TRUE)`, or
+  `choose = "knee"`, takes the set where the trade-off turns sharpest,
+  with no weights to choose.
+- **A trade-off stage:** `pdm_stages(pareto = c(...))` ends a staged
+  calibration with a front over the fast response and keeps its knee (or
+  another choice), in memory and in a project.
+- **[`pareto_band()`](https://jonpayneea.github.io/PDMS7/reference/pareto_band.md)**
+  and `plot(front, "band", ...)`: the range of flow across the front’s
+  sets.
+- **A Trade-offs tab in the app:** search and log a front, draw any pair
+  of its objectives, click a set to see its flow and scores against the
+  logged one, and keep it as a trial.
+
+## pdmS7 0.28.0
+
+- **Pareto calibration with event and threshold losses.**
+  [`calibrate_pdm_multi()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm_multi.md)
+  now takes the three terms of the events objective as losses of their
+  own (`event_nse_loss`, `event_peak_error`, `event_timing_error`) and a
+  threshold loss (`threshold_loss`), beside the whole-record ones, and
+  searches by DDS (`method = "dds"`) as well as L-BFGS-B. Losses that
+  change in steps, timing and thresholds, need DDS. The result has the
+  class `pdm_pareto`.
+- **Plots of the front.**
+  [`plot()`](https://rdrr.io/r/graphics/plot.default.html) and
+  `autoplot()` draw each pair of objectives (every set tried, the front,
+  the pair’s trade-off line and the compromise), parallel coordinates
+  across all of them, and the flows of the best set on each objective
+  over the largest storm.
+- **[`pareto_choose()`](https://jonpayneea.github.io/PDMS7/reference/pareto_choose.md)**
+  takes one set from the front: the best on one objective, the best
+  under weights, or the compromise.
+- **[`log_pareto_calibration()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)**
+  runs the search in a calibration project and logs the chosen set as an
+  automatic calibration, keeping the whole front in the entry; the
+  report draws it and lists its sets.
+- **Trade-offs**, a new article: calibrating on events alone, fitting
+  and reading a front, choosing from it and logging the choice.
+- The multi-objective search no longer writes parameter names into the
+  configuration’s values, and the Pareto test is quicker on large
+  archives.
+
+## pdmS7 0.27.1
+
+- **Calibration no longer searches the exponential store’s `gamma`.** In
+  `q = exp(gamma + a S)` the offset only sets where the zero of `S`
+  lies; the flow follows `dq/dt = a q (u - q)`, which has no `gamma` in
+  it. From a flow start, the default, two values of `gamma` give the
+  same hydrograph to rounding, so the search spent a dimension on a flat
+  objective and reported a value that meant nothing.
+  [`calibration_bounds()`](https://jonpayneea.github.io/PDMS7/reference/calibration_bounds.md)
+  now holds it at its configured value; an override still unlocks it.
+  Fitted flows do not change. The model equations article explains why,
+  in symbols and in plain terms.
+
 ## pdmS7 0.27.0
 
 - **The modelled well level was 1000 times too flat.** The depth to the
