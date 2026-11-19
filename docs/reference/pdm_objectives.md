@@ -17,7 +17,8 @@ pdm_objectives(
   observed,
   objectives = c("nse_loss", "log_rmse", "abs_bias"),
   warmup = 0L,
-  log_offset = 0.01
+  log_offset = 0.01,
+  lambda = 0.5
 )
 ```
 
@@ -30,7 +31,8 @@ pdm_objectives(
 - objectives:
 
   Unique metric names: rmse, log_rmse, nse_loss, kge_loss, abs_bias,
-  peak_relative_error.
+  peak_relative_error, boxcox_loss (1 - NSE of Box-Cox flows,
+  [`boxcox_flow()`](https://jonpayneea.github.io/PDMS7/reference/boxcox_flow.md)).
 
 - warmup:
 
@@ -39,6 +41,10 @@ pdm_objectives(
 - log_offset:
 
   Positive discharge offset for logarithms, in m3/s.
+
+- lambda:
+
+  The Box-Cox power for boxcox_loss.
 
 ## Value
 

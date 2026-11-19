@@ -18,7 +18,21 @@ calibrate_pdm_multi(
   seed = 1L,
   warmup = 0L,
   log_offset = 0.01,
-  control = list(maxit = 100)
+  control = list(maxit = 100),
+  method = c("padds", "dds", "lbfgsb", "nelder_mead"),
+  events = NULL,
+  event_share = 0.5,
+  event_screen = list(),
+  thresholds = NULL,
+  threshold_score = "csi",
+  event_settings = list(tolerance_h = 6, gap_h = 24, min_duration_h = 0),
+  log_scale = character(0),
+  start = c("flow", "soil"),
+  baseflow_fraction = 0.7,
+  soil_fraction = 0.5,
+  start_flow = NULL,
+  flow = c("q_m3s", "q_end_m3s"),
+  cores = getOption("pdmS7.cores", 1L)
 )
 }
 \arguments{
@@ -32,7 +46,7 @@ Optional time column contains POSIXct timestamps.}
 \item{lower, upper}{Named finite bounds with identical names/order. Coupled paths
 start with pdm. or snow., for example snow.melt_factor_mmh_c.}
 
-\item{objectives}{Metric names accepted by pdm_objectives.}
+\item{objectives}{Loss names from the table above.}
 
 \item{scales}{Positive named metric divisors in objective order. NULL uses ones;
 choose meaningful scales before interpreting weighted compromises.}
@@ -42,7 +56,8 @@ order. Rows are normalized to sum one. NULL uses individual objectives and equal
 
 \item{n_samples}{Nonnegative number of initial uniform random candidates.}
 
-\item{starts}{Positive number of sampled starts refined per weight vector.}
+\item{starts}{For PA-DDS, the number of chains; otherwise the number of sampled starts
+refined per weight vector.}
 
 \item{seed}{Nonnegative integer random seed.}
 
@@ -50,18 +65,98 @@ order. Rows are normalized to sum one. NULL uses individual objectives and equal
 
 \item{log_offset}{Positive offset for log-RMSE, m3/s.}
 
-\item{control}{Control list forwarded to stats::optim.}
+\item{control}{Control list: for PA-DDS and DDS, \code{maxit} model runs a chain or refinement
+and \code{r} the step size; otherwise forwarded to the optimiser.}
+
+\item{method}{\code{"padds"}, \code{"dds"}, \code{"lbfgsb"} or \code{"nelder_mead"}.}
+
+\item{events, event_share, event_screen}{How the events of the event objectives are chosen,
+as in \code{\link[=calibrate_pdm]{calibrate_pdm()}}.}
+
+\item{thresholds, threshold_score, event_settings}{For \code{threshold_loss}: flows in m3/s, the
+score, and how threshold events are matched, as in \code{\link[=calibrate_pdm]{calibrate_pdm()}}.}
+
+\item{log_scale}{Parameters searched uniformly in log(value), as in \code{\link[=calibrate_pdm]{calibrate_pdm()}}.}
+
+\item{start, baseflow_fraction, soil_fraction, start_flow}{How each trial starts, as in
+\code{\link[=calibrate_pdm]{calibrate_pdm()}}: in steady state at the first observed flow (\code{"flow"}) or from a soil
+fraction (\code{"soil"}).}
+
+\item{flow}{The flow column scored, as in \code{\link[=calibrate_pdm]{calibrate_pdm()}}.}
+
+\item{cores}{Cores for the chains or refinements.}
 }
 \value{
-List with archive data.table, pareto data.table, corresponding configs,
-compromise (best equal/supplied final weight row), weights, scales, optimization
-status and failed evaluation count. Candidates are not posterior probabilities.
+A \code{pdm_pareto} list: \code{archive} (every evaluation, its raw and scaled losses and a
+\code{pareto} flag), \code{pareto} (the front's rows), \code{configs} (their configurations),
+\code{compromise} (the archived point best under the last weight row), \code{objectives},
+\code{weights}, \code{scales}, \code{method}, \code{optimization} (each chain's or refinement's status),
+\code{events} (how many events the event objectives score, when used), \code{settings} (the start
+and scoring settings, for \code{\link[=pareto_validate]{pareto_validate()}}) and \code{failed_evaluations}.
+Candidates are not posterior probabilities.
 }
 \description{
-Evaluates the initial configuration and seeded uniform candidates, then refines
-the best sampled starts for each weight vector with bounded L-BFGS-B. Retains
-every valid evaluated candidate and its raw metrics, normalized metrics and
-Pareto membership. This is an approximate sampled front, not a global optimality
-claim; nonconvex fronts may be missed by weighted searches. Use repeated seeds,
-sufficient search budgets and independent validation. Random state is restored.
+Searches for the trade-off between several objectives at once, and returns the Pareto
+front: every parameter set that no other beats on all of them. Instead of one best fit for
+one blend of objectives, the front shows what each gain costs, such as how much fit to the
+recessions is lost for better peaks, so the choice between them is made in the open.
+}
+\details{
+The search first evaluates the configured point and \code{n_samples} uniform random points.
+Then, by default (\code{method = "padds"}), it grows the front directly by Pareto-archived
+dynamically dimensioned search (PA-DDS; Asadzadeh and Tolson, 2013): \code{starts} chains of
+\code{control$maxit} model runs each, every chain keeping the sets no other set it has seen beats,
+perturbing one of them at a time as DDS does and favouring sets in sparse parts of the front,
+so the search spreads along all of it, hollows included. The other methods minimise weighted
+sums instead: for each row of \code{weights}, the \code{starts} best samples under that weighting are
+refined by DDS (\code{"dds"}, \code{control$maxit} model runs each), L-BFGS-B (\code{"lbfgsb"}) or
+Nelder-Mead (\code{"nelder_mead"}). Weighted sums can miss the hollows of a non-convex front.
+Every evaluation is kept, and the front is drawn from all of them; it is still a sampled
+front, not a proof of optimality, so check it with another seed and on a validation period
+(\code{\link[=pareto_validate]{pareto_validate()}}).
+
+Each trial runs as in \code{\link[=calibrate_pdm]{calibrate_pdm()}}: from the same start (\code{start}, \code{start_flow},
+\code{baseflow_fraction}, \code{soil_fraction}), on the same engine, with parameters searched on a log
+scale where \code{log_scale} says. The chains or refinements run side by side on \code{cores} cores,
+each with its own seed, so the answer does not depend on the number of cores. A coupled
+snow-PDM configuration runs through \code{\link[=sim_snow_pdm]{sim_snow_pdm()}} from its default state.
+
+\strong{Objectives}, all losses to be minimised:\tabular{ll}{
+   Name \tab Loss \cr
+   \code{nse_loss}, \code{rmse}, \code{log_rmse}, \code{kge_loss}, \code{abs_bias}, \code{peak_relative_error}, \code{boxcox_loss} \tab See below \cr
+   \code{event_nse_loss} \tab 1 - pooled event NSE over the chosen events \cr
+   \code{event_peak_error} \tab Mean absolute peak error over the chosen events \cr
+   \code{event_timing_error} \tab Mean absolute timing error of the events, over the response time \cr
+   \code{threshold_loss} \tab 1 - the threshold score (\code{threshold_score}), averaged over \code{thresholds} \cr
+}
+
+
+The first row's losses are over the whole record after the warm-up: see \code{\link[=pdm_objectives]{pdm_objectives()}}.
+
+The event terms are those of \code{objective = "events"} in \code{\link[=calibrate_pdm]{calibrate_pdm()}}, kept apart; the
+events are chosen the same way (\code{events}, \code{event_share}, \code{event_screen}). Timing and
+threshold scores change in steps, which a gradient cannot follow: they need a method other
+than \code{"lbfgsb"}.
+
+The result has class \code{pdm_pareto}: \code{\link[=plot.pdm_pareto]{plot.pdm_pareto()}} draws the front, and
+\code{\link[=pareto_choose]{pareto_choose()}} picks a configuration from it.
+}
+\examples{
+rain <- synthetic_rain("2021-01-01", years = 1, dt = 1, seed = 2)
+truth <- modifyList(pdm_presets("standard"), list(area_km2 = 20))
+flow <- run_pdm(pdm_from_config(truth), rain[c("rain", "pet")])$output$q_m3s
+start <- truth
+start$distribution$cmax <- 150
+front <- calibrate_pdm_multi(
+  start, rain[c("time", "rain", "pet")], flow,
+  lower = c(distribution.cmax = 80, surface.k1 = 2),
+  upper = c(distribution.cmax = 400, surface.k1 = 30),
+  objectives = c("nse_loss", "event_peak_error"), n_samples = 8,
+  starts = 1, control = list(maxit = 20), warmup = 24 * 30
+)
+plot(front)
+pareto_choose(front, objective = "event_peak_error")$scores
+}
+\seealso{
+\code{\link[=plot.pdm_pareto]{plot.pdm_pareto()}}, \code{\link[=pareto_choose]{pareto_choose()}}, \code{\link[=log_pareto_calibration]{log_pareto_calibration()}}
 }

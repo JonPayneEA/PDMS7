@@ -119,14 +119,26 @@ Each routing store obeys
 
 $$\frac{dX}{dt} = u - q(X).\qquad\text{(Eq. 21-23)}$$
 
-| Option      | Outflow law                                                                    | Notes                                                       |
-|-------------|--------------------------------------------------------------------------------|-------------------------------------------------------------|
-| Linear      | $q = X/k_{b}$                                                                  | Exact solution                                              |
-| Quadratic   | $q = X^{2}/k_{b}$                                                              | Exact solution                                              |
-| Cubic       | $q = X^{3}/k_{b}$                                                              | Adaptive integration; optional Smith recurrence (Eq. 24-25) |
-| Power       | $q = kX^{m}$                                                                   | Adaptive integration (Eq. 21-23)                            |
-| Cascade     | ${\dot{X}}_{1} = u - X_{1}/k_{1}$, ${\dot{X}}_{2} = X_{1}/k_{1} - X_{2}/k_{2}$ | Exact two-store solution (Eq. 26-27)                        |
-| Exponential | $q = \exp(\gamma + aX)$                                                        | $X$ is a signed log-storage coordinate, not a tank          |
+| Option      | Outflow law                                                                    | Notes                                                                             |
+|-------------|--------------------------------------------------------------------------------|-----------------------------------------------------------------------------------|
+| Linear      | $q = X/k_{b}$                                                                  | Exact solution                                                                    |
+| Quadratic   | $q = X^{2}/k_{b}$                                                              | Exact solution                                                                    |
+| Cubic       | $q = X^{3}/k_{b}$                                                              | Adaptive integration; optional Smith recurrence (Eq. 24-25)                       |
+| Power       | $q = kX^{m}$                                                                   | Adaptive integration (Eq. 21-23)                                                  |
+| Cascade     | ${\dot{X}}_{1} = u - X_{1}/k_{1}$, ${\dot{X}}_{2} = X_{1}/k_{1} - X_{2}/k_{2}$ | Exact two-store solution (Eq. 26-27)                                              |
+| Exponential | $q = \exp(\gamma + aX)$                                                        | $X$ is a signed log-storage coordinate, not a tank; $\gamma$ only places its zero |
+
+**Why the exponential store’s $\gamma$ is not calibrated.** Writing
+$\exp(\gamma + aX) = \exp\{ a(X + \gamma/a)\}$ shows that $\gamma$ only
+slides the zero of $X$. The flow obeys $\dot{q} = aq(u - q)$, which
+contains $a$ but not $\gamma$, so a run that starts from an observed
+flow gives the same hydrograph for any $\gamma$; from an empty start it
+sets only the first baseflow, $\exp(\gamma)$, which the warm-up forgets.
+In plain terms: the store has no floor, so there is no true “empty” to
+measure from, and $\gamma$ just chooses where to put the zero on the
+ruler. Moving the zero does not change how fast the water drains.
+Calibration therefore holds $\gamma$ at its value and searches $a$
+alone.
 
 Inflow is constant within an interval. The Smith recurrence is accurate
 only for steps up to about an hour; see [Choosing model

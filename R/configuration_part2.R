@@ -26,9 +26,14 @@
 #' @param warmup Number of initial forcing steps excluded from calibration scoring, but still
 #' simulated.
 #' @param objective Calibration objective: rmse, nse (minimizes 1-NSE), log_rmse, log_nse
-#' (minimizes 1 minus NSE of log flows, which weights low flows), threshold (the threshold
+#' (minimizes 1 minus NSE of log flows, which weights low flows), boxcox (1 minus NSE of
+#' Box-Cox transformed flows, see [boxcox_flow()]: errors of about the same size at every flow,
+#' as least squares assumes, optionally weighted by `weights`), threshold (the threshold
 #' term alone; needs thresholds), or events, which scores only the largest events: see
 #' `events`.
+#' @param boxcox_lambda The Box-Cox power for `objective = "boxcox"`, 0 (log) to 1 (raw).
+#' @param weights For `objective = "boxcox"`: `NULL`, or one nonnegative weight for each
+#'   observed flow, such as [flow_weights()] gives from rating uncertainty.
 #' @param flow Series to score: q_m3s (interval mean) or q_end_m3s (endpoint flow).
 #' @param log_offset Positive offset added before logarithms in log-RMSE and log NSE, cubic
 #' metres per second.
@@ -137,7 +142,7 @@
 #' @export
 calibrate_pdm <- function(
   config, forcing, observed, lower, upper, warmup = 0,
-  objective = c("rmse", "nse", "log_rmse", "log_nse", "threshold", "events"),
+  objective = c("rmse", "nse", "log_rmse", "log_nse", "boxcox", "threshold", "events"),
   flow = c("q_m3s", "q_end_m3s"),
   log_offset = 0.01, control = list(maxit = 200),
   soil_fraction = 0.5, starts = 1L, seed = NULL, method = c("lbfgsb", "nelder_mead", "dds"),
@@ -146,7 +151,8 @@ calibrate_pdm <- function(
   log_scale = character(0), volume_weight = 0, start = c("flow", "soil"),
   baseflow_fraction = 0.7, start_flow = NULL, archive = NULL, events = NULL,
   event_weights = c(nse = 1, peak = 0.5, timing = 0.5), event_share = 0.5,
-  event_screen = list(), cores = getOption("pdmS7.cores", 1L)
+  event_screen = list(), cores = getOption("pdmS7.cores", 1L), boxcox_lambda = 0.5,
+  weights = NULL
 ) {
   # Outline: check the arguments; map the parameters onto a unit box (log-scaled where asked);
   # build a loss function that runs the model and scores it; minimise that loss from each start;
@@ -166,9 +172,11 @@ calibrate_pdm <- function(
   # Rows that are scored: after the warm-up, and observed. Missing flow is simply left out.
   keep <- is.finite(observed) & seq_along(observed) > warmup
   .check(sum(keep) >= 2, "At least two observed values after warmup are required")
+  .check_weights(weights, observed, keep)
   scoring <- .objective_scorer(objective, observed, keep, warmup, log_offset, events,
                                forcing$rain, pdm_from_config(config), event_weights,
-                               event_share, event_screen, forcing$time)
+                               event_share, event_screen, forcing$time, boxcox_lambda,
+                               weights)
   # Every trial starts the same way. The start is built once for the configured model first, so
   # a start that cannot work (a first flow below qc, say) stops here with its own message rather
   # than failing every trial.
@@ -327,13 +335,116 @@ calibrate_pdm <- function(
 # The continuous part of the objective as a function of the full simulated series: the events
 # objective scores the event windows, every other objective the kept rows.
 .objective_scorer <- function(objective, observed, keep, warmup, log_offset, events, rain,
-                              model, event_weights, event_share, event_screen, time = NULL) {
+                              model, event_weights, event_share, event_screen, time = NULL,
+                              lambda = 0.5, weights = NULL) {
   if (objective == "events") {
     return(.event_objective(events, rain, observed, warmup, model@dt, event_weights, event_share,
                             event_screen, model@area_km2, time))
   }
+  if (objective == "boxcox") {
+    score <- .boxcox_scorer(observed[keep], log_offset, lambda,
+                            if (!is.null(weights)) weights[keep])
+    return(list(score = function(sim) score(sim[keep]),
+                name = sprintf("1 - NSE of Box-Cox flows (lambda %g%s)", lambda,
+                               if (!is.null(weights)) ", weighted" else "")))
+  }
   score <- .calibration_scorer(objective, observed[keep], log_offset)
   list(score = function(sim) score(sim[keep]), name = NULL)
+}
+
+#' Box-Cox transformed flow
+#'
+#' `((q + offset)^lambda - 1) / lambda`, or `log(q + offset)` for `lambda = 0`. Flow errors grow
+#' with the flow: a gauge's error at a flood is many times its error at baseflow, and a model's
+#' error likewise. Least squares on the raw flow then counts the largest floods many times over
+#' and the rest of the record hardly at all. On the transformed scale the errors are much closer
+#' to the same size at every flow, which is what least squares assumes. `lambda = 1` is the raw
+#' flow (less one), `0` the log; between them, `0.5` (the default of the `boxcox` objective)
+#' keeps more weight on high flows than the log does, and `0.2` is closer to the log (McInerney
+#' et al., 2017, compare the choices).
+#'
+#' @param q Flow, m3/s.
+#' @param lambda The transform's power, from 0 (log) to 1 (raw).
+#' @param offset A small positive flow added first, m3/s, so zero flows stay finite.
+#' @return The transformed flow.
+#' @examples
+#' boxcox_flow(c(0.1, 1, 10, 100), lambda = 0.5)
+#' @seealso [calibrate_pdm()] (`objective = "boxcox"`), [flow_weights()]
+#' @export
+boxcox_flow <- function(q, lambda = 0.5, offset = 0.01) {
+  .check(.scalar(lambda, 0, 1), "lambda must be between 0 and 1")
+  .check(.scalar(offset, 0, strict = TRUE), "offset must be a positive flow")
+  if (lambda == 0) return(log(q + offset))
+  ((q + offset)^lambda - 1) / lambda
+}
+
+# Weights for the boxcox objective: none, or one nonnegative number for each observed flow,
+# not all zero on the scored rows.
+.check_weights <- function(weights, observed, keep) {
+  .check(is.null(weights) || (is.numeric(weights) && length(weights) == length(observed) &&
+                                all(is.finite(weights[keep]) & weights[keep] >= 0) &&
+                                sum(weights[keep]) > 0),
+         "weights must be nonnegative numbers, one for each observed flow")
+}
+
+# The boxcox objective: 1 - NSE on Box-Cox flows, each step weighted by `w` when given (a
+# weighted sum of squares over the weighted spread about the weighted mean).
+.boxcox_scorer <- function(obs, offset, lambda, w = NULL) {
+  .check(all(obs + offset > 0), "Invalid observations for the Box-Cox transform")
+  zo <- boxcox_flow(obs, lambda, offset)
+  w <- w %||% rep(1, length(obs))
+  spread <- sum(w * (zo - sum(w * zo) / sum(w))^2)
+  .check(spread > 0, "The Box-Cox objective needs variable observations")
+  function(sim) {
+    if (any(!is.finite(sim)) || any(sim + offset <= 0)) return(1e+30)
+    sum(w * (boxcox_flow(sim, lambda, offset) - zo)^2) / spread
+  }
+}
+
+#' Weights for flows by how well they are measured
+#'
+#' One weight for each observed flow, for the `weights` of [calibrate_pdm()], so that flows the
+#' gauge measures poorly count for less. Two sources, used together when both are given:
+#'
+#' - `uncertainty`, a table of flow (`q`, m3/s) and its relative uncertainty (`relative`, for
+#'   example 0.1 for plus or minus 10%), such as a rating's uncertainty at its percentiles. Each
+#'   flow's relative uncertainty is interpolated (held flat beyond the table) and its weight is
+#'   `(smallest / relative)^2`: inverse variance, the best-measured flows weighing 1.
+#' - `highest_gauged`: flows above the highest gauging lie on the extrapolated rating; they are
+#'   multiplied by `extrapolated`.
+#'
+#' Missing flows get weight 0. Weights scale the Box-Cox objective's squared errors.
+#'
+#' @param observed Observed flow, m3/s.
+#' @param uncertainty `NULL`, or a data frame with `q` and `relative`.
+#' @param highest_gauged `NULL`, or the highest gauged flow, m3/s.
+#' @param extrapolated Weight factor above the highest gauging.
+#' @return A weight for each flow.
+#' @examples
+#' flow_weights(c(1, 5, 50), uncertainty = data.frame(q = c(1, 50), relative = c(0.05, 0.2)))
+#' @seealso [boxcox_flow()], [calibrate_pdm()]
+#' @export
+flow_weights <- function(observed, uncertainty = NULL, highest_gauged = NULL,
+                         extrapolated = 0.25) {
+  .check(is.numeric(observed), "observed must be numeric")
+  .check(.scalar(extrapolated, 0, 1), "extrapolated must be between 0 and 1")
+  w <- rep(1, length(observed))
+  if (!is.null(uncertainty)) {
+    .check(is.data.frame(uncertainty) && all(c("q", "relative") %in% names(uncertainty)) &&
+             nrow(uncertainty) >= 1 && all(uncertainty$relative > 0),
+           "uncertainty must be a data frame of q and positive relative")
+    u <- uncertainty[order(uncertainty$q), ]
+    rel <- if (nrow(u) == 1L) rep(u$relative, length(observed)) else
+      stats::approx(u$q, u$relative, observed, rule = 2)$y
+    w <- (min(u$relative) / rel)^2
+  }
+  if (!is.null(highest_gauged)) {
+    .check(.scalar(highest_gauged, 0, strict = TRUE), "highest_gauged must be a positive flow")
+    w[is.finite(observed) & observed > highest_gauged] <-
+      w[is.finite(observed) & observed > highest_gauged] * extrapolated
+  }
+  w[!is.finite(observed)] <- 0
+  w
 }
 
 # The continuous part of the objective, as a function of the simulated flow on the kept rows.
@@ -433,15 +544,7 @@ calibrate_pdm <- function(
   for (i in seq_len(budget - 1L)) {
     chosen <- stats::runif(n) < 1 - log(i) / log(budget)
     if (!any(chosen)) chosen[sample.int(n, 1L)] <- TRUE
-    trial <- best
-    step <- trial[chosen] + r * stats::rnorm(sum(chosen))
-    low <- step < 0
-    step[low] <- -step[low]
-    step[low & step > 1] <- 0
-    high <- step > 1
-    step[high] <- 2 - step[high]
-    step[high & step < 0] <- 1
-    trial[chosen] <- step
+    trial <- .dds_perturb(best, chosen, r)
     value <- loss(trial)
     if (value <= best_value) {
       best <- trial
@@ -450,6 +553,21 @@ calibrate_pdm <- function(
   }
   list(par = best, value = best_value, counts = c(`function` = budget, gradient = NA),
        convergence = 0L, message = paste("DDS:", budget, "model runs"))
+}
+
+# One DDS step from `z` in the unit box: the chosen coordinates move by a normal step of sd r; a
+# step past a bound is reflected back inside, and one that overshoots the other bound goes to the
+# bound it crossed.
+.dds_perturb <- function(z, chosen, r) {
+  step <- z[chosen] + r * stats::rnorm(sum(chosen))
+  low <- step < 0
+  step[low] <- -step[low]
+  step[low & step > 1] <- 0
+  high <- step > 1
+  step[high] <- 2 - step[high]
+  step[high & step < 0] <- 1
+  z[chosen] <- step
+  z
 }
 
 # The threshold part of the objective: for each threshold, 1 - score (or the score itself for a
@@ -500,7 +618,8 @@ calibrate_pdm <- function(
 # "1-NSE + 1 x mean threshold loss (csi at Flood Warning)".
 .objective_name <- function(objective, thresholds, weight, score, volume_weight = 0,
                             events_name = NULL) {
-  base <- switch(objective, nse = "1-NSE", log_nse = "1-log NSE", events = events_name, objective)
+  base <- switch(objective, nse = "1-NSE", log_nse = "1-log NSE", events = events_name,
+                 boxcox = events_name, objective)
   if (volume_weight > 0) {
     base <- paste0(base, " + ", volume_weight, " x |volume error|")
   }

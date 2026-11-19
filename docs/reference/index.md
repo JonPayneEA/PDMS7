@@ -239,8 +239,52 @@ the result; each step is noted and recorded in the calibration log.
   : Acceptance checks of a calibration
 - [`calibrate_pdm_multi()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm_multi.md)
   : Calibrate PDM or coupled snow-PDM against multiple objectives
+- [`pareto_choose()`](https://jonpayneea.github.io/PDMS7/reference/pareto_choose.md)
+  : Choose a configuration from a Pareto front
+- [`pareto_validate()`](https://jonpayneea.github.io/PDMS7/reference/pareto_validate.md)
+  : Score a Pareto front on another period
+- [`pareto_band()`](https://jonpayneea.github.io/PDMS7/reference/pareto_band.md)
+  : The range of flows across a Pareto front
+- [`plot(`*`<pdm_pareto>`*`)`](https://jonpayneea.github.io/PDMS7/reference/plot.pdm_pareto.md)
+  [`autoplot(`*`<pdm_pareto>`*`)`](https://jonpayneea.github.io/PDMS7/reference/plot.pdm_pareto.md)
+  : Plot a Pareto front
 - [`pdm_objectives()`](https://jonpayneea.github.io/PDMS7/reference/pdm_objectives.md)
   : Evaluate hydrological calibration losses
+- [`boxcox_flow()`](https://jonpayneea.github.io/PDMS7/reference/boxcox_flow.md)
+  : Box-Cox transformed flow
+- [`flow_weights()`](https://jonpayneea.github.io/PDMS7/reference/flow_weights.md)
+  : Weights for flows by how well they are measured
+- [`pdm_sensitivity()`](https://jonpayneea.github.io/PDMS7/reference/pdm_sensitivity.md)
+  [`plot(`*`<pdm_sensitivity>`*`)`](https://jonpayneea.github.io/PDMS7/reference/pdm_sensitivity.md)
+  [`autoplot(`*`<pdm_sensitivity>`*`)`](https://jonpayneea.github.io/PDMS7/reference/pdm_sensitivity.md)
+  : Global sensitivity of the scores to the parameters
+- [`compare_forecasts()`](https://jonpayneea.github.io/PDMS7/reference/compare_forecasts.md)
+  [`plot(`*`<pdm_forecast_comparison>`*`)`](https://jonpayneea.github.io/PDMS7/reference/compare_forecasts.md)
+  [`autoplot(`*`<pdm_forecast_comparison>`*`)`](https://jonpayneea.github.io/PDMS7/reference/compare_forecasts.md)
+  : Compare candidate models as forecasters
+- [`split_sample_test()`](https://jonpayneea.github.io/PDMS7/reference/split_sample_test.md)
+  [`parameter_drift()`](https://jonpayneea.github.io/PDMS7/reference/split_sample_test.md)
+  [`plot(`*`<pdm_parameter_drift>`*`)`](https://jonpayneea.github.io/PDMS7/reference/split_sample_test.md)
+  [`autoplot(`*`<pdm_parameter_drift>`*`)`](https://jonpayneea.github.io/PDMS7/reference/split_sample_test.md)
+  : Stress tests of a calibration
+- [`calibrate_bayes()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_bayes.md)
+  : Bayesian calibration
+- [`prior_uniform()`](https://jonpayneea.github.io/PDMS7/reference/prior_uniform.md)
+  [`prior_normal()`](https://jonpayneea.github.io/PDMS7/reference/prior_uniform.md)
+  [`prior_lognormal()`](https://jonpayneea.github.io/PDMS7/reference/prior_uniform.md)
+  : A prior for a parameter
+- [`priors_from_table()`](https://jonpayneea.github.io/PDMS7/reference/priors_from_table.md)
+  : Priors from a table of predicted parameters
+- [`posterior_band()`](https://jonpayneea.github.io/PDMS7/reference/posterior_band.md)
+  : A predictive band from the posterior
+- [`ensemble_scores()`](https://jonpayneea.github.io/PDMS7/reference/ensemble_scores.md)
+  [`plot(`*`<pdm_ensemble_scores>`*`)`](https://jonpayneea.github.io/PDMS7/reference/ensemble_scores.md)
+  [`autoplot(`*`<pdm_ensemble_scores>`*`)`](https://jonpayneea.github.io/PDMS7/reference/ensemble_scores.md)
+  : Scores of ensemble forecasts by lead time
+- [`crps_ensemble()`](https://jonpayneea.github.io/PDMS7/reference/crps_ensemble.md)
+  : Continuous ranked probability score of an ensemble
+- [`brier_score()`](https://jonpayneea.github.io/PDMS7/reference/brier_score.md)
+  : Brier score and its decomposition
 - [`pdm_scorecard()`](https://jonpayneea.github.io/PDMS7/reference/pdm_scorecard.md)
   : Score a simulation against observed flow
 - [`pdm_threshold_scores()`](https://jonpayneea.github.io/PDMS7/reference/pdm_threshold_scores.md)
@@ -282,7 +326,8 @@ Calibrate several model structures alike and rank them on held-out data.
 An append-only, tamper-evident record of manual and automatic
 calibration.
 
-- [`start_calibration_project()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
+- [`log_pareto_calibration()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
+  [`start_calibration_project()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
   [`register_data()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
   [`select_structure()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)
   [`preview_trial()`](https://jonpayneea.github.io/PDMS7/reference/calibration_log.md)

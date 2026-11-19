@@ -38,6 +38,11 @@ come from different gauges or a different product. Search it only when the rainf
 is known and stable, by giving it bounds: \code{overrides = list(fc = c(0.8, 1.2))}, or the
 table's range \code{c(0.6, 1.6)}. The table's \code{default} column marks which parameters are locked
 in this way.
+
+The exponential store's \code{gamma} is locked too. In \verb{q = exp(gamma + a S)} it only sets where
+the zero of \code{S} lies: the flow follows \verb{dq/dt = a q (u - q)}, which has no \code{gamma} in it, so a
+run started from an observed flow is the same whatever \code{gamma} is. Searching it would spend a
+dimension of the search on a flat objective and report a value that means nothing.
 }
 \examples{
 calibration_bounds(pdm_presets("standard"))

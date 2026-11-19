@@ -19,7 +19,13 @@ pdm_stages(
   event_budget = 300L,
   thresholds = NULL,
   threshold_weight = 1,
-  threshold_score = "csi"
+  threshold_score = "csi",
+  pareto = NULL,
+  pareto_choose = "knee",
+  pareto_budget = 300L,
+  method = NULL,
+  budget = 300L,
+  coarse_dt = NULL
 )
 }
 \arguments{
@@ -43,7 +49,22 @@ half-width of a narrowed search, as a fraction of each range.}
 \item{event_budget}{Model runs per start for the DDS searches of stage 4 and of a last stage
 with thresholds.}
 
-\item{thresholds, threshold_weight, threshold_score}{A threshold term for the last stage.}
+\item{thresholds, threshold_weight, threshold_score}{A threshold term for the last stage; for a
+trade-off stage, the thresholds of a \code{threshold_loss} among its objectives.}
+
+\item{pareto}{Losses for a trade-off stage at the end, or \code{NULL} for none.}
+
+\item{pareto_choose}{Which front set the trade-off stage keeps.}
+
+\item{pareto_budget}{Model runs a chain in the trade-off stage.}
+
+\item{method}{\code{NULL} to keep each stage's own search, or \code{"dds"} (or \code{"lbfgsb"},
+\code{"nelder_mead"}) for stages 1 to 3.}
+
+\item{budget}{Model runs a start for stages 1 to 3 with \code{method = "dds"}.}
+
+\item{coarse_dt}{\code{NULL}, or the step in hours on which stage 1 is fitted, a whole number of
+the model's steps.}
 }
 \value{
 A list of stages.
@@ -60,6 +81,7 @@ joint polish over everything.
    2. Fast response \tab Surface stores and the store shape \code{b} \tab 1 - NSE \cr
    3. Polish \tab Everything, over the full bounds \tab 1 - NSE \cr
    4. Events (optional) \tab Surface stores, \code{b} and the time delay \code{td} \tab events objective \cr
+   5. Trade-off (optional) \tab As stage 4 \tab A Pareto front of several losses \cr
 }
 
 
@@ -83,6 +105,24 @@ peak error and timing error. The slow stores stay as stage 3 left them, so the w
 is kept. The time delay is not in the default bounds; stage 4 searches it from 0 to \code{td_max}
 hours. Its timing term changes in steps, so stage 4 uses DDS with \code{event_budget} model runs
 per start.
+
+\code{pareto} adds a trade-off stage at the end: the same parameters as the events stage, searched
+for a Pareto front of the named losses of \code{\link[=calibrate_pdm_multi]{calibrate_pdm_multi()}} (at least two, such as
+\code{c("nse_loss", "event_nse_loss", "abs_bias")}) by PA-DDS with \code{pareto_budget} model runs a
+chain, and the front set \code{pareto_choose} names kept: \code{"knee"} (the default, no weights
+needed), \code{"compromise"}, one objective, or weights. With the slow stores already fixed, the
+front is searched over a few parameters only, so a modest budget covers it. In a project the
+whole front is kept in the stage's entry.
+
+\strong{Speed.} By default stages 1 to 3 search by L-BFGS-B, whose gradients cost about two model
+runs per parameter per iteration. \code{method = "dds"} searches them by DDS instead, with
+\code{budget} model runs a start, which on bumpy hydrological objectives usually finds as good a
+fit for fewer runs (Tolson and Shoemaker, 2007). \code{coarse_dt} fits stage 1, the water balance
+and the slow stores, on the record collapsed to a coarser step (rain and evaporation summed,
+flow averaged): \code{coarse_dt = 1} on a 15-minute record runs stage 1 four times faster. The
+slow stores' parameters are in hours and millimetres and do not depend on the timing within
+an hour, so they carry back to the model's own step unchanged; the later stages, and every
+logged score, use the full record.
 
 \code{thresholds} adds a threshold term (\code{\link[=calibrate_pdm]{calibrate_pdm()}}) to the last stage, which then also uses
 DDS: a named vector of flows (m3/s) for \code{\link[=calibrate_staged]{calibrate_staged()}}, or the names of thresholds

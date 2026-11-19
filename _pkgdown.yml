@@ -86,6 +86,7 @@ articles:
   - auto-calibration
   - choosing-structure
   - floods
+  - trade-offs
   - app-events
   - checks
   - rainfall
@@ -94,6 +95,16 @@ articles:
   - extrapolation
   - many-catchments
   - large-sample
+- title: Robustness and uncertainty
+  navbar: Robustness and uncertainty
+  contents:
+  - robust-calibration
+  - fair-errors
+  - global-sensitivity
+  - forecast-choice
+  - stress-tests
+  - bayesian-calibration
+  - ensemble-verification
 - title: Records and review
   navbar: Records and review
   contents:
@@ -242,7 +253,23 @@ reference:
   - pdm_stages
   - calibration_checks
   - calibrate_pdm_multi
+  - pareto_choose
+  - pareto_validate
+  - pareto_band
+  - plot.pdm_pareto
   - pdm_objectives
+  - boxcox_flow
+  - flow_weights
+  - pdm_sensitivity
+  - compare_forecasts
+  - split_sample_test
+  - calibrate_bayes
+  - prior_uniform
+  - priors_from_table
+  - posterior_band
+  - ensemble_scores
+  - crps_ensemble
+  - brier_score
   - pdm_scorecard
   - pdm_threshold_scores
   - flow_markers

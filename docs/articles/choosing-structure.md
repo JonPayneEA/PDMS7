@@ -221,7 +221,7 @@ elapsed <- system.time(
                                 reasoning = "Which structure suits this catchment?")
 )[["elapsed"]]
 round(elapsed)
-#> [1] 48
+#> [1] 39
 ranking[, .(rank, structure, parameters, calibration = round(calibration, 4),
             validation = round(validation, 4), change = round(change, 4), starts_agree)]
 #>     rank               structure parameters calibration validation  change
@@ -229,7 +229,7 @@ ranking[, .(rank, structure, parameters, calibration = round(calibration, 4),
 #> 1:     1               lognormal          7      0.9962     0.9952 -0.0010
 #> 2:     2                   split          7      0.9861     0.9942  0.0082
 #> 3:     3                standard          7      0.9958     0.9895 -0.0062
-#> 4:     4 exponential_groundwater          8      0.9957     0.9879 -0.0078
+#> 4:     4 exponential_groundwater          7      0.9957     0.9879 -0.0078
 #> 5:     5             rectangular          6      0.9950     0.9844 -0.0107
 #> 6:     6             exponential          6      0.9916     0.9795 -0.0121
 #> 7:     7                  demand          9      0.9445     0.9276 -0.0169

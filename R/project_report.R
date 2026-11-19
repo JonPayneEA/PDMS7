@@ -315,6 +315,7 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
     out <- c(out, list(.blk_table(starts, paste0("Automatic calibration ", a$id, stage, ": ",
                                                  a$objective_name %||% a$objective, " with ",
                                                  a$starts, " start(s)"))))
+    if (!is.null(a$pareto)) out <- c(out, .rpt_pareto(a))
   }
   if (length(notes)) {
     out <- c(out, list(.blk_h("Notes", 3L), .blk_list(vapply(notes, function(n) {
@@ -323,6 +324,58 @@ build_report <- function(project, output = file.path(project, "report"), rerun =
     }, character(1)))))
   }
   out
+}
+
+# A logged Pareto front: its pairs plot and its table, the chosen set marked.
+.rpt_pareto <- function(a) {
+  x <- .pareto_from_entry(a)
+  front <- as.data.frame(x$pareto)
+  front <- cbind(chosen = ifelse(seq_len(nrow(front)) %in% a$pareto$chosen_row, "yes", ""),
+                 front)
+  choice <- .pareto_choice_text(a$pareto$choice)
+  out <- list(.blk_fig(paste0("pareto_", a$id),
+                       function() .draw_base(.spec_pareto_pairs(x, x$objectives)),
+                       paste0("Pareto front of automatic calibration ", a$id,
+                              ". The logged run is ", choice, ", drawn as the compromise.")))
+  if (!is.null(x$validation)) {
+    out <- c(out, list(.blk_fig(
+      paste0("pareto_check_", a$id),
+      function() .draw_base(.spec_pareto_validation(x, x$objectives)),
+      paste0("The front of ", a$id, " on its check period, rows ", x$validation_rows[1], " to ",
+             x$validation_rows[2], ", which the search never saw.")
+    )))
+  }
+  c(out, list(.blk_table(front, paste0("The ", nrow(front), " sets on the front of ", a$id))))
+}
+
+# "the compromise", "the best set on abs_bias" or "the best under weights nse_loss 1, ...".
+.pareto_choice_text <- function(choice) {
+  choice <- if (is.list(choice) && length(choice) == 1L && is.null(names(choice))) {
+    choice[[1L]]
+  } else {
+    choice
+  }
+  if (identical(choice, "compromise")) return("the compromise")
+  if (identical(choice, "knee")) return("the knee")
+  if (is.character(choice)) return(paste("the best set on", choice))
+  paste("the best under weights", toString(paste(names(choice), unlist(choice))))
+}
+
+# A front rebuilt from a log entry, enough to draw: the front stands in for the archive.
+.pareto_from_entry <- function(a) {
+  front <- data.table::as.data.table(lapply(a$pareto$front, unlist))
+  row <- a$pareto$chosen_row
+  row <- if (is.null(row) || is.na(row)) 1L else row
+  objectives <- unlist(a$pareto$objectives)
+  check <- paste0("check_loss_", objectives)
+  x <- list(archive = front, pareto = front, objectives = objectives,
+            parameters = unlist(a$pareto$parameters), compromise = list(scores = front[row]))
+  if (all(check %in% names(front))) {
+    x$validation <- cbind(data.table::data.table(row = seq_len(nrow(front))),
+                          front[, check, with = FALSE])
+    x$validation_rows <- unlist(a$pareto$check_rows)
+  }
+  structure(x, class = c("pdm_pareto", "list"))
 }
 
 # "fc in [0.6, 1.6]; surface.k1 in [0.5, 72]" for an automatic calibration entry.

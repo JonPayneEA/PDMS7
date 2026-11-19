@@ -43,6 +43,8 @@
   chosen](https://jonpayneea.github.io/PDMS7/articles/choosing-structure.md):
 - [Getting the floods
   right](https://jonpayneea.github.io/PDMS7/articles/floods.md):
+- [Trade-offs: calibrating to several objectives at
+  once](https://jonpayneea.github.io/PDMS7/articles/trade-offs.md):
 - [Tailoring calibration to the largest events in the
   app](https://jonpayneea.github.io/PDMS7/articles/app-events.md):
 - [Checking the data and the
@@ -59,6 +61,23 @@
   catchments](https://jonpayneea.github.io/PDMS7/articles/many-catchments.md):
 - [Many catchments: what automatic calibration recovers, and what limits
   it](https://jonpayneea.github.io/PDMS7/articles/large-sample.md):
+
+### Robustness and uncertainty
+
+- [Robust calibration: an
+  overview](https://jonpayneea.github.io/PDMS7/articles/robust-calibration.md):
+- [Counting every error fairly: the Box-Cox
+  objective](https://jonpayneea.github.io/PDMS7/articles/fair-errors.md):
+- [Which parameters can the record determine? Global
+  sensitivity](https://jonpayneea.github.io/PDMS7/articles/global-sensitivity.md):
+- [Choosing a model as a
+  forecaster](https://jonpayneea.github.io/PDMS7/articles/forecast-choice.md):
+- [Will the calibration hold? Stress
+  tests](https://jonpayneea.github.io/PDMS7/articles/stress-tests.md):
+- [How sure are we? Bayesian
+  calibration](https://jonpayneea.github.io/PDMS7/articles/bayesian-calibration.md):
+- [Is a probability forecast honest? Ensemble
+  verification](https://jonpayneea.github.io/PDMS7/articles/ensemble-verification.md):
 
 ### Records and review
 

@@ -41,6 +41,11 @@
 #' table's range `c(0.6, 1.6)`. The table's `default` column marks which parameters are locked
 #' in this way.
 #'
+#' The exponential store's `gamma` is locked too. In `q = exp(gamma + a S)` it only sets where
+#' the zero of `S` lies: the flow follows `dq/dt = a q (u - q)`, which has no `gamma` in it, so a
+#' run started from an observed flow is the same whatever `gamma` is. Searching it would spend a
+#' dimension of the search on a flat objective and report a value that means nothing.
+#'
 #' @param config A configuration list.
 #' @param overrides Optional named list of `c(lower, upper)` pairs by configuration path,
 #'   such as `list(fc = c(0.8, 1.2))`, replacing or adding bounds. Naming a parameter that is
@@ -58,9 +63,9 @@
 #' @export
 # Bounds for every calibratable parameter of a configuration, as configuration paths: the
 # catchment-wide rows, then the rows for each component's actual type (a split recharge gets
-# alpha, an exponential groundwater store gets a and gamma). Overrides replace or add rows;
-# exclude drops parameters to be held fixed. Rows the table marks as fixed by default (the
-# rainfall factor) are dropped too, unless an override names them.
+# alpha, an exponential groundwater store gets a). Overrides replace or add rows; exclude drops
+# parameters to be held fixed. Rows the table marks as fixed by default (the rainfall factor
+# and the exponential store's gamma) are dropped too, unless an override names them.
 calibration_bounds <- function(config, overrides = NULL, exclude = NULL) {
   if (.is_multizone_config(config)) return(.multizone_bounds(config, overrides, exclude))
   pdm_from_config(config)

@@ -202,3 +202,33 @@ test_that("the app restores the identity options when it closes", {
   expect_equal(getOption("pdmS7.user"), "Before")
   expect_equal(getOption("pdmS7.role"), "steward")
 })
+
+# Guards: the Trade-offs tab searches and logs a front, picks a set by click and keeps it
+test_that("the app searches a front, shows a clicked set and keeps it", {
+  skip_if_not_installed("shiny")
+  p <- new_project() # nolint: object_usage_linter.
+  shiny::testServer(.app_server(p$folder), {
+    session$setInputs(user = "Ann Custodian", role = "custodian", front_parent = "0003",
+                      front_objectives = c("nse_loss", "abs_bias"), front_budget = 4,
+                      front_chains = 1, front_cores = 1, front_check = 0,
+                      front_choose = "knee", front_reasoning = "See the trade-off")
+    session$setInputs(front_search = 1)
+    session$setInputs(front_entry = "0004", front_x = "nse_loss", front_y = "abs_bias")
+    expect_true(nzchar(output$front_plot$src))
+    # A click at the corner best on volume picks the set lowest in abs_bias
+    x <- .pareto_from_entry(.find_entry(state$entries(), "0004"))
+    corner <- which.min(x$pareto$loss_abs_bias)
+    session$setInputs(front_click = list(x = x$pareto$loss_nse_loss[corner],
+                                         y = x$pareto$loss_abs_bias[corner]))
+    expect_true(nzchar(output$front_flow$src))
+    expect_match(output$front_set, "loss_abs_bias")
+    session$setInputs(front_keep_reasoning = "Best volume", front_keep = 1)
+    # The set kept is the one clicked
+    kept <- read_entry(p$folder, sprintf("%04d", length(state$entries())))
+    expect_equal(kept$changes$fc, x$pareto$fc[corner])
+  })
+  types <- entry_types(p$folder)
+  expect_equal(types[length(types)], "trial")
+  kept <- read_entry(p$folder, sprintf("%04d", length(types)))
+  expect_equal(kept$parent, "0004")
+})

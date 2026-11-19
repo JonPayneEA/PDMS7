@@ -52,6 +52,7 @@
     .app_history(input, output, session, rv, act, state)
     .app_report(input, output, rv, act, state)
     .app_structures(input, output, rv, act, state)
+    .app_pareto(input, output, session, rv, act, state)
     .app_signoff(input, output, rv, act, state)
   }
 }

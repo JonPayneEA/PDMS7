@@ -24,6 +24,7 @@
 #' | `select_structure()` | `structure_selected` | Custodian |
 #' | `log_trial()` | `trial` | Custodian |
 #' | `log_auto_calibration()` | `auto_calibration` | Custodian |
+#' | `log_pareto_calibration()` | `auto_calibration` (with its Pareto front) | Custodian |
 #' | `log_note()` | `note` | Any |
 #' | `propose_candidate()` | `candidate` | Custodian |
 #' | `validate_candidate()` | `validation` | Custodian |
@@ -44,6 +45,12 @@
 #' validation window is scored once, by `validate_candidate()`, and an optional test window
 #' once more, by `test_candidate()`, after every choice is made. See
 #' [pdm_scorecard()] for the scores and [verify_project()] for the integrity checks.
+#'
+#' **Pareto calibration.** `log_pareto_calibration()` runs [calibrate_pdm_multi()] on the
+#' calibration window and logs the front point named by `choose` as an automatic
+#' calibration, keeping the whole front (each set's parameters and losses) in the entry, so
+#' the report draws it and the trade-off behind the choice stays on the record. The search
+#' runs each set from the model's default start; the logged scores are the project's own.
 #'
 #' **Extrapolation.** By default the two wettest water years in the calibration and
 #' validation windows (see [wettest_years()]) are held back: no calibration, trial or
@@ -388,17 +395,23 @@ log_trial <- function(project, parent, changes, verdict, reasoning) {
 }
 
 #' @rdname calibration_log
+#' @param boxcox_lambda For log_auto_calibration() with `objective = "boxcox"`: the power.
+#' @param coarse_dt For log_auto_calibration(): `NULL`, or a coarser step in hours on which to
+#'   search, a whole number of the model's steps: rain and evaporation are summed over each
+#'   coarse step and flow averaged; the logged scores use the full record. For parameters that
+#'   do not depend on timing within the coarse step, such as the slow stores.
 #' @export
 log_auto_calibration <- function(project, parent, lower, upper,
-                                 objective = c("nse", "rmse", "log_rmse", "log_nse", "threshold",
-                                               "events"),
+                                 objective = c("nse", "rmse", "log_rmse", "log_nse", "boxcox",
+                                               "threshold", "events"),
                                  starts = 1L, seed = NULL, control = list(maxit = 200),
                                  reasoning, method = c("lbfgsb", "nelder_mead", "dds"),
                                  threshold_objective = NULL, threshold_weight = 1,
                                  threshold_score = "csi", log_scale = character(0),
                                  volume_weight = 0, stage = NULL,
                                  event_weights = c(nse = 1, peak = 0.5, timing = 0.5),
-                                 event_share = 0.5, event_screen = list()) {
+                                 event_share = 0.5, event_screen = list(), coarse_dt = NULL,
+                                 boxcox_lambda = 0.5) {
   author <- .identity("custodian")
   objective <- match.arg(objective)
   method <- match.arg(method)
@@ -416,12 +429,24 @@ log_auto_calibration <- function(project, parent, lower, upper,
   observed <- .scoring_observed(data$observed, card, "calibration")
   rows <- .scored_rows(card, "calibration")
   dt <- pdm_from_config(node$configuration)@dt
+  # On a coarse step the search sees the record collapsed, and so does the archive
+  cz <- .coarse_inputs(node$configuration, as.data.frame(data$forcing)[seq_len(last), ,
+                                                                       drop = FALSE],
+                       observed[seq_len(last)], card$calibration$first_row - 1L,
+                       coarse_dt %||% dt)
+  held_obs <- data$observed
+  if (cz$factor > 1L) {
+    held_obs <- colMeans(matrix(data$observed[seq_len(length(cz$observed) * cz$factor)],
+                                nrow = cz$factor))
+    rows <- unique(ceiling(rows / cz$factor))
+    rows <- rows[rows <= length(cz$observed)]
+  }
   archive <- if (length(.held_years(card))) {
-    function(sim) .headline_score(sim[rows], data$observed[rows], card, dt)
+    function(sim) .headline_score(sim[rows], held_obs[rows], card, cz$config$dt %||% dt)
   }
   fit <- calibrate_pdm(
-    node$configuration, data$forcing[seq_len(last)], observed[seq_len(last)],
-    lower = lower, upper = upper, warmup = card$calibration$first_row - 1L,
+    cz$config, cz$forcing, cz$observed,
+    lower = lower, upper = upper, warmup = cz$warmup,
     objective = objective, log_offset = card$log_offset, control = control,
     soil_fraction = card$soil_fraction, start = card$start %||% "soil",
     baseflow_fraction = card$baseflow_fraction %||% 0.7,
@@ -430,8 +455,9 @@ log_auto_calibration <- function(project, parent, lower, upper,
     event_settings = card$events, log_scale = log_scale, volume_weight = volume_weight,
     archive = archive, event_weights = event_weights,
     event_share = .project_event_share(event_share, card),
-    event_screen = .project_screen(event_screen, card)
+    event_screen = .project_screen(event_screen, card), boxcox_lambda = boxcox_lambda
   )
+  if (cz$factor > 1L) fit$config$dt <- node$configuration$dt
   good <- if (!is.null(archive)) {
     .equally_good(fit$trials, attr(fit$trials, "unit"), .headline_direction(card$headline),
                   card$tie_tolerance %||% 0.02)
@@ -447,6 +473,8 @@ log_auto_calibration <- function(project, parent, lower, upper,
          evaluations = sum(fit$start_results$evaluations),
          log_scale = if (length(log_scale)) as.list(log_scale),
          volume_weight = if (volume_weight > 0) volume_weight, stage = stage,
+         coarse_dt = if (cz$factor > 1L) coarse_dt,
+         boxcox_lambda = if (objective == "boxcox") boxcox_lambda,
          event_weights = if (objective == "events") as.list(event_weights),
          event_share = if (objective == "events") event_share,
          event_screen = if (objective == "events") .project_screen(event_screen, card),

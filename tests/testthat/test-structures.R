@@ -189,3 +189,28 @@ test_that("comparisons in the same second get separate names", {
   expect_false(anyDuplicated(ids) > 0)
   for (id in ids) expect_equal(nrow(structure_comparison(folder, id)), 2L)
 })
+
+test_that("the exponential store gamma changes nothing from a flow start, so is not searched", {
+  # q = exp(gamma + a S) gives dq/dt = a q (u - q), free of gamma: starting from the same flow,
+  # two values of gamma must give the same hydrograph to rounding.
+  set.seed(3)
+  forcing <- data.frame(rain = ifelse(stats::runif(500) < 0.05, stats::rgamma(500, 0.7, scale = 5),
+                                      0), pet = 0.05)
+  cfg <- pdm_presets("standard")
+  run <- function(gamma) {
+    cfg$groundwater <- list(type = "exponential", a = 0.05, gamma = gamma)
+    model <- pdm_from_config(cfg)
+    start <- initial_state_from_flow(model, 5e-5, 0.6)   # 0.18 mm/h on 1 km2
+    run_pdm(model, forcing, start)$output
+  }
+  a <- run(-5)
+  b <- run(-9)
+  expect_equal(a$q_m3s, b$q_m3s, tolerance = 1e-10)
+  cfg$groundwater <- list(type = "exponential", a = 0.05, gamma = -5)
+  bounds <- calibration_bounds(cfg)
+  expect_false("groundwater.gamma" %in% bounds$path)
+  expect_true("groundwater.a" %in% bounds$path)
+  # An override still unlocks it
+  unlocked <- calibration_bounds(cfg, list(groundwater.gamma = c(-9, 0)))
+  expect_true("groundwater.gamma" %in% unlocked$path)
+})

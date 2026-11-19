@@ -12,7 +12,7 @@ calibrate_pdm(
   lower,
   upper,
   warmup = 0,
-  objective = c("rmse", "nse", "log_rmse", "log_nse", "threshold", "events"),
+  objective = c("rmse", "nse", "log_rmse", "log_nse", "boxcox", "threshold", "events"),
   flow = c("q_m3s", "q_end_m3s"),
   log_offset = 0.01,
   control = list(maxit = 200),
@@ -34,7 +34,9 @@ calibrate_pdm(
   event_weights = c(nse = 1, peak = 0.5, timing = 0.5),
   event_share = 0.5,
   event_screen = list(),
-  cores = getOption("pdmS7.cores", 1L)
+  cores = getOption("pdmS7.cores", 1L),
+  boxcox_lambda = 0.5,
+  weights = NULL
 )
 ```
 
@@ -72,9 +74,13 @@ calibrate_pdm(
 - objective:
 
   Calibration objective: rmse, nse (minimizes 1-NSE), log_rmse, log_nse
-  (minimizes 1 minus NSE of log flows, which weights low flows),
-  threshold (the threshold term alone; needs thresholds), or events,
-  which scores only the largest events: see `events`.
+  (minimizes 1 minus NSE of log flows, which weights low flows), boxcox
+  (1 minus NSE of Box-Cox transformed flows, see
+  [`boxcox_flow()`](https://jonpayneea.github.io/PDMS7/reference/boxcox_flow.md):
+  errors of about the same size at every flow, as least squares assumes,
+  optionally weighted by `weights`), threshold (the threshold term
+  alone; needs thresholds), or events, which scores only the largest
+  events: see `events`.
 
 - flow:
 
@@ -247,6 +253,17 @@ calibrate_pdm(
   `pdmS7.cores` option, which
   [`calibrate_project()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_project.md)
   sets from its own `cores`, or 1.
+
+- boxcox_lambda:
+
+  The Box-Cox power for `objective = "boxcox"`, 0 (log) to 1 (raw).
+
+- weights:
+
+  For `objective = "boxcox"`: `NULL`, or one nonnegative weight for each
+  observed flow, such as
+  [`flow_weights()`](https://jonpayneea.github.io/PDMS7/reference/flow_weights.md)
+  gives from rating uncertainty.
 
 ## Value
 

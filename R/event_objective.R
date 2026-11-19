@@ -8,6 +8,7 @@
 # Modified:     2026-11-06 - First version
 #               2026-11-10 - One event per flood (find_events(independent = TRUE))
 #               2026-11-12 - Events chosen by a flow floor: a marker or a threshold
+#               2026-11-18 - The three terms apart, for calibrate_pdm_multi()
 # Tier:         1
 # Inputs:       Events from find_events(); rain (mm per step); observed flow (m3/s)
 # Outputs:      A scoring function of the simulated flow, and its description
@@ -37,6 +38,28 @@
   .check(is.numeric(weights) && setequal(names(weights), names(.default_event_weights)) &&
            all(is.finite(weights) & weights >= 0) && sum(weights) > 0,
          "event_weights must be nonnegative numbers named nse, peak and timing, not all zero")
+  terms <- .event_terms(events, rain, observed, warmup, dt, share, screen, area_km2, time)
+  w <- weights[names(.default_event_weights)]
+  score <- function(sim) {
+    t <- terms$terms(sim)
+    if (is.null(t)) return(1e+30)
+    sum(w * t)
+  }
+  name <- sprintf(paste0(
+    "events: %g x (1 - pooled event NSE) + %g x mean |peak error| + %g x mean |timing error| ",
+    "/ %.3g h, over %s"
+  ), w[["nse"]], w[["peak"]], w[["timing"]], terms$response_h, terms$which)
+  list(score = score, name = name, events = terms$events, found = terms$found,
+       response_h = terms$response_h, floor_m3s = terms$floor_m3s)
+}
+
+# The three terms of the events objective, apart: a function of the simulated flow returning
+# c(nse = 1 - pooled event NSE, peak = mean |peak error|, timing = mean |timing error| / Tr), or
+# NULL when the simulation is not finite on the event rows; with the number of events scored,
+# found, the response time and a description of which events. calibrate_pdm_multi() keeps the
+# terms as separate objectives; .event_objective() weights them into one.
+.event_terms <- function(events, rain, observed, warmup, dt, share = 0.5, screen = list(),
+                         area_km2 = NULL, time = NULL) {
   chosen <- .event_windows(events, rain, observed, warmup, dt, share, screen, area_km2, time)
   windows <- chosen$windows
   rows <- unlist(windows)
@@ -47,15 +70,13 @@
   obs_peak <- vapply(windows, function(i) max(observed[i]), numeric(1))
   obs_at <- vapply(windows, function(i) i[which.max(observed[i])], numeric(1))
   scale_h <- max(c(chosen$response_h, dt), na.rm = TRUE)
-  w <- weights[names(.default_event_weights)]
-  score <- function(sim) {
+  terms <- function(sim) {
     s <- sim[rows]
-    if (!all(is.finite(s))) return(1e+30)
+    if (!all(is.finite(s))) return(NULL)
     sim_peak <- vapply(windows, function(i) max(sim[i]), numeric(1))
     sim_at <- vapply(windows, function(i) i[which.max(sim[i])], numeric(1))
-    w[["nse"]] * sum((s - obs)^2) / ss_tot +
-      w[["peak"]] * mean(abs(sim_peak / obs_peak - 1)) +
-      w[["timing"]] * mean(abs(sim_at - obs_at)) * dt / scale_h
+    c(nse = sum((s - obs)^2) / ss_tot, peak = mean(abs(sim_peak / obs_peak - 1)),
+      timing = mean(abs(sim_at - obs_at)) * dt / scale_h)
   }
   which_events <- if (is.null(chosen$floor)) {
     sprintf("the %d largest of %d events", length(windows), chosen$found)
@@ -63,12 +84,10 @@
     sprintf("the %d of %d events peaking at %.3g m3/s or more%s", length(windows), chosen$found,
             chosen$floor, if (is.character(share)) paste0(" (", share, ")") else "")
   }
-  name <- sprintf(paste0(
-    "events: %g x (1 - pooled event NSE) + %g x mean |peak error| + %g x mean |timing error| ",
-    "/ %.3g h, over %s%s"
-  ), w[["nse"]], w[["peak"]], w[["timing"]], scale_h, which_events,
-  if (chosen$screened_out) sprintf(" (%d screened out)", chosen$screened_out) else "")
-  list(score = score, name = name, events = length(windows), found = chosen$found,
+  if (chosen$screened_out) {
+    which_events <- sprintf("%s (%d screened out)", which_events, chosen$screened_out)
+  }
+  list(terms = terms, which = which_events, events = length(windows), found = chosen$found,
        response_h = scale_h, floor_m3s = chosen$floor)
 }
 

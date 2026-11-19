@@ -8,6 +8,31 @@ deletes an earlier one.
 ## Usage
 
 ``` r
+log_pareto_calibration(
+  project,
+  parent,
+  lower,
+  upper,
+  objectives = c("nse_loss", "event_nse_loss", "abs_bias"),
+  choose = NULL,
+  scales = NULL,
+  weights = NULL,
+  n_samples = 64L,
+  starts = 2L,
+  seed = 1L,
+  control = list(maxit = 200),
+  method = c("padds", "dds", "lbfgsb", "nelder_mead"),
+  reasoning,
+  event_share = 0.5,
+  event_screen = list(),
+  threshold_objective = NULL,
+  threshold_score = "csi",
+  log_scale = character(0),
+  check_share = 0,
+  stage = NULL,
+  cores = getOption("pdmS7.cores", 1L)
+)
+
 start_calibration_project(
   path,
   catchment,
@@ -56,7 +81,7 @@ log_auto_calibration(
   parent,
   lower,
   upper,
-  objective = c("nse", "rmse", "log_rmse", "log_nse", "threshold", "events"),
+  objective = c("nse", "rmse", "log_rmse", "log_nse", "boxcox", "threshold", "events"),
   starts = 1L,
   seed = NULL,
   control = list(maxit = 200),
@@ -70,7 +95,9 @@ log_auto_calibration(
   stage = NULL,
   event_weights = c(nse = 1, peak = 0.5, timing = 0.5),
   event_share = 0.5,
-  event_screen = list()
+  event_screen = list(),
+  coarse_dt = NULL,
+  boxcox_lambda = 0.5
 )
 
 log_note(project, text, refers_to = NULL)
@@ -92,6 +119,66 @@ reopen_project(project, reason)
 ```
 
 ## Arguments
+
+- project:
+
+  Path of the project folder.
+
+- parent:
+
+  Id of the structure, trial or automatic calibration entry to start
+  from.
+
+- lower, upper, objective, starts, seed, control, method, log_scale,
+  volume_weight:
+
+  Passed to
+  [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md).
+
+- objectives:
+
+  For log_pareto_calibration(): the losses of
+  [`calibrate_pdm_multi()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm_multi.md).
+
+- choose:
+
+  For log_pareto_calibration(): which front set becomes the logged run:
+  `"compromise"` (or NULL), `"knee"`, the name of one objective (its
+  best set), or weights named by objective.
+
+- scales, weights, n_samples:
+
+  For log_pareto_calibration(): as in
+  [`calibrate_pdm_multi()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm_multi.md).
+
+- reasoning, statement, reason, text:
+
+  Free text explaining the entry.
+
+- threshold_objective:
+
+  Optional names of registered thresholds to include in the objective of
+  an automatic calibration, with `method = "nelder_mead"` or `"dds"`.
+  Their flows and the registered event settings are used, so the
+  calibration and the scorecard agree.
+
+- check_share:
+
+  For log_pareto_calibration(): the share of the calibration window,
+  from its end, held out of the search and used to score every front set
+  ([`pareto_validate()`](https://jonpayneea.github.io/PDMS7/reference/pareto_validate.md));
+  0 for none. The registered validation window is never used.
+
+- stage:
+
+  Optional label recorded with an automatic calibration, such as
+  `1 of 3: volume and baseflow`;
+  [`log_staged_calibration()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_staged.md)
+  sets it.
+
+- cores:
+
+  For log_pareto_calibration(): cores for the search's chains.
 
 - path:
 
@@ -118,10 +205,6 @@ reopen_project(project, reason)
 - id:
 
   Project identifier; defaults to the folder name.
-
-- project:
-
-  Path of the project folder.
 
 - forcing:
 
@@ -170,10 +253,6 @@ reopen_project(project, reason)
   If `TRUE`, files are copied into the project; if `FALSE` they are
   referenced by path and MD5. Data frames and vectors are always written
   into the project.
-
-- reasoning, statement, reason, text:
-
-  Free text explaining the entry.
 
 - thresholds:
 
@@ -228,11 +307,6 @@ reopen_project(project, reason)
 
   A configuration list or the path of a YAML configuration file.
 
-- parent:
-
-  Id of the structure, trial or automatic calibration entry to start
-  from.
-
 - changes:
 
   Named numeric vector of new values, named by configuration path such
@@ -242,30 +316,10 @@ reopen_project(project, reason)
 
   Your judgement of the trial: `better`, `worse` or `inconclusive`.
 
-- lower, upper, objective, starts, seed, control, method, log_scale,
-  volume_weight:
-
-  Passed to
-  [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md).
-
-- threshold_objective:
-
-  Optional names of registered thresholds to include in the objective of
-  an automatic calibration, with `method = "nelder_mead"` or `"dds"`.
-  Their flows and the registered event settings are used, so the
-  calibration and the scorecard agree.
-
 - threshold_weight, threshold_score:
 
   Weight and score of the threshold term; see
   [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md).
-
-- stage:
-
-  Optional label recorded with an automatic calibration, such as
-  `1 of 3: volume and baseflow`;
-  [`log_staged_calibration()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_staged.md)
-  sets it.
 
 - event_weights, event_share, event_screen:
 
@@ -273,6 +327,18 @@ reopen_project(project, reason)
   [`calibrate_pdm()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm.md)
   with `objective = "events"`. In a project, the screen takes the
   registered highest gauged flow unless it names its own.
+
+- coarse_dt:
+
+  For log_auto_calibration(): `NULL`, or a coarser step in hours on
+  which to search, a whole number of the model's steps: rain and
+  evaporation are summed over each coarse step and flow averaged; the
+  logged scores use the full record. For parameters that do not depend
+  on timing within the coarse step, such as the slow stores.
+
+- boxcox_lambda:
+
+  For log_auto_calibration() with `objective = "boxcox"`: the power.
 
 - refers_to:
 
@@ -295,20 +361,21 @@ returns the configuration, scores and series of the proposed trial.
 
 ## Details
 
-|                               |                      |                              |
-|-------------------------------|----------------------|------------------------------|
-| Function                      | Entry                | Role                         |
-| `start_calibration_project()` | `project_start`      | Custodian                    |
-| `register_data()`             | `data_registered`    | Custodian                    |
-| `select_structure()`          | `structure_selected` | Custodian                    |
-| `log_trial()`                 | `trial`              | Custodian                    |
-| `log_auto_calibration()`      | `auto_calibration`   | Custodian                    |
-| `log_note()`                  | `note`               | Any                          |
-| `propose_candidate()`         | `candidate`          | Custodian                    |
-| `validate_candidate()`        | `validation`         | Custodian                    |
-| `test_candidate()`            | `test`               | Custodian                    |
-| `sign_off_project()`          | `sign_off`           | Steward or Delegated Steward |
-| `reopen_project()`            | `reopen`             | Steward or Delegated Steward |
+|                               |                                            |                              |
+|-------------------------------|--------------------------------------------|------------------------------|
+| Function                      | Entry                                      | Role                         |
+| `start_calibration_project()` | `project_start`                            | Custodian                    |
+| `register_data()`             | `data_registered`                          | Custodian                    |
+| `select_structure()`          | `structure_selected`                       | Custodian                    |
+| `log_trial()`                 | `trial`                                    | Custodian                    |
+| `log_auto_calibration()`      | `auto_calibration`                         | Custodian                    |
+| `log_pareto_calibration()`    | `auto_calibration` (with its Pareto front) | Custodian                    |
+| `log_note()`                  | `note`                                     | Any                          |
+| `propose_candidate()`         | `candidate`                                | Custodian                    |
+| `validate_candidate()`        | `validation`                               | Custodian                    |
+| `test_candidate()`            | `test`                                     | Custodian                    |
+| `sign_off_project()`          | `sign_off`                                 | Steward or Delegated Steward |
+| `reopen_project()`            | `reopen`                                   | Steward or Delegated Steward |
 
 Declare who you are once per session, with
 `options(pdmS7.user = "Your Name", pdmS7.role = "custodian")`, or with
@@ -329,6 +396,14 @@ choice is made. See
 for the scores and
 [`verify_project()`](https://jonpayneea.github.io/PDMS7/reference/verify_project.md)
 for the integrity checks.
+
+**Pareto calibration.** `log_pareto_calibration()` runs
+[`calibrate_pdm_multi()`](https://jonpayneea.github.io/PDMS7/reference/calibrate_pdm_multi.md)
+on the calibration window and logs the front point named by `choose` as
+an automatic calibration, keeping the whole front (each set's parameters
+and losses) in the entry, so the report draws it and the trade-off
+behind the choice stays on the record. The search runs each set from the
+model's default start; the logged scores are the project's own.
 
 **Extrapolation.** By default the two wettest water years in the
 calibration and validation windows (see
@@ -352,7 +427,7 @@ old <- options(pdmS7.user = "A Hydrologist", pdmS7.role = "custodian")
 start_calibration_project(folder, catchment = "Example", gauge = "00000",
   purpose = "Illustration", area_km2 = 50, owner = "Deputy Director",
   steward = "A Steward")
-#> INFO [2026-11-13 22:32:00] Started calibration project example-project in /tmp/RtmpQqN5Vg/example-project
+#> INFO [2026-11-19 05:50:16] Started calibration project example-project in /tmp/RtmpTihpO5/example-project
 set.seed(1)
 forcing <- data.frame(rain = ifelse(runif(500) < 0.1, rexp(500, 0.3), 0), pet = 0.1)
 truth <- pdm_presets("standard")
@@ -360,19 +435,19 @@ truth$area_km2 <- 50
 observed <- run_pdm(pdm_from_config(truth), forcing)$output$q_m3s
 register_data(folder, forcing, observed, calibration = c(101, 350),
   validation = c(351, 500), wettest_years = 0)
-#> INFO [2026-11-13 22:32:00] Registered data 0002: 500 rows
+#> INFO [2026-11-19 05:50:16] Registered data 0002: 500 rows
 select_structure(folder, truth, reasoning = "Standard structure as a starting point")
 #> Warning: Column name 'time' (colClasses[[1]][1]) not found
-#> INFO [2026-11-13 22:32:00] Structure 0003: nse 0.1513
+#> INFO [2026-11-19 05:50:16] Structure 0003: nse 0.1513
 log_trial(folder, parent = 3, changes = c(surface.k1 = 3), verdict = "worse",
   reasoning = "Testing a slower first store")
 #> Warning: Column name 'time' (colClasses[[1]][1]) not found
-#> INFO [2026-11-13 22:32:00] Trial 0004 from 0003: nse 0.1122
+#> INFO [2026-11-19 05:50:16] Trial 0004 from 0003: nse 0.1122
 project_trials(folder)
 #>        id               type parent            timestamp        author
 #>    <char>             <char> <char>               <char>        <char>
-#> 1:   0003 structure_selected   <NA> 2026-11-13T22:32:00Z A Hydrologist
-#> 2:   0004              trial   0003 2026-11-13T22:32:00Z A Hydrologist
+#> 1:   0003 structure_selected   <NA> 2026-11-19T05:50:16Z A Hydrologist
+#> 2:   0004              trial   0003 2026-11-19T05:50:16Z A Hydrologist
 #>              changes verdict                              reasoning       nse
 #>               <char>  <char>                                 <char>     <num>
 #> 1:                      <NA> Standard structure as a starting point 0.1512671
