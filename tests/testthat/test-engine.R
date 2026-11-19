@@ -78,6 +78,9 @@ engine_models <- function() {
     rectangular = fixed_model(distribution = FlodeRectangularCapacity(cmin = 0.4, cmax = 170.7)),
     exponential_capacity = fixed_model(distribution = FlodeExponentialCapacity(mean = 110)),
     split = fixed_model(recharge = FlodeSplitRecharge(alpha = 0.7)),
+    split_unrestricted = fixed_model(
+      recharge = FlodeUnrestrictedSplitRecharge(alpha = 0.6, beta = 0.55)
+    ),
     demand_power = fixed_model(recharge = FlodeDemandRecharge(alpha = 0.5, beta = 1.5, qsat = 0.5)),
     demand_exponential = fixed_model(
       recharge = FlodeDemandRecharge(alpha = 0.4, beta = 2, qsat = 0.3),

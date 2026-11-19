@@ -68,7 +68,10 @@ pdm_step <- function(model, state, rain, pet, abstraction = 0) {
   # recharge instead divides the direct runoff between the two.
   fast <- soil$runoff
   slow <- dr
-  if (S7::S7_inherits(model@recharge, FlodeSplitRecharge)) {
+  if (S7::S7_inherits(model@recharge, FlodeUnrestrictedSplitRecharge)) {
+    fast <- soil$runoff * model@recharge@alpha
+    slow <- soil$runoff * model@recharge@beta
+  } else if (S7::S7_inherits(model@recharge, FlodeSplitRecharge)) {
     fast <- soil$runoff * model@recharge@alpha
     slow <- soil$runoff * (1 - model@recharge@alpha)
   }
@@ -101,8 +104,11 @@ pdm_step <- function(model, state, rain, pet, abstraction = 0) {
   factor <- model@area_km2 / 3.6
   natural <- d1$out + d2$out
   # Water balance for the step, mm: storage before, plus corrected rain, minus evaporation and
-  # outflow, minus storage after. Zero to rounding; reported in every output row.
-  residual <- old + p - et - natural - losses - .total_storage(next_state)
+  # outflow, minus storage after. Zero to rounding; reported in every output row. The
+  # unrestricted split gains (or loses) runoff x (alpha + beta - 1) on purpose; it counts as an
+  # input, so the residual stays a rounding error.
+  gain <- fast + slow - soil$runoff - dr
+  residual <- old + p + gain - et - natural - losses - .total_storage(next_state)
   flux_dt <- data.table::data.table(
     step = next_state@step, rain_mm = rain, rain_corrected_mm = p, pet_mm = pet, aet_mm = et,
     aet_requested_mm = et_requested, recharge_mm = dr, recharge_requested_mm = dr_requested,

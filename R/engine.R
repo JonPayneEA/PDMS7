@@ -16,9 +16,9 @@
 NULL
 
 # The compiled engine covers every capacity distribution (Pareto, rectangular, exponential,
-# triangular, lognormal); standard, split and demand recharge; and cascade, power-law and
-# exponential stores for either route. Exact class matching keeps any future subclass on the
-# R loop until it is ported and tested.
+# triangular, lognormal); standard, split (restricted and unrestricted) and demand recharge; and
+# cascade, power-law and exponential stores for either route. Exact class matching keeps any
+# future subclass on the R loop until it is ported and tested.
 # options(pdmS7.engine = "r") forces the R loop, which remains the reference implementation.
 .engine_classes <- list(
   distribution = c(
@@ -28,7 +28,7 @@ NULL
   ),
   recharge = c(
     "pdmS7::FlodeStandardRecharge" = 0, "pdmS7::FlodeSplitRecharge" = 1,
-    "pdmS7::FlodeDemandRecharge" = 2
+    "pdmS7::FlodeDemandRecharge" = 2, "pdmS7::FlodeUnrestrictedSplitRecharge" = 3
   ),
   route = c(
     "pdmS7::FlodeCascadeRouting" = 0, "pdmS7::FlodePowerRouting" = 1,
@@ -106,6 +106,8 @@ NULL
     p[c("kg", "bg", "st")] <- c(r@kg, r@bg, r@st)
   } else if (rtype == 1) {
     p[["alpha"]] <- r@alpha
+  } else if (rtype == 3) {
+    p[c("alpha", "beta")] <- c(r@alpha, r@beta)
   } else {
     p[c("alpha", "beta", "qsat")] <- c(r@alpha, r@beta, r@qsat)
   }

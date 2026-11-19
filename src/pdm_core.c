@@ -704,6 +704,10 @@ static int validate(const pdm_params* in, pdm_error* e) {
     case PDM_RECHARGE_SPLIT:
       need(&b, isfinite(in->alpha) && in->alpha >= 0 && in->alpha <= 1, "", "alpha");
       break;
+    case PDM_RECHARGE_SPLIT_FREE:
+      need(&b, isfinite(in->alpha) && in->alpha >= 0 && in->alpha <= 1, "", "alpha");
+      need(&b, isfinite(in->beta) && in->beta >= 0, "", "beta");
+      break;
     case PDM_RECHARGE_DEMAND:
       need(&b, isfinite(in->alpha) && in->alpha > 0 && in->alpha <= 1, "", "alpha");
       need(&b, isfinite(in->beta) && in->beta > 0, "", "beta");
@@ -872,6 +876,7 @@ static double recharge_depth(const pdm_params* in, double soil, double smax, dou
     case PDM_RECHARGE_STANDARD:
       return rpow(dmax(0.0, soil - in->st), in->bg) / in->kg * dt;
     case PDM_RECHARGE_SPLIT:
+    case PDM_RECHARGE_SPLIT_FREE:
       return 0;
     default:
       sgmax = storage_for_flow(&in->groundwater, in->qsat);
@@ -987,6 +992,9 @@ static void run(const pdm_params* in, const double* rain, const double* pet,
     if (in->recharge == PDM_RECHARGE_SPLIT) {
       fast = runoff * in->alpha;
       slow = runoff * (1 - in->alpha);
+    } else if (in->recharge == PDM_RECHARGE_SPLIT_FREE) {
+      fast = runoff * in->alpha;
+      slow = runoff * in->beta;
     }
     surf = route_step(srf, surface, fast / dt, dt, e);
     if (e->code != PDM_OK) return;
@@ -1015,7 +1023,10 @@ static void run(const pdm_params* in, const double* rain, const double* pet,
     q[t] = natural / dt * factor + in->qc;
     q_end[t] = (e1 + e2) * factor + in->qc;
     if (fluxes != NULL) {
-      double residual = old + pr - et - natural - losses -
+      /* The unrestricted split adds runoff (alpha + beta - 1) to the routes, or takes it away;
+         it is counted as an input, so the residual stays a numerical error. */
+      double gain = fast + slow - runoff - dr;
+      double residual = old + pr + gain - et - natural - losses -
         total_storage(soil, srf, surface, gwr, ground, ds, dg, n_pending);
       double c_now = cap_from_storage(&dist, soil, e);
       if (e->code != PDM_OK) return;

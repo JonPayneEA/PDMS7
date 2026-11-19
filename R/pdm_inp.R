@@ -43,9 +43,15 @@
 #' it as `dt` (15 minutes by default).
 #'
 #' **Not supported**, and refused with a message rather than guessed: several hydrological
-#' zones; demand recharge and the unrestricted split (runoff models 2 to 4); the power
+#' zones; demand recharge (runoff models 3 and 4); the power
 #' distribution (`loss` 4); exponential stores; a cubic surface store; and constant or
 #' pass-through stores (types 0 and -1).
+#'
+#' **The unrestricted split** (runoff model 2: `alpha` of the direct runoff to the surface
+#' store and `beta` to the baseflow store, not tied to `1 - alpha`) is read, taking `beta` (or
+#' `beta_r`) from the parameter list by name. It is not yet written: the manual places `beta`
+#' at `xp(14)`, where its runoff model 1 example has `alpha`, so the order PDM for PCs expects is
+#' unconfirmed.
 #'
 #' **To do: the exponential store.** It is a PDM option (Moore, 2007), and pdmS7 runs, calibrates
 #' and forecasts with it, and the structure recommendation may choose it. Its code and parameter
@@ -299,8 +305,11 @@ write_pdm_inp <- function(config, path, title, event,
     "0" = list(type = "standard", kg = value("kg"), bg = value("bg"), st = value("st")),
     "1" = list(type = "split",
                alpha = .first_known(value("alpha", NA_real_), function() value("alpha_r"))),
-    stop("Runoff model ", code, " is not supported yet (2: unrestricted split; 3 and 4: ",
-         "demand recharge)", call. = FALSE)
+    "2" = list(type = "split_unrestricted",
+               alpha = .first_known(value("alpha", NA_real_), function() value("alpha_r")),
+               beta = .first_known(value("beta", NA_real_), function() value("beta_r"))),
+    stop("Runoff model ", code, " is not supported yet (3 and 4: demand recharge)",
+         call. = FALSE)
   )
 }
 
@@ -348,6 +357,11 @@ write_pdm_inp <- function(config, path, title, event,
   standard <- S7::S7_inherits(r, FlodeStandardRecharge)
   split <- S7::S7_inherits(r, FlodeSplitRecharge)
   .check(standard || split, "Only standard and split recharge can be written to a PDM input file")
+  # The manual gives beta's place in the list as xp(14), where its runoff model 1 example has
+  # alpha. Until a runoff model 2 file from PDM for PCs settles the order, none is written.
+  .check(!S7::S7_inherits(r, FlodeUnrestrictedSplitRecharge),
+         paste("The unrestricted split (runoff model 2) cannot be written to a PDM input file",
+               "yet: the manual leaves the place of beta in the parameter list unclear"))
   s <- model@surface
   k <- if (S7::S7_inherits(s, FlodeCascadeRouting)) c(s@k1, s@k2) else c(1 / s@k, 0)
   g <- model@groundwater

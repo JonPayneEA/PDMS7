@@ -122,15 +122,24 @@ calibration_checks <- function(project, entry = NULL, top = 20L, edge = 0.01, ra
     (tr(out$upper, logged) - tr(out$lower, logged))
   # A zero lower bound is usually a natural value and is not flagged; a split recharge's alpha
   # at either end switches a flow path off, so it always is.
-  split_alpha <- out$path == "recharge.alpha" &
-    identical(node$configuration$recharge$type, "split")
-  out$at_bound <- ifelse(z <= edge & (out$lower != 0 | split_alpha), "lower",
+  # The unrestricted split's beta at 0 likewise switches the groundwater path off.
+  type <- node$configuration$recharge$type %||% ""
+  restricted <- identical(type, "split")
+  split_alpha <- out$path == "recharge.alpha" & type %in% c("split", "split_unrestricted")
+  free_beta <- out$path == "recharge.beta" & identical(type, "split_unrestricted")
+  out$at_bound <- ifelse(z <= edge & (out$lower != 0 | split_alpha | free_beta), "lower",
                          ifelse(z >= 1 - edge, "upper", NA_character_))
   # The note says a path is switched off only when it is: at 0 or 1, which the default bounds
-  # (0.05 to 0.95) keep a search from reaching.
+  # (0.05 to 0.95) keep a search from reaching. Under the unrestricted split, alpha at 1 still
+  # leaves beta's share for groundwater.
   out$note <- ifelse(split_alpha & out$value <= 0,
-                     "all direct runoff goes to groundwater; the surface stores carry nothing",
-                     ifelse(split_alpha & out$value >= 1,
+                     if (restricted) {
+                       "all direct runoff goes to groundwater; the surface stores carry nothing"
+                     } else {
+                       "no direct runoff reaches the surface stores"
+                     },
+                     ifelse((split_alpha & restricted & out$value >= 1) |
+                              (free_beta & out$value <= 0),
                             "no direct runoff reaches groundwater", NA_character_))
   rownames(out) <- NULL
   out
