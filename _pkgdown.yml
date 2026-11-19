@@ -87,6 +87,7 @@ articles:
   - choosing-structure
   - floods
   - trade-offs
+  - robust-calibration
   - app-events
   - checks
   - rainfall
@@ -257,6 +258,9 @@ reference:
   - prior_uniform
   - priors_from_table
   - posterior_band
+  - ensemble_scores
+  - crps_ensemble
+  - brier_score
   - pdm_scorecard
   - pdm_threshold_scores
   - flow_markers

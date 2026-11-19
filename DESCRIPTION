@@ -1,7 +1,7 @@
 Package: pdmS7
 Type: Package
 Title: Configurable Probability Distributed Rainfall Runoff Model
-Version: 0.33.0
+Version: 0.34.0
 Authors@R: person("PDM", "Contributors", role = c("aut", "cre"), email =
         "pdm@example.org")
 Description: An independent, configurable implementation of the Probability Distributed
@@ -28,7 +28,7 @@ Collate: 'utils.R' 'distributions.R' 'distributions_part3.R' 'distributions_part
         'recharge.R' 'model.R' 'model_part2.R' 'model_2.R' 'configuration.R'
         'configuration_part2.R' 'updating.R' 'updating_part2.R' 'compatibility.R'
         'sim_pdm.R' 'read_pdm_config.R' 'pack_model.R' 'pack_step.R' 'sim_pack.R'
-        'calibration_metrics.R' 'calibrate_multi.R' 'pareto.R' 'sensitivity_global.R' 'forecast_compare.R' 'stress_tests.R' 'bayes.R' 'cpp11.R' 'engine.R' 'initial_flow.R'
+        'calibration_metrics.R' 'calibrate_multi.R' 'pareto.R' 'sensitivity_global.R' 'forecast_compare.R' 'stress_tests.R' 'bayes.R' 'ensemble_scores.R' 'cpp11.R' 'engine.R' 'initial_flow.R'
         'scorecard.R' 'thresholds.R' 'structures.R' 'project_log.R' 'project_data.R' 'project_entries.R'
         'project_read.R' 'report_render.R' 'project_report.R' 'run_log.R'
         'app.R' 'app_server.R' 'app_pareto.R' 'app_events.R' 'compare_structures.R' 'batch.R' 'response_time.R' 'hindcast.R'

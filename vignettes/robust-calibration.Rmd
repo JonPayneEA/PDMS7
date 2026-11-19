@@ -1,0 +1,200 @@
+---
+title: "Robust calibration: errors, sensitivity, forecasts and uncertainty"
+author: "pdmS7 documentation"
+vignette: >
+  %\VignetteIndexEntry{Robust calibration: errors, sensitivity, forecasts and uncertainty}
+  %\VignetteEngine{knitr::knitr}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+library(pdmS7)
+knitr::opts_chunk$set(
+  error = FALSE, collapse = TRUE, comment = "#>", fig.width = 8,
+  fig.height = 4.2, dpi = if (nzchar(Sys.getenv("IN_PKGDOWN"))) 110 else 60
+)
+logger::log_threshold(logger::WARN, namespace = "pdmS7")
+```
+
+The PDM stays as published. What can still be improved is everything around it: what the
+calibration counts as a good fit, which parameters it bothers to fit, how a model is judged,
+whether it holds when the climate shifts, and how sure we are of it. This article takes each in
+turn on one made-up catchment, so every answer can be checked against the truth.
+
+```{r data}
+rain <- synthetic_rain("2017-10-01", years = 3, dt = 1, seed = 5)
+truth <- modifyList(pdm_presets("standard"), list(area_km2 = 25))
+model <- pdm_from_config(truth)
+forcing <- rain[c("time", "rain", "pet")]
+set.seed(8)
+flow <- run_pdm(model, forcing[c("rain", "pet")], initial_state(model, 0.5))$output$q_m3s
+observed <- flow * exp(rnorm(length(flow), 0, 0.15))   # a gauge's error grows with the flow
+start <- modifyList(truth, list(fc = 0.8))
+start$distribution$cmax <- 200
+lower <- c(fc = 0.6, distribution.cmax = 100, surface.k1 = 1, distribution.b = 0.1)
+upper <- c(fc = 1.4, distribution.cmax = 500, surface.k1 = 30, distribution.b = 2)
+```
+
+# 1. Count every error fairly
+
+A gauge's error at a flood is many times its error at baseflow, and so is a model's. NSE squares
+the raw errors, so the few largest floods outweigh the rest of the record: the calibration
+effectively fits a handful of peaks. Box-Cox transformed flows (`boxcox_flow()`) shrink the big
+flows more than the small ones, until the errors are about the same size at every flow, which
+is what least squares assumes. `objective = "boxcox"` scores 1 - NSE on that scale.
+
+```{r boxcox}
+fit_nse <- calibrate_pdm(start, forcing, observed, lower, upper, warmup = 24 * 90,
+                         objective = "nse", start = "soil", control = list(maxit = 60))
+fit_bc <- calibrate_pdm(start, forcing, observed, lower, upper, warmup = 24 * 90,
+                        objective = "boxcox", start = "soil", control = list(maxit = 60))
+rbind(truth = c(fc = 1, distribution.cmax = 300, surface.k1 = 2, distribution.b = 0.4),
+      nse = fit_nse$parameters, boxcox = fit_bc$parameters)
+```
+
+Both come close here, but the Box-Cox calibration comes closer on the soil store (`cmax` 302 mm
+against 305, `b` 0.40 against 0.42, the truth 300 and 0.40): NSE is pulled by the few peaks,
+the Box-Cox objective by the record as a whole. Where some flows are measured worse than others, `flow_weights()`
+turns a rating's uncertainty into weights, so flows above the highest gauging, on the
+extrapolated part of the rating, count for less:
+
+```{r weights, eval=FALSE}
+w <- flow_weights(observed, highest_gauged = 12)
+calibrate_pdm(start, forcing, observed, lower, upper, objective = "boxcox", weights = w)
+```
+
+# 2. Fit only what the record can pin down
+
+Calibrations that disagree with each other are often fitting a parameter the record cannot
+determine: many values fit equally well, and each search stops somewhere different.
+`pdm_sensitivity()` finds such parameters across their whole range, with the others varying
+too. Morris screening costs a few model runs per parameter.
+
+```{r sensitivity, fig.height=3.6}
+sens <- pdm_sensitivity(truth, forcing, observed, lower, upper,
+                        objectives = c("nse_loss", "boxcox_loss"), r = 12, warmup = 24 * 90,
+                        start = "soil")
+sens
+plot(sens)
+```
+
+`mu_star` is how much the score moves when a parameter does; `sigma` how much that depends on
+the others. Here all four parameters matter and none is marked negligible: a short list chosen
+with care. With the dozen or so parameters of a richer structure, those marked negligible can
+be fixed at a regional or default value: the calibration then searches only what the data can
+find, and repeated calibrations agree. For a
+finer answer, `method = "sobol"` apportions the score's variance between the parameters, at the
+cost of a few thousand runs.
+
+# 3. Judge a forecasting model by its forecasts
+
+A model's job is to forecast a few hours ahead with updating, not to reproduce a record.
+`compare_forecasts()` hindcasts candidates alike and ranks them by skill over persistence at
+the lead times that matter.
+
+```{r forecasts}
+cmp <- compare_forecasts(list(nse = fit_nse$model, boxcox = fit_bc$model), forcing, observed,
+                         horizon_h = 12, every_h = 12, ar = list(), leads_h = c(1, 3, 6))
+cmp$ranking
+```
+
+Here the two are all but equal as forecasters, 0.868 against 0.868: with updating, the small
+differences in their parameters wash out within hours. That is worth knowing before arguing
+over which is better. With `thresholds`, and `rank_on = "threshold"`, they are ranked by how
+well they warn instead.
+
+# 4. Will it hold in a different climate?
+
+A model calibrated on wet years may fail in a drought, and the reverse. `split_sample_test()`
+calibrates on the drier half of the years and scores the wetter half, then the reverse.
+
+```{r split}
+sst <- split_sample_test(start, forcing, observed, lower, upper, objective = "boxcox",
+                         start = "soil", control = list(maxit = 40))
+sst$scores[, c("calibrated_on", "scored_on", "nse", "boxcox_nse", "volume_error")]
+```
+
+A score that holds from dry to wet, here, means the calibration does not lean on the
+conditions it was fitted in. `parameter_drift()` calibrates each period of the record on its
+own: parameters that wander from period to period, steadily, point to a change in the
+catchment or the record that one long calibration would average away.
+
+# 5. How sure are we?
+
+`calibrate_bayes()` returns not one set but a sample of every set consistent with the record
+and with what was known beforehand (the priors), in proportion to how well each fits. The
+spread is the parameters' uncertainty. A prior can come from a model of parameters from
+catchment descriptors (`priors_from_table()`); here it is a loose one on `fc`.
+
+```{r bayes}
+post <- calibrate_bayes(truth, forcing, observed, lower = lower[1:2], upper = upper[1:2],
+                        priors = list(fc = prior_normal(1, 0.3)), generations = 800,
+                        lambda = 0, warmup = 24 * 90, start = "soil", seed = 3)
+post
+```
+
+The likelihood behind it treats the errors on Box-Cox flows as running on from one hour to the
+next, a lag-1 autoregression. Treating hourly errors as independent would make the posterior far
+too sure of itself. R-hat under about 1.2 says the chains agree; a trial with 300 generations
+stayed above it, so this run uses 800. The errors in this record are proportional to the flow, so the
+power of the transform is 0 (the log); a real record's power is a choice to check, as section 6
+shows.
+
+Even so, three years of hourly flow pin `fc` down to within a fraction of a per cent. The
+posterior is honest about the parameters given this model and these data; it says nothing about
+errors in the rain, which calibrating on the rainfall used operationally deals with. Where it is still too sure, `temper` below 1 counts the record as worth less.
+
+`posterior_band()` runs sets drawn from the posterior. Without the error model the band is the
+parameters' uncertainty alone; with it, the band is what the observed flow should scatter in.
+
+```{r band}
+band <- posterior_band(post, forcing, draws = 50, noise = TRUE)
+rows <- which.max(observed) + seq(-72, 120)
+plot(forcing$time[rows], observed[rows], type = "l", xlab = "", ylab = "Flow (m3/s)",
+     main = "The largest flood, with the 90% predictive band")
+polygon(c(forcing$time[rows], rev(forcing$time[rows])), c(band$q05[rows], rev(band$q95[rows])),
+        col = grDevices::adjustcolor("#0072B2", 0.25), border = NA)
+lines(forcing$time[rows], band$q50[rows], col = "#0072B2", lwd = 1.5)
+```
+
+# 6. Is a probability forecast honest?
+
+An ensemble says how likely a threshold is to be crossed. `ensemble_scores()` checks whether it
+means what it says: the CRPS (the whole distribution against what happened), the spread against
+the error (near 1 when the ensemble is as wide as its errors), Brier scores for thresholds, and
+rank histograms. Here, the posterior runs with and without the error model, used as ensembles
+of the observed flow:
+
+```{r ensembles}
+draws <- function(noise) {
+  b <- vapply(1:20, function(i) posterior_band(post, forcing, draws = 1, probs = 0.5,
+                                               noise = noise, seed = i)$q50,
+              numeric(nrow(forcing)))
+  b[seq(24 * 90, nrow(forcing), by = 6), ]
+}
+y <- observed[seq(24 * 90, nrow(forcing), by = 6)]
+high <- c(high = unname(stats::quantile(observed, 0.98)))
+rbind(parameters_only = ensemble_scores(draws(FALSE), y, thresholds = high),
+      with_errors = ensemble_scores(draws(TRUE), y, thresholds = high))[
+  , c("crps", "spread_skill", "brier:high")]
+```
+
+The parameters alone give an ensemble far narrower than its errors: a spread-skill ratio well
+below 1, claiming far more certainty than it has. With the error model the ensemble is about as
+wide as its errors, the ratio near 1, and its CRPS and Brier score are better too.
+
+The power of the transform matters here. The same calibration with `lambda = 0.5` gives a ratio
+of about 0.6: on that scale the errors of the highest flows look smaller than they are, so the
+ensemble is too narrow exactly where it matters. The spread-skill ratio and the rank histogram
+are how to tell. The same scores, by lead time, judge a real ensemble forecast.
+
+# In short
+
+| Question | Function |
+|---|---|
+| Are all the errors counted fairly? | `objective = "boxcox"`, `flow_weights()` |
+| Which parameters can the record determine? | `pdm_sensitivity()` |
+| Which model forecasts best? | `compare_forecasts()` |
+| Will it hold in another climate? | `split_sample_test()`, `parameter_drift()` |
+| How sure are we of it? | `calibrate_bayes()`, `posterior_band()` |
+| Is a probability forecast honest? | `ensemble_scores()`, `crps_ensemble()`, `brier_score()` |

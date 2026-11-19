@@ -1,3 +1,17 @@
+# pdmS7 0.34.0
+
+- **Scores for ensemble and probability forecasts.** `ensemble_scores()`, by lead time: the
+  CRPS and its fair form (`crps_ensemble()`), its skill over the ensemble mean, the spread-skill
+  ratio (near 1 when the ensemble is as wide as its errors), Brier scores for thresholds with
+  their reliability and resolution (`brier_score()`, Murphy's decomposition), reliability tables
+  and rank histograms, with plots of each.
+- **Robust calibration**, a new article: the Box-Cox objective, global sensitivity, choosing
+  models as forecasters, the split-sample test, Bayesian calibration with a predictive band, and
+  checking that a probability forecast means what it says, all on one synthetic catchment. It
+  shows why the Box-Cox power should match the errors: with errors proportional to flow, the
+  log (power 0) gives an ensemble as wide as its errors, the power 0.5 one too narrow at the
+  highest flows.
+
 # pdmS7 0.33.0
 
 - **Bayesian calibration.** `calibrate_bayes()` samples the posterior of the parameters with
