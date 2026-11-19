@@ -1,3 +1,15 @@
+# pdmS7 0.36.0
+
+- **The unrestricted split, PDM for PCs runoff model 2.** `FlodeUnrestrictedSplitRecharge()`,
+  or `recharge = list(type = "split_unrestricted", alpha, beta)`, sends `alpha` of the direct
+  runoff to the surface store and `beta` to groundwater, not tied to `1 - alpha` (PDM for PCs
+  manual, section 3.6). It runs in the compiled core and in R, is calibrated with bounds for
+  both shares, and is flagged when `beta` sits at its lower bound. The water it makes or loses,
+  runoff times `alpha + beta - 1`, counts as an input in the water balance, so
+  `balance_error_mm` stays a rounding error. `read_pdm_inp()` reads runoff model 2, taking
+  `beta` by name; `write_pdm_inp()` refuses it for now, since the manual leaves the place of
+  `beta` in the parameter list unclear. pdmS7's `split` was, and remains, runoff model 1.
+
 # pdmS7 0.35.0
 
 - **CAMELS-GB v2 as calibration input.** `camels_read()` reads a catchment's hourly table as

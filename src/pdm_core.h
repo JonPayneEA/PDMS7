@@ -82,6 +82,9 @@ extern "C" {
 #define PDM_RECHARGE_STANDARD 0  /* uses kg, bg, st */
 #define PDM_RECHARGE_SPLIT 1     /* uses alpha: the fraction of soil runoff sent to the surface */
 #define PDM_RECHARGE_DEMAND 2    /* uses alpha, beta, qsat; groundwater must not be a cascade */
+#define PDM_RECHARGE_SPLIT_FREE 3 /* uses alpha, beta: alpha of the soil runoff to the surface and
+                                     beta to groundwater, not tied to 1 - alpha (PDM for PCs
+                                     runoff model 2) */
 
 /* Route types (pdm_route.type). */
 #define PDM_ROUTE_CASCADE 0      /* uses k1, k2; two stores */
@@ -142,7 +145,7 @@ typedef struct pdm_params {
   double bg;             /* standard: exponent; > 0 */
   double st;             /* standard: tension threshold, mm; >= 0 and <= Smax */
   double alpha;          /* split: surface fraction in [0, 1]; demand: threshold in (0, 1] */
-  double beta;           /* demand: exponent; > 0 */
+  double beta;           /* demand: exponent; > 0; unrestricted split: groundwater share, >= 0 */
   double qsat;           /* demand: saturation recharge rate, mm/h; > 0 */
   pdm_route surface;     /* fast route */
   pdm_route groundwater; /* slow route */

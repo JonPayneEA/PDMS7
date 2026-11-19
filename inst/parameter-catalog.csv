@@ -22,6 +22,8 @@ demand_recharge,alpha,alpha,1,0<alpha<=1,0.5,Eq 11-13,illustrative
 demand_recharge,beta,beta,1,>0,1,Eq 12,illustrative
 demand_recharge,qsat,qsat,mm/h,>0; qsat*dt<=Smax; Sgmax>0,1,Eq 13; Sgmax derived from routing,illustrative
 split_recharge,alpha,alpha,1,0<=alpha<=1,0.7,p486 split of direct runoff,illustrative
+unrestricted_split_recharge,alpha,alpha_r,1,0<=alpha<=1,0.7,PDM for PCs manual section 3.6 (runoff model 2),illustrative
+unrestricted_split_recharge,beta,beta_r,1,>=0,0.3,PDM for PCs manual section 3.6 (runoff model 2),illustrative
 cascade,k1,k1,h,>0,2,Eq 26-27,illustrative
 cascade,k2,k2,h,>0,4,Eq 26-27,illustrative
 power,k,k,mm^(1-m)/h,>0,0.0001,Eq 23; k=1/kb,illustrative

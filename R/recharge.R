@@ -113,6 +113,35 @@ FlodeSplitRecharge <- S7::new_class(
   parent = FlodeRecharge, package = "pdmS7", properties = list(alpha = S7::class_numeric),
   validator = function(self) if (!.scalar(self@alpha, 0, 1)) "alpha must lie in [0,1]"
 )
+#' Create FlodeUnrestrictedSplitRecharge
+#'
+#' The unrestricted split of PDM for PCs (runoff model 2): no soil drainage; a share `alpha` of
+#' the direct runoff goes to the surface store and a share `beta` to the groundwater store, with
+#' no rule that the two sum to one. With `beta = 1 - alpha` it is the split of
+#' [FlodeSplitRecharge()] (runoff model 1). Otherwise the routes receive
+#' `(alpha + beta - 1)` times the direct runoff more than the soil store gives up, or less when
+#' that is negative: a gain or loss of water the model makes on purpose, which the water balance
+#' counts as an input (see Details).
+#'
+#' @details The output's `surface_input_mm + groundwater_input_mm - direct_runoff_mm` is the
+#' water gained in each step (negative when lost). `balance_error_mm` includes it, so it stays a
+#' rounding error.
+#'
+#' @param alpha Share of direct runoff sent to the surface store, in `[0,1]`.
+#' @param beta Share of direct runoff sent to the groundwater store, at least 0.
+#'
+#' @return An S7 component object.
+#'
+#' @examples
+#' FlodeUnrestrictedSplitRecharge(alpha = 0.6, beta = 0.3)
+#'
+#' @references UKCEH, PDM for PCs user manual, section 3.6 (runoff model index 2, beta_r).
+#' @export
+FlodeUnrestrictedSplitRecharge <- S7::new_class(
+  "FlodeUnrestrictedSplitRecharge",
+  parent = FlodeSplitRecharge, package = "pdmS7", properties = list(beta = S7::class_numeric),
+  validator = function(self) if (!.scalar(self@beta, 0)) "beta must be a number of at least 0"
+)
 #' Recharge depth
 #'
 #' Call recharge_depth(x, soil, smax, groundwater, routing, dt). Storages are mm, dt hours,

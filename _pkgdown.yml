@@ -175,6 +175,7 @@ reference:
   - FlodeStandardRecharge
   - StandardRecharge
   - FlodeSplitRecharge
+  - FlodeUnrestrictedSplitRecharge
   - SplitRecharge
   - FlodeDemandRecharge
   - DemandRecharge

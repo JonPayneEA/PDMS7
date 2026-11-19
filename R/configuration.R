@@ -70,7 +70,10 @@
       FlodeDemandRecharge(alpha = alpha, beta = beta, qsat = qsat)
     },
 
-    split = function(alpha = 0.7) FlodeSplitRecharge(alpha = alpha)
+    split = function(alpha = 0.7) FlodeSplitRecharge(alpha = alpha),
+    split_unrestricted = function(alpha = 0.7, beta = 0.3) {
+      FlodeUnrestrictedSplitRecharge(alpha = alpha, beta = beta)
+    }
   )
 }
 #' Pdm from config

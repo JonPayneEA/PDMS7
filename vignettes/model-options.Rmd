@@ -30,7 +30,7 @@ groundwater store. Start there and change one component at a time.
 | Component | Options | Default |
 |---|---|---|
 | Capacity distribution | Pareto, rectangular, exponential, triangular, lognormal | Pareto, b = 0.4 |
-| Recharge | Standard, split, demand | Standard |
+| Recharge | Standard, split, unrestricted split, demand | Standard |
 | Surface routing | Cascade of two linear stores, power-law store, exponential store | Cascade |
 | Groundwater routing | Power-law store (linear, quadratic, cubic or any exponent), exponential store, cascade | Cubic |
 | Groundwater solver | Adaptive Runge-Kutta, Smith approximation | Adaptive |
@@ -147,7 +147,15 @@ for (i in seq_along(runs)) lines(days, baseflow[[i]], col = pal[i], lwd = 2, lty
   threshold. It gives smooth, sustained baseflow: the usual choice.
 - **Split** recharge sends a fixed share of direct runoff to groundwater and nothing from the
   soil store itself. Baseflow rises and falls with each storm, so recessions are short. It
-  suits catchments with little groundwater.
+  suits catchments with little groundwater. This is PDM for PCs runoff model 1: `alpha` to the
+  surface store and `1 - alpha` to groundwater, so no water is made or lost.
+- **Unrestricted split** (`type = "split_unrestricted"`, PDM for PCs runoff model 2) sends
+  `alpha` of the direct runoff to the surface store and `beta` to groundwater, with no rule that
+  they sum to one. When `alpha + beta` is above one the stores receive more than the soil gives
+  up, and below one they receive less: a gain or loss of water made on purpose, to stand for
+  water arriving from, or leaving to, outside the catchment. The water balance counts it as an
+  input, so `balance_error_mm` stays a rounding error; `surface_input_mm +
+  groundwater_input_mm - direct_runoff_mm` shows the water gained in each step.
 - **Demand** recharge depends on how much the groundwater store can take. When groundwater is
   low the soil drains fast, at up to `qsat`, which gives the plateau; once groundwater fills,
   recharge falls back. Its behaviour depends strongly on the time step, so check results at

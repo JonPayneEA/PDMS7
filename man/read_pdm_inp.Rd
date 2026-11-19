@@ -72,9 +72,15 @@ capacity, and exponential (\code{loss} 6) reads \code{cmin} as the mean capacity
 it as \code{dt} (15 minutes by default).
 
 \strong{Not supported}, and refused with a message rather than guessed: several hydrological
-zones; demand recharge and the unrestricted split (runoff models 2 to 4); the power
+zones; demand recharge (runoff models 3 and 4); the power
 distribution (\code{loss} 4); exponential stores; a cubic surface store; and constant or
 pass-through stores (types 0 and -1).
+
+\strong{The unrestricted split} (runoff model 2: \code{alpha} of the direct runoff to the surface
+store and \code{beta} to the baseflow store, not tied to \code{1 - alpha}) is read, taking \code{beta} (or
+\code{beta_r}) from the parameter list by name. It is not yet written: the manual places \code{beta}
+at \code{xp(14)}, where its runoff model 1 example has \code{alpha}, so the order PDM for PCs expects is
+unconfirmed.
 
 \strong{To do: the exponential store.} It is a PDM option (Moore, 2007), and pdmS7 runs, calibrates
 and forecasts with it, and the structure recommendation may choose it. Its code and parameter
