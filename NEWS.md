@@ -6,7 +6,13 @@
   asked, and keeps flow gaps unscored; `camels_windows()` splits the record into warm-up,
   calibration, validation and test water years (for 1990 to 2016: calibration 1991 to 2007,
   validation to 2012, test to 2016); `camels_batch_folders()` writes the screened catchments as
-  basin folders for `calibrate_batch()`, and leaves written folders alone on a rerun.
+  basin folders for `calibrate_batch()`, and leaves written folders alone on a rerun. `pet`
+  chooses the evaporation product, from the columns the pipeline keeps for each.
+- **The CAMELS-GB trial**, `inst/scripts/camels_trial.R`: twelve screened catchments spread
+  through the baseflow index, calibrated three times (Hydro-PE with two seeds, CHESS-PE with
+  one), giving the seed test, the evaporation test and a runtime estimate for the bulk run. It
+  works on local disk, since calibration logs append and a volume does not allow it, and copies
+  the results to the store at the end.
 
 # pdmS7 0.34.0
 

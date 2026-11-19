@@ -73,8 +73,13 @@ camels_read <- function(store, gauge) {
 #' **Rain source.** `rain = "rain_gradgb_mm"` uses the GradGB series instead. It reads higher
 #' than CEH-GEAR at many gauges, so the two should not be mixed in one record.
 #'
+#' **Evaporation product.** `pet_mm` is the product the pipeline was set to (Hydro-PE by
+#' default). The pipeline also keeps every product as its own column (`pet_chess_mm`,
+#' `peti_chess_mm`, `pet_hydrope_mm`, `peti_hydrope_mm`); name one in `pet` to use it.
+#'
 #' @param table A table from [camels_read()], or a data frame with the same columns.
 #' @param rain The rain column: `"rain_mm"` (CEH-GEAR, the default) or `"rain_gradgb_mm"`.
+#' @param pet The evaporation column, mm per hour: `"pet_mm"` (the default) or a product's.
 #' @param fill_gaps_h Longest run of missing forcing, in hours, to fill.
 #' @return A list: `forcing` (a data frame of `time`, `rain`, `pet` and `temperature`, mm per
 #'   hour and deg C), `observed` (flow, m3/s), `flag` (the flow flags as given), and `summary`
@@ -88,10 +93,12 @@ camels_read <- function(store, gauge) {
 #' nrow(x$forcing)
 #' @seealso [camels_read()], [camels_windows()], [camels_batch_folders()]
 #' @export
-camels_forcing <- function(table, rain = c("rain_mm", "rain_gradgb_mm"), fill_gaps_h = 0) {
+camels_forcing <- function(table, rain = c("rain_mm", "rain_gradgb_mm"), pet = "pet_mm",
+                           fill_gaps_h = 0) {
   rain <- match.arg(rain)
-  .check(is.data.frame(table) && all(c("time", rain, "pet_mm", "flow_m3s") %in% names(table)),
-         paste0("table needs time, ", rain, ", pet_mm and flow_m3s columns"))
+  .check(is.character(pet) && length(pet) == 1L, "pet must be one column name")
+  .check(is.data.frame(table) && all(c("time", rain, pet, "flow_m3s") %in% names(table)),
+         paste0("table needs time, ", rain, ", ", pet, " and flow_m3s columns"))
   .check(.scalar(fill_gaps_h, 0), "fill_gaps_h must be a nonnegative number of hours")
   time <- .parse_time(table$time)
   .check(length(time) > 1L, "table needs at least two hours")
@@ -112,7 +119,7 @@ camels_forcing <- function(table, rain = c("rain_mm", "rain_gradgb_mm"), fill_ga
     list(x = x, filled = sum(missing))
   }
   r <- fill(as.numeric(table[[rain]][rows]), "rain", "zero")
-  p <- fill(as.numeric(table$pet_mm[rows]), "evaporation", "interpolate")
+  p <- fill(as.numeric(table[[pet]][rows]), "evaporation", "interpolate")
   temperature <- if ("temperature_c" %in% names(table)) as.numeric(table$temperature_c[rows]) else
     rep(NA_real_, length(rows))
   flow <- as.numeric(table$flow_m3s[rows])
@@ -203,7 +210,7 @@ camels_windows <- function(time, warmup_years = 1, validation_years = 5, test_ye
 #' @param basins The folder to write the basin folders into; created if needed.
 #' @param gauges Gauge identifiers to write; all those screened in if `NULL`.
 #' @param screened If `TRUE`, write only gauges the screening kept.
-#' @param rain,fill_gaps_h Passed to [camels_forcing()].
+#' @param rain,pet,fill_gaps_h Passed to [camels_forcing()].
 #' @param windows A list of arguments for [camels_windows()].
 #' @param refresh If `TRUE`, write folders that already exist again.
 #' @return A data frame with one row per gauge: `gauge`, `state` (`written`, `kept` or
@@ -211,8 +218,8 @@ camels_windows <- function(time, warmup_years = 1, validation_years = 5, test_ye
 #' @seealso [camels_read()], [camels_forcing()], [calibrate_batch()]
 #' @export
 camels_batch_folders <- function(store, basins, gauges = NULL, screened = TRUE,
-                                 rain = c("rain_mm", "rain_gradgb_mm"), fill_gaps_h = 0,
-                                 windows = list(), refresh = FALSE) {
+                                 rain = c("rain_mm", "rain_gradgb_mm"), pet = "pet_mm",
+                                 fill_gaps_h = 0, windows = list(), refresh = FALSE) {
   rain <- match.arg(rain)
   .check(is.list(windows), "windows must be a list of arguments for camels_windows()")
   dir <- .camels_dir(store)
@@ -234,7 +241,8 @@ camels_batch_folders <- function(store, basins, gauges = NULL, screened = TRUE,
       d <- desc[desc$gauge_id == g, , drop = FALSE]
       .check(nrow(d) == 1L && .scalar(as.numeric(d$area), 0, strict = TRUE),
              "No positive area in the descriptors")
-      x <- camels_forcing(camels_read(store, g), rain = rain, fill_gaps_h = fill_gaps_h)
+      x <- camels_forcing(camels_read(store, g), rain = rain, pet = pet,
+                          fill_gaps_h = fill_gaps_h)
       w <- do.call(camels_windows, c(list(x$forcing$time), windows))
       dir.create(folder, showWarnings = FALSE, recursive = TRUE)
       times <- .format_time(x$forcing$time)
@@ -247,7 +255,7 @@ camels_batch_folders <- function(store, basins, gauges = NULL, screened = TRUE,
       meta <- list(area_km2 = as.numeric(d$area),
                    catchment = if ("gauge_name" %in% names(d)) as.character(d$gauge_name) else g,
                    gauge = g, calibration = w$calibration, validation = w$validation,
-                   test = w$test, source = paste("CAMELS-GB v2,", rain))
+                   test = w$test, source = paste0("CAMELS-GB v2, ", rain, ", ", pet))
       yaml::write_yaml(Filter(Negate(is.null), meta), file.path(folder, "basin.yml"))
       s <- x$summary
       data.frame(gauge = g, state = "written", start = .format_time(s$start),

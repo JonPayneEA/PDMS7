@@ -10,6 +10,7 @@ camels_batch_folders(
   gauges = NULL,
   screened = TRUE,
   rain = c("rain_mm", "rain_gradgb_mm"),
+  pet = "pet_mm",
   fill_gaps_h = 0,
   windows = list(),
   refresh = FALSE
@@ -24,7 +25,7 @@ camels_batch_folders(
 
 \item{screened}{If \code{TRUE}, write only gauges the screening kept.}
 
-\item{rain, fill_gaps_h}{Passed to \code{\link[=camels_forcing]{camels_forcing()}}.}
+\item{rain, pet, fill_gaps_h}{Passed to \code{\link[=camels_forcing]{camels_forcing()}}.}
 
 \item{windows}{A list of arguments for \code{\link[=camels_windows]{camels_windows()}}.}
 

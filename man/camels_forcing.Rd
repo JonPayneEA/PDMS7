@@ -4,12 +4,19 @@
 \alias{camels_forcing}
 \title{Forcing and flow from a CAMELS-GB v2 table}
 \usage{
-camels_forcing(table, rain = c("rain_mm", "rain_gradgb_mm"), fill_gaps_h = 0)
+camels_forcing(
+  table,
+  rain = c("rain_mm", "rain_gradgb_mm"),
+  pet = "pet_mm",
+  fill_gaps_h = 0
+)
 }
 \arguments{
 \item{table}{A table from \code{\link[=camels_read]{camels_read()}}, or a data frame with the same columns.}
 
 \item{rain}{The rain column: \code{"rain_mm"} (CEH-GEAR, the default) or \code{"rain_gradgb_mm"}.}
+
+\item{pet}{The evaporation column, mm per hour: \code{"pet_mm"} (the default) or a product's.}
 
 \item{fill_gaps_h}{Longest run of missing forcing, in hours, to fill.}
 }
@@ -33,6 +40,10 @@ with the count, since a long gap filled with zero is a drought the catchment nev
 
 \strong{Rain source.} \code{rain = "rain_gradgb_mm"} uses the GradGB series instead. It reads higher
 than CEH-GEAR at many gauges, so the two should not be mixed in one record.
+
+\strong{Evaporation product.} \code{pet_mm} is the product the pipeline was set to (Hydro-PE by
+default). The pipeline also keeps every product as its own column (\code{pet_chess_mm},
+\code{peti_chess_mm}, \code{pet_hydrope_mm}, \code{peti_hydrope_mm}); name one in \code{pet} to use it.
 }
 \examples{
 time <- as.POSIXct("2001-01-01", tz = "UTC") + 3600 * (0:47)

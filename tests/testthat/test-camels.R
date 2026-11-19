@@ -33,6 +33,10 @@ test_that("the record is cut to the hours with rain", {
   # GradGB has no gaps, so its record is the whole 48 hours at 0.6 mm
   g <- camels_forcing(t, rain = "rain_gradgb_mm")
   expect_equal(sum(g$forcing$rain), 48 * 0.6)
+  # Another evaporation product by its column: 40 kept hours at 0.2 mm
+  t$pet_chess_mm <- 0.2
+  expect_equal(sum(camels_forcing(t, pet = "pet_chess_mm")$forcing$pet), 40 * 0.2)
+  expect_error(camels_forcing(t, pet = "peti_chess_mm"), "needs time, rain_mm, peti_chess_mm")
 })
 
 test_that("short gaps inside the rain years are filled and long ones stop", {
