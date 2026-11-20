@@ -87,6 +87,26 @@ sample <- data.frame(gauge = gauges, bfi = round(pool$baseflow_index[pick], 2),
 cat("Trial catchments (baseflow index):\n")
 print(sample, row.names = FALSE)
 
+# The calibrations run in separate R worker processes, which on Databricks cannot read the
+# volume: only the notebook's own process can. So this process copies each catchment's hourly
+# table to local disk first, and the workers read the copies, as calibrate_batch() did in the
+# first trial. A table missing from the volume is reported here.
+local_store <- file.path(work, "store")
+local_dir <- file.path(local_store, "gold", "camels_gb_v2", "hourly")
+dir.create(local_dir, recursive = TRUE, showWarnings = FALSE)
+copied <- vapply(gauges, function(g) {
+  from <- file.path(camels, "hourly", paste0(g, ".parquet"))
+  file.exists(from) && file.copy(from, file.path(local_dir, paste0(g, ".parquet")),
+                                 overwrite = TRUE)
+}, logical(1))
+if (!all(copied)) {
+  cat("\nNo hourly table on the volume for:", toString(gauges[!copied]),
+      "\nRun 01_camels_prepare again; these catchments are left out.\n")
+  sample <- sample[copied, ]
+  gauges <- gauges[copied]
+}
+if (!length(gauges)) stop("No hourly tables could be copied from ", camels, call. = FALSE)
+
 # ---- One catchment ----------------------------------------------------------------------
 
 # A structure's components at their default values: seed 2 starts from the structure seed 1
@@ -120,7 +140,7 @@ stages <- function(config) {
 run_one <- function(job) {
   started <- proc.time()[["elapsed"]]
   out <- tryCatch({
-    x <- camels_forcing(camels_read(store, job$gauge))
+    x <- camels_forcing(camels_read(local_store, job$gauge))
     w <- camels_windows(x$forcing$time)
     area <- job$area_km2
     project <- file.path(work, "runs", paste0("seed", job$seed), job$gauge)
@@ -164,7 +184,8 @@ run_all <- function(jobs) {
     options(pdmS7.user = u, pdmS7.role = "custodian")
     NULL
   }, unique(c(dirname(system.file(package = "pdmS7")), .libPaths())), user)
-  parallel::clusterExport(cl, c("store", "work", "starts", "budget", "overrides", "stages"),
+  parallel::clusterExport(cl, c("local_store", "work", "starts", "budget", "overrides",
+                                "stages"),
                           envir = environment(run_one))
   parallel::parLapply(cl, jobs, run_one)
 }
