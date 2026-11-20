@@ -1,28 +1,33 @@
 # ============================================================ #
 # Tool:         camels_trial
-# Description:  The 12-catchment CAMELS-GB v2 trial before the bulk calibration: does the
-#               search find the same answer from different seeds, how much does the
-#               evaporation product matter, and how long will the bulk run take
+# Description:  The 12-catchment CAMELS-GB v2 trial before the bulk calibration: the protocol
+#               the bulk run will use, run twice from different seeds, to see whether it finds
+#               the same answer, how well it scores, and how long it takes
 # Flode Module: standalone; target reach.hydro
 # Author:       pdmS7 contributors
 # Created:      2026-11-19
 # Modified:     2026-11-19 - First version
+#               2026-11-20 - v2: the structure chosen per catchment (recommend_structure()),
+#                            the v9 Beggearn Huish stages (DDS, stage 1 hourly, Box-Cox polish,
+#                            events), the rainfall factor free within 0.8 to 1.2, Hydro-PE only;
+#                            the two surface time constants compared as a sorted pair; each
+#                            catchment's water balance beside its scores
 # Tier:         1
-# Inputs:       The pipeline's gold/camels_gb_v2/ under a store root: hourly tables (with every
-#               evaporation product), descriptors, signatures and screening
-# Outputs:      gold/camels_gb_v2/trial/: runs.csv, seed_test.csv, pet_test.csv, runtime.csv
-#               and the calibration projects
-# Dependencies: pdmS7 (installed, for parallel workers); data.table; arrow or nanoparquet
+# Inputs:       The pipeline's gold/camels_gb_v2/ under a store root: hourly tables,
+#               descriptors, signatures and screening
+# Outputs:      gold/camels_gb_v2/trial/: runs.csv, seed_test.csv, structures.csv,
+#               runtime.csv and the calibration projects
+# Dependencies: pdmS7 (0.36.0 or later, installed, for parallel workers); data.table; arrow
 # ============================================================ #
 # Usage: set the store root, then run the whole script, from a shell or an R notebook:
 #   CAMELS_STORE=/Volumes/.../hydrometric Rscript camels_trial.R
 # or, in a notebook, Sys.setenv(CAMELS_STORE = "...") and source() this file.
 #
 # Optional environment variables, defaults in brackets:
-#   CAMELS_CORES    basins calibrated at once (12; leave a few of the cluster's cores free)
+#   CAMELS_CORES    catchments calibrated at once (12; leave a few of the cluster's cores free)
 #   CAMELS_N        catchments in the trial (12)
-#   CAMELS_STARTS   random starts per stage (4)
-#   CAMELS_BUDGET   model runs per start and stage, DDS (300)
+#   CAMELS_STARTS   random starts per search (3)
+#   CAMELS_BUDGET   model runs per start, DDS (300)
 #   CAMELS_WORK     local working folder (a folder under tempdir())
 #   PDMS7_USER      the name recorded in the calibration logs ("CAMELS-GB trial")
 #
@@ -30,27 +35,36 @@
 # allow. So the work happens on the cluster's local disk, and the results and the projects are
 # copied to the volume, whole, at the end.
 #
-# Three batches over the same catchments, each the staged search with DDS:
-#   hydrope, seed 1   Hydro-PE evaporation (the pipeline's default)
-#   hydrope, seed 2   the same, other random starts: the seed test
-#   chess, seed 1     CHESS-PE evaporation: the evaporation test
+# The protocol, for each catchment:
+#   seed 1   the structure chosen on the record (recharge, soil store, groundwater store), then
+#            the stages, each by DDS: volume and baseflow (on the record summed to 6-hour steps,
+#            six times quicker), fast response, polish by Box-Cox, and the largest events
+#   seed 2   the same structure from fresh starting values, with other random starts: the seed
+#            test
 # The test windows are not scored: the test is kept for the final protocol.
 
 library(pdmS7)
 library(data.table)
+stopifnot(utils::packageVersion("pdmS7") >= "0.36.0")
+`%||%` <- function(x, y) if (is.null(x)) y else x
 
 store <- Sys.getenv("CAMELS_STORE")
 if (!nzchar(store)) stop("Set CAMELS_STORE to the pipeline's store root", call. = FALSE)
 cores <- as.integer(Sys.getenv("CAMELS_CORES", "12"))
 n_trial <- as.integer(Sys.getenv("CAMELS_N", "12"))
-starts <- as.integer(Sys.getenv("CAMELS_STARTS", "4"))
+starts <- as.integer(Sys.getenv("CAMELS_STARTS", "3"))
 budget <- as.integer(Sys.getenv("CAMELS_BUDGET", "300"))
 work <- Sys.getenv("CAMELS_WORK", file.path(tempdir(), "camels-trial"))
-options(pdmS7.user = Sys.getenv("PDMS7_USER", "CAMELS-GB trial"), pdmS7.role = "custodian")
+user <- Sys.getenv("PDMS7_USER", "CAMELS-GB trial")
+options(pdmS7.user = user, pdmS7.role = "custodian")
 
 camels <- file.path(store, "gold", "camels_gb_v2")
 target <- file.path(camels, "trial")
 dir.create(work, recursive = TRUE, showWarnings = FALSE)
+
+# The rainfall factor free within 0.8 to 1.2: gridded rain can be biased at a catchment, and a
+# factor fixed at 1 makes the soil and groundwater stores absorb the bias instead.
+overrides <- list(fc = c(0.8, 1.2))
 
 # ---- The catchments ---------------------------------------------------------------------
 
@@ -60,158 +74,207 @@ dir.create(work, recursive = TRUE, showWarnings = FALSE)
 screen <- fread(file.path(camels, "screening.csv"), colClasses = list(character = "gauge_id"))
 signatures <- pdmS7:::.read_parquet(file.path(camels, "signatures.parquet"))
 signatures$gauge_id <- as.character(signatures$gauge_id)
+descriptors <- pdmS7:::.read_parquet(file.path(camels, "descriptors.parquet"))
+descriptors$gauge_id <- as.character(descriptors$gauge_id)
 kept <- screen$gauge_id[as.logical(screen$use)]
 pool <- signatures[signatures$gauge_id %in% kept & is.finite(signatures$baseflow_index), ]
 pool <- pool[order(pool$baseflow_index), ]
 pick <- unique(round(seq(1, nrow(pool), length.out = min(n_trial, nrow(pool)))))
 gauges <- pool$gauge_id[pick]
+sample <- data.frame(gauge = gauges, bfi = round(pool$baseflow_index[pick], 2),
+                     name = screen$gauge_name[match(gauges, screen$gauge_id)],
+                     area_km2 = as.numeric(descriptors$area[match(gauges, descriptors$gauge_id)]))
 cat("Trial catchments (baseflow index):\n")
-print(data.frame(gauge = gauges, bfi = round(pool$baseflow_index[pick], 2),
-                 name = screen$gauge_name[match(gauges, screen$gauge_id)]), row.names = FALSE)
+print(sample, row.names = FALSE)
 
-folders <- list(
-  hydrope = camels_batch_folders(store, file.path(work, "basins", "hydrope"), gauges,
-                                 pet = "pet_hydrope_mm"),
-  chess = camels_batch_folders(store, file.path(work, "basins", "chess"), gauges,
-                               pet = "pet_chess_mm")
-)
-for (name in names(folders)) {
-  bad <- folders[[name]][folders[[name]]$state == "failed", ]
-  if (nrow(bad)) {
-    cat("\nFolders not written,", name, "\n")
-    print(bad[, c("gauge", "message")], row.names = FALSE)
+# ---- One catchment ----------------------------------------------------------------------
+
+# A structure's components at their default values: seed 2 starts from the structure seed 1
+# chose, but not from seed 1's answer. Each component's defaults are the arguments of its
+# constructor in the configuration registries.
+fresh_structure <- function(cfg) {
+  registries <- list(distribution = pdmS7:::.dist_registry(),
+                     recharge = pdmS7:::.recharge_registry(),
+                     surface = pdmS7:::.route_registry(),
+                     groundwater = pdmS7:::.route_registry())
+  out <- cfg
+  for (part in names(registries)) {
+    type <- cfg[[part]]$type
+    defaults <- lapply(formals(registries[[part]][[type]]), eval, envir = baseenv())
+    out[[part]] <- c(list(type = type), defaults)
   }
-}
-gauges <- intersect(folders$hydrope$gauge[folders$hydrope$state != "failed"],
-                    folders$chess$gauge[folders$chess$state != "failed"])
-if (!length(gauges)) stop("No catchments could be prepared", call. = FALSE)
-
-# ---- The batches ------------------------------------------------------------------------
-
-bounds <- calibration_bounds(pdm_presets("standard"))
-paths <- bounds$path
-
-# One batch; one row per catchment: state, seconds, model runs, scores and parameters.
-batch <- function(label, pet, seed) {
-  output <- file.path(work, "runs", label)
-  minutes <- system.time(calibrate_batch(
-    file.path(work, "basins", pet), output, staged = TRUE, method = "dds", starts = starts,
-    seed = seed, control = list(maxit = budget), cores = cores, only = gauges,
-    purpose = paste("CAMELS-GB trial,", label)
-  ))[["elapsed"]] / 60
-  status <- batch_status(output)
-  rows <- lapply(gauges, function(g) {
-    s <- status[status$basin == g]
-    row <- data.frame(run = label, pet = pet, seed = seed, gauge = g, state = s$state,
-                      seconds = s$seconds, message = s$message, batch_minutes = round(minutes, 1),
-                      model_runs = NA_real_, nse_calibration = NA_real_,
-                      nse_validation = NA_real_)
-    values <- stats::setNames(rep(NA_real_, length(paths)), paths)
-    if (identical(s$state, "done")) {
-      project <- file.path(output, g)
-      summary <- read_projects(project)
-      entries <- read_project(project)$entries
-      fits <- entries$id[entries$type == "auto_calibration"]
-      row$model_runs <- sum(vapply(fits, function(i) {
-        e <- read_entry(project, i)$evaluations
-        if (is.null(e)) NA_real_ else as.numeric(e)
-      }, numeric(1)))
-      row$nse_calibration <- summary$candidate_score
-      row$nse_validation <- summary$validation_score
-      config <- read_entry(project, summary$candidate)$configuration
-      values <- vapply(paths, function(p) as.numeric(pdmS7:::.path_get(config, p)), numeric(1))
-    }
-    cbind(row, as.data.frame(as.list(values), check.names = FALSE))
-  })
-  out <- do.call(rbind, rows)
-  cat(sprintf("\n%s: %d of %d done in %.1f minutes\n", label, sum(out$state == "done"),
-              nrow(out), minutes))
+  out$fc <- 1
+  out$td <- 0
   out
 }
 
-runs <- rbind(batch("hydrope, seed 1", "hydrope", 1),
-              batch("hydrope, seed 2", "hydrope", 2),
-              batch("chess, seed 1", "chess", 1))
+stages <- function(config) {
+  s <- pdm_stages(config, overrides = overrides, events = TRUE, td_max = 6,
+                  event_budget = budget, method = "dds", budget = budget, coarse_dt = 6)
+  polish <- which(vapply(s, function(x) identical(x$name, "polish"), logical(1)))
+  s[[polish]]$objective <- "boxcox"
+  s
+}
 
-# ---- The seed test ----------------------------------------------------------------------
+# Calibrates one catchment with one seed. Seed 1 chooses the structure; seed 2 is given it.
+run_one <- function(job) {
+  started <- proc.time()[["elapsed"]]
+  out <- tryCatch({
+    x <- camels_forcing(camels_read(store, job$gauge))
+    w <- camels_windows(x$forcing$time)
+    area <- job$area_km2
+    project <- file.path(work, "runs", paste0("seed", job$seed), job$gauge)
+    structure <- if (is.null(job$structure)) {
+      cfg <- pdm_presets("standard")
+      cfg$dt <- 1
+      cfg$area_km2 <- area
+      cfg
+    } else {
+      job$structure
+    }
+    calibrate_project(project, x$forcing[c("time", "rain", "pet")], x$observed, area,
+                      w$calibration, w$validation, structure = structure, stages = stages,
+                      recommend = is.null(job$structure), overrides = overrides,
+                      starts = starts, seed = job$seed, control = list(maxit = budget),
+                      method = "dds", catchment = job$name, gauge = job$gauge,
+                      purpose = "CAMELS-GB trial", test = w$test, wettest_years = 0,
+                      reasoning = "CAMELS-GB v2: CEH-GEAR hourly rain, Hydro-PE, hourly flow.")
+    s <- read_projects(project)
+    list(state = "done", message = "", project = project,
+         nse_calibration = s$candidate_score, nse_validation = s$validation_score,
+         config = read_entry(project, s$candidate)$configuration,
+         flow_missing_pct = x$summary$flow_missing_pct,
+         runoff_ratio = tryCatch(
+           water_balance(x$forcing, x$observed, area)$record$runoff_ratio,
+           error = function(e) NA_real_))
+  }, error = function(e) list(state = "failed", message = conditionMessage(e)))
+  out$gauge <- job$gauge
+  out$seed <- job$seed
+  out$seconds <- round(proc.time()[["elapsed"]] - started)
+  out
+}
 
-# How far apart two seeds put each parameter, as a share of its search range (on the log scale
-# for parameters searched on it). Within 5% of every range and 0.01 NSE: the search finds the
-# same answer, and one seed will do for the bulk run.
-spread <- function(a, b) {
-  vapply(seq_len(nrow(bounds)), function(k) {
-    p <- bounds$path[k]
-    lo <- bounds$lower[k]
-    hi <- bounds$upper[k]
-    if (bounds$scale[k] == "log") abs(log(a[[p]]) - log(b[[p]])) / log(hi / lo) else
-      abs(a[[p]] - b[[p]]) / (hi - lo)
+run_all <- function(jobs) {
+  if (cores <= 1L || length(jobs) < 2L) return(lapply(jobs, run_one))
+  cl <- parallel::makeCluster(min(cores, length(jobs)))
+  on.exit(parallel::stopCluster(cl), add = TRUE)
+  parallel::clusterCall(cl, function(p, u) {
+    .libPaths(p)
+    library(pdmS7)
+    options(pdmS7.user = u, pdmS7.role = "custodian")
+    NULL
+  }, unique(c(dirname(system.file(package = "pdmS7")), .libPaths())), user)
+  parallel::clusterExport(cl, c("store", "work", "starts", "budget", "overrides", "stages"),
+                          envir = environment(run_one))
+  parallel::parLapply(cl, jobs, run_one)
+}
+
+# ---- The two seeds ----------------------------------------------------------------------
+
+jobs <- lapply(seq_len(nrow(sample)), function(i) {
+  list(gauge = sample$gauge[i], name = sample$name[i], area_km2 = sample$area_km2[i], seed = 1)
+})
+cat("\nSeed 1: choosing the structure and calibrating", length(jobs), "catchments\n")
+first <- run_all(jobs)
+names(first) <- vapply(first, `[[`, "", "gauge")
+second_jobs <- Filter(Negate(is.null), lapply(jobs, function(j) {
+  r <- first[[j$gauge]]
+  if (!identical(r$state, "done")) return(NULL)
+  j$seed <- 2
+  j$structure <- fresh_structure(r$config)
+  j
+}))
+cat("Seed 2: the same structures from fresh starts,", length(second_jobs), "catchments\n")
+second <- run_all(second_jobs)
+names(second) <- vapply(second, `[[`, "", "gauge")
+
+# ---- Tables -----------------------------------------------------------------------------
+
+paths <- function(cfg) calibration_bounds(cfg, overrides = overrides)$path
+# The parameters of a configuration, with the two surface time constants as a sorted pair:
+# two linear stores in series give the same flow whichever way round they are, so k_fast and
+# k_slow are what the record determines, not k1 and k2.
+parameters <- function(cfg) {
+  p <- paths(cfg)
+  v <- vapply(p, function(x) as.numeric(pdmS7:::.path_get(cfg, x)), numeric(1))
+  if (all(c("surface.k1", "surface.k2") %in% p)) {
+    k <- sort(v[c("surface.k1", "surface.k2")])
+    v["surface.k1"] <- k[1]
+    v["surface.k2"] <- k[2]
+    names(v)[names(v) == "surface.k1"] <- "surface.k_fast"
+    names(v)[names(v) == "surface.k2"] <- "surface.k_slow"
+  }
+  v
+}
+row_of <- function(r) {
+  base <- data.frame(seed = r$seed, gauge = r$gauge, state = r$state,
+                     seconds = r$seconds, message = r$message %||% "",
+                     nse_calibration = r$nse_calibration %||% NA_real_,
+                     nse_validation = r$nse_validation %||% NA_real_,
+                     runoff_ratio = r$runoff_ratio %||% NA_real_,
+                     flow_missing_pct = r$flow_missing_pct %||% NA_real_)
+  if (!identical(r$state, "done")) return(base)
+  cfg <- r$config
+  v <- parameters(cfg)
+  cbind(base, recharge = cfg$recharge$type, distribution = cfg$distribution$type,
+        groundwater = cfg$groundwater$type, as.data.frame(as.list(v), check.names = FALSE))
+}
+runs <- rbindlist(lapply(c(first, second), row_of), fill = TRUE)
+runs <- merge(sample, runs, by = "gauge", all.y = TRUE, sort = FALSE)
+runs <- runs[order(runs$bfi, runs$seed), ]
+
+# How far apart the seeds put each parameter, as a share of its search range (on the log scale
+# for parameters searched on it), and the parameter furthest apart. Within 5% of every range
+# and 0.01 NSE: one seed will do for the bulk run. A wide share with the same score means the
+# record does not determine that parameter.
+seed_test <- rbindlist(lapply(names(second), function(g) {
+  a <- first[[g]]
+  b <- second[[g]]
+  if (!identical(b$state, "done")) return(NULL)
+  bounds <- calibration_bounds(a$config, overrides = overrides)
+  va <- parameters(a$config)
+  vb <- parameters(b$config)
+  share <- vapply(seq_along(va), function(k) {
+    i <- match(sub("k_fast", "k1", sub("k_slow", "k2", names(va)[k])), bounds$path)
+    lo <- bounds$lower[i]
+    hi <- bounds$upper[i]
+    if (bounds$scale[i] == "log") abs(log(va[k]) - log(vb[k])) / log(hi / lo) else
+      abs(va[k] - vb[k]) / (hi - lo)
   }, numeric(1))
-}
-pair <- function(x, y) {
-  x <- runs[runs$run == x, ]
-  y <- runs[runs$run == y, ]
-  do.call(rbind, lapply(gauges, function(g) {
-    a <- x[x$gauge == g, ]
-    b <- y[y$gauge == g, ]
-    if (a$state != "done" || b$state != "done") return(NULL)
-    d <- spread(a, b)
-    data.frame(gauge = g, nse_validation_a = a$nse_validation,
-               nse_validation_b = b$nse_validation,
-               nse_difference = b$nse_validation - a$nse_validation,
-               widest_share = max(d), widest_parameter = paths[which.max(d)])
-  }))
-}
-seed_test <- pair("hydrope, seed 1", "hydrope, seed 2")
-if (!is.null(seed_test)) {
-  seed_test$consistent <- seed_test$widest_share <= 0.05 & abs(seed_test$nse_difference) <= 0.01
-  cat("\nSeed test: same answer from both seeds in", sum(seed_test$consistent), "of",
-      nrow(seed_test), "catchments\n")
-  print(seed_test, row.names = FALSE, digits = 3)
-}
-
-# ---- The evaporation test ---------------------------------------------------------------
-
-# CHESS-PE against Hydro-PE: the change in validation NSE, and the parameter that moves most.
-# A small change in score with a large one in a parameter means the parameter absorbs the
-# difference, as the soil store does for evaporation; the bulk run should then use one product
-# throughout, and the descriptor model learns parameters for that product only.
-pet_test <- pair("hydrope, seed 1", "chess, seed 1")
-pet_total <- function(pet) {
-  vapply(gauges, function(g) {
-    f <- fread(file.path(work, "basins", pet, g, "forcing.csv"), select = "pet")
-    sum(f$pet) / (nrow(f) / 8766)
-  }, numeric(1))
-}
-if (!is.null(pet_test)) {
-  names(pet_test)[2:3] <- c("nse_validation_hydrope", "nse_validation_chess")
-  totals <- data.frame(gauge = gauges, pet_hydrope_mm_yr = pet_total("hydrope"),
-                       pet_chess_mm_yr = pet_total("chess"))
-  pet_test <- merge(totals, pet_test, by = "gauge")
-  cat("\nEvaporation test: CHESS-PE minus Hydro-PE, validation NSE\n")
-  print(pet_test, row.names = FALSE, digits = 3)
-}
-
-# ---- Runtime ----------------------------------------------------------------------------
-
-# A basin runs on one core, so the bulk run takes about the mean basin time, times the
-# screened catchments, over the cores in use.
-done <- runs[runs$run == "hydrope, seed 1" & runs$state == "done", ]
+  names(share) <- names(va)
+  others <- share[names(share) != "groundwater.kb"]
+  data.frame(gauge = g, nse_validation_1 = a$nse_validation, nse_validation_2 = b$nse_validation,
+             nse_difference = b$nse_validation - a$nse_validation,
+             widest_share = max(share), widest_parameter = names(share)[which.max(share)],
+             kb_share = if ("groundwater.kb" %in% names(share)) share[["groundwater.kb"]] else NA,
+             widest_without_kb = if (length(others)) max(others) else NA,
+             consistent = max(share) <= 0.05 &&
+               abs(b$nse_validation - a$nse_validation) <= 0.01)
+}))
+structures <- runs[runs$seed == 1 & runs$state == "done",
+                   c("gauge", "name", "bfi", "recharge", "distribution", "groundwater",
+                     "nse_validation", "runoff_ratio")]
+done <- runs[runs$seed == 1 & runs$state == "done", ]
 n_bulk <- sum(as.logical(screen$use))
 runtime <- data.frame(
   catchments = nrow(done), mean_minutes = mean(done$seconds) / 60,
-  slowest_minutes = max(done$seconds) / 60, mean_model_runs = mean(done$model_runs),
-  cores = cores, bulk_catchments = n_bulk,
+  slowest_minutes = max(done$seconds) / 60, cores = cores, bulk_catchments = n_bulk,
   bulk_hours = mean(done$seconds) * n_bulk / cores / 3600
 )
-cat("\nRuntime\n")
+
+cat("\nStructures chosen\n")
+print(structures, row.names = FALSE, digits = 3)
+cat("\nSeed test\n")
+print(seed_test, row.names = FALSE, digits = 3)
+cat("\nRuntime (seed 1: structure choice and calibration)\n")
 print(runtime, row.names = FALSE, digits = 3)
 
 # ---- Results to the volume --------------------------------------------------------------
 
 dir.create(target, recursive = TRUE, showWarnings = FALSE)
 fwrite(runs, file.path(target, "runs.csv"))
-if (!is.null(seed_test)) fwrite(seed_test, file.path(target, "seed_test.csv"))
-if (!is.null(pet_test)) fwrite(pet_test, file.path(target, "pet_test.csv"))
+fwrite(seed_test, file.path(target, "seed_test.csv"))
+fwrite(structures, file.path(target, "structures.csv"))
 fwrite(runtime, file.path(target, "runtime.csv"))
 file.copy(file.path(work, "runs"), target, recursive = TRUE)
 cat("\nWritten to", target, "\n")
