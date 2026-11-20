@@ -69,6 +69,10 @@ This is more robust for short records, and doubles the cost.
 Choosing a structure on the validation window uses that window; the optional test window
 of \code{\link[=register_data]{register_data()}}, scored once by \code{\link[=test_candidate]{test_candidate()}}, then gives an untouched final
 check.
+
+A structure that cannot be run on the record, such as an exponential store on a record that
+starts at zero flow, is left out of the ranking, with a note in the log saying why; the
+comparison stops only if no structure can be calibrated.
 }
 \seealso{
 \code{\link[=structure_set]{structure_set()}}, \code{\link[=calibration_bounds]{calibration_bounds()}}, \link{calibration_log}

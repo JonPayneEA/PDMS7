@@ -214,3 +214,29 @@ test_that("the exponential store gamma changes nothing from a flow start, so is 
   unlocked <- calibration_bounds(cfg, list(groundwater.gamma = c(-9, 0)))
   expect_true("groundwater.gamma" %in% unlocked$path)
 })
+
+# Guards: one structure the record cannot run is left out with a note, not fatal. The flow
+# starts at zero, which an exponential groundwater store cannot start from; before this, its
+# error ended the whole comparison (seen on a 4 km2 CAMELS-GB catchment).
+test_that("a structure that cannot run is left out of the comparison", {
+  folder <- tempfile("compare-")
+  on.exit(unlink(folder, recursive = TRUE), add = TRUE)
+  d <- log_data() # nolint: object_usage_linter.
+  observed <- d$observed
+  observed[1] <- 0
+  as_person("Ann Custodian", "custodian", "ann") # nolint: object_usage_linter.
+  start_calibration_project(folder, "T", "1", "P", 20, "O", "S")
+  register_data(folder, d$forcing, observed, c(121, 500), c(501, 700), wettest_years = 0)
+  expo <- pdm_presets("standard")
+  expo$groundwater <- list(type = "exponential", a = 0.05, gamma = -5)
+  ranking <- compare_structures(folder, list(standard = pdm_presets("standard"),
+                                             exponential = expo),
+                                starts = 1, control = list(maxit = 5), reasoning = "Zero flow")
+  expect_equal(ranking$structure, "standard")
+  notes <- read_project(folder)$entries
+  expect_true(any(grepl("exponential could not be calibrated", notes$summary)))
+  # With nothing that can run, the comparison stops and says why
+  expect_error(compare_structures(folder, list(exponential = expo), starts = 1,
+                                  control = list(maxit = 5), reasoning = "x"),
+               "No structure could be calibrated: exponential")
+})
