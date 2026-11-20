@@ -90,14 +90,21 @@ print(sample, row.names = FALSE)
 # ---- One catchment ----------------------------------------------------------------------
 
 # A structure's components at their default values: seed 2 starts from the structure seed 1
-# chose, but not from seed 1's answer.
+# chose, but not from seed 1's answer. Each component's defaults are the arguments of its
+# constructor in the configuration registries.
 fresh_structure <- function(cfg) {
-  out <- pdm_presets("standard")
-  for (part in c("distribution", "recharge", "surface", "groundwater")) {
-    out[[part]] <- list(type = cfg[[part]]$type)
+  registries <- list(distribution = pdmS7:::.dist_registry(),
+                     recharge = pdmS7:::.recharge_registry(),
+                     surface = pdmS7:::.route_registry(),
+                     groundwater = pdmS7:::.route_registry())
+  out <- cfg
+  for (part in names(registries)) {
+    type <- cfg[[part]]$type
+    defaults <- lapply(formals(registries[[part]][[type]]), eval, envir = baseenv())
+    out[[part]] <- c(list(type = type), defaults)
   }
-  out$dt <- cfg$dt
-  out$area_km2 <- cfg$area_km2
+  out$fc <- 1
+  out$td <- 0
   out
 }
 
