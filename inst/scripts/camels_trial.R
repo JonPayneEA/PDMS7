@@ -77,7 +77,7 @@ dir.create(work, recursive = TRUE, showWarnings = FALSE)
 # catchment, and a factor fixed at 1 makes the stores absorb the bias instead. The groundwater
 # arm fixes it at 1, so it cannot trade off against the losses being tested.
 free_fc <- list(fc = c(0.8, 1.2))
-fixed_fc <- list()
+fixed_fc <- NULL
 # The groundwater extension's starting values: a slow underflow, or a small constant
 # abstraction. Only the parameters named are searched (calibration_bounds()).
 extensions <- list(underflow = list(ku = 1e4, dbu = 0), abstraction = list(ca = 0.001))
