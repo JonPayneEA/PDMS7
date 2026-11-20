@@ -1,3 +1,17 @@
+# pdmS7 0.37.0
+
+- **A structure that cannot run no longer ends a comparison.** `compare_structures()`, and so
+  `recommend_structure()` and `calibrate_project(recommend = TRUE)`, leave out a structure whose
+  calibration fails on the record (an exponential store on a record that starts at zero flow,
+  for one), with a note in the log saying why, and go on with the rest. Before, its error ended
+  the whole comparison: in the CAMELS-GB trial it failed a 4 km2 catchment outright. The
+  comparison stops only when no structure can be calibrated.
+- **The CAMELS-GB trial**, `inst/scripts/camels_trial.R`: 600 model runs a start by default;
+  the seed test lists every parameter the two seeds put more than 5% of its range apart; and a
+  groundwater arm calibrates aquifer-dominated catchments three ways (the chosen structure, with
+  underflow, and with constant abstraction, the rainfall factor fixed at 1), each with two
+  seeds.
+
 # pdmS7 0.36.0
 
 - **The unrestricted split, PDM for PCs runoff model 2.** `FlodeUnrestrictedSplitRecharge()`,

@@ -36,6 +36,10 @@
 #' of [register_data()], scored once by [test_candidate()], then gives an untouched final
 #' check.
 #'
+#' A structure that cannot be run on the record, such as an exponential store on a record that
+#' starts at zero flow, is left out of the ranking, with a note in the log saying why; the
+#' comparison stops only if no structure can be calibrated.
+#'
 #' @param project Path of a calibration project with registered data and a validation window.
 #' @param structures Named list of configurations; by default [structure_set()], built on the
 #'   project's latest structure if there is one. Each is given the project's area.
@@ -92,9 +96,20 @@ compare_structures <- function(project, structures = NULL, overrides = NULL, exc
     if (workers > 1L) paste0("; each one's progress is in ", progress_file) else ""
   ))
   started <- Sys.time()
-  fits <- .run_jobs(jobs, .fit_structure, cores, data = data, card = card, info = info,
+  fits <- .run_jobs(jobs, .fit_structure_or_fail, cores, data = data, card = card, info = info,
                     registration = registration, settings = settings,
                     progress_file = progress_file)
+  # A structure that cannot be run on this record (an exponential store from zero flow, say)
+  # is left out with a note in the log, rather than ending the whole comparison.
+  failed <- Filter(function(f) isTRUE(f$failed), fits)
+  fits <- Filter(function(f) !isTRUE(f$failed), fits)
+  for (f in failed) {
+    .progress_say(sprintf("%s: left out, %s", f$name, f$message))
+    log_note(path, paste0("Structure comparison: ", f$name, " could not be calibrated on this ",
+                          "record and was left out: ", f$message))
+  }
+  .check(length(fits) > 0, paste0("No structure could be calibrated: ", paste(
+    vapply(failed, function(f) paste0(f$name, ": ", f$message), ""), collapse = "; ")))
   headline <- card$headline %||% "nse"
   for (f in fits) {
     .progress_say(sprintf("%s: calibration %s %.3f, validation %.3f (%s)", f$name, headline,
@@ -161,6 +176,14 @@ compare_structures <- function(project, structures = NULL, overrides = NULL, exc
     NULL
   }, paths, progress_file, getOption("pdmS7.progress_every", 60))
   parallel::parLapply(cl, jobs, fun, ...)
+}
+
+# One structure's fit, or a note that it failed, so one structure the record cannot run does
+# not stop the others.
+.fit_structure_or_fail <- function(job, ...) {
+  tryCatch(.fit_structure(job, ...), error = function(e) {
+    list(name = job$name, failed = TRUE, message = conditionMessage(e))
+  })
 }
 
 # Fits one structure; runs in a worker, so it writes nothing to the log, only progress lines.
