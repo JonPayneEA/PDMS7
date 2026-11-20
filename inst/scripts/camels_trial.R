@@ -177,6 +177,16 @@ jobs <- lapply(seq_len(nrow(sample)), function(i) {
 cat("\nSeed 1: choosing the structure and calibrating", length(jobs), "catchments\n")
 first <- run_all(jobs)
 names(first) <- vapply(first, `[[`, "", "gauge")
+# Any failure is shown at once, with its reason; if every catchment failed, the trial stops
+# here rather than in the tables.
+failures <- Filter(function(r) !identical(r$state, "done"), first)
+if (length(failures)) {
+  cat("\nSeed 1 failed for", length(failures), "of", length(first), "catchments:\n")
+  for (r in failures) cat(" ", r$gauge, ":", r$message, "\n")
+}
+if (length(failures) == length(first)) {
+  stop("Every catchment failed in seed 1; the reasons are above", call. = FALSE)
+}
 second_jobs <- Filter(Negate(is.null), lapply(jobs, function(j) {
   r <- first[[j$gauge]]
   if (!identical(r$state, "done")) return(NULL)
@@ -187,6 +197,9 @@ second_jobs <- Filter(Negate(is.null), lapply(jobs, function(j) {
 cat("Seed 2: the same structures from fresh starts,", length(second_jobs), "catchments\n")
 second <- run_all(second_jobs)
 names(second) <- vapply(second, `[[`, "", "gauge")
+for (r in Filter(function(r) !identical(r$state, "done"), second)) {
+  cat("  Seed 2 failed for", r$gauge, ":", r$message, "\n")
+}
 
 # ---- Tables -----------------------------------------------------------------------------
 
