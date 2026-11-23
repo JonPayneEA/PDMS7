@@ -15,11 +15,15 @@
 #               2026-11-20 - v3: 600 model runs a start; the seed test lists every parameter the
 #                            seeds leave apart; the groundwater arm (the chosen structure, with
 #                            underflow, with constant abstraction; two seeds each)
+#               2026-11-23 - v4: both seeds run the whole protocol, structure choice included;
+#                            the rainfall factor fixed at 1, with rain bias read from the water
+#                            balance; extension arms on the nearest structure that takes the
+#                            extension, plus an import arm; a snow arm with PACK
 # Tier:         1
 # Inputs:       The pipeline's gold/camels_gb_v2/ under a store root: hourly tables,
 #               descriptors, signatures and screening
 # Outputs:      gold/camels_gb_v2/trial/: runs.csv, seed_test.csv, structures.csv,
-#               groundwater.csv, runtime.csv and the calibration projects
+#               groundwater.csv, snow.csv, runtime.csv and the calibration projects
 # Dependencies: pdmS7 (0.37.0 or later, installed, for parallel workers); data.table; arrow
 # ============================================================ #
 # Usage: set the store root, then run the whole script, from a shell or an R notebook:
@@ -30,6 +34,8 @@
 #   CAMELS_CORES    calibrations run at once (12; leave a few of the cluster's cores free)
 #   CAMELS_N        catchments in the main trial (12)
 #   CAMELS_GW_N     catchments in the groundwater arm (6; 0 to skip it)
+#   CAMELS_SNOW_MIN snow share of precipitation from which a main-trial catchment also gets a
+#                   snow arm, with PACK (0.05)
 #   CAMELS_STARTS   random starts per search (3)
 #   CAMELS_BUDGET   model runs per start, DDS (600)
 #   CAMELS_WORK     local working folder (a folder under tempdir())
@@ -40,18 +46,28 @@
 # copied to the cluster's local disk first, the work happens there, and the results and the
 # projects are copied to the volume, whole, at the end.
 #
-# The main trial, for each of twelve screened catchments:
-#   seed 1   the structure chosen on the record (recharge, soil store, groundwater store), then
-#            the stages, each by DDS: volume and baseflow (on the record summed to 6-hour steps),
-#            fast response, polish by Box-Cox, and the largest events
-#   seed 2   the same structure from fresh starting values, with other random starts
+# The main trial, for each of twelve screened catchments, the whole protocol twice, with seeds 1
+# and 2: the structure chosen on the record (recharge, soil store, groundwater store), then the
+# stages, each by DDS: volume and baseflow (on the record summed to 6-hour steps), fast
+# response, polish by Box-Cox, and the largest events. The seed test asks whether the protocol
+# gives the same model twice, and the same structure. The rainfall factor is fixed at 1: freed,
+# it traded off against the soil store and recharge; rain bias is read from each catchment's
+# water balance instead (loss_over_pet: well above 1, too much rain or water lost; well below,
+# too little rain or water gained).
+# A snow arm, for main-trial catchments with a snow share of at least CAMELS_SNOW_MIN: the same
+# protocol on PACK rain plus melt, from the precipitation and the day's temperature, at PACK's
+# default parameters.
 # The groundwater arm, for aquifer-dominated catchments (those screened out for highly
-# productive aquifers or groundwater losses, and any kept with a baseflow index above 0.85),
-# with the rainfall factor fixed at 1 so it cannot stand in for a loss:
-#   chosen        the structure chosen on the record, as in the main trial
-#   underflow     that structure with the groundwater extension's underflow (ku, Dbu) searched
+# productive aquifers, groundwater losses or water from outside the catchment, and any kept with
+# a baseflow index above 0.85), each with two seeds:
+#   chosen        the protocol, as in the main trial
+#   compatible    the nearest structure that takes the extension (a cubic store for an
+#                 exponential one, standard recharge for demand), where the chosen one does not
+#   underflow     that structure with the extension's underflow (ku, Dbu) searched
 #   abstraction   that structure with a constant abstraction (ca) searched
-# each with two seeds. The test windows are not scored: the test is kept for the final protocol.
+#   import        that structure with springs free to bring water in (alpha_b below 0), for
+#                 catchments whose runoff ratio is above 0.9
+# The test windows are not scored: the test is kept for the final protocol.
 
 library(pdmS7)
 library(data.table)
@@ -63,6 +79,7 @@ if (!nzchar(store)) stop("Set CAMELS_STORE to the pipeline's store root", call. 
 cores <- as.integer(Sys.getenv("CAMELS_CORES", "12"))
 n_trial <- as.integer(Sys.getenv("CAMELS_N", "12"))
 n_groundwater <- as.integer(Sys.getenv("CAMELS_GW_N", "6"))
+snow_min <- as.numeric(Sys.getenv("CAMELS_SNOW_MIN", "0.05"))
 starts <- as.integer(Sys.getenv("CAMELS_STARTS", "3"))
 budget <- as.integer(Sys.getenv("CAMELS_BUDGET", "600"))
 work <- Sys.getenv("CAMELS_WORK", file.path(tempdir(), "camels-trial"))
@@ -73,14 +90,13 @@ camels <- file.path(store, "gold", "camels_gb_v2")
 target <- file.path(camels, "trial")
 dir.create(work, recursive = TRUE, showWarnings = FALSE)
 
-# The main trial frees the rainfall factor within 0.8 to 1.2: gridded rain can be biased at a
-# catchment, and a factor fixed at 1 makes the stores absorb the bias instead. The groundwater
-# arm fixes it at 1, so it cannot trade off against the losses being tested.
-free_fc <- list(fc = c(0.8, 1.2))
+# The rainfall factor is fixed at 1 in every arm: freed within 0.8 to 1.2 in trial 3, it traded
+# off against the soil store and recharge at seven of twelve catchments.
 fixed_fc <- NULL
-# The groundwater extension's starting values: a slow underflow, or a small constant
-# abstraction. Only the parameters named are searched (calibration_bounds()).
-extensions <- list(underflow = list(ku = 1e4, dbu = 0), abstraction = list(ca = 0.001))
+# The groundwater extension's starting values: a slow underflow, a small constant abstraction,
+# or springs bringing water in. Only the parameters named are searched (calibration_bounds()).
+extensions <- list(underflow = list(ku = 1e4, dbu = 0), abstraction = list(ca = 0.001),
+                   import = list(alpha_b = -0.2))
 
 # ---- The catchments ---------------------------------------------------------------------
 
@@ -99,19 +115,29 @@ spread_pick <- function(ids, n) {
   if (n <= 0 || !length(ids)) return(character(0))
   ids[unique(round(seq(1, length(ids), length.out = min(n, length(ids)))))]
 }
+ratio_of <- function(g) {
+  if (!"runoff_ratio" %in% names(signatures)) return(rep(NA_real_, length(g)))
+  signatures$runoff_ratio[match(g, signatures$gauge_id)]
+}
+snow_of <- function(g) {
+  if (!"frac_snow" %in% names(descriptors)) return(rep(NA_real_, length(g)))
+  as.numeric(descriptors$frac_snow[match(g, descriptors$gauge_id)])
+}
 describe <- function(ids) {
   data.frame(gauge = ids, bfi = round(bfi_of(ids), 2),
              name = screen$gauge_name[match(ids, screen$gauge_id)],
-             area_km2 = as.numeric(descriptors$area[match(ids, descriptors$gauge_id)]))
+             area_km2 = as.numeric(descriptors$area[match(ids, descriptors$gauge_id)]),
+             frac_snow = round(snow_of(ids), 3))
 }
 kept <- screen$gauge_id[as.logical(screen$use)]
 sample <- describe(spread_pick(kept, n_trial))
 cat("Main trial catchments (baseflow index):\n")
 print(sample, row.names = FALSE)
 
-# The groundwater arm: catchments left out only for their aquifers or groundwater losses, and
-# kept catchments with a baseflow index above 0.85.
-groundwater_reasons <- c("highly productive aquifer", "groundwater losses")
+# The groundwater arm: catchments left out only for their aquifers, groundwater losses or water
+# from outside the catchment, and kept catchments with a baseflow index above 0.85.
+groundwater_reasons <- c("highly productive aquifer", "groundwater losses",
+                         "water from outside the catchment")
 only_groundwater <- vapply(strsplit(screen$reasons, "; ", fixed = TRUE), function(r) {
   length(r) > 0 && all(r %in% groundwater_reasons)
 }, logical(1))
@@ -121,6 +147,11 @@ gw_sample <- describe(spread_pick(gw_pool, n_groundwater))
 if (nrow(gw_sample)) {
   cat("\nGroundwater arm catchments (baseflow index):\n")
   print(gw_sample, row.names = FALSE)
+}
+snow_sample <- sample[is.finite(sample$frac_snow) & sample$frac_snow >= snow_min, ]
+if (nrow(snow_sample)) {
+  cat("\nSnow arm catchments (snow share of precipitation):\n")
+  print(snow_sample[, c("gauge", "name", "frac_snow")], row.names = FALSE)
 }
 
 # The calibrations run in separate R worker processes, which on Databricks cannot read the
@@ -142,6 +173,7 @@ if (!all(copied)) {
 }
 sample <- sample[sample$gauge %in% all_gauges[copied], ]
 gw_sample <- gw_sample[gw_sample$gauge %in% all_gauges[copied], ]
+snow_sample <- snow_sample[snow_sample$gauge %in% all_gauges[copied], ]
 if (!nrow(sample) && !nrow(gw_sample)) {
   stop("No hourly tables could be copied from ", camels, call. = FALSE)
 }
@@ -167,6 +199,25 @@ fresh_structure <- function(cfg) {
   out
 }
 
+# The nearest structure that takes the groundwater extension: a cubic store for an exponential
+# one, and standard recharge for demand (pdmS7 allows neither with the extension).
+compatible_structure <- function(cfg) {
+  out <- cfg
+  if (identical(cfg$groundwater$type, "exponential")) {
+    out$groundwater <- c(list(type = "cubic"),
+                         lapply(formals(pdmS7:::.route_registry()$cubic), eval, envir = baseenv()))
+  }
+  if (identical(cfg$recharge$type, "demand")) {
+    out$recharge <- c(list(type = "standard"),
+                      lapply(formals(pdmS7:::.recharge_registry()$standard), eval,
+                             envir = baseenv()))
+  }
+  out
+}
+types_of <- function(cfg) {
+  paste(cfg$recharge$type, cfg$distribution$type, cfg$groundwater$type, sep = " / ")
+}
+
 make_stages <- function(overrides) {
   function(config) {
     s <- pdm_stages(config, overrides = overrides, events = TRUE, td_max = 6,
@@ -184,6 +235,15 @@ run_one <- function(job) {
   out <- tryCatch({
     x <- camels_forcing(camels_read(local_store, job$gauge))
     w <- camels_windows(x$forcing$time)
+    reasoning <- "CAMELS-GB v2: CEH-GEAR hourly rain, Hydro-PE, hourly flow."
+    if (isTRUE(job$snow)) {
+      # PACK at its default parameters turns precipitation and the day's temperature into the
+      # rain and melt reaching the ground; that is what the PDM is calibrated on.
+      if (anyNA(x$forcing$temperature)) stop("Temperature missing inside the rain years")
+      x$forcing$rain <- sim_pack(x$forcing$rain, x$forcing$temperature, pack_presets(),
+                                 timestep_min = 60L)$effective_rain_mm
+      reasoning <- paste(reasoning, "Rain is PACK rain plus melt, at PACK's default parameters.")
+    }
     area <- job$area_km2
     project <- file.path(work, "runs", job$arm, paste0("seed", job$seed), job$gauge)
     structure <- job$structure
@@ -200,16 +260,16 @@ run_one <- function(job) {
                       starts = starts, seed = job$seed, control = list(maxit = budget),
                       method = "dds", catchment = job$name, gauge = job$gauge,
                       purpose = paste("CAMELS-GB trial,", job$arm), test = w$test,
-                      wettest_years = 0,
-                      reasoning = "CAMELS-GB v2: CEH-GEAR hourly rain, Hydro-PE, hourly flow.")
+                      wettest_years = 0, reasoning = reasoning)
     s <- read_projects(project)
+    wb <- tryCatch(water_balance(x$forcing, x$observed, area)$record, error = function(e) NULL)
     list(state = "done", message = "", project = project,
          nse_calibration = s$candidate_score, nse_validation = s$validation_score,
          config = read_entry(project, s$candidate)$configuration,
          flow_missing_pct = x$summary$flow_missing_pct,
-         runoff_ratio = tryCatch(
-           water_balance(x$forcing, x$observed, area)$record$runoff_ratio,
-           error = function(e) NA_real_))
+         runoff_ratio = if (is.null(wb)) NA_real_ else wb$runoff_ratio,
+         loss_over_pet = if (is.null(wb)) NA_real_ else wb$loss_over_pet,
+         balance_flags = if (is.null(wb)) "" else wb$flags)
   }, error = function(e) list(state = "failed", message = conditionMessage(e)))
   out$gauge <- job$gauge
   out$arm <- job$arm
@@ -243,44 +303,52 @@ run_all <- function(jobs) {
   results
 }
 
-job <- function(row, arm, seed, overrides, structure = NULL, extension = NULL) {
+job <- function(row, arm, seed, overrides, structure = NULL, extension = NULL, snow = FALSE) {
   list(gauge = row$gauge, name = row$name, area_km2 = row$area_km2, arm = arm, seed = seed,
-       overrides = overrides, structure = structure, extension = extension)
+       overrides = overrides, structure = structure, extension = extension, snow = snow)
 }
 rows <- function(d) lapply(seq_len(nrow(d)), function(i) d[i, ])
 
-# ---- Round 1: every structure choice ----------------------------------------------------
+# ---- Round 1: every run of the whole protocol ------------------------------------------
 
-round1 <- c(lapply(rows(sample), job, arm = "main", seed = 1, overrides = free_fc),
-            lapply(rows(gw_sample), job, arm = "chosen", seed = 1, overrides = fixed_fc))
-cat("\nRound 1: choosing the structure and calibrating,", length(round1), "calibrations\n")
+# Both seeds run the whole protocol, structure choice included: the seed test then asks what
+# the bulk run relies on, whether the protocol gives the same model twice.
+round1 <- list()
+for (seed in 1:2) {
+  round1 <- c(round1,
+              lapply(rows(sample), job, arm = "main", seed = seed, overrides = fixed_fc),
+              lapply(rows(snow_sample), job, arm = "snow", seed = seed, overrides = fixed_fc,
+                     snow = TRUE),
+              lapply(rows(gw_sample), job, arm = "chosen", seed = seed, overrides = fixed_fc))
+}
+cat("\nRound 1: the whole protocol, two seeds,", length(round1), "calibrations\n")
 first <- run_all(round1)
 if (!any(vapply(first, function(r) identical(r$state, "done"), logical(1)))) {
   stop("Every calibration failed in round 1; the reasons are above", call. = FALSE)
 }
 
-# ---- Round 2: the second seeds and the groundwater variants -----------------------------
+# ---- Round 2: the groundwater variants --------------------------------------------------
 
-chosen <- function(arm, gauge) {
-  r <- first[[paste(arm, gauge, 1)]]
-  if (identical(r$state, "done")) fresh_structure(r$config)
-}
 round2 <- list()
-for (row in rows(sample)) {
-  s <- chosen("main", row$gauge)
-  if (!is.null(s)) round2 <- c(round2, list(job(row, "main", 2, free_fc, s)))
-}
 for (row in rows(gw_sample)) {
-  s <- chosen("chosen", row$gauge)
-  if (is.null(s)) next
-  round2 <- c(round2, list(job(row, "chosen", 2, fixed_fc, s)))
-  for (arm in names(extensions)) {
-    for (seed in 1:2) {
-      round2 <- c(round2, list(job(row, arm, seed, fixed_fc, s, extensions[[arm]])))
+  r <- first[[paste("chosen", row$gauge, 1)]]
+  if (!identical(r$state, "done")) next
+  chosen_fresh <- fresh_structure(r$config)
+  base <- compatible_structure(chosen_fresh)
+  variants <- names(extensions)
+  if (!(is.finite(ratio_of(row$gauge)) && ratio_of(row$gauge) > 0.9)) {
+    variants <- setdiff(variants, "import")
+  }
+  for (seed in 1:2) {
+    if (!identical(types_of(base), types_of(chosen_fresh))) {
+      round2 <- c(round2, list(job(row, "compatible", seed, fixed_fc, base)))
+    }
+    for (arm in variants) {
+      round2 <- c(round2, list(job(row, arm, seed, fixed_fc, base, extensions[[arm]])))
     }
   }
 }
-cat("Round 2: second seeds and groundwater variants,", length(round2), "calibrations\n")
+cat("Round 2: groundwater variants,", length(round2), "calibrations\n")
 results <- c(first, run_all(round2))
 
 # ---- Tables -----------------------------------------------------------------------------
@@ -306,6 +374,8 @@ row_of <- function(r) {
                      nse_calibration = r$nse_calibration %||% NA_real_,
                      nse_validation = r$nse_validation %||% NA_real_,
                      runoff_ratio = r$runoff_ratio %||% NA_real_,
+                     loss_over_pet = r$loss_over_pet %||% NA_real_,
+                     balance_flags = r$balance_flags %||% "",
                      flow_missing_pct = r$flow_missing_pct %||% NA_real_)
   if (!identical(r$state, "done")) return(base)
   cfg <- r$config
@@ -314,19 +384,29 @@ row_of <- function(r) {
         groundwater = cfg$groundwater$type, as.data.frame(as.list(v), check.names = FALSE))
 }
 runs <- rbindlist(lapply(results, row_of), fill = TRUE)
-runs <- as.data.table(merge(unique(rbind(sample, gw_sample)), runs, by = "gauge",
+runs <- as.data.table(merge(unique(rbind(sample, gw_sample, snow_sample)), runs, by = "gauge",
                             all.y = TRUE, sort = FALSE))
 runs <- runs[order(runs$arm, runs$bfi, runs$seed), ]
 
 # How far apart the seeds put each parameter, as a share of its search range (on the log scale
 # for parameters searched on it). Within 5% of every range and 0.01 NSE: one seed will do.
 # `apart` lists every parameter more than 5% apart: those the search, or the record, has not
-# settled. A wide share with the same score means the record does not determine it.
+# settled. A wide share with the same score means the record does not determine it. Where the
+# two seeds chose different structures, their parameters are not comparable: the row says so.
 seed_pair <- function(arm, g) {
   a <- results[[paste(arm, g, 1)]]
   b <- results[[paste(arm, g, 2)]]
   if (is.null(a) || is.null(b) || !identical(a$state, "done") || !identical(b$state, "done")) {
     return(NULL)
+  }
+  if (!identical(types_of(a$config), types_of(b$config))) {
+    return(data.frame(arm = arm, gauge = g, same_structure = FALSE,
+                      structure_1 = types_of(a$config), structure_2 = types_of(b$config),
+                      nse_validation_1 = a$nse_validation, nse_validation_2 = b$nse_validation,
+                      nse_difference = b$nse_validation - a$nse_validation,
+                      widest_share = NA_real_, widest_parameter = NA_character_,
+                      kb_share = NA_real_, widest_without_kb = NA_real_,
+                      apart = "different structures", consistent = FALSE))
   }
   bounds <- calibration_bounds(a$config, overrides = a$overrides)
   va <- parameters(a$config, a$overrides)
@@ -340,8 +420,9 @@ seed_pair <- function(arm, g) {
   }, numeric(1))
   names(share) <- names(va)
   others <- share[names(share) != "groundwater.kb"]
-  data.frame(arm = arm, gauge = g, nse_validation_1 = a$nse_validation,
-             nse_validation_2 = b$nse_validation,
+  data.frame(arm = arm, gauge = g, same_structure = TRUE,
+             structure_1 = types_of(a$config), structure_2 = types_of(b$config),
+             nse_validation_1 = a$nse_validation, nse_validation_2 = b$nse_validation,
              nse_difference = b$nse_validation - a$nse_validation,
              widest_share = max(share), widest_parameter = names(share)[which.max(share)],
              kb_share = if ("groundwater.kb" %in% names(share)) share[["groundwater.kb"]] else NA,
@@ -357,17 +438,33 @@ seed_test <- rbindlist(lapply(seq_len(nrow(pairs)), function(i) {
 
 main1 <- runs[runs$arm == "main" & runs$seed == 1 & runs$state == "done", ]
 structures <- main1[, c("gauge", "name", "bfi", "recharge", "distribution", "groundwater",
-                        "nse_validation", "runoff_ratio")]
+                        "nse_validation", "runoff_ratio", "loss_over_pet", "balance_flags")]
 
 # The groundwater arm side by side: for each catchment and arm, both seeds' validation scores
 # and whether the seeds agree. The extension earns its place where it scores clearly higher
 # than the chosen structure and its seeds agree.
-groundwater <- if (nrow(gw_sample) && nrow(seed_test)) {
-  g <- runs[runs$arm %in% c("chosen", names(extensions)) & runs$seed == 1,
-            c("gauge", "name", "bfi", "arm", "state", "nse_validation", "runoff_ratio")]
-  st <- seed_test[seed_test$arm %in% c("chosen", names(extensions)),
-                  c("arm", "gauge", "nse_validation_2", "consistent", "apart")]
+gw_arms <- c("chosen", "compatible", names(extensions))
+side_by_side <- function(arms) {
+  keep <- intersect(c("gauge", "name", "bfi", "arm", "state", "nse_validation",
+                      "runoff_ratio", "recharge", "groundwater"), names(runs))
+  g <- runs[runs$arm %in% arms & runs$seed == 1, ..keep]
+  if (!nrow(g)) return(NULL)
+  st <- if (nrow(seed_test)) {
+    seed_test[seed_test$arm %in% arms, c("arm", "gauge", "nse_validation_2", "consistent",
+                                         "apart")]
+  } else {
+    data.table(arm = character(0), gauge = character(0))
+  }
   merge(g, st, by = c("arm", "gauge"), all.x = TRUE)[order(bfi, gauge, arm)]
+}
+groundwater <- if (nrow(gw_sample)) side_by_side(gw_arms)
+# The snow arm beside the same catchments' main runs: PACK earns its place where it scores
+# clearly higher.
+snow <- if (nrow(snow_sample)) {
+  out <- side_by_side(c("main", "snow"))
+  out <- out[out$gauge %in% snow_sample$gauge]
+  out$frac_snow <- snow_sample$frac_snow[match(out$gauge, snow_sample$gauge)]
+  out
 }
 
 n_bulk <- sum(as.logical(screen$use))
@@ -385,7 +482,11 @@ if (!is.null(groundwater)) {
   cat("\nGroundwater arm\n")
   print(groundwater, row.names = FALSE, digits = 3)
 }
-cat("\nRuntime (main trial, seed 1: structure choice and calibration)\n")
+if (!is.null(snow)) {
+  cat("\nSnow arm\n")
+  print(snow, row.names = FALSE, digits = 3)
+}
+cat("\nRuntime (main trial, one run of the whole protocol)\n")
 print(runtime, row.names = FALSE, digits = 3)
 
 # ---- Results to the volume --------------------------------------------------------------
@@ -395,6 +496,7 @@ fwrite(runs, file.path(target, "runs.csv"))
 fwrite(seed_test, file.path(target, "seed_test.csv"))
 fwrite(structures, file.path(target, "structures.csv"))
 if (!is.null(groundwater)) fwrite(groundwater, file.path(target, "groundwater.csv"))
+if (!is.null(snow)) fwrite(snow, file.path(target, "snow.csv"))
 fwrite(runtime, file.path(target, "runtime.csv"))
 file.copy(file.path(work, "runs"), target, recursive = TRUE)
 cat("\nWritten to", target, "\n")
