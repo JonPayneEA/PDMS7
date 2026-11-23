@@ -1,5 +1,12 @@
 # pdmS7 0.37.0
 
+- **The CAMELS-GB bulk calibration**, `inst/scripts/camels_bulk.R`: every screened catchment
+  through the protocol settled in trials 1 to 4, with PACK where there is snow, the
+  groundwater extension where the water balance calls for it (kept only if better by more than
+  0.02 NSE), and a free rainfall factor where the rain is likely too low. Each result records
+  the structures equally good at each step of the choice. It runs in chunks, copies each
+  chunk's results to the store as it ends, and resumes where it stopped.
+
 - **A structure that cannot run no longer ends a comparison.** `compare_structures()`, and so
   `recommend_structure()` and `calibrate_project(recommend = TRUE)`, leave out a structure whose
   calibration fails on the record (an exponential store on a record that starts at zero flow,
