@@ -30,9 +30,9 @@
 #        Rscript calibrate_site.R my_site.yml
 #   3. Read summary.md in the output folder. It says what each result means and what to do.
 #      The results stay in the R session too: wb, events, model, checks, series, scenarios.
-#   4. Every plot has a note beside the line that draws it, saying what it shows, what good
-#      looks like and what should worry you: search this script for "HOW TO READ" and the
-#      plot's file name, such as "HOW TO READ budyko.png".
+#   4. how_to_read_the_plots.md in the output folder says, for each plot drawn, what it
+#      shows, what good looks like and what should worry you. The same notes sit beside the
+#      lines that draw the plots below: search for "HOW TO READ" and the plot's file name.
 #
 # The steps
 #   1. Data       read, line up and check the series; count gaps
@@ -113,12 +113,69 @@ summary_lines <- c(sprintf("# %s: calibration summary", site$name), "",
                    sprintf("Settings: %s. Effort: %s. pdmS7 %s, %s.", basename(s$file),
                            effort, utils::packageVersion("pdmS7"), format(Sys.Date())), "")
 summary_lines <- c(summary_lines,
-                   paste("How to read each plot: search calibrate_site.R for \"HOW TO READ\"",
-                         "and the plot's name. Open the script with `file.edit(system.file(",
-                         "\"scripts\", \"calibrate_site.R\", package = \"pdmS7\"))`."),
+                   paste("How to read each plot: `how_to_read_the_plots.md`, in this folder."),
                    "")
 note <- function(...) summary_lines <<- c(summary_lines, unlist(list(...)))
-write_summary <- function() writeLines(summary_lines, file.path(out, "summary.md"))
+
+# The reading guide: the HOW TO READ notes in this script, collected into one file for the
+# plots this run drew, in step order. They are read from the installed script, so the notes
+# beside the code and the guide are always the same text.
+write_reading_guide <- function() {
+  src <- system.file("scripts", "calibrate_site.R", package = "pdmS7")
+  if (!nzchar(src)) return(invisible(NULL))
+  code <- readLines(src, warn = FALSE)
+  steps <- c("1_data" = "1. The data", "2_water_balance" = "2. The water balance",
+             "3_events" = "3. Floods and their rain", "5_diagnostics" = "5. Diagnostics",
+             "6_input_uncertainty" = "6. Input uncertainty")
+  # Only the plots in the step folders themselves; the calibration report keeps its own.
+  drawn <- unlist(lapply(names(steps), function(f) {
+    file.path(f, list.files(file.path(out, f), "\\.png$"))
+  }))
+  guide <- c("# How to read the plots", "",
+             sprintf("%s. Each plot this run drew, in the order of the steps: what it shows,",
+                     site$name),
+             "what good looks like, and what should worry you.", "")
+  heading <- ""
+  for (i in grep("^\\s*# HOW TO READ ", code)) {
+    name <- sub("^\\s*# HOW TO READ ", "", code[i])
+    where <- drawn[basename(drawn) == name]
+    if (!length(where)) next
+    j <- i + 1
+    while (j <= length(code) && grepl("^\\s*#", code[j]) && !grepl("HOW TO READ", code[j])) {
+      j <- j + 1
+    }
+    text <- sub("^\\s*# ?", "", code[seq.int(i + 1, j - 1)])
+    # Description lines join into a paragraph; "Good:", "Worry if:" and the like each start
+    # a bullet, and the indented lines after one continue it.
+    items <- character(0)
+    in_bullet <- FALSE
+    for (line in text) {
+      if (grepl("^(Good|Worry if|What it shows|Typical):", line)) {
+        items <- c(items, sub("^([^:]+):", "- **\\1:**", line))
+        in_bullet <- TRUE
+      } else if (in_bullet) {
+        items[length(items)] <- paste(items[length(items)], trimws(line))
+      } else {
+        items <- c(items, trimws(line))
+      }
+    }
+    folder <- dirname(where[1])
+    if (folder != heading) {
+      guide <- c(guide, paste("##", steps[[folder]]), "")
+      heading <- folder
+    }
+    first <- which(grepl("^- ", items))[1]
+    paragraph <- if (is.na(first)) items else items[seq_len(first - 1)]
+    bullets <- if (is.na(first)) character(0) else items[first:length(items)]
+    guide <- c(guide, sprintf("### `%s`", where[1]), "", paste(paragraph, collapse = " "), "",
+               if (length(bullets)) c(bullets, ""))
+  }
+  writeLines(guide, file.path(out, "how_to_read_the_plots.md"))
+}
+write_summary <- function() {
+  writeLines(summary_lines, file.path(out, "summary.md"))
+  write_reading_guide()
+}
 say("pdmS7 single-site calibration: %s (%s km2), effort %s", site$name, area, effort)
 
 # ---- 1. Data ----------------------------------------------------------------------------

@@ -185,7 +185,8 @@ The first run checks the data and stops: the water balance year by year (runoff 
 losses against evaporation, the Budyko plot and the double-mass curve), and each flood's quick
 flow against its rain. Once those look sound, set `stop_after_checks: false` and run it again
 to calibrate, draw the diagnostic plots, and see how far the flow moves when the rain or the
-evaporation is 10% out. Read `summary.md` in the output folder.
+evaporation is 10% out. Read `summary.md` in the output folder, and
+`how_to_read_the_plots.md` beside it for what each plot shows and what should worry you.
 
 ## Quick start
 

@@ -12,7 +12,8 @@
   flow with the rain and the evaporation 10% out. Given several rain files it compares their
   totals and runoff ratios. The first run stops after the checks. Every plot has a "HOW TO
   READ" note beside the line that draws it: what it shows, what good looks like, and what
-  should worry you.
+  should worry you. The run collects the notes for the plots it drew into
+  `how_to_read_the_plots.md` in the output folder.
 - **`read_site_settings()`** reads the settings file into R and checks it, reporting every
   problem at once (a missing file, an area that is not a number, validation years that
   overlap calibration), fills the defaults and makes the paths absolute. The settings print

@@ -99,3 +99,15 @@ test_that("settings changed in R are checked again", {
   s$area_km2 <- -1
   expect_error(read_site_settings(s), "area_km2")
 })
+
+test_that("every HOW TO READ note names a plot the script writes", {
+  # The reading guide matches notes to plots by file name, so a note whose name drifts from
+  # the file the script writes would silently drop out of the guide.
+  code <- readLines(system.file("scripts", "calibrate_site.R", package = "pdmS7"))
+  notes <- sub("^\\s*# HOW TO READ ", "", grep("^\\s*# HOW TO READ ", code, value = TRUE))
+  expect_length(notes, 23)
+  written <- code[!grepl("^\\s*#", code)]
+  for (name in notes) {
+    expect_true(any(grepl(sprintf('"%s"', name), written, fixed = TRUE)), info = name)
+  }
+})
