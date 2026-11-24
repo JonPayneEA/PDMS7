@@ -16,15 +16,17 @@
 # Outputs:      An output folder: summary.md, then 1_data, 2_water_balance, 3_events,
 #               4_calibration (the calibration project and its report), 5_diagnostics and
 #               6_input_uncertainty, each with plots (PNG) and tables (CSV)
-# Dependencies: pdmS7 (0.38.0 or later); data.table; yaml
+# Dependencies: pdmS7 (0.39.0 or later); data.table; yaml
 # ============================================================ #
 #
 # How to run it
-#   1. Copy the example settings and fill in its first section:
-#        file.copy(system.file("examples", "site.yml", package = "pdmS7"), "my_site.yml")
-#   2. Load them into R, look at them, and run this script:
+#   1. Set up a folder, put the CSV files in its data folder, and fill in section 1 of its
+#      site.yml:
 #        library(pdmS7)
-#        settings <- read_site_settings("my_site.yml")
+#        new_site("My_River")
+#      To practise first on made-up data, ready to run: new_site("Practice", practice = TRUE)
+#   2. Load the settings into R, look at them, and run this script:
+#        settings <- read_site_settings("My_River/site.yml")
 #        settings
 #        source(system.file("scripts", "calibrate_site.R", package = "pdmS7"))
 #      Change a setting in R as in the file, such as settings$effort <- "quick", and run the
@@ -64,7 +66,7 @@ suppressPackageStartupMessages({
   library(pdmS7)
   library(data.table)
 })
-stopifnot(utils::packageVersion("pdmS7") >= "0.38.0")
+stopifnot(utils::packageVersion("pdmS7") >= "0.39.0")
 `%||%` <- function(x, y) if (is.null(x)) y else x
 say <- function(...) cat(sprintf(...), "\n", sep = "")
 listed <- function(x) if (length(x)) paste(x, collapse = ", ") else "none"
@@ -81,9 +83,10 @@ if (exists("settings", inherits = FALSE) && inherits(settings, "pdm_site_setting
   settings_file <- if (length(args)) args[1] else Sys.getenv("PDM_SITE_CONFIG")
   if (!nzchar(settings_file) && interactive()) settings_file <- file.choose()
   if (!nzchar(settings_file) || !file.exists(settings_file)) {
-    stop("No settings. Copy the example with file.copy(system.file(\"examples\", \"site.yml\", ",
-         "package = \"pdmS7\"), \"my_site.yml\"), fill it in, then ",
-         "settings <- read_site_settings(\"my_site.yml\") and run this again.", call. = FALSE)
+    stop("No settings. Set up a folder with new_site(\"My_River\"), put the data in it and ",
+         "fill in its site.yml, then settings <- read_site_settings(\"My_River/site.yml\") ",
+         "and run this again. To practise first: new_site(\"Practice\", practice = TRUE).",
+         call. = FALSE)
   }
   settings <- read_site_settings(settings_file)
 }
@@ -422,8 +425,9 @@ fwrite(recessions$stores, file.path(d3, "recession_stores.csv"))
 #   soil water then groundwater); or the calibration later picks a store far from this one.
 png_of(file.path(d3, "recessions.png"), function() plot(recessions))
 note(sprintf(paste("- Recessions: the flow falls with a slope of %.2f (95%% interval %.2f to",
-                   "%.2f), nearest a **%s** store; consistent with the record: %s."),
-             recessions$slope, recessions$ci[1], recessions$ci[2], recessions$nearest,
+                   "%.2f), nearest %s **%s** store; consistent with the record: %s."),
+             recessions$slope, recessions$ci[1], recessions$ci[2],
+             if (grepl("^[aeiou]", recessions$nearest)) "an" else "a", recessions$nearest,
              listed(recessions$stores$store[recessions$stores$within_ci])),
      "  `recessions.png` shows it; the calibration's choice of groundwater store can be",
      "  checked against it.", "")
@@ -452,6 +456,8 @@ if (length(gauge_names)) {
   #   the differences: read the order and the gaps, not the values alone.
   png_of(file.path(d3, "gauge_response.png"), function() plot(response))
   odd <- response$summary$gauge[response$summary$lag_h < 0 | response$summary$dry_events > 1]
+  lags <- stats::setNames(response$summary$lag_h, response$summary$gauge)
+  apart <- length(lags) > 1 && diff(range(lags)) >= 1
   note(sprintf("- Rain gauges: %s. %s", paste(gauge_names, collapse = ", "),
                if (length(odd)) {
                  sprintf("Check %s: a negative lag or several dry events.",
@@ -459,6 +465,12 @@ if (length(gauge_names)) {
                } else {
                  "None has a negative lag or repeated dry events."
                }),
+       if (apart) {
+         c(sprintf("  The river answers to them at lags of %s.",
+                   paste(sprintf("%s %g h", names(lags), lags), collapse = ", ")),
+           "  Gauges a whole hour or more apart often mean a clock or time-zone error in one:",
+           "  check the gauge whose lag differs from the rest, or from its neighbours on the map.")
+       },
        "  See `gauge_response.png` and `gauge_response.csv`.", "")
 }
 write_summary()

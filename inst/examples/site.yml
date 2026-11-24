@@ -2,7 +2,9 @@
 # Settings for calibrating one site with pdmS7
 #
 # How to use this file
-#   1. Copy it next to your data, for example as my_site.yml.
+#   1. new_site("My_River") in R makes a folder with this file in it and a data folder;
+#      put your CSV files in the data folder. (new_site("Practice", practice = TRUE) makes
+#      one with made-up data, ready to run.)
 #   2. Fill in the section "1. Fill these in". Leave the rest as it is to begin with.
 #   3. In R:
 #        library(pdmS7)

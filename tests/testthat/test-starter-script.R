@@ -139,3 +139,36 @@ test_that("rain gauges, the rain error and the regional results are read and che
   s$regional_results <- file.path(home, "missing.csv")
   expect_error(read_site_settings(s), "regional_results")
 })
+
+test_that("new_site() sets up an empty site that explains itself when read too soon", {
+  folder <- file.path(tempfile("new"), "Mine")
+  file <- suppressMessages(new_site(folder))
+  expect_identical(file, file.path(folder, "site.yml"))
+  expect_true(file.exists(file.path(folder, "data", "README.txt")))
+  # The untouched example names data files that are not there yet: the error says so, and
+  # says what to do.
+  err <- tryCatch(read_site_settings(file), error = conditionMessage)
+  expect_match(err, "Cannot find a flow file")
+  expect_match(err, "still the example settings")
+  expect_match(err, "practice = TRUE", fixed = TRUE)
+})
+
+test_that("new_site(practice = TRUE) is ready to run and never overwrites", {
+  folder <- file.path(tempfile("practice"), "Practice")
+  file <- suppressMessages(new_site(folder, practice = TRUE))
+  s <- read_site_settings(file)
+  expect_identical(s$area_km2, 60)
+  expect_identical(s$step_hours, 1)
+  expect_identical(names(s$rain_gauges), c("Gauge A", "Gauge B"))
+  expect_identical(s$highest_gauged_m3s, 25L)
+  # Six 365-day years of hourly steps: 6 x 365 x 24 = 52560 rows, plus the header.
+  expect_length(readLines(s$flow), 52561)
+  # The truth: the standard preset with 12-hour surface stores, as synthetic_catchment()
+  # documents.
+  truth <- utils::read.csv(file.path(folder, "data", "truth.csv"))
+  expect_identical(truth$value[truth$parameter == "surface.k1"], 12)
+  # A second call keeps what is there.
+  writeLines("edited", file.path(folder, "data", "rain.csv"))
+  expect_message(new_site(folder, practice = TRUE), "never overwrites")
+  expect_identical(readLines(file.path(folder, "data", "rain.csv")), "edited")
+})
