@@ -279,6 +279,10 @@ reference:
   desc: The same logged protocol for many basins, resumable after any interruption.
   contents:
   - calibrate_batch
+- title: Calibrating one site
+  desc: The settings for the starter script, inst/scripts/calibrate_site.R.
+  contents:
+  - read_site_settings
 - title: CAMELS-GB
   desc: CAMELS-GB v2 catchments, as the Input_Analysis_Pipeline prepares them, as batch input.
   contents:

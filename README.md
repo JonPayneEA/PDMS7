@@ -163,6 +163,33 @@ The full project download also provides standalone HTML readers in
 These readers work offline. The normal knitr-built package pages use the
 markdown renderer's online KaTeX assets for maths display.
 
+## Calibrating one site: the starter script
+
+New to R or the PDM? Start here. A settings file says where the data are and which years to
+use; a script does the rest and writes a plain-English summary of what it found.
+
+```r
+library(pdmS7)
+file.copy(system.file("examples", "site.yml", package = "pdmS7"), "my_site.yml")
+# Fill in the first section of my_site.yml, then:
+settings <- read_site_settings("my_site.yml")  # reads and checks it
+settings                                        # what will be run
+source(system.file("scripts", "calibrate_site.R", package = "pdmS7"))
+```
+
+`read_site_settings()` reports every problem in the file at once. Any setting can be changed
+in R before running, such as `settings$effort <- "quick"`, and the results stay in the session
+(`wb`, `events`, `model`, `series`, `scenarios`) to explore.
+
+The first run checks the data and stops: the water balance year by year (runoff ratios,
+losses against evaporation, the Budyko plot and the double-mass curve), and each flood's quick
+flow against its rain. Once those look sound, set `stop_after_checks: false` and run it again
+to calibrate and draw the diagnostic plots: warning thresholds and lead time, annual maxima,
+seasons and recessions, and, given the CAMELS-GB bulk results, the site among similar
+catchments. It then shows the band of flows that storm-by-storm rain errors allow. Read
+`summary.md` in the output folder, and `how_to_read_the_plots.md` beside it for what each
+plot shows and what should worry you.
+
 ## Quick start
 
 ```r

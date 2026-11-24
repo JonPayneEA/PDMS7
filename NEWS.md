@@ -1,3 +1,35 @@
+# pdmS7 0.38.0
+
+- **A starter script for one site**, `inst/scripts/calibrate_site.R`, with its settings file
+  `inst/examples/site.yml`, for someone new to R and the PDM. The settings name the data, the
+  catchment area and the calibration and validation years; everything else has a default. The
+  script writes six numbered folders of plots and tables and a `summary.md` that says what
+  each result means: the data and its gaps; the water balance by water year, with runoff
+  ratios, losses against evaporation, the Budyko plot, the double-mass curve and a verdict on
+  the rain; the floods and those set aside; the calibration, by the protocol of the CAMELS-GB
+  trials; the diagnostics (hydrographs, flow duration, residuals, bounds, peaks, timing, the
+  search, and with more effort the sensitivity, forecast skill and stress tests); and the
+  flow with the rain and the evaporation 10% out. Given several rain files it compares their
+  totals and runoff ratios. The first run stops after the checks. Every plot has a "HOW TO
+  READ" note beside the line that draws it: what it shows, what good looks like, and what
+  should worry you. The run collects the notes for the plots it drew into
+  `how_to_read_the_plots.md` in the output folder.
+- **More in the starter, for training.** Recessions (which groundwater store the river's dry
+  weather suggests, then the model's against the river's); with single gauge files, which
+  gauge the river answers to; hits, misses and false alarms at warning thresholds (stand-ins
+  at half QMED and QMED when none are given); the notice an hourly updated forecast gives
+  before each crossing, with the rain that fell; annual maxima, observed against modelled,
+  with the highest gauged flow; flow and bias by season; with the CAMELS-GB bulk results, the
+  site's structure, score and parameters beside the 20 catchments with the most similar water
+  balance; a band of flows from storm-by-storm rain errors (`rain_error`, 15% by default); and,
+  with effort thorough, a band from a Bayesian calibration. New settings: `rain_gauges`,
+  `rain_error`, `regional_results`, `bayes_generations`.
+- **`read_site_settings()`** reads the settings file into R and checks it, reporting every
+  problem at once (a missing file, an area that is not a number, validation years that
+  overlap calibration), fills the defaults and makes the paths absolute. The settings print
+  as a short list of what will be run, can be changed in R, and the starter script uses them
+  when it finds them in the session, leaving its results there too.
+
 # pdmS7 0.37.0
 
 - **The CAMELS-GB bulk calibration**, `inst/scripts/camels_bulk.R`: every screened catchment
