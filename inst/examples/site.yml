@@ -37,6 +37,11 @@ data:
   #   thiessen: rain_thiessen.csv
   #   nearest_gauge: rain_gauge_A.csv
   rain: rain.csv
+  # Optional: the single rain gauges the catchment rain is built from, one file each, named.
+  # They are checked against the river: which gauge the floods answer to, and which miss storms.
+  # rain_gauges:
+  #   Gauge A: gauge_a.csv
+  #   Gauge B: gauge_b.csv
 
 # Calibrate on one run of years, check on a later one. Use whole water years (1 October) and
 # leave at least a year before the calibration window for the model to warm up.
@@ -52,10 +57,18 @@ stop_after_checks: true          # true: check the data, write the summary, and 
 # standard: an hour or two, with the checks most people want. thorough: several hours, adds
 # the stress tests.
 effort: standard
+# With effort thorough, a Bayesian calibration runs this many generations (three chains):
+# 2000 takes about half an hour on ten years of 15-minute data.
+bayes_generations: 2000
 
 # Rainfall. The rainfall factor scales all the rain. Leave it fixed (1) unless the water
 # balance says the rain is too low or too high; then give a range, e.g. [0.9, 1.3].
 rainfall_factor: fixed
+
+# How far a storm's rain is typically out, as a fraction: 0.15 means 15%. Used to draw the
+# band of flows the rain's errors allow. 0.1 to 0.2 suits a catchment with several gauges; a
+# single gauge or radar alone may be out by more.
+rain_error: 0.15
 
 # Snow. If a fair share of the precipitation falls as snow (5% or more), give a temperature
 # file (deg C, any step up to daily) and set snow: true. PACK then turns precipitation into
@@ -73,6 +86,10 @@ highest_gauged_m3s: null         # the highest flow ever gauged; peaks above it 
 # Compare with an existing model on the same data (optional).
 pdm_for_pcs_inp: null            # a PDM for PCs input file
 previous_project: null           # a pdmS7 project folder from an earlier run
+
+# The CAMELS-GB bulk calibration's results.csv (optional). The site is then set beside the
+# catchments with the most similar water balance: their structures, scores and parameters.
+regional_results: null
 
 # Who is responsible, recorded in the calibration log.
 owner: Not recorded

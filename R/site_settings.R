@@ -36,8 +36,12 @@
 #'   `flow`, `pet`, `rain` (a named list; the first calibrates), `snow`, `temperature`,
 #'   `calibration`, `validation`, `output`, `stop_after_checks`, `effort`,
 #'   `rainfall_factor` (`NULL` when fixed, else the range to search), `thresholds` (a data
-#'   frame or `NULL`), `highest_gauged_m3s`, `pdm_for_pcs_inp`, `previous_project`, `owner`,
-#'   `steward`, and `file` and `home`, where the settings came from.
+#'   frame or `NULL`), `highest_gauged_m3s`, `pdm_for_pcs_inp`, `previous_project`,
+#'   `rain_gauges` (a named list of single-gauge files, or `NULL`), `rain_error` (the typical
+#'   error in a storm's rain, as a fraction), `regional_results` (the CAMELS-GB bulk run's
+#'   results file, or `NULL`), `bayes_generations` (the length of the Bayesian calibration
+#'   that effort thorough runs), `owner`, `steward`, and `file` and `home`, where the settings
+#'   came from.
 #' @export
 #' @examples
 #' settings <- read_site_settings(system.file("examples", "site.yml", package = "pdmS7"))
@@ -58,7 +62,9 @@ read_site_settings <- function(x) {
     stop_after_checks = raw$stop_after_checks, effort = raw$effort,
     rainfall_factor = raw$rainfall_factor, thresholds = raw$thresholds,
     highest_gauged_m3s = raw$highest_gauged_m3s, pdm_for_pcs_inp = raw$pdm_for_pcs_inp,
-    previous_project = raw$previous_project, owner = raw$owner, steward = raw$steward)
+    previous_project = raw$previous_project, owner = raw$owner, steward = raw$steward,
+    rain_gauges = raw$data$rain_gauges, rain_error = raw$rain_error,
+    regional_results = raw$regional_results, bayes_generations = raw$bayes_generations)
   path <- normalizePath(x)
   .check_site_settings(flat, path, dirname(path))
 }
@@ -122,6 +128,22 @@ read_site_settings <- function(x) {
     }), labels)
   }
   s$rain <- rain
+  gauges <- s$rain_gauges
+  if (length(gauges)) {
+    if (!is.list(gauges) || is.null(names(gauges)) || any(!nzchar(names(gauges)))) {
+      fail("Name each rain gauge file, such as rain_gauges: {Gauge A: gauge_a.csv}.")
+    } else {
+      gauges <- stats::setNames(lapply(names(gauges), function(n) {
+        existing(gauges[[n]], sprintf("the rain gauge file '%s' (data: rain_gauges)", n))
+      }), names(gauges))
+    }
+  }
+  s$rain_gauges <- if (length(gauges)) gauges
+  s$rain_error <- suppressWarnings(as.numeric(or(s$rain_error, 0.15)))
+  if (length(s$rain_error) != 1 || !is.finite(s$rain_error) || s$rain_error <= 0 ||
+      s$rain_error >= 1) {
+    fail("rain_error must be the typical error in a storm's rain, as a fraction: 0.15 for 15%.")
+  }
   s$snow <- isTRUE(s$snow)
   s$temperature <- if (s$snow) existing(s$temperature, "a temperature file for snow (temperature)")
   s$calibration <- window(s$calibration, "calibration")
@@ -168,6 +190,15 @@ read_site_settings <- function(x) {
       fail("No project folder at ", s$previous_project, " (previous_project).")
     }
   }
+  s$bayes_generations <- suppressWarnings(as.integer(or(s$bayes_generations, 2000L)))
+  if (length(s$bayes_generations) != 1 || is.na(s$bayes_generations) ||
+      s$bayes_generations < 100L) {
+    fail("bayes_generations must be a whole number of 100 or more, such as 2000.")
+  }
+  if (!is.null(s$regional_results)) {
+    s$regional_results <- existing(s$regional_results,
+                                   "the bulk run's results file (regional_results)", home)
+  }
   s$owner <- as.character(or(s$owner, "Not recorded"))
   s$steward <- as.character(or(s$steward, "Not recorded"))
   s$folder <- NULL
@@ -192,12 +223,19 @@ print.pdm_site_settings <- function(x, ...) {
     cat(sprintf("  Rain %-9s %s%s\n", paste0(n, ":"), x$rain[[n]],
                 if (n == names(x$rain)[1] && length(x$rain) > 1) " (calibrates)" else ""))
   }
+  if (length(x$rain_gauges)) {
+    cat("  Rain gauges:  ", paste(names(x$rain_gauges), collapse = ", "), "\n", sep = "")
+  }
   if (x$snow) cat("  Snow:          PACK, temperature from ", x$temperature, "\n", sep = "")
   cat("  Calibration:  ", window(x$calibration), "\n", sep = "")
   cat("  Validation:   ", window(x$validation), "\n", sep = "")
   cat("  Effort:       ", x$effort, "\n", sep = "")
   cat("  Rain factor:  ", if (is.null(x$rainfall_factor)) "fixed at 1" else
         paste("searched from", window(x$rainfall_factor)), "\n", sep = "")
+  cat("  Rain error:   storms ", round(100 * x$rain_error), "% out, typically\n", sep = "")
+  if (!is.null(x$regional_results)) {
+    cat("  Regional:     ", x$regional_results, "\n", sep = "")
+  }
   cat("  Output:       ", x$output, "\n", sep = "")
   cat(if (x$stop_after_checks) {
     "  Stops after checking the data (stop_after_checks is TRUE).\n"

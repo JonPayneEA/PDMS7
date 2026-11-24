@@ -8,7 +8,9 @@
 # Flode Module: standalone; target reach.hydro
 # Author:       pdmS7 contributors
 # Created:      2026-11-24
-# Modified:     2026-11-24 - First version
+# Modified:     2026-11-24 - First version; warnings, lead time, annual maxima, seasons,
+#               recessions, gauge response, regional context, storm-by-storm rain errors and
+#               parameter uncertainty
 # Tier:         1
 # Inputs:       A settings file like inst/examples/site.yml, and the CSV files it names
 # Outputs:      An output folder: summary.md, then 1_data, 2_water_balance, 3_events,
@@ -39,16 +41,24 @@
 #   2. Water      the water balance year by year: runoff ratios, losses against evaporation,
 #      balance    the Budyko plot and the double-mass curve. This is the first check on the
 #                 rain: a runoff ratio above 1 means more flow than rain
-#   3. Events     each flood's quick flow against its rain; storms the gauges missed
+#   3. Events     each flood's quick flow against its rain; storms the gauges missed; how the
+#                 river drains in dry weather (recessions); with single gauges, which one the
+#                 river answers to
 #   (the first run stops here: read the summary, then set stop_after_checks: false)
 #   4. Calibrate  the structure chosen on the record, then a staged search: water balance and
 #                 slow stores first, then the fast response, a polish that weighs high and low
 #                 flows fairly, and the largest floods
 #   5. Diagnose   hydrographs, flow duration, residuals, parameters against their limits, the
 #                 largest floods' peaks and timing, and, with effort standard or thorough,
-#                 which parameters the record determines and how well the model forecasts
-#   6. Input      how far the flow moves when the rain or the evaporation is 10% out, and, with
-#      uncertainty several rain files, how much they disagree
+#                 which parameters the record determines and how well the model forecasts.
+#                 Then floods and warnings: hits, misses and false alarms at warning
+#                 thresholds, the notice a forecast gives, annual maxima against the highest
+#                 gauged flow, the seasons, the model's recessions against the river's, and,
+#                 with the CAMELS-GB bulk results, the site among similar catchments
+#   6. Input      how far the flow moves when the rain or the evaporation is 10% out; a band
+#      uncertainty of flows from storm-by-storm rain errors; with effort thorough, a band from
+#                 parameter uncertainty (Bayesian); with several rain files, how much they
+#                 disagree
 
 suppressPackageStartupMessages({
   library(pdmS7)
@@ -57,6 +67,7 @@ suppressPackageStartupMessages({
 stopifnot(utils::packageVersion("pdmS7") >= "0.38.0")
 `%||%` <- function(x, y) if (is.null(x)) y else x
 say <- function(...) cat(sprintf(...), "\n", sep = "")
+listed <- function(x) if (length(x)) paste(x, collapse = ", ") else "none"
 
 # ---- Settings ---------------------------------------------------------------------------
 
@@ -86,11 +97,11 @@ validation <- s$validation
 effort <- s$effort
 plan <- list(
   quick = list(starts = 2L, budget = 150L, recommend = TRUE, sensitivity = FALSE,
-               forecast = FALSE, stress = FALSE),
+               forecast = FALSE, stress = FALSE, members = 50L, bayes = FALSE),
   standard = list(starts = 3L, budget = 300L, recommend = TRUE, sensitivity = TRUE,
-                  forecast = TRUE, stress = FALSE),
+                  forecast = TRUE, stress = FALSE, members = 100L, bayes = FALSE),
   thorough = list(starts = 4L, budget = 600L, recommend = TRUE, sensitivity = TRUE,
-                  forecast = TRUE, stress = TRUE)
+                  forecast = TRUE, stress = TRUE, members = 200L, bayes = TRUE)
 )[[effort]]
 overrides <- if (!is.null(s$rainfall_factor)) list(fc = s$rainfall_factor)
 options(pdmS7.user = Sys.getenv("USERNAME", Sys.getenv("USER", "analyst")),
@@ -185,6 +196,8 @@ d1 <- folder("1_data")
 raw <- c(list(flow = read_hydro_series(s$flow), pe = read_hydro_series(s$pet)),
          lapply(rain_files, read_hydro_series))
 if (s$snow) raw$temperature <- read_hydro_series(s$temperature)
+gauge_names <- names(s$rain_gauges)
+for (n in gauge_names) raw[[paste0("gauge: ", n)]] <- read_hydro_series(s$rain_gauges[[n]])
 grid <- do.call(align_series, c(raw, list(dt = dt)))
 flow <- convert_units(grid$flow, "auto", dt, "flow")
 pe <- fill_gaps(convert_units(grid$pe, "mm_per_step", dt, "pet"), "interpolate", grid$time, "pe")
@@ -392,6 +405,62 @@ note("## 3. Floods and their rain", "",
      "- `events_balance.png` sets each flood's quick flow against its rain. A flood with more",
      "  quick flow than rain is a storm the rain gauges missed: it would teach the model the",
      "  wrong lesson, so it is set aside. Many of them point to a poor rain record.", "")
+
+# Recessions: how the river drains in dry weather says which groundwater store suits it,
+# before any model is run.
+recessions <- recession_analysis(flow, forcing$rain, dt = dt, time = forcing$time)
+fwrite(recessions$stores, file.path(d3, "recession_stores.csv"))
+# HOW TO READ recessions.png
+# Each point is a day in a dry spell: across, the flow that day; up, how fast it was falling.
+# Both axes are logarithmic. The bold line is fitted through the binned points; the reference
+# lines show the slope a linear store (1), a cubic store (5/3) and an exponential store (2)
+# would give. The fitted slope says how the river's store empties.
+# Good: the points form a clear band and the fitted slope lies near one reference line. That
+#   store is the one to expect in the calibration (summary.md names it).
+# Worry if: the points are a wide cloud (few dry spells, or noisy low flows); the interval on
+#   the slope is wide (the data cannot choose); the points bend (two stores at work, such as
+#   soil water then groundwater); or the calibration later picks a store far from this one.
+png_of(file.path(d3, "recessions.png"), function() plot(recessions))
+note(sprintf(paste("- Recessions: the flow falls with a slope of %.2f (95%% interval %.2f to",
+                   "%.2f), nearest a **%s** store; consistent with the record: %s."),
+             recessions$slope, recessions$ci[1], recessions$ci[2], recessions$nearest,
+             listed(recessions$stores$store[recessions$stores$within_ci])),
+     "  `recessions.png` shows it; the calibration's choice of groundwater store can be",
+     "  checked against it.", "")
+
+# Single gauges, if given: which one the river answers to, and which miss storms.
+if (length(gauge_names)) {
+  gauges <- as.data.frame(stats::setNames(lapply(gauge_names, function(n) {
+    convert_units(grid[[paste0("gauge: ", n)]], "mm_per_step", dt, "rain")
+  }), gauge_names), check.names = FALSE)
+  response <- gauge_response(gauges, flow, forcing$time, dt = dt, rain = forcing$rain,
+                             area_km2 = area)
+  fwrite(response$summary, file.path(d3, "gauge_response.csv"))
+  fwrite(response$events, file.path(d3, "gauge_response_events.csv"))
+  # HOW TO READ gauge_response.png
+  # One line per rain gauge: how closely the rise in river flow follows that gauge's rain
+  # (correlation, up) at each lag (across, hours after the rain). The peak of each line is
+  # that gauge's best lag. gauge_response.csv adds, flood by flood, which gauge explained the
+  # rise best (event_wins), and how often a gauge saw almost no rain when the others saw a
+  # storm (dry_events).
+  # Good: every gauge peaks at a positive lag of a few hours, the heights close together; the
+  #   wins shared about as you would expect from where the gauges sit.
+  # Worry if: a gauge peaks at a negative lag (rain cannot follow the flow it causes: its clock
+  #   is wrong); one gauge's lag differs from the rest by a whole number of hours (a time zone
+  #   or clock change); a gauge has no wins, a low line, or several dry events (a blocked
+  #   funnel, a logger down, or a gauge in the wrong place). Correlations between gauges blur
+  #   the differences: read the order and the gaps, not the values alone.
+  png_of(file.path(d3, "gauge_response.png"), function() plot(response))
+  odd <- response$summary$gauge[response$summary$lag_h < 0 | response$summary$dry_events > 1]
+  note(sprintf("- Rain gauges: %s. %s", paste(gauge_names, collapse = ", "),
+               if (length(odd)) {
+                 sprintf("Check %s: a negative lag or several dry events.",
+                         paste(odd, collapse = ", "))
+               } else {
+                 "None has a negative lag or repeated dry events."
+               }),
+       "  See `gauge_response.png` and `gauge_response.csv`.", "")
+}
 write_summary()
 
 if (s$stop_after_checks) {
@@ -622,12 +691,12 @@ if (plan$forecast) {
 }
 if (plan$stress) {
   say("   Stress tests: dry years against wet, and parameters over time")
-  settings <- list(objective = "boxcox", method = "dds", control = list(maxit = plan$budget),
-                   starts = 1L, log_scale = log_scale)
-  sst <- do.call(split_sample_test, c(list(config, forcing, flow, lower, upper), settings))
+  search <- list(objective = "boxcox", method = "dds", control = list(maxit = plan$budget),
+                 starts = 1L, log_scale = log_scale)
+  sst <- do.call(split_sample_test, c(list(config, forcing, flow, lower, upper), search))
   fwrite(sst$scores, file.path(d5, "dry_against_wet.csv"))
   drift <- do.call(parameter_drift, c(list(config, forcing, flow, lower, upper, periods = 3L),
-                                      settings))
+                                      search))
   fwrite(drift$parameters, file.path(d5, "parameter_drift.csv"))
   # HOW TO READ parameter_drift.png
   # The record cut into periods and the model calibrated on each in turn. Each line is one
@@ -643,14 +712,344 @@ if (plan$stress) {
        "- `parameter_drift.png`: parameters calibrated period by period. A steady drift points",
        "  to a change in the catchment or the record, such as a new rain gauge.", "")
 }
+
+# ---- 5b. Floods and warnings ------------------------------------------------------------
+
+say("   Floods and warnings: thresholds, lead time, annual maxima, seasons")
+in_val <- forcing$time >= as.POSIXct(validation[1], tz = "UTC") &
+  forcing$time <= as.POSIXct(validation[2], tz = "UTC")
+after_warm <- forcing$time >= as.POSIXct(calibration[1], tz = "UTC")
+# The model's flow over the whole record, from a half-full soil store, as the checks below use.
+simulated <- run_pdm(model, forcing[c("rain", "pet")], initial_state(model, 0.5))$output$q_m3s
+markers <- suppressWarnings(flow_markers(flow[after_warm], dt, forcing$time[after_warm]))
+qmed <- markers$value[markers$name == "QMED"]
+
+# Warning thresholds: the settings' own, or stand-ins at half QMED and QMED.
+stand_in <- is.null(s$thresholds)
+levels <- if (stand_in) {
+  c("Half QMED" = round(qmed / 2, 2), "QMED" = round(qmed, 2))
+} else {
+  stats::setNames(s$thresholds$value, s$thresholds$name)
+}
+val_rows <- which(in_val)
+threshold_scores <- pdm_threshold_scores(simulated[val_rows], flow[val_rows], levels,
+                                         dt_hours = dt)
+fwrite(threshold_scores, file.path(d5, "thresholds_validation.csv"))
+# HOW TO READ thresholds_validation.png
+# For each warning threshold, the times in the validation years the river crossed it, split
+# into hits (the model crossed it too, within six hours), misses (the river crossed, the model
+# did not), and false alarms (the model crossed, the river did not).
+# These count the model's plain run, without updating: the test of the model itself. The
+# updated forecasts, as issued in operations, are in warning_lead_time.png, so a crossing can
+# be a miss here and still be warned there.
+# Good: mostly hits, few misses, few false alarms.
+# Worry if: misses outnumber false alarms (the model is too low in floods: warnings would come
+#   late or not at all), or false alarms dominate (warnings would be issued for nothing and
+#   people would stop trusting them). Misses usually cost more than false alarms.
+png_of(file.path(d5, "thresholds_validation.png"), function() {
+  graphics::par(mar = c(4, 4.5, 2, 1))
+  counts <- rbind(Hits = threshold_scores$hits, Misses = threshold_scores$misses,
+                  `False alarms` = threshold_scores$false_alarms)
+  graphics::barplot(counts, beside = TRUE, names.arg = threshold_scores$threshold, border = NA,
+                    col = c("#1B6F80", "#B3261E", "#E3A51C"), ylab = "Number of crossings",
+                    main = "Threshold crossings in the validation years",
+                    legend.text = TRUE, args.legend = list(bty = "n", x = "topright"))
+})
+
+# Warning lead time: for each crossing, how long before it a forecast first showed the river
+# reaching the threshold. Forecasts are issued every hour, as in operations, through the 12
+# hours before each crossing, with the rain that fell.
+horizon_h <- 12
+crossings <- do.call(rbind, lapply(names(levels), function(n) {
+  above <- flow >= levels[[n]] & in_val
+  above[is.na(above)] <- FALSE
+  up <- which(above & !c(FALSE, utils::head(above, -1)))
+  up <- up[c(TRUE, diff(up) > 24 / dt)]
+  if (length(up)) data.frame(threshold = n, level = levels[[n]], row = up)
+}))
+lead_times <- NULL
+if (!is.null(crossings) && nrow(crossings)) {
+  window <- sort(unique(unlist(lapply(crossings$row, function(r) {
+    seq.int(max(3L, r - round(horizon_h / dt)), r)
+  }))))
+  hindcast <- pdm_hindcast(model, forcing, flow, window = window, every_h = max(1, dt),
+                           horizon_h = horizon_h, ar = list(ea = ar_ea_default()))
+  forecasts <- hindcast$forecasts
+  lead_for <- function(row, level, how) {
+    f <- forecasts[forecasts$method == how & forecasts$origin <= row &
+                     forecasts$origin >= row - round(horizon_h / dt) &
+                     forecasts$time <= forcing$time[row] + 3600, ]
+    if (!nrow(f)) return(NA_real_)
+    warned <- tapply(f$forecast >= level, f$origin, any)
+    if (!any(warned)) return(NA_real_)
+    (row - min(as.numeric(names(warned))[warned])) * dt
+  }
+  lead_times <- data.frame(
+    threshold = crossings$threshold, time = forcing$time[crossings$row],
+    updated_lead_h = mapply(lead_for, crossings$row, crossings$level, "ea"),
+    not_updated_lead_h = mapply(lead_for, crossings$row, crossings$level, "none"))
+  fwrite(lead_times, file.path(d5, "warning_lead_time.csv"))
+  # HOW TO READ warning_lead_time.png
+  # One row per time the river crossed a threshold in the validation years. The filled point is
+  # the notice an updated forecast gave: how many hours before the crossing the first forecast
+  # issued showed the river reaching the threshold. The open point is the same without
+  # updating, which is the model's plain run. Forecasts are issued hourly, so notice comes in
+  # whole hours; 12 hours is the most this check looks for. A missing point means no forecast
+  # before the crossing showed it.
+  # Important: these forecasts use the rain that actually fell, as if the rain forecast were
+  #   perfect. They show the notice the catchment and the model allow, an upper limit. Real
+  #   warnings lose some of it to errors in the rain forecast.
+  # Good: most crossings warned several hours ahead, and the updated points no worse than the
+  #   others.
+  # Worry if: many crossings have little or no notice (a fast catchment, or a model late on
+  #   its rising limbs: see checks_timing.png); or updating gives less notice than the bare
+  #   model (the updating drags the forecast towards the current, lower flow, or chases noise
+  #   in a 15-minute record).
+  png_of(file.path(d5, "warning_lead_time.png"), function() {
+    k <- seq_len(nrow(lead_times))
+    graphics::par(mar = c(4, 11, 2, 1))
+    graphics::plot(c(0, horizon_h), range(c(0.5, k + 0.5)), type = "n", yaxt = "n",
+                   xlab = "Hours of notice before the crossing", ylab = "",
+                   main = "Warning lead time (rain as it fell)")
+    graphics::axis(2, at = k, las = 1, cex.axis = 0.75,
+                   labels = sprintf("%s %s", format(lead_times$time, "%d %b %Y"),
+                                    lead_times$threshold))
+    graphics::abline(h = k, col = "grey92")
+    graphics::points(lead_times$not_updated_lead_h, k, pch = 1, cex = 1.4, col = "#46525E")
+    graphics::points(lead_times$updated_lead_h, k, pch = 19, col = "#1B6F80")
+    graphics::legend("bottomright", bty = "n", pch = c(19, 1), col = c("#1B6F80", "#46525E"),
+                     c("Updated forecast", "Not updated"))
+  })
+}
+
+# Annual maxima: the largest flow of each complete water year, observed and modelled.
+wy <- as.integer(format(forcing$time, "%Y")) + (as.integer(format(forcing$time, "%m")) >= 10)
+maxima <- do.call(rbind, lapply(unique(wy[after_warm]), function(y) {
+  k <- which(wy == y & after_warm)
+  if (mean(is.finite(flow[k])) < 0.9 || length(k) < 0.9 * 8760 / dt) return(NULL)
+  data.frame(water_year = y, observed = max(flow[k], na.rm = TRUE),
+             modelled = max(simulated[k], na.rm = TRUE),
+             date = format(forcing$time[k][which.max(flow[k])], "%d %b %Y"))
+}))
+hg <- s$highest_gauged_m3s
+if (!is.null(maxima)) {
+  maxima$above_highest_gauged <- if (is.null(hg)) NA else maxima$observed > hg
+  fwrite(maxima, file.path(d5, "annual_maxima.csv"))
+  # HOW TO READ annual_maxima.png
+  # One point per complete water year: across, the largest flow observed that year; up, the
+  # largest the model gave. The diagonal is exact, the faint lines 20% either side. The
+  # dashed lines, if shown, are the highest flow ever gauged: beyond them the observed flows
+  # come from extending the rating, and are less certain (amber points).
+  # Good: points close to the diagonal across the range, the model's median annual maximum
+  #   (its QMED) close to the observed.
+  # Worry if: the largest years fall below the diagonal (the model underestimates the floods
+  #   that matter most); or the amber points are the ones the model misses, in which case
+  #   the rating, not the model, may be wrong.
+  png_of(file.path(d5, "annual_maxima.png"), function() {
+    top <- max(c(maxima$observed, maxima$modelled), na.rm = TRUE) * 1.1
+    graphics::par(mar = c(4.5, 4.5, 2, 1))
+    graphics::plot(maxima$observed, maxima$modelled, xlim = c(0, top), ylim = c(0, top),
+                   pch = 19, cex = 1.3, xlab = "Observed annual maximum (m3/s)",
+                   ylab = "Modelled annual maximum (m3/s)",
+                   col = ifelse(isTRUE(!is.null(hg)) & maxima$observed > (hg %||% Inf),
+                                "#E3A51C", "#1B6F80"),
+                   main = "Annual maxima, observed and modelled")
+    graphics::abline(0, 1, col = "#13212E")
+    graphics::abline(0, 1.2, col = "grey70")
+    graphics::abline(0, 0.8, col = "grey70")
+    if (!is.null(hg)) graphics::abline(v = hg, h = hg, lty = 2, col = "#E3A51C")
+    graphics::text(maxima$observed, maxima$modelled, maxima$water_year, pos = 4, cex = 0.7)
+  })
+}
+
+# Seasons: the validation years month by month and season by season.
+month <- as.integer(format(forcing$time, "%m"))
+season <- c("Winter", "Winter", "Spring", "Spring", "Spring", "Summer", "Summer", "Summer",
+            "Autumn", "Autumn", "Autumn", "Winter")[month]
+seasons <- do.call(rbind, lapply(c("Autumn", "Winter", "Spring", "Summer"), function(x) {
+  k <- in_val & season == x & is.finite(flow) & is.finite(simulated)
+  data.frame(season = x, mean_observed_m3s = round(mean(flow[k]), 3),
+             mean_modelled_m3s = round(mean(simulated[k]), 3),
+             volume_bias_pct = round(100 * (sum(simulated[k]) / sum(flow[k]) - 1), 1),
+             nse = round(1 - sum((simulated[k] - flow[k])^2) /
+                           sum((flow[k] - mean(flow[k]))^2), 3))
+}))
+fwrite(seasons, file.path(d5, "seasons_validation.csv"))
+# HOW TO READ seasonal_flows.png
+# The average flow in each calendar month of the validation years, observed and modelled,
+# from October (the start of the water year) to September. seasons_validation.csv gives each
+# season's volume bias and NSE.
+# Good: the two lines follow each other through the year, high in winter, low in late summer.
+# Worry if: the model is too high in summer and too low in winter, or the reverse (the
+#   evaporation or the soil store's size is wrong); the summer recession falls too fast or too
+#   slowly (the groundwater store). A model good in winter and poor in summer will miss
+#   summer thunderstorm floods.
+png_of(file.path(d5, "seasonal_flows.png"), function() {
+  order_m <- c(10:12, 1:9)
+  mean_by <- function(q) vapply(order_m, function(m) {
+    k <- in_val & month == m & is.finite(flow) & is.finite(q)
+    mean(q[k])
+  }, numeric(1))
+  obs_m <- mean_by(flow)
+  sim_m <- mean_by(simulated)
+  graphics::par(mar = c(4, 4.5, 2, 1))
+  graphics::plot(seq_along(order_m), obs_m, type = "b", pch = 19, lwd = 2, col = "#46525E",
+                 ylim = c(0, max(c(obs_m, sim_m), na.rm = TRUE) * 1.1), xaxt = "n", xlab = "",
+                 ylab = "Mean flow (m3/s)", main = "Flow through the year, validation years")
+  graphics::axis(1, at = seq_along(order_m), labels = month.abb[order_m])
+  graphics::lines(seq_along(order_m), sim_m, type = "b", pch = 17, lwd = 2, col = "#1B6F80")
+  graphics::legend("topright", bty = "n", c("Observed", "Model"), pch = c(19, 17),
+                   col = c("#46525E", "#1B6F80"), lwd = 2)
+})
+
+# Recessions again, of the model's flow: does the model drain as the river does?
+recessions_model <- recession_analysis(simulated, forcing$rain, dt = dt, time = forcing$time)
+# HOW TO READ recessions_model.png
+# The recession plot of 3_events/recessions.png, with the model's own recessions drawn over
+# the river's in orange.
+# Good: the two clouds and their fitted lines lie together: the model's stores empty at the
+#   river's pace.
+# Worry if: the model's line is steeper or flatter, or sits above or below the river's. The
+#   model then drains too fast or too slowly in dry weather, and its low flows, and the wetness
+#   of the catchment when the next storm arrives, will be wrong.
+png_of(file.path(d5, "recessions_model.png"), function() {
+  plot_recession(recessions, recessions_model, main = "Recessions: river and model")
+})
+
+val_maxima <- if (!is.null(maxima)) maxima else data.frame(observed = numeric(0))
+note("### Floods and warnings", "",
+     sprintf("Warning thresholds%s: %s.",
+             if (stand_in) " (stand-ins: none were given in the settings)" else "",
+             paste(sprintf("%s %.2f m3/s", names(levels), levels), collapse = ", ")),
+     sprintf("- %s: %d hits, %d misses, %d false alarms in the validation years.",
+             threshold_scores$threshold, threshold_scores$hits, threshold_scores$misses,
+             threshold_scores$false_alarms),
+     if (!is.null(lead_times)) {
+       c(sprintf(paste("- Warning lead time: an updated forecast gave a median of %.1f hours'",
+                       "notice over %d crossings, without updating %.1f hours;"),
+                 stats::median(lead_times$updated_lead_h, na.rm = TRUE), nrow(lead_times),
+                 stats::median(lead_times$not_updated_lead_h, na.rm = TRUE)),
+         sprintf("  %d of them had no notice at all. These use the rain that fell: real",
+                 sum(is.na(lead_times$updated_lead_h) | lead_times$updated_lead_h == 0)),
+         "  warnings, with forecast rain, give less.")
+     } else {
+       "- The river crossed no threshold in the validation years, so no lead time is measured."
+     },
+     if (nrow(val_maxima)) {
+       sprintf(paste("- Annual maxima: median (QMED) %.2f m3/s observed, %.2f modelled, from",
+                     "%d years%s."), stats::median(maxima$observed),
+               stats::median(maxima$modelled), nrow(maxima),
+               if (is.null(hg)) "" else sprintf("; %d above the highest gauged flow",
+                                                 sum(maxima$above_highest_gauged)))
+     },
+     sprintf("- Seasons (validation): volume bias %s.",
+             paste(sprintf("%s %+.1f%%", seasons$season, seasons$volume_bias_pct),
+                   collapse = ", ")),
+     sprintf("- Recessions: the river falls with slope %.2f, the model %.2f.",
+             recessions$slope, recessions_model$slope),
+     "", "See `thresholds_validation.png`, `warning_lead_time.png`, `annual_maxima.png`,",
+     "`seasonal_flows.png` and `recessions_model.png`.", "")
+
+# ---- 5c. Regional context ---------------------------------------------------------------
+
+if (!is.null(s$regional_results)) {
+  say("   Setting the site beside similar CAMELS-GB catchments")
+  regional <- fread(s$regional_results)
+  regional <- regional[regional$state == "done" & is.finite(regional$runoff_ratio) &
+                         is.finite(regional$loss_over_pet), ]
+  # Similar: nearest in runoff ratio and loss over potential evaporation, each scaled by its
+  # spread across the catchments, so neither dominates.
+  distance <- sqrt(((regional$runoff_ratio - rec$runoff_ratio) /
+                      stats::sd(regional$runoff_ratio))^2 +
+                     ((regional$loss_over_pet - rec$loss_over_pet) /
+                        stats::sd(regional$loss_over_pet))^2)
+  neighbours <- regional[order(distance)[seq_len(min(20L, nrow(regional)))], ]
+  fwrite(neighbours[, intersect(c("gauge", "name", "runoff_ratio", "loss_over_pet",
+                                  "recharge", "distribution", "groundwater",
+                                  "nse_validation"), names(neighbours)), with = FALSE],
+         file.path(d5, "regional_neighbours.csv"))
+  # The site's parameters as the bulk run records them: the two surface time constants as a
+  # sorted pair, since two stores in series give the same flow whichever way round.
+  site_p <- stats::setNames(checks$parameters$value, checks$parameters$path)
+  if (all(c("surface.k1", "surface.k2") %in% names(site_p))) {
+    k <- sort(site_p[c("surface.k1", "surface.k2")])
+    site_p <- site_p[setdiff(names(site_p), c("surface.k1", "surface.k2"))]
+    site_p[c("surface.k_fast", "surface.k_slow")] <- k
+  }
+  bound_of <- function(p) sub("surface.k_(fast|slow)", "surface.k1", p)
+  shared <- intersect(names(site_p), names(neighbours))
+  place <- function(v, p) {
+    q <- checks$parameters[checks$parameters$path == bound_of(p), ]
+    if (q$scale == "log") (log(v) - log(q$lower)) / (log(q$upper) - log(q$lower)) else
+      (v - q$lower) / (q$upper - q$lower)
+  }
+  compared <- do.call(rbind, lapply(shared, function(p) {
+    v <- neighbours[[p]][is.finite(neighbours[[p]])]
+    data.frame(parameter = p, site = site_p[[p]], neighbours = length(v),
+               neighbour_median = if (length(v)) stats::median(v) else NA_real_,
+               site_percentile = if (length(v)) round(100 * mean(v < site_p[[p]])) else NA)
+  }))
+  fwrite(compared, file.path(d5, "regional_parameters.csv"))
+  # HOW TO READ regional_parameters.png
+  # One row per parameter. Grey points: the values calibrated for the 20 CAMELS-GB catchments
+  # whose water balance is most like this site's (runoff ratio and losses). Blue: this site.
+  # All are placed within the search range, 0 at the lower limit, 1 at the upper.
+  # Good: the blue point sits among the grey ones. Similar catchments, similar models.
+  # Worry if: the blue point is far outside the grey cloud. Either this catchment really is
+  #   different (look for a reason: chalk, a reservoir, a town), or the calibration has made up
+  #   for a problem in the data. Grey points spread across the whole range mean the parameter
+  #   is poorly determined everywhere, and the comparison says little. The bulk run is hourly
+  #   with the rainfall factor fixed at 1; keep that in mind for fc and the time constants.
+  png_of(file.path(d5, "regional_parameters.png"), function() {
+    k <- seq_along(shared)
+    graphics::par(mar = c(4.5, 11, 2, 1))
+    graphics::plot(c(0, 1), c(0.5, length(k) + 0.5), type = "n", yaxt = "n", ylab = "",
+                   xlab = "Place in the search range (0 lower limit, 1 upper)",
+                   main = "This site among similar catchments")
+    graphics::axis(2, at = k, labels = shared, las = 1, cex.axis = 0.8)
+    graphics::abline(h = k, col = "grey92")
+    for (i in k) {
+      v <- neighbours[[shared[i]]]
+      v <- v[is.finite(v)]
+      if (length(v)) {
+        graphics::points(pmin(pmax(place(v, shared[i]), 0), 1), rep(i, length(v)),
+                         pch = 19, col = grDevices::adjustcolor("#46525E", 0.45))
+      }
+      graphics::points(place(site_p[[shared[i]]], shared[i]), i, pch = 19, cex = 1.6,
+                       col = "#1B6F80")
+    }
+  })
+  same <- if (all(c("recharge", "distribution", "groundwater") %in% names(neighbours))) {
+    mean(neighbours$recharge == config$recharge$type &
+           neighbours$distribution == config$distribution$type &
+           neighbours$groundwater == config$groundwater$type)
+  } else NA
+  outside <- compared$parameter[!is.na(compared$site_percentile) &
+                                  (compared$site_percentile <= 5 | compared$site_percentile >= 95)]
+  note("### Among similar catchments", "",
+       sprintf(paste("The %d CAMELS-GB catchments with the most similar water balance (runoff",
+                     "ratio %.2f to %.2f):"), nrow(neighbours), min(neighbours$runoff_ratio),
+               max(neighbours$runoff_ratio)),
+       if (is.finite(same)) {
+         sprintf("- %.0f%% of them chose the same structure as this site.", 100 * same)
+       },
+       if ("nse_validation" %in% names(neighbours)) {
+         sprintf("- Their median validation NSE is %.2f; this site's is %.2f.",
+                 stats::median(neighbours$nse_validation, na.rm = TRUE),
+                 result$validation_score)
+       },
+       sprintf(paste("- Parameters outside the neighbours' range (below their 5th or above",
+                     "their 95th percentile): %s."), listed(outside)),
+       "", "See `regional_parameters.png`, `regional_parameters.csv` and",
+       "`regional_neighbours.csv`.", "")
+}
+
 write_summary()
 
 # ---- 6. Input uncertainty ---------------------------------------------------------------
 
 say("6. How errors in the rain and evaporation carry into the flow")
 d6 <- folder("6_input_uncertainty")
-in_val <- forcing$time >= as.POSIXct(validation[1], tz = "UTC") &
-  forcing$time <= as.POSIXct(validation[2], tz = "UTC")
 state0 <- initial_state(model, 0.5)
 run_with <- function(rain_factor, pe_factor) {
   f <- forcing
@@ -720,6 +1119,133 @@ note("## 6. Input uncertainty: how errors in the rain carry into the flow", "",
      }, "",
      "See `6_input_uncertainty/largest_flood_with_rain_10pct_out.png` and",
      "`rain_and_evaporation_scenarios.csv`.", "")
+
+# Storm by storm: each storm's rain multiplied by its own random factor, as gauges err storm by
+# storm rather than all by the same amount. Many runs give a band of flows the rain allows.
+say("   The band of flows the rain's errors allow (%d runs)", plan$members)
+sd_log <- s$rain_error
+# A storm: a spell of rain with no dry gap of six hours or more inside it.
+wet <- which(forcing$rain > 0)
+storm <- cumsum(c(1L, diff(wet) > 6 / dt))
+# The ten largest floods of the validation years: the highest flows at least three days apart.
+largest_floods <- function(n = 10L, apart_h = 72) {
+  rows <- which(in_val & is.finite(flow))
+  chosen <- integer(0)
+  for (r in rows[order(-flow[rows])]) {
+    if (all(abs(chosen - r) > apart_h / dt)) chosen <- c(chosen, r)
+    if (length(chosen) == n) break
+  }
+  chosen
+}
+top_rows <- largest_floods()
+around <- function(r) max(1, r - 24 / dt):min(nrow(forcing), r + 24 / dt)
+w_big <- max(1, peak_at - 72 / dt):min(length(flow), peak_at + 120 / dt)
+set.seed(1)
+members <- lapply(seq_len(plan$members), function(i) {
+  factor <- exp(stats::rnorm(max(storm), -sd_log^2 / 2, sd_log))
+  f <- forcing[c("rain", "pet")]
+  f$rain[wet] <- f$rain[wet] * factor[storm]
+  q <- run_pdm(model, f, state0)$output$q_m3s
+  list(peaks = vapply(top_rows, function(r) max(q[around(r)]), numeric(1)), largest = q[w_big])
+})
+peaks <- do.call(rbind, lapply(members, `[[`, "peaks"))
+band_peaks <- apply(peaks, 2, stats::quantile, c(0.05, 0.5, 0.95))
+storm_table <- data.frame(
+  flood = format(forcing$time[top_rows], "%d %b %Y"),
+  observed_peak = round(flow[top_rows], 2),
+  model_peak = round(vapply(top_rows, function(r) max(sims[[1]][around(r)]), numeric(1)), 2),
+  band_low = round(band_peaks[1, ], 2), band_mid = round(band_peaks[2, ], 2),
+  band_high = round(band_peaks[3, ], 2))
+storm_table$observed_within_band <- storm_table$observed_peak >= storm_table$band_low &
+  storm_table$observed_peak <= storm_table$band_high
+fwrite(storm_table, file.path(d6, "rain_error_band_floods.csv"))
+largest <- do.call(cbind, lapply(members, `[[`, "largest"))
+band_big <- apply(largest, 1, stats::quantile, c(0.05, 0.5, 0.95))
+draw_band <- function(lo, mid, hi, title, label) {
+  x <- forcing$time[w_big]
+  graphics::par(mar = c(4, 4.5, 2, 1))
+  graphics::plot(x, flow[w_big], type = "n", xlab = "", ylab = "Flow (m3/s)", main = title,
+                 ylim = c(0, max(c(hi, flow[w_big]), na.rm = TRUE) * 1.05))
+  graphics::polygon(c(x, rev(x)), c(lo, rev(hi)), border = NA,
+                    col = grDevices::adjustcolor("#1B6F80", 0.25))
+  graphics::lines(x, mid, lwd = 2, col = "#1B6F80")
+  graphics::lines(x, flow[w_big], lwd = 2, col = "#46525E")
+  graphics::legend("topright", bty = "n", c("Observed", "Middle of the band", label),
+                   col = c("#46525E", "#1B6F80", grDevices::adjustcolor("#1B6F80", 0.25)),
+                   lwd = c(2, 2, 10))
+}
+# HOW TO READ rain_error_band.png
+# The largest flood in the validation years. The model was run many times, each time with
+# every storm's rain multiplied by its own random factor (typically within the rain_error in
+# the settings), and the shaded band holds the middle 90% of the flows those runs gave. The
+# grey line is the observed flow.
+# What it shows: how much a flood forecast can be trusted when the rain is no better than
+#   this. The band is wider at the peak than in the recession: rain errors matter most when
+#   the catchment is wet. rain_error_band_floods.csv does the same for the ten largest
+#   validation floods.
+# Good: the observed peak inside the band for most of the ten floods. The model is then as
+#   good as its rain allows.
+# Worry if: the observed peaks fall outside the band, most on one side. The model, not just
+#   the rain, is off for those floods; or the rain error is larger than the setting assumes.
+png_of(file.path(d6, "rain_error_band.png"), function() {
+  draw_band(band_big[1, ], band_big[2, ], band_big[3, ],
+            "The largest validation flood, with storm-by-storm rain errors",
+            sprintf("90%% of runs, storms %.0f%% out", 100 * sd_log))
+})
+span <- round(100 * exp(c(-1.645, 1.645) * sd_log))
+note("### Storm-by-storm rain errors", "",
+     sprintf(paste("Gauges do not err by the same amount in every storm. The model was run %d",
+                   "times with each storm's rain multiplied by its own random factor, 90%% of"),
+             plan$members),
+     sprintf("them between %d%% and %d%% of the measured rain (rain_error %.2f).", span[1],
+             span[2], sd_log),
+     sprintf(paste("- The observed peak falls within the band of the runs for %d of the %d",
+                   "largest validation floods."), sum(storm_table$observed_within_band),
+             nrow(storm_table)),
+     sprintf("- For the largest, the runs' peaks span %.1f to %.1f m3/s; observed, %.1f.",
+             storm_table$band_low[1], storm_table$band_high[1], storm_table$observed_peak[1]),
+     "", "See `rain_error_band.png` and `rain_error_band_floods.csv`.", "")
+
+# Parameter uncertainty (thorough effort): a Bayesian calibration gives not one set of
+# parameters but many, each as likely as the data allow, and a band of flows from them.
+if (plan$bayes) {
+  say("   Parameter uncertainty: a Bayesian calibration")
+  to_cal_end <- forcing$time <= as.POSIXct(calibration[2], tz = "UTC")
+  bayes <- calibrate_bayes(config, forcing[to_cal_end, ], flow[to_cal_end], lower, upper,
+                           generations = s$bayes_generations, warmup = warm,
+                           log_scale = log_scale)
+  fwrite(bayes$summary, file.path(d6, "parameter_posterior.csv"))
+  band <- posterior_band(bayes, forcing, draws = 100L)
+  covered <- in_val & is.finite(flow)
+  coverage <- mean(flow[covered] >= band$q05[covered] & flow[covered] <= band$q95[covered])
+  # HOW TO READ parameter_uncertainty_band.png
+  # The largest validation flood again. This band comes not from the rain but from the
+  # model: a Bayesian calibration finds every parameter set the calibration years allow, and
+  # the band holds 90% of the flows they give, with the model's usual error added.
+  # parameter_posterior.csv gives each parameter's range.
+  # Good: about 90% of the observed flow inside the band over the validation years
+  #   (summary.md gives the share), and the band narrow enough to be useful.
+  # Worry if: far less than 90% of the flow falls inside (the model is overconfident: its
+  #   errors are larger than it believes); the band is very wide (the data cannot pin the
+  #   parameters down); rhat in the table above 1.2 for any parameter (the search had not
+  #   settled; set bayes_generations higher, such as 4000, and run again).
+  png_of(file.path(d6, "parameter_uncertainty_band.png"), function() {
+    draw_band(band$q05[w_big], band$q50[w_big], band$q95[w_big],
+              "The largest validation flood, with parameter uncertainty",
+              "90% of parameter sets")
+  })
+  unsettled <- bayes$summary$parameter[bayes$summary$rhat > 1.2]
+  note("### Parameter uncertainty", "",
+       "A Bayesian calibration finds every parameter set the calibration years allow.",
+       sprintf("- %.0f%% of the observed validation flow falls inside its 90%% band.",
+               100 * coverage),
+       sprintf("- Parameters whose search had not settled (rhat above 1.2): %s.%s",
+               listed(unsettled),
+               if (length(unsettled)) {
+                 sprintf(" Set bayes_generations above %d and run again.", s$bayes_generations)
+               } else ""),
+       "", "See `parameter_uncertainty_band.png` and `parameter_posterior.csv`.", "")
+}
 
 # ---- Comparisons and export -------------------------------------------------------------
 

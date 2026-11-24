@@ -15,8 +15,12 @@ A list of class \code{pdm_site_settings}: \code{name}, \code{gauge}, \code{area_
 \code{flow}, \code{pet}, \code{rain} (a named list; the first calibrates), \code{snow}, \code{temperature},
 \code{calibration}, \code{validation}, \code{output}, \code{stop_after_checks}, \code{effort},
 \code{rainfall_factor} (\code{NULL} when fixed, else the range to search), \code{thresholds} (a data
-frame or \code{NULL}), \code{highest_gauged_m3s}, \code{pdm_for_pcs_inp}, \code{previous_project}, \code{owner},
-\code{steward}, and \code{file} and \code{home}, where the settings came from.
+frame or \code{NULL}), \code{highest_gauged_m3s}, \code{pdm_for_pcs_inp}, \code{previous_project},
+\code{rain_gauges} (a named list of single-gauge files, or \code{NULL}), \code{rain_error} (the typical
+error in a storm's rain, as a fraction), \code{regional_results} (the CAMELS-GB bulk run's
+results file, or \code{NULL}), \code{bayes_generations} (the length of the Bayesian calibration
+that effort thorough runs), \code{owner}, \code{steward}, and \code{file} and \code{home}, where the settings
+came from.
 }
 \description{
 Reads a settings file like the one in \code{system.file("examples", "site.yml", package = "pdmS7")}, checks it, fills in the defaults and makes every path absolute. Load the

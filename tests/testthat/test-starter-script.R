@@ -60,6 +60,11 @@ test_that("read_site_settings() resolves paths and fills the defaults", {
   expect_true(s$stop_after_checks)
   expect_null(s$rainfall_factor)
   expect_false(s$snow)
+  # A storm's rain typically 15% out; no single gauges, no regional comparison.
+  expect_identical(s$rain_error, 0.15)
+  expect_null(s$rain_gauges)
+  expect_null(s$regional_results)
+  expect_identical(s$bayes_generations, 2000L)
   expect_output(print(s), "Test Brook")
 })
 
@@ -105,9 +110,32 @@ test_that("every HOW TO READ note names a plot the script writes", {
   # the file the script writes would silently drop out of the guide.
   code <- readLines(system.file("scripts", "calibrate_site.R", package = "pdmS7"))
   notes <- sub("^\\s*# HOW TO READ ", "", grep("^\\s*# HOW TO READ ", code, value = TRUE))
-  expect_length(notes, 23)
+  expect_length(notes, 33)
   written <- code[!grepl("^\\s*#", code)]
   for (name in notes) {
     expect_true(any(grepl(sprintf('"%s"', name), written, fixed = TRUE)), info = name)
   }
+})
+
+test_that("rain gauges, the rain error and the regional results are read and checked", {
+  file <- site_folder(
+    c(minimal[-2],
+      "data: {folder: data, flow: flow.csv, pet: pet.csv, rain: rain.csv,",
+      "       rain_gauges: {Gauge A: a.csv, Gauge B: b.csv}}",
+      "rain_error: 0.2",
+      "regional_results: results.csv"),
+    files = c("flow.csv", "pet.csv", "rain.csv", "a.csv", "b.csv"))
+  home <- dirname(normalizePath(file))
+  file.create(file.path(home, "results.csv"))
+  s <- read_site_settings(file)
+  expect_identical(names(s$rain_gauges), c("Gauge A", "Gauge B"))
+  expect_identical(s$rain_gauges[["Gauge B"]], file.path(home, "data", "b.csv"))
+  expect_identical(s$rain_error, 0.2)
+  # The results file sits beside the settings file, not in the data folder.
+  expect_identical(s$regional_results, file.path(home, "results.csv"))
+  s$rain_error <- 1.5
+  expect_error(read_site_settings(s), "rain_error")
+  s$rain_error <- 0.2
+  s$regional_results <- file.path(home, "missing.csv")
+  expect_error(read_site_settings(s), "regional_results")
 })

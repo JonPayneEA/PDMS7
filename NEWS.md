@@ -14,6 +14,16 @@
   READ" note beside the line that draws it: what it shows, what good looks like, and what
   should worry you. The run collects the notes for the plots it drew into
   `how_to_read_the_plots.md` in the output folder.
+- **More in the starter, for training.** Recessions (which groundwater store the river's dry
+  weather suggests, then the model's against the river's); with single gauge files, which
+  gauge the river answers to; hits, misses and false alarms at warning thresholds (stand-ins
+  at half QMED and QMED when none are given); the notice an hourly updated forecast gives
+  before each crossing, with the rain that fell; annual maxima, observed against modelled,
+  with the highest gauged flow; flow and bias by season; with the CAMELS-GB bulk results, the
+  site's structure, score and parameters beside the 20 catchments with the most similar water
+  balance; a band of flows from storm-by-storm rain errors (`rain_error`, 15% by default); and,
+  with effort thorough, a band from a Bayesian calibration. New settings: `rain_gauges`,
+  `rain_error`, `regional_results`, `bayes_generations`.
 - **`read_site_settings()`** reads the settings file into R and checks it, reporting every
   problem at once (a missing file, an area that is not a number, validation years that
   overlap calibration), fills the defaults and makes the paths absolute. The settings print
