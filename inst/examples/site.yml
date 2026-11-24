@@ -1,0 +1,74 @@
+# ============================================================
+# Settings for calibrating one site with pdmS7
+#
+# How to use this file
+#   1. Copy it next to your data, for example as my_site.yml.
+#   2. Fill in the section "1. Fill these in". Leave the rest as it is to begin with.
+#   3. In R:  source(system.file("scripts", "calibrate_site.R", package = "pdmS7"))
+#      and choose this file when asked, or set PDM_SITE_CONFIG to its path first.
+#   4. The first run stops after checking the data (stop_after_checks: true). Read
+#      summary.md in the output folder, then set stop_after_checks: false and run again.
+#
+# Paths can be absolute, or relative to the folder this file is in.
+# Lines starting with # are comments and are ignored.
+# ============================================================
+
+# ---- 1. Fill these in ------------------------------------------------------------------
+
+site:
+  name: My River at My Gauge     # used in titles and file names
+  gauge: "12345"                 # the gauging station's number
+  area_km2: 36.7                 # catchment area in square kilometres
+
+data:
+  folder: data                   # the folder holding the CSV files below
+  step_hours: 0.25               # time step of the data: 0.25 for 15-minute, 1 for hourly
+  # Each file is a CSV with a date-time column and a value column. pdmS7 finds the columns
+  # and the date format itself. Flow in m3/s; rain and potential evaporation in mm per step.
+  flow: flow.csv
+  pet: pet.csv
+  # One rain file, or several to compare (named; the first is used to calibrate), e.g.
+  # rain:
+  #   thiessen: rain_thiessen.csv
+  #   nearest_gauge: rain_gauge_A.csv
+  rain: rain.csv
+
+# Calibrate on one run of years, check on a later one. Use whole water years (1 October) and
+# leave at least a year before the calibration window for the model to warm up.
+calibration: ["2010-10-01", "2019-09-30 23:45"]
+validation: ["2019-10-01", "2024-09-30 23:45"]
+
+# ---- 2. Optional: change these once you have a first result -----------------------------
+
+output: output                   # where results are written; a new folder each version
+stop_after_checks: true          # true: check the data, write the summary, and stop
+
+# How hard to search. quick: about 20 minutes on 15-minute data, for a first look.
+# standard: an hour or two, with the checks most people want. thorough: several hours, adds
+# the stress tests.
+effort: standard
+
+# Rainfall. The rainfall factor scales all the rain. Leave it fixed (1) unless the water
+# balance says the rain is too low or too high; then give a range, e.g. [0.9, 1.3].
+rainfall_factor: fixed
+
+# Snow. If a fair share of the precipitation falls as snow (5% or more), give a temperature
+# file (deg C, any step up to daily) and set snow: true. PACK then turns precipitation into
+# rain and melt before the PDM sees it.
+snow: false
+temperature: null                # e.g. temperature.csv
+
+# Flood thresholds to score against, in m3/s, e.g.
+# thresholds:
+#   - {name: Flood Alert, value: 12}
+#   - {name: Flood Warning, value: 20}
+thresholds: []
+highest_gauged_m3s: null         # the highest flow ever gauged; peaks above it are flagged
+
+# Compare with an existing model on the same data (optional).
+pdm_for_pcs_inp: null            # a PDM for PCs input file
+previous_project: null           # a pdmS7 project folder from an earlier run
+
+# Who is responsible, recorded in the calibration log.
+owner: Not recorded
+steward: Not recorded

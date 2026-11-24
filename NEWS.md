@@ -1,3 +1,17 @@
+# pdmS7 0.38.0
+
+- **A starter script for one site**, `inst/scripts/calibrate_site.R`, with its settings file
+  `inst/examples/site.yml`, for someone new to R and the PDM. The settings name the data, the
+  catchment area and the calibration and validation years; everything else has a default. The
+  script writes six numbered folders of plots and tables and a `summary.md` that says what
+  each result means: the data and its gaps; the water balance by water year, with runoff
+  ratios, losses against evaporation, the Budyko plot, the double-mass curve and a verdict on
+  the rain; the floods and those set aside; the calibration, by the protocol of the CAMELS-GB
+  trials; the diagnostics (hydrographs, flow duration, residuals, bounds, peaks, timing, the
+  search, and with more effort the sensitivity, forecast skill and stress tests); and the
+  flow with the rain and the evaporation 10% out. Given several rain files it compares their
+  totals and runoff ratios. The first run stops after the checks.
+
 # pdmS7 0.37.0
 
 - **The CAMELS-GB bulk calibration**, `inst/scripts/camels_bulk.R`: every screened catchment
