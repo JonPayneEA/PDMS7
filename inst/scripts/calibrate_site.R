@@ -14,17 +14,22 @@
 # Outputs:      An output folder: summary.md, then 1_data, 2_water_balance, 3_events,
 #               4_calibration (the calibration project and its report), 5_diagnostics and
 #               6_input_uncertainty, each with plots (PNG) and tables (CSV)
-# Dependencies: pdmS7 (0.37.0 or later); data.table; yaml
+# Dependencies: pdmS7 (0.38.0 or later); data.table; yaml
 # ============================================================ #
 #
 # How to run it
 #   1. Copy the example settings and fill in its first section:
 #        file.copy(system.file("examples", "site.yml", package = "pdmS7"), "my_site.yml")
-#   2. Run this script. From RStudio: source(system.file("scripts", "calibrate_site.R",
-#      package = "pdmS7")), and choose your settings file when asked. Or set
-#      Sys.setenv(PDM_SITE_CONFIG = "my_site.yml") first, or from a terminal:
+#   2. Load them into R, look at them, and run this script:
+#        library(pdmS7)
+#        settings <- read_site_settings("my_site.yml")
+#        settings
+#        source(system.file("scripts", "calibrate_site.R", package = "pdmS7"))
+#      Change a setting in R as in the file, such as settings$effort <- "quick", and run the
+#      script again. Without a settings object it asks for the file; from a terminal:
 #        Rscript calibrate_site.R my_site.yml
 #   3. Read summary.md in the output folder. It says what each result means and what to do.
+#      The results stay in the R session too: wb, events, model, checks, series, scenarios.
 #
 # The steps
 #   1. Data       read, line up and check the series; count gaps
@@ -46,37 +51,36 @@ suppressPackageStartupMessages({
   library(pdmS7)
   library(data.table)
 })
-stopifnot(utils::packageVersion("pdmS7") >= "0.37.0")
+stopifnot(utils::packageVersion("pdmS7") >= "0.38.0")
 `%||%` <- function(x, y) if (is.null(x)) y else x
 say <- function(...) cat(sprintf(...), "\n", sep = "")
 
 # ---- Settings ---------------------------------------------------------------------------
 
-args <- commandArgs(trailingOnly = TRUE)
-settings_file <- if (length(args)) args[1] else Sys.getenv("PDM_SITE_CONFIG")
-if (!nzchar(settings_file) && interactive()) settings_file <- file.choose()
-if (!nzchar(settings_file) || !file.exists(settings_file)) {
-  stop("No settings file. Copy one with file.copy(system.file(\"examples\", \"site.yml\", ",
-       "package = \"pdmS7\"), \"my_site.yml\"), fill it in, and run this again.", call. = FALSE)
-}
-s <- yaml::read_yaml(settings_file)
-home <- dirname(normalizePath(settings_file))
-absolute <- function(p) grepl("^(/|~|[A-Za-z]:|\\\\)", p)
-here <- function(p) if (absolute(p)) path.expand(p) else file.path(home, p)
-need <- function(value, what) {
-  if (!length(value) || (is.character(value) && !all(nzchar(value)))) {
-    stop("The settings file needs ", what, call. = FALSE)
+# Settings already in the session, from settings <- read_site_settings("my_site.yml"), are
+# used, checked again in case they were changed. Otherwise the file named on the command
+# line, or in PDM_SITE_CONFIG, or chosen when asked.
+if (exists("settings", inherits = FALSE) && inherits(settings, "pdm_site_settings")) {
+  settings <- read_site_settings(settings)
+} else {
+  args <- commandArgs(trailingOnly = TRUE)
+  settings_file <- if (length(args)) args[1] else Sys.getenv("PDM_SITE_CONFIG")
+  if (!nzchar(settings_file) && interactive()) settings_file <- file.choose()
+  if (!nzchar(settings_file) || !file.exists(settings_file)) {
+    stop("No settings. Copy the example with file.copy(system.file(\"examples\", \"site.yml\", ",
+         "package = \"pdmS7\"), \"my_site.yml\"), fill it in, then ",
+         "settings <- read_site_settings(\"my_site.yml\") and run this again.", call. = FALSE)
   }
-  value
+  settings <- read_site_settings(settings_file)
 }
-site <- need(s$site, "a site section")
-area <- as.numeric(need(site$area_km2, "site: area_km2"))
-dt <- as.numeric(s$data$step_hours %||% 0.25)
-rain_files <- need(s$data$rain, "data: rain")
-if (!is.list(rain_files)) rain_files <- list(rain = rain_files)
-calibration <- as.character(need(s$calibration, "calibration: [start, end]"))
-validation <- as.character(need(s$validation, "validation: [start, end]"))
-effort <- match.arg(s$effort %||% "standard", c("quick", "standard", "thorough"))
+s <- settings
+site <- list(name = s$name, gauge = s$gauge)
+area <- s$area_km2
+dt <- s$step_hours
+rain_files <- s$rain
+calibration <- s$calibration
+validation <- s$validation
+effort <- s$effort
 plan <- list(
   quick = list(starts = 2L, budget = 150L, recommend = TRUE, sensitivity = FALSE,
                forecast = FALSE, stress = FALSE),
@@ -85,14 +89,12 @@ plan <- list(
   thorough = list(starts = 4L, budget = 600L, recommend = TRUE, sensitivity = TRUE,
                   forecast = TRUE, stress = TRUE)
 )[[effort]]
-overrides <- if (is.numeric(s$rainfall_factor) && length(s$rainfall_factor) == 2) {
-  list(fc = as.numeric(s$rainfall_factor))
-}
+overrides <- if (!is.null(s$rainfall_factor)) list(fc = s$rainfall_factor)
 options(pdmS7.user = Sys.getenv("USERNAME", Sys.getenv("USER", "analyst")),
         pdmS7.role = "custodian")
 logger::log_threshold(logger::WARN, namespace = "pdmS7")
 
-out <- here(s$output %||% "output")
+out <- s$output
 folder <- function(name) {
   p <- file.path(out, name)
   dir.create(p, recursive = TRUE, showWarnings = FALSE)
@@ -105,7 +107,7 @@ png_of <- function(path, draw, width = 1600, height = 900) {
   invisible(path)
 }
 summary_lines <- c(sprintf("# %s: calibration summary", site$name), "",
-                   sprintf("Settings: %s. Effort: %s. pdmS7 %s, %s.", basename(settings_file),
+                   sprintf("Settings: %s. Effort: %s. pdmS7 %s, %s.", basename(s$file),
                            effort, utils::packageVersion("pdmS7"), format(Sys.Date())), "")
 note <- function(...) summary_lines <<- c(summary_lines, unlist(list(...)))
 write_summary <- function() writeLines(summary_lines, file.path(out, "summary.md"))
@@ -115,11 +117,9 @@ say("pdmS7 single-site calibration: %s (%s km2), effort %s", site$name, area, ef
 
 say("\n1. Reading and checking the data")
 d1 <- folder("1_data")
-path <- function(f) if (absolute(f)) path.expand(f) else here(file.path(s$data$folder %||% ".", f))
-raw <- c(list(flow = read_hydro_series(path(s$data$flow)),
-              pe = read_hydro_series(path(s$data$pet))),
-         lapply(rain_files, function(f) read_hydro_series(path(f))))
-if (isTRUE(s$snow)) raw$temperature <- read_hydro_series(path(need(s$temperature, "temperature")))
+raw <- c(list(flow = read_hydro_series(s$flow), pe = read_hydro_series(s$pet)),
+         lapply(rain_files, read_hydro_series))
+if (s$snow) raw$temperature <- read_hydro_series(s$temperature)
 grid <- do.call(align_series, c(raw, list(dt = dt)))
 flow <- convert_units(grid$flow, "auto", dt, "flow")
 pe <- fill_gaps(convert_units(grid$pe, "mm_per_step", dt, "pet"), "interpolate", grid$time, "pe")
@@ -270,15 +270,17 @@ note("## 3. Floods and their rain", "",
      "  wrong lesson, so it is set aside. Many of them point to a poor rain record.", "")
 write_summary()
 
-if (isTRUE(s$stop_after_checks %||% TRUE)) {
+if (s$stop_after_checks) {
   note("## Next", "", "The checks are done. Read the sections above. If they look sound, set",
-       "`stop_after_checks: false` in the settings file and run the script again to",
-       "calibrate.")
+       "`stop_after_checks: false` in the settings file, or in R",
+       "`settings$stop_after_checks <- FALSE`, and run the script again to calibrate.")
   write_summary()
-  say("\nChecks written to %s. Read summary.md, then set stop_after_checks: false.", out)
-  if (!interactive()) quit(save = "no")
-  stop("stop_after_checks is true: stopped before calibrating (this is expected).",
-       call. = FALSE)
+  say("\nChecks written to %s.", out)
+  say("Read summary.md and the plots; the results are also in this session: wb (the water")
+  say("balance), events and forcing. To calibrate: settings$stop_after_checks <- FALSE, then")
+  say("run the script again.")
+  # Ends the run here without an error: quietly back to the prompt in R, or out of Rscript.
+  if (interactive()) invokeRestart("abort") else quit(save = "no")
 }
 
 # ---- 4. Calibrate -----------------------------------------------------------------------
@@ -297,10 +299,7 @@ stages <- function(config) {
   st[[polish]]$objective <- "boxcox"
   st
 }
-thresholds <- if (length(s$thresholds)) {
-  data.frame(name = vapply(s$thresholds, function(t) t$name, ""),
-             value = vapply(s$thresholds, function(t) as.numeric(t$value), 0), unit = "flow")
-}
+thresholds <- s$thresholds
 if (dir.exists(project)) {
   say("   A project from an earlier run is already in %s: reusing it. Change 'output' in the",
       project)
@@ -310,10 +309,10 @@ calibrate_project(project, forcing, flow, area, calibration, validation, structu
                   stages = stages, recommend = plan$recommend, overrides = overrides,
                   starts = plan$starts, seed = 1L, control = list(maxit = plan$budget),
                   method = "dds", catchment = site$name, gauge = as.character(site$gauge %||% ""),
-                  owner = s$owner %||% "Not recorded", steward = s$steward %||% "Not recorded",
+                  owner = s$owner, steward = s$steward,
                   report = TRUE, wettest_years = 0, thresholds = thresholds,
                   highest_gauged_m3s = s$highest_gauged_m3s,
-                  reasoning = paste("Starter script, settings", basename(settings_file)))
+                  reasoning = paste("Starter script, settings", basename(s$file)))
 result <- read_projects(project)
 model <- candidate_model(project)
 config <- read_entry(project, result$candidate)$configuration
@@ -494,12 +493,8 @@ note("## 6. Input uncertainty: how errors in the rain carry into the flow", "",
 # ---- Comparisons and export -------------------------------------------------------------
 
 others <- list(new = project)
-if (!is.null(s$previous_project) && dir.exists(here(s$previous_project))) {
-  others$previous <- here(s$previous_project)
-}
-if (!is.null(s$pdm_for_pcs_inp) && file.exists(here(s$pdm_for_pcs_inp))) {
-  others$pdm_for_pcs <- here(s$pdm_for_pcs_inp)
-}
+others$previous <- s$previous_project
+others$pdm_for_pcs <- s$pdm_for_pcs_inp
 if (length(others) > 1) {
   say("   Comparing with %s", toString(names(others)[-1]))
   cmp <- compare_calibrations(others, forcing, flow,
@@ -522,3 +517,6 @@ note("", "## Next", "",
      "3. Sign-off is the steward's decision: `sign_off_project()` once the report is read.")
 write_summary()
 say("\nDone. Read %s", file.path(out, "summary.md"))
+say("The results are also in this session: wb (water balance), events, model (the calibrated")
+say("PDM), checks, series (modelled and observed flow) and scenarios (rain and evaporation 10%%")
+say("out). For example: plot(series, type = \"hydrograph\", period = \"validation\").")

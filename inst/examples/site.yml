@@ -4,10 +4,15 @@
 # How to use this file
 #   1. Copy it next to your data, for example as my_site.yml.
 #   2. Fill in the section "1. Fill these in". Leave the rest as it is to begin with.
-#   3. In R:  source(system.file("scripts", "calibrate_site.R", package = "pdmS7"))
-#      and choose this file when asked, or set PDM_SITE_CONFIG to its path first.
+#   3. In R:
+#        library(pdmS7)
+#        settings <- read_site_settings("my_site.yml")   # reads and checks this file
+#        settings                                         # shows what will be run
+#        source(system.file("scripts", "calibrate_site.R", package = "pdmS7"))
+#      Any setting can be changed in R before running, e.g. settings$effort <- "quick".
 #   4. The first run stops after checking the data (stop_after_checks: true). Read
-#      summary.md in the output folder, then set stop_after_checks: false and run again.
+#      summary.md in the output folder, then set stop_after_checks: false (in this file, or
+#      settings$stop_after_checks <- FALSE in R) and run again.
 #
 # Paths can be absolute, or relative to the folder this file is in.
 # Lines starting with # are comments and are ignored.

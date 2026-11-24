@@ -11,6 +11,11 @@
   search, and with more effort the sensitivity, forecast skill and stress tests); and the
   flow with the rain and the evaporation 10% out. Given several rain files it compares their
   totals and runoff ratios. The first run stops after the checks.
+- **`read_site_settings()`** reads the settings file into R and checks it, reporting every
+  problem at once (a missing file, an area that is not a number, validation years that
+  overlap calibration), fills the defaults and makes the paths absolute. The settings print
+  as a short list of what will be run, can be changed in R, and the starter script uses them
+  when it finds them in the session, leaving its results there too.
 
 # pdmS7 0.37.0
 
