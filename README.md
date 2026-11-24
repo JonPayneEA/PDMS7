@@ -170,12 +170,17 @@ use; a script does the rest and writes a plain-English summary of what it found.
 
 ```r
 library(pdmS7)
-file.copy(system.file("examples", "site.yml", package = "pdmS7"), "my_site.yml")
-# Fill in the first section of my_site.yml, then:
-settings <- read_site_settings("my_site.yml")  # reads and checks it
-settings                                        # what will be run
+new_site("My_River")       # a folder: site.yml, and data/ with a note on the files it needs
+# Put the CSV files in My_River/data, fill in section 1 of My_River/site.yml, then:
+settings <- read_site_settings("My_River/site.yml")  # reads and checks it
+settings                                              # what will be run
 source(system.file("scripts", "calibrate_site.R", package = "pdmS7"))
 ```
+
+To practise first, `new_site("Practice", practice = TRUE)` makes a folder ready to run: six
+years of made-up hourly data whose true model is known (`data/truth.csv`), with faults to
+find: gauge error, a rating that reads low above the highest gauged flow, and a rain gauge
+whose clock is an hour slow.
 
 `read_site_settings()` reports every problem in the file at once. Any setting can be changed
 in R before running, such as `settings$effort <- "quick"`, and the results stay in the session

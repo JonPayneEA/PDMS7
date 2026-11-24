@@ -73,6 +73,7 @@ read_site_settings <- function(x) {
 # before stopping, so a newcomer fixes the file once.
 .check_site_settings <- function(s, file, home) {
   problems <- character(0)
+  missing_data <- FALSE
   fail <- function(...) problems <<- c(problems, paste0(...))
   or <- function(x, y) if (is.null(x) || (length(x) == 1 && is.na(x))) y else x
   absolute <- function(p) grepl("^(/|~|[A-Za-z]:|\\\\)", p)
@@ -84,7 +85,10 @@ read_site_settings <- function(x) {
       return(NULL)
     }
     full <- from(p, base)
-    if (!file.exists(full)) fail("No ", what, " at ", full, ".")
+    if (!file.exists(full)) {
+      fail("Cannot find ", what, " at ", full, ".")
+      missing_data <<- TRUE
+    }
     full
   }
   window <- function(w, what) {
@@ -205,8 +209,19 @@ read_site_settings <- function(x) {
   s$file <- file
   s$home <- home
   if (length(problems)) {
+    hints <- c(
+      if (identical(s$name, "My River at My Gauge")) {
+        paste("This is still the example settings: fill in section 1 (site, data, calibration",
+              "and validation) with your own site first.")
+      },
+      if (missing_data) {
+        paste0("Put the data files in ", data_dir, ", or change the file names in ",
+               basename(file), " to match yours. To practise first on made-up data that is ",
+               "ready to run: new_site(\"Practice\", practice = TRUE).")
+      })
     stop("The settings in ", basename(file), " need fixing:\n",
-         paste0("- ", problems, collapse = "\n"), call. = FALSE)
+         paste0("- ", problems, collapse = "\n"),
+         if (length(hints)) paste0("\n\n", paste(hints, collapse = "\n")), call. = FALSE)
   }
   structure(s, class = "pdm_site_settings")
 }
@@ -243,4 +258,127 @@ print.pdm_site_settings <- function(x, ...) {
     "  Checks the data, then calibrates.\n"
   })
   invisible(x)
+}
+
+#' Set up a folder for calibrating one site
+#'
+#' Makes the folder the starter script works in: a settings file, `site.yml`, and a `data`
+#' folder for the CSV files it names, with a note in it saying what each file should hold.
+#' Nothing is read or checked until the data are in place, so there are no errors to begin
+#' with. Existing files are never overwritten.
+#'
+#' With `practice = TRUE` the folder is ready to run at once: six years of hourly rain,
+#' potential evaporation and flow from [synthetic_catchment()], two single rain gauges, and the
+#' settings filled in. The river's true model is known, and written to `data/truth.csv`, so a
+#' trainee can see how close the calibration comes. The data carry the faults real data
+#' carry, on purpose: gauge error in the flow, a rating that reads 15% low above the highest
+#' gauged flow, and one rain gauge whose clock is an hour slow. The checks should find them.
+#'
+#' ```r
+#' library(pdmS7)
+#' settings_file <- new_site("Practice", practice = TRUE)
+#' settings <- read_site_settings(settings_file)
+#' settings$stop_after_checks <- FALSE
+#' source(system.file("scripts", "calibrate_site.R", package = "pdmS7"))
+#' ```
+#'
+#' @param folder The folder to set up; made if it does not exist.
+#' @param practice `TRUE` for made-up data and settings, ready to run.
+#' @return The path of the settings file, invisibly.
+#' @export
+#' @examples
+#' settings_file <- new_site(file.path(tempdir(), "my_site"))
+#' list.files(dirname(settings_file), recursive = TRUE)
+new_site <- function(folder, practice = FALSE) {
+  .check(is.character(folder) && length(folder) == 1 && nzchar(folder),
+         "folder must be the path of one folder")
+  .check(isTRUE(practice) || isFALSE(practice), "practice must be TRUE or FALSE")
+  data_dir <- file.path(folder, "data")
+  dir.create(data_dir, recursive = TRUE, showWarnings = FALSE)
+  settings_file <- file.path(folder, "site.yml")
+  kept <- character(0)
+  write_new <- function(path, lines) {
+    if (file.exists(path)) {
+      kept <<- c(kept, path)
+    } else {
+      writeLines(lines, path)
+    }
+  }
+  template <- readLines(system.file("examples", "site.yml", package = "pdmS7"), warn = FALSE)
+  if (practice) {
+    river <- synthetic_catchment(
+      years = 6, dt = 1, seed = 1, area_km2 = 60, highest_gauged_m3s = 25,
+      storms = data.frame(time = c("2013-01-10", "2015-12-05"), depth_mm = c(90, 110),
+                          duration_h = c(36, 30)))
+    stamp <- format(river$forcing$time, "%Y-%m-%d %H:%M:%S", tz = "UTC")
+    series <- function(name, value) {
+      write_new(file.path(data_dir, name),
+                c("time,value", paste(stamp, format(round(value, 4), trim = TRUE), sep = ",")))
+    }
+    series("flow.csv", river$observed)
+    series("pet.csv", river$forcing$pet)
+    series("rain.csv", river$forcing$rain)
+    # Two gauges, each catching the catchment rain with its own error; gauge B's clock is an
+    # hour slow, so its rain arrives an hour late.
+    set.seed(2)
+    rain <- river$forcing$rain
+    series("gauge_a.csv", rain * stats::rlnorm(length(rain), 0, 0.2))
+    series("gauge_b.csv", c(0, utils::head(rain, -1)) * stats::rlnorm(length(rain), 0, 0.2))
+    paths <- calibration_bounds(river$truth)$path
+    write_new(file.path(data_dir, "truth.csv"),
+              c("parameter,value",
+                paste(paths, vapply(paths, function(p) {
+                  format(signif(as.numeric(.path_get(river$truth, p)), 4))
+                }, ""), sep = ",")))
+    # Each line of the example that starts with a key gets the practice value.
+    fill <- c(
+      "  name:" = "  name: Practice Brook          # made-up data from synthetic_catchment()",
+      "  gauge:" = "  gauge: \"PRACTICE\"",
+      "  area_km2:" = "  area_km2: 60                  # catchment area in square kilometres",
+      "  step_hours:" = "  step_hours: 1                 # hourly data",
+      "  # rain_gauges:" = "  rain_gauges:",
+      "  #   Gauge A:" = "    Gauge A: gauge_a.csv",
+      "  #   Gauge B:" = "    Gauge B: gauge_b.csv",
+      "calibration:" = "calibration: [\"2011-10-01\", \"2014-09-30 23:00\"]",
+      "validation:" = "validation: [\"2014-10-01\", \"2016-09-28 23:00\"]",
+      "highest_gauged_m3s:" = "highest_gauged_m3s: 25          # the highest flow ever gauged")
+    for (key in names(fill)) {
+      at <- which(startsWith(template, key))
+      .check(length(at) == 1, paste("The example settings have changed; cannot fill:", key))
+      template[at] <- fill[[key]]
+    }
+    template <- c("# Practice settings, made by new_site(practice = TRUE): ready to run.",
+                  "# data/truth.csv holds the true parameters, to compare with the calibration.",
+                  template)
+  } else {
+    write_new(file.path(data_dir, "README.txt"), c(
+      "Put the site's data here, as CSV files, then fill in section 1 of ../site.yml.",
+      "",
+      "Each file has two columns: a date-time and a value, with a header row, such as",
+      "  time,value",
+      "  2010-10-01 00:00:00,0.2",
+      "Times in UTC, at the start of each step. pdmS7 finds the columns and the date format.",
+      "",
+      "  flow.csv   river flow, m3/s",
+      "  pet.csv    potential evaporation, mm per step",
+      "  rain.csv   catchment rain, mm per step (several files may be named in site.yml)",
+      "",
+      "Optional: single rain gauges (mm per step), a temperature file for snow (deg C).",
+      "The names are up to you: site.yml says which file is which."))
+  }
+  write_new(settings_file, template)
+  if (length(kept)) {
+    message("Kept as they were (new_site() never overwrites): ",
+            paste(basename(kept), collapse = ", "))
+  }
+  message("Set up ", normalizePath(folder), ". Next:\n",
+          if (practice) {
+            paste0("  settings <- read_site_settings(\"", settings_file, "\")\n")
+          } else {
+            paste0("  1. Put the CSV files in ", data_dir, " (README.txt there says what).\n",
+                   "  2. Fill in section 1 of ", settings_file, ".\n",
+                   "  3. settings <- read_site_settings(\"", settings_file, "\")\n")
+          },
+          "  source(system.file(\"scripts\", \"calibrate_site.R\", package = \"pdmS7\"))")
+  invisible(settings_file)
 }

@@ -1,3 +1,18 @@
+# pdmS7 0.39.0
+
+- **`new_site()`** sets up the folder the starter script works in: `site.yml`, and a `data`
+  folder with a note on the files it needs. Nothing is checked until the data are in, so
+  there are no errors to begin with, and existing files are never overwritten.
+  `new_site(practice = TRUE)` makes a folder ready to run: six years of hourly data from
+  `synthetic_catchment()`, two rain gauges, the settings filled in, and the true parameters in
+  `data/truth.csv`. The data carry faults to find: gauge error, a rating 15% low above the
+  highest gauged flow, and a gauge whose clock is an hour slow.
+- `read_site_settings()` says "Cannot find" a missing file (it said "No a flow file"), and,
+  when files are missing, where to put them and how to practise first; on the untouched
+  example it says to fill in section 1.
+- The starter's summary notes rain gauges whose lags differ by an hour or more, the sign of a
+  clock or time-zone error.
+
 # pdmS7 0.38.0
 
 - **A starter script for one site**, `inst/scripts/calibrate_site.R`, with its settings file
