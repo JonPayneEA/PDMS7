@@ -172,3 +172,19 @@ test_that("new_site(practice = TRUE) is ready to run and never overwrites", {
   expect_message(new_site(folder, practice = TRUE), "never overwrites")
   expect_identical(readLines(file.path(folder, "data", "rain.csv")), "edited")
 })
+
+test_that("the rain comparison parses, stops until the area is set, and names its plots", {
+  script <- system.file("scripts", "compare_rain.R", package = "pdmS7")
+  expect_true(nzchar(script))
+  code <- readLines(script)
+  expect_no_error(parse(text = code))
+  # The area is left blank, so the script cannot run on a wrong default.
+  expect_true(any(grepl("^area_km2 <- NA ", code)))
+  # Every HOW TO READ note names a plot the script writes.
+  notes <- sub("^\\s*# HOW TO READ ", "", grep("^\\s*# HOW TO READ ", code, value = TRUE))
+  expect_length(notes, 5)
+  written <- code[!grepl("^\\s*#", code)]
+  for (name in notes) {
+    expect_true(any(grepl(sprintf('"%s"', name), written, fixed = TRUE)), info = name)
+  }
+})

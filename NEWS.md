@@ -1,3 +1,16 @@
+# pdmS7 0.40.0
+
+- **Which rain series best explains the flow**, `inst/scripts/compare_rain.R`: any number of
+  rain series (catchment averages and single gauges alike) set against one flow record, from
+  the data alone, before any model. Five comparisons on the steps every series covers: gaps;
+  the water balance by water year; double-mass curves against the median of the series, so
+  the weather cancels and only a change in one series shows; how closely the river's quick
+  response follows each series, and at what lag (`gauge_response()`); and, on one common set
+  of floods, missed storms and the spread of each series' flood runoff ratios. A ranking over
+  twelve measures, warnings for each series in plain English (more flow than rain, a bend, a
+  clock an hour out, storms missed), five plots with notes on how to read them, and
+  `summary.md`. Copy the script, fill in the area, the step and the files, and run it.
+
 # pdmS7 0.39.0
 
 - **`new_site()`** sets up the folder the starter script works in: `site.yml`, and a `data`

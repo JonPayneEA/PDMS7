@@ -195,6 +195,18 @@ catchments. It then shows the band of flows that storm-by-storm rain errors allo
 `summary.md` in the output folder, and `how_to_read_the_plots.md` beside it for what each
 plot shows and what should worry you.
 
+### Which rain series to use
+
+`inst/scripts/compare_rain.R` sets several rain series (Thiessen, multiquadric, single gauges)
+against one flow record, from the data alone, and ranks them: the water balance, double-mass
+curves, how closely the river follows each series and at what lag, and storms each missed.
+Copy it, fill in the area, the time step and the files at the top, and run it:
+
+```r
+file.copy(system.file("scripts", "compare_rain.R", package = "pdmS7"), "compare_rain.R")
+file.edit("compare_rain.R")
+```
+
 ## Quick start
 
 ```r
