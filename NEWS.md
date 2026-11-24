@@ -10,7 +10,9 @@
   trials; the diagnostics (hydrographs, flow duration, residuals, bounds, peaks, timing, the
   search, and with more effort the sensitivity, forecast skill and stress tests); and the
   flow with the rain and the evaporation 10% out. Given several rain files it compares their
-  totals and runoff ratios. The first run stops after the checks.
+  totals and runoff ratios. The first run stops after the checks. Every plot has a "HOW TO
+  READ" note beside the line that draws it: what it shows, what good looks like, and what
+  should worry you.
 - **`read_site_settings()`** reads the settings file into R and checks it, reporting every
   problem at once (a missing file, an area that is not a number, validation years that
   overlap calibration), fills the defaults and makes the paths absolute. The settings print

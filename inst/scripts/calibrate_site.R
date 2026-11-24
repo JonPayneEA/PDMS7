@@ -30,6 +30,9 @@
 #        Rscript calibrate_site.R my_site.yml
 #   3. Read summary.md in the output folder. It says what each result means and what to do.
 #      The results stay in the R session too: wb, events, model, checks, series, scenarios.
+#   4. Every plot has a note beside the line that draws it, saying what it shows, what good
+#      looks like and what should worry you: search this script for "HOW TO READ" and the
+#      plot's file name, such as "HOW TO READ budyko.png".
 #
 # The steps
 #   1. Data       read, line up and check the series; count gaps
@@ -109,6 +112,11 @@ png_of <- function(path, draw, width = 1600, height = 900) {
 summary_lines <- c(sprintf("# %s: calibration summary", site$name), "",
                    sprintf("Settings: %s. Effort: %s. pdmS7 %s, %s.", basename(s$file),
                            effort, utils::packageVersion("pdmS7"), format(Sys.Date())), "")
+summary_lines <- c(summary_lines,
+                   paste("How to read each plot: search calibrate_site.R for \"HOW TO READ\"",
+                         "and the plot's name. Open the script with `file.edit(system.file(",
+                         "\"scripts\", \"calibrate_site.R\", package = \"pdmS7\"))`."),
+                   "")
 note <- function(...) summary_lines <<- c(summary_lines, unlist(list(...)))
 write_summary <- function() writeLines(summary_lines, file.path(out, "summary.md"))
 say("pdmS7 single-site calibration: %s (%s km2), effort %s", site$name, area, effort)
@@ -141,6 +149,13 @@ years <- as.numeric(difftime(max(grid$time), min(grid$time), units = "days")) / 
 missing_flow <- 100 * mean(!is.finite(flow))
 writeLines(utils::capture.output(print(check_inputs(forcing, flow, area))),
            file.path(d1, "input_checks.txt"))
+# HOW TO READ series.png
+# Rain on top (bars, mm per step), flow below (m3/s), over the whole record.
+# Good: every burst of rain is followed, within hours, by a rise in flow, and the flow falls
+#   away smoothly between storms.
+# Worry if: the flow is flat for weeks (a stuck gauge); it jumps up or down in one step and
+#   stays there (a rating or datum change); a big storm brings no rise, or a rise has no rain
+#   (a missed or misplaced storm); long empty stretches (gaps).
 png_of(file.path(d1, "series.png"), function() {
   graphics::par(mfrow = c(2, 1), mar = c(2, 4.5, 1, 1))
   graphics::plot(grid$time, forcing$rain, type = "h", col = "#1B6F80", ylab = "Rain (mm/step)",
@@ -165,10 +180,45 @@ say("2. The water balance, year by year")
 d2 <- folder("2_water_balance")
 wb <- water_balance(forcing, flow, area)
 fwrite(wb$years, file.path(d2, "water_balance_by_year.csv"))
-for (type in c("budyko", "years", "double_mass")) {
-  pdm_save(wb, file.path(d2, paste0(type, ".png")), type = type)
-}
+# HOW TO READ budyko.png
+# Each water year as a point: across, how dry the climate is (potential evaporation / rain);
+# up, the share of the rain that never reached the river (loss / rain, or 1 - runoff ratio).
+# The dashed lines are physical limits: a catchment cannot lose more than all its rain (the
+# flat line at 1), nor evaporate more than the air can take (the sloping line). The curve is
+# where a typical catchment sits; the open circle is the whole record.
+# Good: points below both dashed lines, near the curve, close together.
+# Worry if: a point sits above a dashed line. That is impossible for a closed catchment, so
+#   the data are wrong: rain too high, flow too low, or water leaving underground or by
+#   abstraction. Points far below the curve mean more flow than climate explains: rain too
+#   low (common in the uplands) or water arriving from outside the catchment.
+pdm_save(wb, file.path(d2, "budyko.png"), type = "budyko")
+# HOW TO READ years.png
+# Two lines across the water years: the runoff ratio (flow / rain) and the loss over
+# potential evaporation; the line at 1 is the limit for both. Amber points are flagged
+# years, open points incomplete years.
+# Good: both lines fairly level, wet years a little higher in runoff ratio, both below 1.
+# Worry if: either line crosses 1, or jumps in one year and stays at the new level. A step
+#   usually means a new rain gauge, a new rating or a new abstraction, not a change in the
+#   weather. Calibrate on the years after a step, or find out why.
+pdm_save(wb, file.path(d2, "years.png"), type = "years")
+# HOW TO READ double_mass.png
+# Cumulative flow against cumulative rain, from the start of the record; the dashed line
+# joins its ends.
+# Good: the curve stays on the dashed line. Short wiggles are just wet and dry spells.
+# Worry if: the curve bends and keeps the new slope. Steeper after the bend means more flow
+#   per mm of rain than before, flatter means less: something in the rain or the flow record
+#   changed at that point. summary.md names the year of any large shift.
+pdm_save(wb, file.path(d2, "double_mass.png"), type = "double_mass")
 yr <- wb$years
+# HOW TO READ runoff_ratio_by_year.png
+# One bar per water year (October to September): the share of the year's rain that left the
+# catchment as river flow. The dashed line is the whole record; the red line at 1 is where
+# flow would equal rain. Amber bars are years the water balance flags.
+# Good: bars of similar height, wetter years a little taller, all well below 1. Typical
+#   ratios: 0.3 to 0.5 in the lowlands, 0.6 to 0.9 in wet uplands, lower on chalk.
+# Worry if: a bar reaches 1 (more flow than rain: the rain is too low or water comes in from
+#   outside); one year stands far from the rest (check that year's rain and flow); the bars
+#   step up or down part way through the record (a change in a gauge or the catchment).
 png_of(file.path(d2, "runoff_ratio_by_year.png"), function() {
   graphics::par(mar = c(5, 4.5, 2, 1))
   flagged <- nzchar(yr$flags)
@@ -234,6 +284,13 @@ if (length(rains) > 1) {
   comparison <- data.frame(rain = names(rains), rain_mm_per_year = round(totals),
                            runoff_ratio = round(ratio, 3))
   fwrite(comparison, file.path(d2, "rain_series_compared.csv"))
+  # HOW TO READ rain_series_compared.png
+  # One bar per rain file: the average rain a year each gives the catchment.
+  # Good: bars within a few per cent of each other.
+  # Worry if: they differ by 10% or more. The model cannot tell which is right; the spread is
+  #   a measure of how uncertain the rain is, and so of how uncertain any flow forecast is. The
+  #   table beside it gives the runoff ratio from each: the one nearer a sensible ratio for
+  #   the catchment is likelier to be right.
   png_of(file.path(d2, "rain_series_compared.png"), function() {
     graphics::par(mar = c(5, 4.5, 2, 1))
     graphics::barplot(totals, col = "#1B6F80", border = NA, ylab = "Rain, mm a year",
@@ -254,6 +311,16 @@ d3 <- folder("3_events")
 events <- screen_events(find_events(forcing$rain, flow, forcing$time, dt = dt, area_km2 = area),
                         flow, highest_gauged_m3s = s$highest_gauged_m3s)
 fwrite(events, file.path(d3, "events.csv"))
+# HOW TO READ events_balance.png
+# One point per flood: across, the rain that fell on the catchment for it; up, the quick flow
+# it produced (the flood's water above the baseflow), both in mm. Both axes are logarithmic.
+# The dashed line is a runoff ratio of 1, quick flow equal to rain; the faint lines are 0.5
+# and 0.1. Grey points are floods set aside.
+# Good: a band of points rising from lower left to upper right, below the dashed line, wet
+#   winter floods nearer 0.5 and summer storms nearer 0.1.
+# Worry if: points above the dashed line. A flood cannot produce more quick flow than its
+#   rain, so the gauges missed the storm (it fell between them, or as snow that melted
+#   later). Those floods are set aside; many of them mean the rain record is poor.
 pdm_save(events, file.path(d3, "events_balance.png"), type = "balance")
 flagged <- unlist(strsplit(events$flags[nzchar(events$flags)], "; ", fixed = TRUE))
 reasons <- if (length(flagged)) {
@@ -340,20 +407,95 @@ write_summary()
 say("5. Diagnostic plots")
 d5 <- folder("5_diagnostics")
 series <- project_series(project)
-for (type in c("hydrograph", "duration", "volume", "residuals")) {
-  pdm_save(series, file.path(d5, paste0(type, "_validation.png")), type = type,
-           period = "validation")
-}
+# These four are in the validation years, which the calibration never saw: the fairest test.
+# HOW TO READ hydrograph_validation.png
+# Observed flow and the model's flow against time, rain above.
+# Good: the model rises and falls with the river, its peaks close in size and time.
+# Worry if: peaks are consistently too high or too low (the fast response is wrong); the
+#   model rises before or after the river (the time delay is wrong); low flows between
+#   storms drift away (the slow stores are wrong); a single storm is missed entirely (look
+#   for that storm in the rain first: the model can only respond to rain it is given).
+pdm_save(series, file.path(d5, "hydrograph_validation.png"), type = "hydrograph",
+         period = "validation")
+# HOW TO READ duration_validation.png
+# The flow duration curve: every flow, sorted from highest to lowest. Across, the
+# percentage of time a flow is exceeded; up, the flow, on a log scale. The left end is
+# floods, the right end droughts.
+# Good: the two curves lie on top of each other from end to end.
+# Worry if: the model's curve is above or below on the left (floods too big or too small)
+#   or on the right (low flows wrong: the groundwater store or the losses). A model can match
+#   one end and miss the other; for flood forecasting the left half matters most.
+pdm_save(series, file.path(d5, "duration_validation.png"), type = "duration",
+         period = "validation")
+# HOW TO READ volume_validation.png
+# Cumulative volume of water: everything that has passed the gauge since the window began,
+# observed and modelled.
+# Good: the lines stay together and finish within a few per cent (the subtitle gives it).
+# Worry if: the gap widens steadily. The model makes too much or too little water overall:
+#   rain bias, evaporation, or water lost or gained underground. A gap that opens in one
+#   storm or one season points to that storm or season.
+pdm_save(series, file.path(d5, "volume_validation.png"), type = "volume",
+         period = "validation")
+# HOW TO READ residuals_validation.png
+# Modelled minus observed flow at each step (faint), with its 30-day average (bold). Above 0
+# the model is too high, below too low. Storm peaks run off the scale on purpose.
+# Good: the average line hugs 0 all year.
+# Worry if: it sits above or below 0 for months (a bias), or swings with the seasons, such as
+#   too high in summer and too low in winter (evaporation or the soil store is wrong).
+pdm_save(series, file.path(d5, "residuals_validation.png"), type = "residuals",
+         period = "validation")
 checks <- calibration_checks(project, top = 20)
 fwrite(checks$parameters, file.path(d5, "parameters.csv"))
 fwrite(checks$events, file.path(d5, "largest_floods.csv"))
-for (type in c("bounds", "peaks", "timing", "balance")) {
-  pdm_save(checks, file.path(d5, paste0("checks_", type, ".png")), type = type)
-}
+# HOW TO READ checks_bounds.png
+# One row per parameter: where the calibrated value sits in the range the search was
+# allowed, from 0 (the lower limit) to 1 (the upper). Amber: at a limit.
+# Good: every point somewhere inside, away from the ends.
+# Worry if: a point is pressed against 0 or 1. The search wanted to go further than a
+#   sensible value, usually to make up for something else: rain that is too low or high, a
+#   structure that does not suit the catchment, or a gauge problem. Find the cause before
+#   using the model; widening the range rarely fixes it.
+pdm_save(checks, file.path(d5, "checks_bounds.png"), type = "bounds")
+# HOW TO READ checks_peaks.png
+# The largest floods: across, the observed peak; up, the model's peak. Points on the
+# diagonal are exact; the band either side is 20%. Colours mark calibration and validation.
+# Good: most points inside the band, scattered either side of the diagonal.
+# Worry if: points fall below the band at the right (the biggest floods underestimated, the
+#   most costly error for warnings); validation points fare worse than calibration points.
+pdm_save(checks, file.path(d5, "checks_peaks.png"), type = "peaks")
+# HOW TO READ checks_timing.png
+# The same floods: up, how many hours the model's peak came after the observed one (above 0
+# late, below 0 early).
+# Good: points within an hour or two of 0, either side.
+# Worry if: most points sit on one side. A model consistently late gives less warning time;
+#   the time delay or the fast store needs looking at.
+pdm_save(checks, file.path(d5, "checks_timing.png"), type = "timing")
+# HOW TO READ checks_balance.png
+# The event balance (see events_balance.png in 3_events), for the floods the calibration
+# scored, coloured by window. Read it the same way: points above the dashed line had more
+# quick flow than rain, so their rain is doubtful.
+pdm_save(checks, file.path(d5, "checks_balance.png"), type = "balance")
 route <- calibration_path(project)
-for (type in c("stages", "starts", "windows")) {
-  pdm_save(route, file.path(d5, paste0("search_", type, ".png")), type = type)
-}
+# HOW TO READ search_stages.png
+# The calibration's scores after each stage of the search: NSE (weighted to floods), log NSE
+# (weighted to low flows) and 1 minus the volume error. 1 is perfect.
+# Good: scores rising, or holding, from stage to stage.
+# Worry if: a stage makes things clearly worse; the later stages then had to repair it.
+pdm_save(route, file.path(d5, "search_stages.png"), type = "stages")
+# HOW TO READ search_starts.png
+# Each stage was run from several random starting points. Each point is where one start
+# finished (lower is better); the highlighted one was kept.
+# Good: the starts finish close together. The record pins the model down.
+# Worry if: they finish far apart. Different parameter sets fit almost as well, so the
+#   values are not to be trusted one by one, and a rerun may give a different model.
+pdm_save(route, file.path(d5, "search_starts.png"), type = "starts")
+# HOW TO READ search_windows.png
+# The chosen model's NSE, log NSE and KGE (another overall score; 1 is perfect) on the
+# calibration years and on the validation years, side by side.
+# Good: validation close to calibration.
+# Worry if: validation falls well below calibration (by 0.1 or more). The model has learnt
+#   the calibration years rather than the catchment; try a longer calibration window.
+pdm_save(route, file.path(d5, "search_windows.png"), type = "windows")
 at_bound <- checks$parameters$path[!is.na(checks$parameters$at_bound)]
 note("## 5. Diagnostics", "",
      "In `5_diagnostics/`:",
@@ -382,6 +524,14 @@ if (plan$sensitivity) {
                           objectives = c("nse_loss", "boxcox_loss"), r = 10L, warmup = warm,
                           log_scale = log_scale)
   fwrite(as.data.frame(sens), file.path(d5, "sensitivity.csv"))
+  # HOW TO READ sensitivity.png
+  # One bar per parameter, one panel per score: how much moving that parameter over its whole
+  # range moves the score. Long bars matter; short bars hardly matter.
+  # Good: the bars you expect to matter are long (the soil store size and the fast store for
+  #   floods; the slow stores for low flows).
+  # Worry if: a parameter's bar is very short. The record cannot fix it, so its calibrated
+  #   value is little better than a guess: do not read meaning into it, and do not compare it
+  #   between catchments. Fixing it at a typical value is safer.
   png_of(file.path(d5, "sensitivity.png"), function() plot(sens))
   weak <- unique(sens$parameter[sens$negligible])
   note("- `sensitivity.png`: how much each parameter moves the score over its whole range.",
@@ -401,6 +551,13 @@ if (plan$forecast) {
                           horizon_h = 12, every_h = 6, window = rows,
                           ar = list(ea = ar_ea_default()))
   fwrite(fc$scores, file.path(d5, "forecast_skill.csv"))
+  # HOW TO READ forecast_skill.png
+  # Across, how far ahead the forecast looks (hours); up, its skill compared with persistence,
+  # the forecast that the flow stays as it is now. The dashed line at 0 is persistence; 1 would
+  # be perfect. Forecasts are updated with the flow observed up to their start, as in operations.
+  # Good: the line well above 0 at every lead time, highest at the longer leads (persistence
+  #   is hard to beat an hour ahead, easy to beat twelve hours ahead).
+  # Worry if: the line sits near or below 0. The model adds nothing over watching the gauge.
   png_of(file.path(d5, "forecast_skill.png"), function() plot(fc))
   note("- `forecast_skill.png`: forecasts from every 6 hours of the validation years, updated",
        "  with the flow observed so far, scored against persistence (assuming the flow stays",
@@ -415,6 +572,14 @@ if (plan$stress) {
   drift <- do.call(parameter_drift, c(list(config, forcing, flow, lower, upper, periods = 3L),
                                       settings))
   fwrite(drift$parameters, file.path(d5, "parameter_drift.csv"))
+  # HOW TO READ parameter_drift.png
+  # The record cut into periods and the model calibrated on each in turn. Each line is one
+  # parameter's place in its range (0 lower limit, 1 upper), period by period.
+  # Good: flat lines. The record says the same thing about the catchment throughout.
+  # Worry if: a line climbs or falls steadily, or steps. Something changed: a new rain gauge
+  #   (shows in the rainfall factor or soil store), a new rating (the slow stores), land use or
+  #   abstraction. A line that jumps about with no pattern is a parameter the data cannot fix
+  #   (see sensitivity.png).
   png_of(file.path(d5, "parameter_drift.png"), function() plot(drift))
   note("- `dry_against_wet.csv`: calibrated on the drier years, scored on the wetter, and the",
        "  reverse. A large drop means the model will not hold in a wetter future.",
@@ -456,6 +621,15 @@ scenarios$largest_peak_change_pct <- vapply(sims, function(q) {
 }, numeric(1))
 scenarios$validation_nse <- round(vapply(sims, nse, numeric(1)), 3)
 fwrite(scenarios, file.path(d6, "rain_and_evaporation_scenarios.csv"))
+# HOW TO READ largest_flood_with_rain_10pct_out.png
+# The largest flood in the validation years: observed (grey), the model with the rain as
+# measured (blue), and the model with every rain value 10% lower (amber dashed) and 10% higher
+# (red dashed). Nothing else is changed.
+# What it shows: the spread between the dashed lines is how far the forecast peak moves for
+#   a rain error of a size that is common. If that spread is wider than the gap between the
+#   model and the observed flow, the rain, not the model, limits the forecast.
+# Typical: the peak moves by more than 10%, because once the soil is wet nearly all the
+#   extra rain runs off.
 png_of(file.path(d6, "largest_flood_with_rain_10pct_out.png"), function() {
   w <- max(1, peak_at - 72 / dt):min(length(flow), peak_at + 120 / dt)
   graphics::par(mar = c(4, 4.5, 2, 1))
@@ -501,6 +675,12 @@ if (length(others) > 1) {
                               windows = list(calibration = calibration, validation = validation),
                               warmup = warm)
   fwrite(cmp$scores, file.path(d5, "comparison_scores.csv"))
+  # HOW TO READ comparison_largest_flood.png
+  # The largest flood, with the observed flow (black) and each model on the same rain: the new
+  # calibration, and the earlier project or the PDM for PCs model.
+  # Good: the new model as close to the observed flow as the old, or closer, in peak and timing.
+  # Worry if: the old model is clearly better on this flood. Check the scores table too: one
+  #   flood is one flood, but the largest matters most for warnings.
   png_of(file.path(d5, "comparison_largest_flood.png"), function() plot(cmp, event = 1))
   note("## Compared with the existing model", "",
        "`5_diagnostics/comparison_scores.csv` and `comparison_largest_flood.png`: every model",
