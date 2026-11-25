@@ -347,8 +347,11 @@ if (length(clash) || anyDuplicated(c(gauge_names, names(other_rain_files)))) {
        toString(built_names), ".", call. = FALSE)
 }
 if (length(setdiff(names(thiessen_weights), gauge_names))) {
+  in_use <- if (is.null(gauges$wiski_id)) gauge_names else
+    sprintf("%s (WISKI ID %s)", gauge_names, gauges$wiski_id)
   stop("thiessen_weights names gauges not in use: ",
-       toString(setdiff(names(thiessen_weights), gauge_names)), call. = FALSE)
+       toString(setdiff(names(thiessen_weights), gauge_names)), ". Name each gauge by its ",
+       "WISKI ID or its name here. The gauges in use: ", toString(in_use), call. = FALSE)
 }
 
 inputs <- c(stats::setNames(as.character(gauges$file), gauge_names), other_rain_files)
