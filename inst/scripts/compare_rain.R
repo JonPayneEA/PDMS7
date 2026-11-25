@@ -1,29 +1,46 @@
 # ============================================================ #
 # Tool:         compare_rain
-# Description:  Which rain series best explains a river's flow, judged from the data alone,
-#               before any model: the water balance, the double-mass curve, how closely the
-#               river's quick response follows each series, and storms each series missed
+# Description:  Builds catchment rainfall from rain gauges several ways (the Thiessen weights
+#               given, equal weights, multiquadric) and finds which best explains a river's
+#               flow, judged from the data alone, before any model: the water balance, the
+#               double-mass curve, how closely the river's quick response follows each series,
+#               storms each missed, and how many gauges' worth of rain each average uses
 # Flode Module: standalone; target reach.forcing
 # Author:       pdmS7 contributors
 # Created:      2026-11-24
 # Tier:         1
-# Inputs:       CSV files: flow (m3/s), potential evaporation and each rain series (mm per
-#               step), each a date-time column and a value column
-# Outputs:      A folder: summary.md, rain_ranking.csv and plots, each with a note on how to
-#               read it
-# Dependencies: pdmS7 (0.40.0 or later)
+# Inputs:       CSV files: flow (m3/s), potential evaporation, and each rain gauge (mm per
+#               step), each a date-time column and a value column; the Thiessen weights; for
+#               multiquadric, the gauges' positions and the catchment boundary
+#               (British National Grid metres); optionally other catchment series
+# Outputs:      A folder: summary.md, rain_ranking.csv, weights_and_error.csv, plots each with a
+#               note on how to read it, and catchment_rain/ with each average built, as CSV
+#               ready for calibrate_site.R
+# Dependencies: pdmS7 (0.41.0 or later)
 # ============================================================ #
 #
 # How to use it
 #   1. Copy the script to your own folder, so you can fill in its settings:
 #        file.copy(system.file("scripts", "compare_rain.R", package = "pdmS7"), "compare_rain.R")
 #        file.edit("compare_rain.R")
-#   2. Fill in the settings below: the catchment area, the time step, and the files.
+#   2. Fill in the settings below: the catchment area, the time step, the flow and evaporation
+#      files, the rain gauges and the Thiessen weights. For the multiquadric average add each
+#      gauge's position and a boundary file.
 #   3. Run the whole script (Ctrl+Shift+S in RStudio). It takes a minute or two.
 #   4. Read summary.md in the output folder.
 #
 # What it does
-#   Every rain series is set against the same flow, five ways. None needs a model, so the
+#   First it builds the catchment averages from the gauges:
+#     thiessen      the Thiessen weights given;
+#     equal         the same gauges, weighted equally;
+#     equal_all     every gauge listed, inside the catchment or not, weighted equally (only
+#                   when some gauge has no Thiessen weight);
+#     multiquadric  a smooth surface through every gauge, averaged over the catchment (with the
+#                   positions and the boundary).
+#   Each is renormalised over the gauges reporting at each step. With the boundary it also
+#   works out Thiessen weights from the geometry, to check those given.
+#   Then every series (the averages, each gauge, and any other series given) is set against the
+#   same flow, five ways. None needs a model, so the
 #   comparison is not coloured by how well a model can make up for poor rain.
 #     1. Gaps: how much of the record each series is missing.
 #     2. Water balance: the runoff ratio (flow / rain) and the losses against potential
@@ -56,24 +73,29 @@ output_folder <- "rain_comparison"
 flow_file <- "flow.csv"   # river flow, m3/s
 pet_file <- "pet.csv"     # potential evaporation, mm per step
 
-# Every rain series to compare, each with a short name. Catchment averages and single gauges
-# alike; add or remove lines as needed.
-rain_files <- c(
-  thiessen = "rain_thiessen.csv",
-  multiquadric = "rain_multiquadric.csv",
-  gauge_A = "gauge_a.csv",
-  gauge_B = "gauge_b.csv",
-  gauge_C = "gauge_c.csv"
+# The rain gauges: one file each, rain in mm per step. x and y are each gauge's position in
+# metres on British National Grid (easting and northing); they are needed only for the
+# multiquadric average, so they can stay NA when there is no boundary below.
+gauges <- data.frame(
+  name = c("gauge_A", "gauge_B", "gauge_C"),
+  file = c("gauge_a.csv", "gauge_b.csv", "gauge_c.csv"),
+  x = c(NA, NA, NA),
+  y = c(NA, NA, NA)
 )
 
-# Optional: which of the series above are single gauges, and the weights each catchment
-# average gives them. Weights need not include every gauge (a gauge outside the catchment has
-# none) and should add up to 1. A catchment average with no weights here (multiquadric, say)
-# has its weights estimated from the data. Leave gauge_series empty to skip the weights.
-gauge_series <- c("gauge_A", "gauge_B", "gauge_C")
-weights <- list(
-  thiessen = c(gauge_A = 0.264, gauge_B = 0.737)
-)
+# The Thiessen weights: each gauge's share of the catchment. A gauge outside the catchment has
+# none: leave it out, or give it 0. They should add up to 1.
+thiessen_weights <- c(gauge_A = 0.264, gauge_B = 0.737)
+
+# The catchment boundary, for the multiquadric average: a CSV in data_folder with columns x and
+# y, the boundary's corners in order, in metres on British National Grid. NULL to skip the
+# multiquadric average. The grid it is worked out on has cells this many metres across.
+catchment_boundary <- NULL     # such as "boundary.csv"
+grid_spacing_m <- 500
+
+# Other catchment rain series built elsewhere, to compare as well (optional), such as
+# other_rain_files <- c(multiquadric_ea = "rain_multiquadric.csv", radar = "rain_h19.csv")
+other_rain_files <- c()
 
 # ---- Read and line up the data ------------------------------------------------------------
 
@@ -87,16 +109,108 @@ if (!dir.exists(data_folder)) {
 }
 dir.create(output_folder, recursive = TRUE, showWarnings = FALSE)
 here <- function(f) file.path(data_folder, f)
-say("Reading %d rain series, the flow and the evaporation", length(rain_files))
+gauge_names <- as.character(gauges$name)
+built_names <- c("thiessen", "equal", "equal_all", "multiquadric")
+clash <- intersect(c(gauge_names, names(other_rain_files)), built_names)
+if (length(clash) || anyDuplicated(c(gauge_names, names(other_rain_files)))) {
+  stop("Give each gauge and other series a name of its own, not one of ",
+       toString(built_names), ".", call. = FALSE)
+}
+if (length(setdiff(names(thiessen_weights), gauge_names))) {
+  stop("thiessen_weights names gauges not in the gauges table: ",
+       toString(setdiff(names(thiessen_weights), gauge_names)), call. = FALSE)
+}
+inputs <- c(stats::setNames(as.character(gauges$file), gauge_names), other_rain_files)
+missing_files <- inputs[!file.exists(here(inputs))]
+if (length(missing_files)) {
+  stop("Cannot find ", toString(here(missing_files)), ".", call. = FALSE)
+}
+say("Reading %d rain gauges, %d other series, the flow and the evaporation", length(gauge_names),
+    length(other_rain_files))
 raw <- c(list(flow = read_hydro_series(here(flow_file)), pe = read_hydro_series(here(pet_file))),
-         lapply(rain_files, function(f) read_hydro_series(here(f))))
+         lapply(inputs, function(f) read_hydro_series(here(f))))
 grid <- do.call(align_series, c(raw, list(dt = step_hours)))
 flow <- convert_units(grid$flow, "auto", step_hours, "flow")
 pe <- fill_gaps(convert_units(grid$pe, "mm_per_step", step_hours, "pet"), "interpolate",
                 grid$time, "pe")
-names_r <- names(rain_files)
-rains <- lapply(names_r, function(n) convert_units(grid[[n]], "mm_per_step", step_hours, "rain"))
-names(rains) <- names_r
+as_rain <- function(n) convert_units(grid[[n]], "mm_per_step", step_hours, "rain")
+G <- vapply(gauge_names, as_rain, numeric(length(grid$time)))
+if (is.null(dim(G))) G <- matrix(G, ncol = 1, dimnames = list(NULL, gauge_names))
+
+# ---- The catchment averages -------------------------------------------------------------------
+
+# A weighted average, renormalised over the gauges reporting at each step, as a weighting
+# method does when a gauge is missing: the weights of the missing gauges are shared among the
+# rest. A step with no weighted gauge reporting is missing.
+weighted_average <- function(w) {
+  full <- stats::setNames(rep(0, length(gauge_names)), gauge_names)
+  full[names(w)] <- w
+  reporting <- !is.na(G)
+  share <- as.numeric(reporting %*% full)
+  total <- as.numeric(ifelse(reporting, G, 0) %*% full)
+  out <- total / share
+  out[share <= 0] <- NA
+  out
+}
+inside <- names(thiessen_weights)[thiessen_weights > 0]
+weights <- list(thiessen = thiessen_weights,
+                equal = stats::setNames(rep(1 / length(inside), length(inside)), inside))
+if (length(setdiff(gauge_names, inside))) {
+  weights$equal_all <- stats::setNames(rep(1 / length(gauge_names), length(gauge_names)),
+                                       gauge_names)
+}
+built <- lapply(weights, weighted_average)
+
+# Multiquadric: a smooth surface through every gauge, inside the catchment or near it, averaged
+# over the cells inside the boundary (pdmS7's merge_rainfall()). Worked out on the wet steps
+# only: a step where every reporting gauge is dry has no rain anywhere.
+geometry_weights <- NULL
+if (!is.null(catchment_boundary)) {
+  if (anyNA(gauges$x) || anyNA(gauges$y)) {
+    stop("The multiquadric average needs every gauge's x and y in the gauges table.",
+         call. = FALSE)
+  }
+  boundary <- fread(here(catchment_boundary))
+  if (!all(c("x", "y") %in% names(boundary))) {
+    stop(catchment_boundary, " needs columns x and y.", call. = FALSE)
+  }
+  say("Multiquadric average over the catchment")
+  cells_x <- seq(min(boundary$x) - grid_spacing_m, max(boundary$x) + grid_spacing_m,
+                 by = grid_spacing_m)
+  cells_y <- seq(min(boundary$y) - grid_spacing_m, max(boundary$y) + grid_spacing_m,
+                 by = grid_spacing_m)
+  cell_grid <- list(x = cells_x, y = cells_y)
+  mask <- catchment_mask(cells_x, cells_y, boundary)
+  located <- data.frame(id = gauge_names, x = gauges$x, y = gauges$y)
+  wet_steps <- which(rowSums(G > 0, na.rm = TRUE) > 0)
+  multiquadric <- ifelse(rowSums(!is.na(G)) > 0, 0, NA_real_)
+  fit <- merge_rainfall(located, G[wet_steps, , drop = FALSE], cell_grid, mask,
+                        method = "multiquadric")
+  multiquadric[wet_steps] <- fit$rain
+  built$multiquadric <- multiquadric
+  multiquadric_c <- fit$c
+  # Thiessen weights from the geometry, to check those given: each gauge's share of the cells
+  # inside the boundary that lie nearest to it.
+  inside_cells <- which(mask, arr.ind = TRUE)
+  cx <- cells_x[inside_cells[, 1]]
+  cy <- cells_y[inside_cells[, 2]]
+  nearest <- apply(outer(cx, gauges$x, `-`)^2 + outer(cy, gauges$y, `-`)^2, 1, which.min)
+  geometry_weights <- stats::setNames(tabulate(nearest, length(gauge_names)) / length(nearest),
+                                      gauge_names)
+}
+
+# Write the averages out, ready for calibrate_site.R.
+dir.create(file.path(output_folder, "catchment_rain"), showWarnings = FALSE)
+for (n in names(built)) {
+  fwrite(data.table(time = format(grid$time, "%Y-%m-%d %H:%M:%S", tz = "UTC"),
+                    value = round(built[[n]], 4)),
+         file.path(output_folder, "catchment_rain", paste0(n, ".csv")))
+}
+
+rains <- c(built, lapply(stats::setNames(gauge_names, gauge_names), function(n) G[, n]),
+           lapply(stats::setNames(names(other_rain_files), names(other_rain_files)), as_rain))
+names_r <- names(rains)
+gauge_series <- gauge_names
 years <- as.numeric(difftime(max(grid$time), min(grid$time), units = "days")) / 365.25
 colours <- grDevices::hcl.colors(max(3L, length(names_r)), "Dark 3")[seq_along(names_r)]
 png_of <- function(name, draw, width = 1600, height = 900) {
@@ -300,11 +414,11 @@ png_of("flood_runoff_ratios.png", function() {
 # gauge's error times sqrt(sum(w^2)), and 1 / sum(w^2) is the effective number of gauges: how
 # many equal, independent gauges the average is worth. Weights that add up to something else
 # (a method that also scales the rain) are divided by their sum first, so the effective number
-# is sum(w)^2 / sum(w^2) and the error is relative to the average's own level. Errors the gauges share (wind on all of
-# them) do not cancel: with a correlation rho between gauges' errors the factor becomes
-# sqrt((1 - rho) sum(w^2) + rho).
+# is sum(w)^2 / sum(w^2) and the error is relative to the average's own level. Errors the
+# gauges share (wind on all of them) do not cancel: with a correlation rho between gauges'
+# errors the factor becomes sqrt((1 - rho) sum(w^2) + rho).
 weights_done <- FALSE
-if (length(gauge_series)) {
+if (length(gauge_series) > 1) {
   say("Weights and the effective number of gauges")
   unknown <- setdiff(gauge_series, names_r)
   if (length(unknown)) {
@@ -388,8 +502,8 @@ if (length(gauge_series)) {
     data.frame(
       rain = n,
       weights = paste(sprintf("%s %.3f", names(w)[w != 0], w[w != 0]), collapse = ", "),
-      source = if (n %in% names(given)) "given" else sprintf("estimated, R2 %.3f",
-                                                             fit_r2[[n]]),
+      source = if (n == "thiessen") "given" else if (n %in% c("equal", "equal_all")) "equal" else
+        if (n %in% names(given)) "given" else sprintf("estimated, R2 %.3f", fit_r2[[n]]),
       weights_sum = round(sum(w), 3),
       sum_of_squares = round(s2, 3),
       effective_gauges = round(1 / s2, 2),
@@ -511,6 +625,28 @@ lines <- c(
                 "%.2f, first for %d of %d floods."), seq_len(nrow(ranking)), ranking$rain,
           ranking$mean_rank, ranking$runoff_ratio, ranking$response_r, ranking$flood_wins,
           sum(response$summary$event_wins)),
+  "", "## The catchment averages built", "",
+  sprintf("- **%s**: %s.", names(weights), vapply(names(weights), function(n) {
+    w <- weights[[n]]
+    paste(sprintf("%s %.3f", names(w), w), collapse = ", ")
+  }, "")),
+  if (!is.null(catchment_boundary)) {
+    c(sprintf(paste("- **multiquadric**: every gauge, on a %g m grid, shape parameter c = %.0f m",
+                    "(chosen by leaving out one gauge at a time)."), grid_spacing_m,
+              multiquadric_c),
+      "", sprintf("Thiessen weights from the gauge positions and the boundary: %s. Given: %s.",
+                  paste(sprintf("%s %.3f", names(geometry_weights), geometry_weights),
+                        collapse = ", "),
+                  paste(sprintf("%s %.3f", names(thiessen_weights), thiessen_weights),
+                        collapse = ", ")),
+      if (max(abs(geometry_weights[names(thiessen_weights)] - thiessen_weights)) > 0.05) {
+        paste("**They differ by more than 0.05.** Check the gauge positions, the boundary,",
+              "and how the given weights were made.")
+      })
+  } else {
+    "- multiquadric: not built (no catchment_boundary given)."
+  },
+  "", "Each is in `catchment_rain/`, as a CSV ready for calibrate_site.R.",
   "", "## Warnings", "",
   unlist(lapply(seq_len(nrow(ranking)), function(i) {
     w <- warnings_for(i)

@@ -1,3 +1,15 @@
+# pdmS7 0.41.0
+
+- **`compare_rain.R` builds the catchment rainfall itself.** Give it the rain gauge files and
+  the Thiessen weights, and it builds `thiessen` (the weights given), `equal` (the same gauges
+  weighted equally) and, where a gauge has no Thiessen weight, `equal_all` (every gauge
+  equally); each renormalised over the gauges reporting at each step. With each gauge's
+  position and a boundary file (British National Grid metres) it also builds `multiquadric`
+  with `merge_rainfall()`, on the wet steps only, and works out Thiessen weights from the
+  geometry to check those given. Each average is written to `catchment_rain/`, ready for
+  `calibrate_site.R`, and compared with the single gauges and any other series given, as
+  before.
+
 # pdmS7 0.40.0
 
 - **Which rain series best explains the flow**, `inst/scripts/compare_rain.R`: any number of
