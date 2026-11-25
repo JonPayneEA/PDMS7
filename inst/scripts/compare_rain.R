@@ -9,7 +9,8 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-24
 # Tier:         1
-# Modified:     2026-11-25 - the gauges found by a search around the catchment's centroid
+# Modified:     2026-11-25 - H19 from the team's processed yearly extracts, in seconds
+#               2026-11-25 - the gauges found by a search around the catchment's centroid
 #               and downloaded with reach.io by default; the boundary from a shapefile;
 #               Thiessen weights from the geometry when none are given
 # Inputs:       The catchment boundary (a shapefile, GeoPackage or CSV of x and y); CSV files
@@ -20,8 +21,9 @@
 # Outputs:      A folder: summary.md, rain_ranking.csv, weights_and_error.csv, plots each with a
 #               note on how to read it, and catchment_rain/ with each average built, as CSV
 #               ready for calibrate_site.R
-# Dependencies: pdmS7 (0.43.0 or later); sf for a shapefile and the search; reach.io
-#               to find and download the gauges; ncdf4 for H19 radar
+# Dependencies: pdmS7 (0.44.0 or later); sf for a shapefile and the search; reach.io
+#               to find and download the gauges; arrow (or nanoparquet) for the processed
+#               H19 extracts, ncdf4 for the daily H19 files
 # ============================================================ #
 #
 # How to use it
@@ -131,6 +133,13 @@ radar_folder <- NULL           # such as "C:/.../04_RADAR/01_H19"
 # ..._1km_H19.nc names and the newer 20210401000000.nc.
 radar_pattern <- "^[0-9]{14}.*\\.nc$"
 radar_scan_only <- FALSE
+# Much faster, for a catchment Hyrad already has: the team's yearly H19 extracts for every
+# current PDM polygon (the archive's Processed_Annual folder, H19_YYYY_all_polygons.parquet,
+# made by the ProcessingNetCDF scripts). Give the folder and the polygon's ID in Hyrad, and
+# the catchment average is read in seconds, not hours. Leave radar_folder NULL then, unless
+# you also want the radar over each gauge: that still reads every daily file.
+radar_processed_folder <- NULL # such as "F:/.../04_RADAR/01_H19/Processed_Annual"
+radar_polygon_id <- NULL       # such as "02_10_Southern"
 
 # Other catchment rain series built elsewhere, to compare as well (optional), such as
 # other_rain_files <- c(multiquadric_ea = "rain_multiquadric.csv", radar = "rain_h19.csv")
@@ -450,6 +459,29 @@ if (!is.null(boundary)) {
 # reads nothing.
 radar_at_gauges <- NULL
 radar_layouts <- NULL
+radar_processed <- NULL
+# Onto the record's steps: 15-minute radar summed into longer steps when step_hours is longer,
+# a step counting only when all its quarter hours are present.
+per_step <- 4 * step_hours
+onto_grid <- function(v, time) {
+  bucket <- floor(as.numeric(time) / (step_hours * 3600))
+  total <- tapply(v, bucket, function(x) if (sum(!is.na(x)) == per_step) sum(x) else NA)
+  out <- rep(NA_real_, length(grid$time))
+  k <- match(floor(as.numeric(grid$time) / (step_hours * 3600)), as.numeric(names(total)))
+  out[!is.na(k)] <- total[k[!is.na(k)]]
+  out
+}
+if (!is.null(radar_processed_folder)) {
+  if (is.null(radar_polygon_id)) {
+    stop("Give radar_polygon_id, the catchment's polygon ID in Hyrad, with ",
+         "radar_processed_folder.", call. = FALSE)
+  }
+  say("H19 radar from the processed extracts, polygon %s", radar_polygon_id)
+  radar_processed <- h19_processed(radar_processed_folder, radar_polygon_id, min(grid$time),
+                                   max(grid$time) + 3600 * step_hours - 900)
+  built$h19 <- onto_grid(radar_processed$rain, radar_processed$time)
+  say("  %.1f%% of 15-minute steps missing", 100 * mean(is.na(radar_processed$rain)))
+}
 if (!is.null(radar_folder)) {
   say("H19 radar")
   # Only the year folders of the record (and their month folders), not other folders beside
@@ -540,22 +572,15 @@ if (!is.null(radar_folder)) {
     extract$time <- as.POSIXct(extract$time, tz = "UTC")
     writeLines(radar_files, cache_files)
   }
-  # Onto the record's steps: 15-minute radar summed into longer steps when step_hours is
-  # longer, a step counting only when all its quarter hours are present.
-  bucket <- floor(as.numeric(extract$time) / (step_hours * 3600))
-  per_step <- 4 * step_hours
-  onto_grid <- function(v) {
-    total <- tapply(v, bucket, function(x) if (sum(!is.na(x)) == per_step) sum(x) else NA)
-    out <- rep(NA_real_, length(grid$time))
-    k <- match(floor(as.numeric(grid$time) / (step_hours * 3600)), as.numeric(names(total)))
-    out[!is.na(k)] <- total[k[!is.na(k)]]
-    out
+  # The processed extract, where given, is the catchment average; the daily files then give
+  # only the radar over each gauge.
+  if (have_boundary && is.null(radar_processed)) {
+    built$h19 <- onto_grid(extract$h19, extract$time)
   }
-  if (have_boundary) built$h19 <- onto_grid(extract$h19)
   if (have_positions) {
-    radar_at_gauges <- vapply(gauge_names, function(n) onto_grid(extract[[paste0("radar_at_",
-                                                                                 n)]]),
-                              numeric(length(grid$time)))
+    radar_at_gauges <- vapply(gauge_names, function(n) {
+      onto_grid(extract[[paste0("radar_at_", n)]], extract$time)
+    }, numeric(length(grid$time)))
   }
 }
 
@@ -1140,6 +1165,19 @@ lines <- c(
       },
       "- If gauges' errors are partly shared (wind on all of them), less cancels: see the",
       "  error_factor_rho columns in `weights_and_error.csv`.")
+  },
+  if (!is.null(radar_processed)) {
+    c("", "## H19 radar from the processed extracts", "",
+      sprintf(paste("h19 is polygon %s from the yearly extracts in %s: the area-weighted mean",
+                    "over Hyrad's polygon, which may not match catchment_boundary exactly.",
+                    "%.1f%% of its 15-minute steps are missing%s."),
+              radar_polygon_id, radar_processed_folder,
+              100 * mean(is.na(radar_processed$rain)),
+              if (length(attr(radar_processed, "years_missing"))) {
+                paste0(" (no extract for ", toString(attr(radar_processed, "years_missing")), ")")
+              } else ""),
+      "", "H19 and everything made from it are restricted: keep this folder on restricted",
+      "storage.")
   },
   if (!is.null(radar_layouts)) {
     l <- radar_layouts$layouts

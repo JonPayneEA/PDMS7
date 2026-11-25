@@ -1,3 +1,14 @@
+# pdmS7 0.44.0
+
+- **H19 in seconds, from the processed extracts.** The ProcessingNetCDF scripts have already
+  extracted H19 for every current PDM polygon, one Parquet file a year
+  (`Processed_Annual/H19_YYYY_all_polygons.parquet`). The new `h19_processed()` reads one
+  polygon from them onto a complete 15-minute timeline, with `NA` where the extracts have
+  nothing, and names the closest IDs when the polygon is not there. With arrow, only that
+  polygon's rows are read. `compare_rain.R` uses it when given `radar_processed_folder` and
+  `radar_polygon_id`. Reading the daily NetCDF files then becomes optional, needed only for
+  the radar over each gauge.
+
 # pdmS7 0.43.0
 
 - **`compare_rain.R` finds its own gauges.** By default the script now searches the EA

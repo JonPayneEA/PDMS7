@@ -334,3 +334,40 @@ test_that("h19_radar takes its grid from the first file that reads", {
   expect_message(h$radar(5), "grid differs")
   expect_equal(nrow(h$skipped()), 1)
 })
+
+# Guards: a polygon is read from the processed yearly extracts onto a complete 15-minute
+# timeline, a year with no extract is NA, and an unknown polygon is refused with the closest
+# IDs. The extracts are written here as the ProcessingNetCDF scripts write them: polygon_id,
+# time (UTC, the start of each step) and rain_accum_mm_15min, one file a year.
+test_that("h19_processed reads one polygon from the yearly extracts", {
+  skip_if_not(requireNamespace("arrow", quietly = TRUE) ||
+                requireNamespace("nanoparquet", quietly = TRUE), "no Parquet writer")
+  write_pq <- if (requireNamespace("arrow", quietly = TRUE)) arrow::write_parquet else
+    nanoparquet::write_parquet
+  dir <- tempfile("processed-")
+  dir.create(dir)
+  on.exit(unlink(dir, recursive = TRUE), add = TRUE)
+  t19 <- as.POSIXct("2019-12-31 23:00", tz = "UTC") + 900 * (0:3)   # 23:00 to 23:45
+  t21 <- as.POSIXct("2021-01-01 00:00", tz = "UTC") + 900 * (0:1)   # 00:00 and 00:15
+  # Two polygons each year; A's rain is 1, 2, 3, ... in time order, B's 100 more.
+  write_pq(data.frame(polygon_id = rep(c("02_10_Southern", "B"), each = 4),
+                      time = c(t19, t19), rain_accum_mm_15min = c(1:4, 101:104)),
+           file.path(dir, "H19_2019_all_polygons.parquet"))
+  write_pq(data.frame(polygon_id = rep(c("02_10_Southern", "B"), each = 2),
+                      time = c(t21, t21), rain_accum_mm_15min = c(5:6, 105:106)),
+           file.path(dir, "H19_2021_all_polygons.parquet"))
+  expect_warning(h <- h19_processed(dir, "02_10_Southern", "2019-12-31 23:30",
+                                    "2021-01-01 00:15"), "No processed H19 for 2020")
+  # From 23:30 on 31 December 2019 to 00:15 on 1 January 2021: 2 steps of 2019, the 366 days
+  # of 2020 (a leap year) at 96 steps a day, and 2 steps of 2021: 2 + 35136 + 2 = 35140.
+  expect_equal(nrow(h), 35140)
+  expect_equal(h$rain[1:2], c(3, 4))
+  expect_true(all(is.na(h$rain[3:35138])))
+  expect_equal(h$rain[35139:35140], c(5, 6))
+  expect_equal(attr(h, "years_missing"), 2020L)
+  expect_equal(attr(h$time, "tzone"), "UTC")
+  expect_error(suppressWarnings(h19_processed(dir, "02_10_southern_x", "2019-12-31",
+                                              "2019-12-31 23:45")),
+               "closest IDs: 02_10_Southern")
+  expect_error(h19_processed(dir, "B", "2018-01-01", "2018-01-02"), "No H19_YYYY")
+})
