@@ -29,7 +29,10 @@
 #' opening files: copying the period wanted to a local disk first is often quicker overall.
 #'
 #' **Variable names.** The archive uses `"radar rain-accum H19"` for 2010 to 2019 and
-#' `"rainfall_radar_amount"` from 2021. By default each file's variable is found among these;
+#' `"rainfall_radar_amount"` from 1 January 2020, when its files were also renamed from
+#' `..._1km_H19.nc` to the date alone, such as `20200101000000.nc`; the units (mm), grid and
+#' time stamps (the start of each step) are the same either side. By default each file's
+#' variable is found among these;
 #' name another with `varname`.
 #'
 #' **Times.** Without `layouts`, each file is opened once at the start to read its times, from
@@ -217,8 +220,8 @@ print.pdm_h19 <- function(x, ...) {
 
 #' The layouts of a set of H19 files
 #'
-#' The H19 archive was not written the same way throughout: the radar variable was renamed in
-#' 2021, and a change of time stamp, units or grid would shift or scale part of a record
+#' The H19 archive was not written the same way throughout: the radar variable was renamed on
+#' 1 January 2020, and a change of time stamp, units or grid would shift or scale part of a record
 #' without any error. `h19_layouts()` reads the headers of the files (no radar values), groups
 #' the files by layout, and checks each layout before any radar is used.
 #'

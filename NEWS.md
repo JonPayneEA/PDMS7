@@ -11,8 +11,10 @@
   read in one open, not three.
 - On a year of test files the H19 check runs in 5 seconds rather than 21, with the same
   totals; on a network drive, where opening a file is the slow part, the gain is larger.
-- `check_h19.R` and `compare_rain.R` find the archive's newer file names too: from 2021 the
-  files are named `20210401000000.nc`, not `..._1km_H19.nc`, and were missed. The pattern is
+- `check_h19.R` and `compare_rain.R` find the archive's newer file names too: from 2020 the
+  files are named by the date alone, such as `20200101000000.nc`, not `..._1km_H19.nc`, and
+  were missed. A scan of 2019 to 2022 found the change on 1 January 2020: the variable
+  renamed, the units, grid and time stamps unchanged. The pattern is
   now 14 digits, anything, then `.nc`, and only the year folders of the period are searched,
   not the processed folders or zips beside them, which also lists faster.
 - `h19_layouts()` no longer fails with "missing value where TRUE/FALSE needed" on a file

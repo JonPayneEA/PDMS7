@@ -48,7 +48,10 @@ cells for every layer is read in one call. On a network drive most of the time g
 opening files: copying the period wanted to a local disk first is often quicker overall.
 
 \strong{Variable names.} The archive uses \code{"radar rain-accum H19"} for 2010 to 2019 and
-\code{"rainfall_radar_amount"} from 2021. By default each file's variable is found among these;
+\code{"rainfall_radar_amount"} from 1 January 2020, when its files were also renamed from
+\code{..._1km_H19.nc} to the date alone, such as \verb{20200101000000.nc}; the units (mm), grid and
+time stamps (the start of each step) are the same either side. By default each file's
+variable is found among these;
 name another with \code{varname}.
 
 \strong{Times.} Without \code{layouts}, each file is opened once at the start to read its times, from

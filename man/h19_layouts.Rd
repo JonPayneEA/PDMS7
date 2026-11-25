@@ -21,8 +21,8 @@ one row per file with its layout number, whether its header was read (\code{chec
 headers read.
 }
 \description{
-The H19 archive was not written the same way throughout: the radar variable was renamed in
-2021, and a change of time stamp, units or grid would shift or scale part of a record
+The H19 archive was not written the same way throughout: the radar variable was renamed on
+1 January 2020, and a change of time stamp, units or grid would shift or scale part of a record
 without any error. \code{h19_layouts()} reads the headers of the files (no radar values), groups
 the files by layout, and checks each layout before any radar is used.
 }
