@@ -212,6 +212,9 @@ file.copy(system.file("scripts", "compare_rain.R", package = "pdmS7"), "compare_
 file.edit("compare_rain.R")
 ```
 
+To look at H19 on its own first, `inst/scripts/check_h19.R` checks a folder's layouts and plots
+the radar at a point and over a polygon through time, with a map of the total.
+
 ## Quick start
 
 ```r

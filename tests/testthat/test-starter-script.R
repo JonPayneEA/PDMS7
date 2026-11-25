@@ -188,3 +188,16 @@ test_that("the rain comparison parses, stops until the area is set, and names it
     expect_true(any(grepl(sprintf('"%s"', name), written, fixed = TRUE)), info = name)
   }
 })
+
+test_that("the H19 check parses and names the plots it draws", {
+  script <- system.file("scripts", "check_h19.R", package = "pdmS7")
+  expect_true(nzchar(script))
+  code <- readLines(script)
+  expect_no_error(parse(text = code))
+  notes <- sub("^\\s*# HOW TO READ ", "", grep("^\\s*# HOW TO READ ", code, value = TRUE))
+  expect_length(notes, 3)
+  written <- code[!grepl("^\\s*#", code)]
+  for (name in notes) {
+    expect_true(any(grepl(sprintf('"%s"', name), written, fixed = TRUE)), info = name)
+  }
+})
