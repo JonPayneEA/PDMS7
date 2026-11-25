@@ -11,6 +11,10 @@
   read in one open, not three.
 - On a year of test files the H19 check runs in 5 seconds rather than 21, with the same
   totals; on a network drive, where opening a file is the slow part, the gain is larger.
+- `h19_layouts()` no longer fails with "missing value where TRUE/FALSE needed" on a file
+  whose grid gives no cell size: that is reported as a problem of its layout, and each
+  layout names an example file. A test reads a file laid out as the archive's 2010 files are
+  (whole numbers scaled by 0.03125, missing -999, eastings from -166500, start stamps).
 
 # pdmS7 0.42.1
 

@@ -317,15 +317,18 @@ h19_layouts <- function(files, every = c("month", "file")) {
     row$first_day <- format(min(f$first_time), "%Y-%m-%d")
     row$last_day <- format(max(f$first_time), "%Y-%m-%d")
     row$short_days <- sum(!is.na(f$layers) & f$layers != 96)
+    row$example_file <- f$file[f$checked][1]
     row
   }))
   layouts <- layouts[order(layouts$first_day), c("layout", "files", "first_day", "last_day",
-                                                 keys, "short_days")]
+                                                 keys, "short_days", "example_file")]
   rownames(layouts) <- NULL
   layouts$problems <- vapply(seq_len(nrow(layouts)), function(i) {
     l <- layouts[i, ]
     p <- c(
-      if (abs(l$cell_x - 1000) > 1 || abs(l$cell_y - 1000) > 1) {
+      if (is.na(l$cell_x) || is.na(l$cell_y)) {
+        "no grid cell size: x or y holds fewer than two coordinates"
+      } else if (abs(l$cell_x - 1000) > 1 || abs(l$cell_y - 1000) > 1) {
         sprintf("cells %g by %g m, not 1 km", l$cell_x, l$cell_y)
       },
       if (!isTRUE(abs(l$step_minutes - 15) < 0.5)) {
@@ -333,7 +336,7 @@ h19_layouts <- function(files, every = c("month", "file")) {
       },
       if (is.na(.h19_unit_factor(l$units))) sprintf("units '%s' not understood", l$units),
       if (l$stamp == "unknown") "layers stamped neither at 00:00 nor at 00:15",
-      if (l$x_offset != layouts$x_offset[1] || l$y_offset != layouts$y_offset[1]) {
+      if (!isTRUE(l$x_offset == layouts$x_offset[1] && l$y_offset == layouts$y_offset[1])) {
         "cell centres not aligned with the first layout's"
       })
     paste(p, collapse = "; ")
@@ -357,11 +360,13 @@ print.pdm_h19_layouts <- function(x, ...) {
                 ", a file a month and each change bisected"
               } else ""))
   for (i in seq_len(nrow(l))) {
-    cat(sprintf(paste("  %d. %d files, %s to %s: '%s' in %s; %g m cells, rows %s; layers %s",
+    cat(sprintf(paste("  %d. %d files, %s to %s: '%s' in %s; %s m cells, rows %s; layers %s",
                       "minutes apart, stamped at the %s of their step%s\n"), l$layout[i],
                 l$files[i], l$first_day[i], l$last_day[i], l$variable[i], l$units[i],
-                l$cell_x[i], l$y_order[i], format(l$step_minutes[i]), l$stamp[i],
-                if (nzchar(l$problems[i])) paste0(". PROBLEMS: ", l$problems[i]) else ""))
+                format(l$cell_x[i]), l$y_order[i], format(l$step_minutes[i]), l$stamp[i],
+                if (nzchar(l$problems[i])) {
+                  paste0(". PROBLEMS: ", l$problems[i], ". For example ", l$example_file[i])
+                } else ""))
   }
   invisible(x)
 }
