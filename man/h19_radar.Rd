@@ -32,7 +32,12 @@ times and values are as the files hold them.}
 A list of class \code{pdm_h19} with \code{grid} (cell-centre \code{x} and \code{y}, both increasing),
 \code{time} (the time of every step, POSIXct in UTC), \code{radar} (a function of the step number
 returning that step's grid, mm, as a matrix of \code{length(grid$x)} rows by \code{length(grid$y)}
-columns) and \code{index} (the file and unit factor of every step).
+columns), \code{index} (the file and unit factor of every step) and \code{skipped} (a function
+returning the files skipped so far, with the reason, as a data frame).
+
+A file that cannot be read over the extent (its grid elsewhere or of another size, or the
+file damaged) does not end the run: a message names it, its steps are \code{NA}, and it is
+listed by \code{skipped()}. The grid is taken from the first file that reads.
 }
 \description{
 H19 radar comes as daily NetCDF files, each holding that day's 15-minute accumulations on

@@ -103,6 +103,13 @@ series <- t(vapply(seq_along(h$time), function(s) {
                      na.rm = TRUE),
     catchment = if (!is.null(inside)) mean(r[inside]) else NA_real_)
 }, numeric(3)))
+skipped <- h$skipped()
+if (nrow(skipped)) {
+  fwrite(skipped, file.path(output_folder, "h19_skipped_files.csv"))
+  say("%d files could not be read and were skipped (their steps are missing): see",
+      nrow(skipped))
+  say("h19_skipped_files.csv")
+}
 out <- data.table(time = h$time, series)
 fwrite(out[, .(time = format(time, "%Y-%m-%d %H:%M:%S", tz = "UTC"), point, point_3x3,
                catchment)], file.path(output_folder, "h19_series.csv"))

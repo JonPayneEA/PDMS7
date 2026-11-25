@@ -373,6 +373,13 @@ if (!is.null(radar_folder)) {
       }
       c(catchment, at_gauges)
     }, numeric(1 + length(gauge_names))))
+    skipped <- h$skipped()
+    if (nrow(skipped)) {
+      fwrite(skipped, file.path(output_folder, "radar_skipped_files.csv"))
+      say("  %d radar files could not be read and were skipped (their steps are missing): see",
+          nrow(skipped))
+      say("  radar_skipped_files.csv")
+    }
     extract <- data.table(time = h$time, values)
     setnames(extract, c("time", "h19", paste0("radar_at_", gauge_names)))
     fwrite(extract[, time := format(time, "%Y-%m-%d %H:%M:%S", tz = "UTC")], cache)
