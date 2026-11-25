@@ -1,3 +1,25 @@
+# pdmS7 0.43.0
+
+- **`compare_rain.R` finds its own gauges.** By default the script now searches the EA
+  Hydrology API, with reach.io, for every 15-minute rain gauge around the catchment. The
+  search is centred on the catchment's centroid; its radius runs from there to the boundary's
+  farthest point, plus 10 km. The first run writes `nearby_gauges.csv` (each gauge's WISKI ID,
+  whether it is inside, and how far outside the boundary and from the centroid it lies), with
+  a map, `nearby_gauges.png`. It then stops with a ready-to-paste `gauge_ids` line for the
+  gauges inside or within 5 km. Put the chosen WISKI IDs in `gauge_ids` and run again: their
+  positions come from the search and their rain is downloaded. Gauge files of your own still
+  work, with `gauge_source <- "files"`.
+- **The boundary from a shapefile.** `catchment_boundary` in `compare_rain.R` and
+  `boundary_file` in `check_h19.R` take a shapefile or GeoPackage as well as a CSV of x and
+  y. The new `read_boundary()` reads it with sf and moves it onto British National Grid. Every
+  feature is merged and the largest part kept, and the result carries its centroid and area.
+  `compare_rain.R` warns when that area differs from `area_km2` by more than 5%.
+- **Thiessen weights from the geometry.** With no `thiessen_weights` given, the Thiessen
+  average uses weights worked out from the gauges' positions and the boundary. Weights that
+  are given may name a gauge by its WISKI ID.
+- New `distance_to_boundary()`: how far points lie outside a polygon, zero inside.
+- sf is now a suggested package.
+
 # pdmS7 0.42.3
 
 - **A file H19 cannot read no longer ends the run.** One file in the archive (10 June 2015)

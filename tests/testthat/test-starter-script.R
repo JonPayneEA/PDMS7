@@ -182,7 +182,7 @@ test_that("the rain comparison parses, stops until the area is set, and names it
   expect_true(any(grepl("^area_km2 <- NA ", code)))
   # Every HOW TO READ note names a plot the script writes.
   notes <- sub("^\\s*# HOW TO READ ", "", grep("^\\s*# HOW TO READ ", code, value = TRUE))
-  expect_length(notes, 7)
+  expect_length(notes, 8)
   written <- code[!grepl("^\\s*#", code)]
   for (name in notes) {
     expect_true(any(grepl(sprintf('"%s"', name), written, fixed = TRUE)), info = name)
@@ -200,4 +200,15 @@ test_that("the H19 check parses and names the plots it draws", {
   for (name in notes) {
     expect_true(any(grepl(sprintf('"%s"', name), written, fixed = TRUE)), info = name)
   }
+})
+
+test_that("the rain comparison finds its gauges by default, from a shapefile's centroid", {
+  code <- readLines(system.file("scripts", "compare_rain.R", package = "pdmS7"))
+  # The default way of working: a search of the Hydrology API around the catchment, the gauges
+  # chosen afterwards, the boundary a shapefile, and the radius worked out from the boundary.
+  expect_true(any(grepl('^gauge_source <- "hydrology_api"', code)))
+  expect_true(any(grepl("^gauge_ids <- c\\(\\)", code)))
+  expect_true(any(grepl("^search_radius_km <- NULL", code)))
+  expect_true(any(grepl('^catchment_boundary <- "catchment.shp"', code)))
+  expect_true(any(grepl("^thiessen_weights <- c\\(\\)", code)))
 })

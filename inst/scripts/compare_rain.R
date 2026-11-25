@@ -9,16 +9,19 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-24
 # Tier:         1
-# Inputs:       CSV files: flow (m3/s), potential evaporation, and each rain gauge (mm per
-#               step), each a date-time column and a value column, or the gauges downloaded
-#               from the EA Hydrology API with reach.io; the Thiessen weights; for
-#               multiquadric, the gauges' positions and the catchment boundary
-#               (British National Grid metres); optionally other catchment series
+# Modified:     2026-11-25 - the gauges found by a search around the catchment's centroid
+#               and downloaded with reach.io by default; the boundary from a shapefile;
+#               Thiessen weights from the geometry when none are given
+# Inputs:       The catchment boundary (a shapefile, GeoPackage or CSV of x and y); CSV files
+#               of flow (m3/s) and potential evaporation, each a date-time column and a value
+#               column; the rain gauges found and downloaded from the EA Hydrology API with
+#               reach.io, or CSV files of your own; optionally Thiessen weights and other
+#               catchment series
 # Outputs:      A folder: summary.md, rain_ranking.csv, weights_and_error.csv, plots each with a
 #               note on how to read it, and catchment_rain/ with each average built, as CSV
 #               ready for calibrate_site.R
-# Dependencies: pdmS7 (0.42.2 or later); reach.io to download the gauges; ncdf4
-#               for H19 radar
+# Dependencies: pdmS7 (0.43.0 or later); sf for a shapefile and the search; reach.io
+#               to find and download the gauges; ncdf4 for H19 radar
 # ============================================================ #
 #
 # How to use it
@@ -26,15 +29,20 @@
 #        file.copy(system.file("scripts", "compare_rain.R", package = "pdmS7"), "compare_rain.R")
 #        file.edit("compare_rain.R")
 #   2. Fill in the settings below: the catchment area, the time step, the flow and evaporation
-#      files, the rain gauges and the Thiessen weights. To download the gauges instead, give
-#      each its WISKI ID and set gauge_source to "hydrology_api". For the multiquadric average,
-#      add a boundary file and, unless they are downloaded, each gauge's position.
-#   3. Run the whole script (Ctrl+Shift+S in RStudio). It takes a minute or two.
-#   4. Read summary.md in the output folder.
+#      files, and the catchment boundary (a shapefile is fine).
+#   3. Run the whole script (Ctrl+Shift+S in RStudio). The first run searches the EA Hydrology
+#      API for 15-minute rain gauges around the catchment, lists them in nearby_gauges.csv
+#      with a map, nearby_gauges.png, and stops.
+#   4. Choose the gauges from the list, put their WISKI IDs in gauge_ids, and run again. Their
+#      rain is downloaded and the comparison runs. It takes a minute or two after the download.
+#   5. Read summary.md in the output folder.
+#   With gauge files of your own instead, set gauge_source to "files" and fill in the gauges
+#   table.
 #
 # What it does
 #   First it builds the catchment averages from the gauges:
-#     thiessen      the Thiessen weights given;
+#     thiessen      the Thiessen weights given, or worked out from the gauges' positions and
+#                   the boundary when none are given;
 #     equal         the same gauges, weighted equally;
 #     equal_all     every gauge listed, inside the catchment or not, weighted equally (only
 #                   when some gauge has no Thiessen weight);
@@ -76,36 +84,41 @@ output_folder <- "rain_comparison"
 flow_file <- "flow.csv"   # river flow, m3/s
 pet_file <- "pet.csv"     # potential evaporation, mm per step
 
-# The rain gauges: one file each, rain in mm per step. x and y are each gauge's position in
-# metres on British National Grid (easting and northing); they are needed only for the
-# multiquadric average, so they can stay NA when there is no boundary below. wiski_id is the
-# gauge's WISKI ID, needed only to download it.
+# The catchment boundary: a shapefile (.shp, with its .dbf, .shx and .prj beside it), a
+# GeoPackage, or a CSV with columns x and y, in data_folder. A shapefile is moved onto British
+# National Grid. Its centroid is the centre of the gauge search, and it bounds the
+# multiquadric average, worked out on a grid with cells this many metres across.
+catchment_boundary <- "catchment.shp"
+grid_spacing_m <- 500
+
+# The rain gauges, from the EA Hydrology API with reach.io (gauge_source "hydrology_api").
+#   1. Leave gauge_ids empty and run: every 15-minute rain gauge within search_radius_km of
+#      the catchment's centroid is listed in nearby_gauges.csv, nearest the catchment first,
+#      with a map, and the script stops.
+#   2. Put the WISKI IDs you choose in gauge_ids and run again: each gauge's rain is downloaded
+#      to data_folder (a file already there is used as it is; delete it to download again).
+# search_radius_km NULL searches from the centroid to the boundary's farthest point, plus
+# 10 km. Dates: from (inclusive) to (exclusive).
+gauge_source <- "hydrology_api"
+search_radius_km <- NULL
+gauge_ids <- c()               # such as c("254336TP", "SS92F014")
+download_from <- "2014-10-01"
+download_to <- "2025-10-01"
+
+# Gauge files of your own instead (gauge_source "files"): one file each, rain in mm per step,
+# in data_folder. x and y are each gauge's position in metres on British National Grid, for
+# the multiquadric average and the Thiessen weights from the geometry.
 gauges <- data.frame(
   name = c("gauge_A", "gauge_B", "gauge_C"),
   file = c("gauge_a.csv", "gauge_b.csv", "gauge_c.csv"),
-  wiski_id = c(NA, NA, NA),
   x = c(NA, NA, NA),
   y = c(NA, NA, NA)
 )
 
-# Where the gauge data come from. "files": the CSV files above, already in data_folder.
-# "hydrology_api": each gauge's 15-minute rain downloaded from the EA Hydrology API with
-# reach.io, by its WISKI ID, and saved to data_folder under the file name above. A file already
-# there is used as it is, so a rerun downloads nothing; delete a file to download it again.
-# Positions left NA are filled from the API. Dates: from (inclusive) to (exclusive).
-gauge_source <- "files"
-download_from <- "2014-10-01"
-download_to <- "2025-10-01"
-
-# The Thiessen weights: each gauge's share of the catchment. A gauge outside the catchment has
-# none: leave it out, or give it 0. They should add up to 1.
-thiessen_weights <- c(gauge_A = 0.264, gauge_B = 0.737)
-
-# The catchment boundary, for the multiquadric average: a CSV in data_folder with columns x and
-# y, the boundary's corners in order, in metres on British National Grid. NULL to skip the
-# multiquadric average. The grid it is worked out on has cells this many metres across.
-catchment_boundary <- NULL     # such as "boundary.csv"
-grid_spacing_m <- 500
+# Thiessen weights, if you have the operational ones: each gauge's share of the catchment, by
+# the gauge's WISKI ID or its name, adding up to 1; a gauge outside the catchment has none.
+# Left empty, they are worked out from the gauges' positions and the boundary.
+thiessen_weights <- c()        # such as c("254336TP" = 0.264, SS92F014 = 0.737)
 
 # H19 radar (optional): the folder of daily H19 NetCDF files, with a folder for each year.
 # The files' layouts are checked first (the archive changed how it saved them part way
@@ -135,7 +148,198 @@ if (!dir.exists(data_folder)) {
 }
 dir.create(output_folder, recursive = TRUE, showWarnings = FALSE)
 here <- function(f) file.path(data_folder, f)
+# Stops a run part way, at a point the settings ask for, without an error.
+stop_here <- function(...) {
+  say(...)
+  if (interactive()) invokeRestart("abort") else quit(save = "no")
+}
+
+# ---- The catchment boundary ---------------------------------------------------------------
+
+boundary <- NULL
+if (!is.null(catchment_boundary)) {
+  if (!file.exists(here(catchment_boundary))) {
+    stop("Cannot find the boundary ", here(catchment_boundary), ". Set catchment_boundary to ",
+         "its file name in data_folder, or NULL to do without it.", call. = FALSE)
+  }
+  boundary <- read_boundary(here(catchment_boundary))
+  centroid <- attr(boundary, "centroid")
+  say("Catchment boundary: %.1f km2, centroid %.0f, %.0f", attr(boundary, "area_km2"),
+      centroid[["x"]], centroid[["y"]])
+  if (abs(attr(boundary, "area_km2") / area_km2 - 1) > 0.05) {
+    warning(sprintf(paste("The boundary encloses %.1f km2, but area_km2 is %g: check that the",
+                          "boundary is this catchment's, and the area."),
+                    attr(boundary, "area_km2"), area_km2), call. = FALSE)
+  }
+}
+
+# ---- The rain gauges: found and downloaded (gauge_source "hydrology_api") --------------------
+
+# One request at a time, with a pause between them, as the EA asks of Hydrology API users.
+# A gauge's name in the tables and plots comes from its station name, made short and safe.
+downloads <- NULL
+nearby_file <- file.path(output_folder, "nearby_gauges.csv")
+name_of <- function(label) {
+  n <- gsub("^_+|_+$", "", gsub("[^a-z0-9]+", "_", tolower(label)))
+  n <- ifelse(nzchar(n) & !grepl("^[0-9]", n), n, paste0("gauge_", n))
+  make.unique(n, sep = "_")
+}
+if (identical(gauge_source, "hydrology_api")) {
+  if (!requireNamespace("reach.io", quietly = TRUE)) {
+    stop("gauge_source \"hydrology_api\" needs the reach.io package: ",
+         "remotes::install_github(\"JonPayneEA/reach.io\").", call. = FALSE)
+  }
+  pause <- function() Sys.sleep(1)
+  # The 15-minute rain measure of each station found, the qualified one first where there are
+  # two.
+  rain_measures <- function(found) {
+    rain <- as.data.frame(found)[found$parameter %in% "rainfall" & found$period %in% "15min", ]
+    rain <- rain[order(rain$notation, !grepl("qualified$", rain$measure_notation)), ]
+    rain[!duplicated(rain$notation), ]
+  }
+
+  if (!length(gauge_ids)) {
+    # The search: every 15-minute rain gauge within the radius of the centroid.
+    if (is.null(boundary)) {
+      stop("The gauge search needs the catchment boundary: set catchment_boundary, or list ",
+           "the gauges in gauge_ids.", call. = FALSE)
+    }
+    if (!requireNamespace("sf", quietly = TRUE)) {
+      stop("The gauge search needs the sf package: install.packages(\"sf\").", call. = FALSE)
+    }
+    reach_km <- max(sqrt((boundary$x - centroid[["x"]])^2 +
+                           (boundary$y - centroid[["y"]])^2)) / 1000
+    radius <- if (is.null(search_radius_km)) ceiling(reach_km + 10) else search_radius_km
+    lonlat <- sf::st_coordinates(sf::st_transform(
+      sf::st_sfc(sf::st_point(unname(centroid)), crs = 27700), 4326))
+    say("Searching for 15-minute rain gauges within %g km of the centroid", radius)
+    rain <- rain_measures(reach.io::find_stations(lat = lonlat[1, "Y"], long = lonlat[1, "X"],
+                                                  dist = radius))
+    rain <- rain[!is.na(rain$wiskiID) & nzchar(rain$wiskiID), ]
+    if (!nrow(rain)) {
+      stop("No 15-minute rain gauges with a WISKI ID within ", radius, " km. Set ",
+           "search_radius_km larger.", call. = FALSE)
+    }
+    x <- as.numeric(rain$easting)
+    y <- as.numeric(rain$northing)
+    outside <- distance_to_boundary(x, y, boundary) / 1000
+    nearby <- data.frame(
+      wiski_id = rain$wiskiID, label = rain$label, name = name_of(rain$label), x = x, y = y,
+      inside = outside == 0, km_outside = round(outside, 1),
+      km_from_centroid = round(sqrt((x - centroid[["x"]])^2 + (y - centroid[["y"]])^2) / 1000,
+                               1),
+      measure = rain$measure_notation)
+    nearby <- nearby[order(nearby$km_outside, nearby$km_from_centroid), ]
+    fwrite(nearby, nearby_file)
+
+    # HOW TO READ nearby_gauges.png
+    # The catchment (outlined), its centroid (cross), the search circle (dashed), and every
+    # 15-minute rain gauge the EA Hydrology API lists inside it: filled inside the catchment,
+    # open outside, each with its WISKI ID. The rings are 5 and 10 km out from the boundary.
+    # Good: several gauges inside the catchment, spread across it, and a few just outside on
+    #   each side, which steady the multiquadric average at the edges.
+    # Worry if: no gauge inside, or all of them bunched in one corner (the average will lean
+    #   on the gauges outside: choose those on the sides storms come from); a gauge far from
+    #   the rest on high ground (it may see a different climate). Gauges more than 10 km out
+    #   rarely add anything. The API lists EA gauges only: a gap here may not be a gap on the
+    #   ground.
+    grDevices::png(file.path(output_folder, "nearby_gauges.png"), width = 1400, height = 1400,
+                   res = 150)
+    graphics::par(mar = c(4, 4.5, 2, 1))
+    circle <- seq(0, 2 * pi, length.out = 200)
+    graphics::plot(centroid[["x"]] + 1000 * radius * cos(circle),
+                   centroid[["y"]] + 1000 * radius * sin(circle), type = "l", lty = 2,
+                   col = "grey50", asp = 1, xlab = "Easting (m)", ylab = "Northing (m)",
+                   main = sprintf("Rain gauges within %g km of the centroid", radius))
+    ring <- sf::st_sfc(sf::st_polygon(list(as.matrix(rbind(boundary, boundary[1, ])))),
+                       crs = 27700)
+    for (km in c(5, 10)) {
+      xy <- sf::st_coordinates(sf::st_buffer(ring, 1000 * km))
+      graphics::lines(xy[, "X"], xy[, "Y"], col = "grey75")
+    }
+    graphics::polygon(boundary$x, boundary$y, border = "#B3261E", lwd = 2)
+    graphics::points(centroid[["x"]], centroid[["y"]], pch = 3, cex = 1.5, lwd = 2)
+    graphics::points(nearby$x, nearby$y, pch = ifelse(nearby$inside, 19, 1), cex = 1.3,
+                     col = "#1B6F80", lwd = 2)
+    graphics::text(nearby$x, nearby$y, nearby$wiski_id, pos = 3, cex = 0.7)
+    graphics::legend("bottomleft", bty = "n", cex = 0.8,
+                     c("Catchment", "Centroid", "Gauge inside", "Gauge outside",
+                       "5 and 10 km from the boundary", "Search radius"),
+                     col = c("#B3261E", "black", "#1B6F80", "#1B6F80", "grey75", "grey50"),
+                     pch = c(NA, 3, 19, 1, NA, NA), lty = c(1, NA, NA, NA, 1, 2),
+                     lwd = c(2, 2, 2, 2, 1, 1))
+    grDevices::dev.off()
+
+    print(nearby[, c("wiski_id", "label", "inside", "km_outside", "km_from_centroid")],
+          row.names = FALSE)
+    near <- nearby$wiski_id[nearby$km_outside <= 5]
+    stop_here(paste0("\n%d gauges listed in %s, with a map in nearby_gauges.png. Choose the ",
+                     "ones to use and put their WISKI IDs in gauge_ids, then run again. Those ",
+                     "inside or within 5 km:\n  gauge_ids <- c(%s)"),
+              nrow(nearby), nearby_file,
+              paste0('"', near, '"', collapse = ", "))
+  }
+
+  # The gauges chosen: from the search's list where they are in it, otherwise looked up.
+  listed <- if (file.exists(nearby_file)) fread(nearby_file, colClasses = "character") else
+    data.table(wiski_id = character(0))
+  ids <- as.character(gauge_ids)
+  if (anyDuplicated(ids)) stop("gauge_ids lists a gauge twice.", call. = FALSE)
+  info <- do.call(rbind, lapply(ids, function(id) {
+    k <- match(id, listed$wiski_id)
+    if (!is.na(k)) {
+      return(data.frame(wiski_id = id, label = listed$label[k], x = as.numeric(listed$x[k]),
+                        y = as.numeric(listed$y[k]), measure = listed$measure[k]))
+    }
+    pause()
+    rain <- rain_measures(reach.io::find_stations(wiski_ids = id))
+    if (!nrow(rain)) stop("No 15-minute rainfall at WISKI ID ", id, ".", call. = FALSE)
+    data.frame(wiski_id = id, label = rain$label[1], x = as.numeric(rain$easting[1]),
+               y = as.numeric(rain$northing[1]), measure = rain$measure_notation[1])
+  }))
+  gauges <- data.frame(name = name_of(info$label), file = paste0("rain_", ids, ".csv"),
+                       wiski_id = ids, x = info$x, y = info$y)
+
+  # The downloads: missing readings become gaps; other quality flags are counted, not acted
+  # on (quality control belongs upstream).
+  downloads <- do.call(rbind, lapply(seq_len(nrow(gauges)), function(i) {
+    path <- here(gauges$file[i])
+    if (file.exists(path)) {
+      say("  %s (%s): using %s, already downloaded", gauges$name[i], ids[i], basename(path))
+      return(data.frame(gauge = gauges$name[i], wiski_id = ids[i], label = info$label[i],
+                        readings = NA, missing = NA, flags = NA, file = basename(path)))
+    }
+    chunks <- reach.io::make_date_chunks(download_from, download_to)
+    say("  %s (%s, %s): downloading %d year%s", gauges$name[i], ids[i], info$label[i],
+        nrow(chunks), if (nrow(chunks) == 1) "" else "s")
+    readings <- data.table::rbindlist(lapply(seq_len(nrow(chunks)), function(k) {
+      pause()
+      reach.io::fetch_readings(info$measure[i], chunks$chunk_from[k], chunks$chunk_to[k])
+    }), fill = TRUE)
+    if (!nrow(readings)) stop("No readings for ", ids[i], " in the dates asked.", call. = FALSE)
+    value <- as.numeric(readings$value)
+    quality <- if ("quality" %in% names(readings)) readings$quality else rep(NA, nrow(readings))
+    value[quality %in% "Missing"] <- NA
+    data.table::fwrite(data.table::data.table(
+      time = format(readings$dateTime, "%Y-%m-%d %H:%M:%S", tz = "UTC"), value = value), path)
+    flagged <- table(quality[!quality %in% c("Good", "Missing", NA)])
+    data.frame(gauge = gauges$name[i], wiski_id = ids[i], label = info$label[i],
+               readings = nrow(readings), missing = sum(is.na(value)),
+               flags = if (length(flagged)) {
+                 paste(sprintf("%s %d", names(flagged), as.integer(flagged)), collapse = ", ")
+               } else "none", file = basename(path))
+  }))
+  fwrite(downloads, file.path(output_folder, "gauge_downloads.csv"))
+} else if (!identical(gauge_source, "files")) {
+  stop("gauge_source must be \"hydrology_api\" or \"files\".", call. = FALSE)
+}
+
 gauge_names <- as.character(gauges$name)
+# Thiessen weights may name a gauge by its WISKI ID: put its name in its place.
+if (length(thiessen_weights) && !is.null(gauges$wiski_id)) {
+  by_id <- match(names(thiessen_weights), gauges$wiski_id)
+  names(thiessen_weights)[!is.na(by_id)] <- gauge_names[by_id[!is.na(by_id)]]
+}
 built_names <- c("thiessen", "equal", "equal_all", "multiquadric", "h19")
 clash <- intersect(c(gauge_names, names(other_rain_files)), built_names)
 if (length(clash) || anyDuplicated(c(gauge_names, names(other_rain_files)))) {
@@ -143,67 +347,8 @@ if (length(clash) || anyDuplicated(c(gauge_names, names(other_rain_files)))) {
        toString(built_names), ".", call. = FALSE)
 }
 if (length(setdiff(names(thiessen_weights), gauge_names))) {
-  stop("thiessen_weights names gauges not in the gauges table: ",
+  stop("thiessen_weights names gauges not in use: ",
        toString(setdiff(names(thiessen_weights), gauge_names)), call. = FALSE)
-}
-# ---- Download the gauges (gauge_source "hydrology_api") ------------------------------------
-
-# One request at a time, with a pause between them, as the EA asks of Hydrology API users:
-# one to find each gauge, then one for each year of its record. Missing readings become gaps;
-# other quality flags are counted, not acted on (quality control belongs upstream).
-downloads <- NULL
-if (identical(gauge_source, "hydrology_api")) {
-  if (!requireNamespace("reach.io", quietly = TRUE)) {
-    stop("gauge_source \"hydrology_api\" needs the reach.io package: ",
-         "remotes::install_github(\"JonPayneEA/reach.io\").", call. = FALSE)
-  }
-  if (anyNA(gauges$wiski_id) || any(!nzchar(as.character(gauges$wiski_id)))) {
-    stop("Give every gauge its wiski_id in the gauges table to download it.", call. = FALSE)
-  }
-  pause <- function() Sys.sleep(1)
-  downloads <- do.call(rbind, lapply(seq_len(nrow(gauges)), function(i) {
-    path <- here(gauges$file[i])
-    id <- as.character(gauges$wiski_id[i])
-    if (file.exists(path) && !is.na(gauges$x[i]) && !is.na(gauges$y[i])) {
-      say("  %s (%s): using %s, already downloaded", gauges$name[i], id, basename(path))
-      return(data.frame(gauge = gauges$name[i], wiski_id = id, label = NA, measure = NA,
-                        readings = NA, missing = NA, flags = NA, file = basename(path)))
-    }
-    pause()
-    found <- reach.io::find_stations(wiski_ids = id)
-    rain <- found[found$parameter %in% "rainfall" & found$period %in% "15min", ]
-    if (!nrow(rain)) stop("No 15-minute rainfall at WISKI ID ", id, ".", call. = FALSE)
-    rain <- rain[order(!grepl("qualified$", rain$measure_notation)), ][1, ]
-    if (is.na(gauges$x[i])) gauges$x[i] <<- rain$easting
-    if (is.na(gauges$y[i])) gauges$y[i] <<- rain$northing
-    if (file.exists(path)) {
-      say("  %s (%s): using %s, already downloaded", gauges$name[i], id, basename(path))
-      return(data.frame(gauge = gauges$name[i], wiski_id = id, label = rain$label,
-                        measure = rain$measure_notation, readings = NA, missing = NA,
-                        flags = NA, file = basename(path)))
-    }
-    chunks <- reach.io::make_date_chunks(download_from, download_to)
-    say("  %s (%s, %s): downloading %d year%s", gauges$name[i], id, rain$label, nrow(chunks),
-        if (nrow(chunks) == 1) "" else "s")
-    readings <- data.table::rbindlist(lapply(seq_len(nrow(chunks)), function(k) {
-      pause()
-      reach.io::fetch_readings(rain$measure_notation, chunks$chunk_from[k], chunks$chunk_to[k])
-    }), fill = TRUE)
-    if (!nrow(readings)) stop("No readings for ", id, " in the dates asked.", call. = FALSE)
-    value <- as.numeric(readings$value)
-    quality <- if ("quality" %in% names(readings)) readings$quality else rep(NA, nrow(readings))
-    value[quality %in% "Missing"] <- NA
-    data.table::fwrite(data.table::data.table(
-      time = format(readings$dateTime, "%Y-%m-%d %H:%M:%S", tz = "UTC"), value = value), path)
-    flagged <- table(quality[!quality %in% c("Good", "Missing", NA)])
-    data.frame(gauge = gauges$name[i], wiski_id = id, label = rain$label,
-               measure = rain$measure_notation, readings = nrow(readings),
-               missing = sum(is.na(value)),
-               flags = if (length(flagged)) {
-                 paste(sprintf("%s %d", names(flagged), as.integer(flagged)), collapse = ", ")
-               } else "none", file = basename(path))
-  }))
-  fwrite(downloads, file.path(output_folder, "gauge_downloads.csv"))
 }
 
 inputs <- c(stats::setNames(as.character(gauges$file), gauge_names), other_rain_files)
@@ -238,9 +383,36 @@ weighted_average <- function(w) {
   out[share <= 0] <- NA
   out
 }
+# The grid over the catchment, for the multiquadric average and the Thiessen weights from the
+# geometry: each gauge's share of the cells inside the boundary that lie nearest to it.
+have_positions <- !anyNA(gauges$x) && !anyNA(gauges$y)
+geometry_weights <- NULL
+if (!is.null(boundary) && have_positions) {
+  cells_x <- seq(min(boundary$x) - grid_spacing_m, max(boundary$x) + grid_spacing_m,
+                 by = grid_spacing_m)
+  cells_y <- seq(min(boundary$y) - grid_spacing_m, max(boundary$y) + grid_spacing_m,
+                 by = grid_spacing_m)
+  cell_grid <- list(x = cells_x, y = cells_y)
+  mask <- catchment_mask(cells_x, cells_y, boundary)
+  inside_cells <- which(mask, arr.ind = TRUE)
+  cx <- cells_x[inside_cells[, 1]]
+  cy <- cells_y[inside_cells[, 2]]
+  nearest <- apply(outer(cx, gauges$x, `-`)^2 + outer(cy, gauges$y, `-`)^2, 1, which.min)
+  geometry_weights <- stats::setNames(tabulate(nearest, length(gauge_names)) / length(nearest),
+                                      gauge_names)
+}
+thiessen_source <- "given"
+if (!length(thiessen_weights) && !is.null(geometry_weights)) {
+  thiessen_weights <- geometry_weights[geometry_weights > 0]
+  thiessen_source <- "from the geometry"
+}
+
 inside <- names(thiessen_weights)[thiessen_weights > 0]
-weights <- list(thiessen = thiessen_weights,
-                equal = stats::setNames(rep(1 / length(inside), length(inside)), inside))
+weights <- list()
+if (length(inside)) {
+  weights$thiessen <- thiessen_weights
+  weights$equal <- stats::setNames(rep(1 / length(inside), length(inside)), inside)
+}
 if (length(setdiff(gauge_names, inside))) {
   weights$equal_all <- stats::setNames(rep(1 / length(gauge_names), length(gauge_names)),
                                        gauge_names)
@@ -250,23 +422,12 @@ built <- lapply(weights, weighted_average)
 # Multiquadric: a smooth surface through every gauge, inside the catchment or near it, averaged
 # over the cells inside the boundary (pdmS7's merge_rainfall()). Worked out on the wet steps
 # only: a step where every reporting gauge is dry has no rain anywhere.
-geometry_weights <- NULL
-if (!is.null(catchment_boundary)) {
-  if (anyNA(gauges$x) || anyNA(gauges$y)) {
+if (!is.null(boundary)) {
+  if (!have_positions) {
     stop("The multiquadric average needs every gauge's x and y in the gauges table.",
          call. = FALSE)
   }
-  boundary <- fread(here(catchment_boundary))
-  if (!all(c("x", "y") %in% names(boundary))) {
-    stop(catchment_boundary, " needs columns x and y.", call. = FALSE)
-  }
   say("Multiquadric average over the catchment")
-  cells_x <- seq(min(boundary$x) - grid_spacing_m, max(boundary$x) + grid_spacing_m,
-                 by = grid_spacing_m)
-  cells_y <- seq(min(boundary$y) - grid_spacing_m, max(boundary$y) + grid_spacing_m,
-                 by = grid_spacing_m)
-  cell_grid <- list(x = cells_x, y = cells_y)
-  mask <- catchment_mask(cells_x, cells_y, boundary)
   located <- data.frame(id = gauge_names, x = gauges$x, y = gauges$y)
   wet_steps <- which(rowSums(G > 0, na.rm = TRUE) > 0)
   multiquadric <- ifelse(rowSums(!is.na(G)) > 0, 0, NA_real_)
@@ -275,14 +436,6 @@ if (!is.null(catchment_boundary)) {
   multiquadric[wet_steps] <- fit$rain
   built$multiquadric <- multiquadric
   multiquadric_c <- fit$c
-  # Thiessen weights from the geometry, to check those given: each gauge's share of the cells
-  # inside the boundary that lie nearest to it.
-  inside_cells <- which(mask, arr.ind = TRUE)
-  cx <- cells_x[inside_cells[, 1]]
-  cy <- cells_y[inside_cells[, 2]]
-  nearest <- apply(outer(cx, gauges$x, `-`)^2 + outer(cy, gauges$y, `-`)^2, 1, which.min)
-  geometry_weights <- stats::setNames(tabulate(nearest, length(gauge_names)) / length(nearest),
-                                      gauge_names)
 }
 
 # ---- H19 radar ------------------------------------------------------------------------------
@@ -324,13 +477,11 @@ if (!is.null(radar_folder)) {
                                       bad$last_day, bad$problems), collapse = "; "),
          ". See radar_layouts.csv.", call. = FALSE)
   }
-  have_boundary <- !is.null(catchment_boundary)
-  have_positions <- !anyNA(gauges$x) && !anyNA(gauges$y)
+  have_boundary <- !is.null(boundary)
   if (!have_boundary && !have_positions) {
     stop("The radar needs the catchment boundary or the gauges' positions, to know where to ",
          "read.", call. = FALSE)
   }
-  if (have_boundary && !exists("boundary")) boundary <- fread(here(catchment_boundary))
   px <- c(if (have_boundary) boundary$x, if (have_positions) gauges$x)
   py <- c(if (have_boundary) boundary$y, if (have_positions) gauges$y)
   extent <- c(min(px) - 3000, max(px) + 3000, min(py) - 3000, max(py) + 3000)
@@ -708,7 +859,7 @@ if (length(gauge_series) > 1) {
     data.frame(
       rain = n,
       weights = paste(sprintf("%s %.3f", names(w)[w != 0], w[w != 0]), collapse = ", "),
-      source = if (n == "thiessen") "given" else if (n %in% c("equal", "equal_all")) "equal" else
+      source = if (n == "thiessen") thiessen_source else if (n %in% c("equal", "equal_all")) "equal" else
         if (n %in% names(given)) "given" else sprintf("estimated, R2 %.3f", fit_r2[[n]]),
       weights_sum = round(sum(w), 3),
       sum_of_squares = round(s2, 3),
@@ -916,18 +1067,24 @@ lines <- c(
     w <- weights[[n]]
     paste(sprintf("%s %.3f", names(w), w), collapse = ", ")
   }, "")),
-  if (!is.null(catchment_boundary)) {
+  if (!is.null(boundary)) {
     c(sprintf(paste("- **multiquadric**: every gauge, on a %g m grid, shape parameter c = %.0f m",
                     "(chosen by leaving out one gauge at a time)."), grid_spacing_m,
               multiquadric_c),
-      "", sprintf("Thiessen weights from the gauge positions and the boundary: %s. Given: %s.",
+      "",
+      if (thiessen_source == "given") {
+        c(sprintf("Thiessen weights from the gauge positions and the boundary: %s. Given: %s.",
                   paste(sprintf("%s %.3f", names(geometry_weights), geometry_weights),
                         collapse = ", "),
                   paste(sprintf("%s %.3f", names(thiessen_weights), thiessen_weights),
                         collapse = ", ")),
-      if (max(abs(geometry_weights[names(thiessen_weights)] - thiessen_weights)) > 0.05) {
-        paste("**They differ by more than 0.05.** Check the gauge positions, the boundary,",
-              "and how the given weights were made.")
+          if (max(abs(geometry_weights[names(thiessen_weights)] - thiessen_weights)) > 0.05) {
+            paste("**They differ by more than 0.05.** Check the gauge positions, the boundary,",
+                  "and how the given weights were made.")
+          })
+      } else {
+        paste("No Thiessen weights were given: thiessen uses those worked out from the gauge",
+              "positions and the boundary. The operational weights may differ.")
       })
   } else {
     "- multiquadric: not built (no catchment_boundary given)."
@@ -936,9 +1093,9 @@ lines <- c(
   if (!is.null(downloads)) {
     c("", sprintf(paste("Gauges downloaded from the EA Hydrology API with reach.io, %s to %s",
                         "(`gauge_downloads.csv`):"), download_from, download_to), "",
-      sprintf("- %s: WISKI ID %s%s", downloads$gauge, downloads$wiski_id,
+      sprintf("- %s: %s, WISKI ID %s%s", downloads$gauge, downloads$label, downloads$wiski_id,
               ifelse(is.na(downloads$readings), ", already downloaded.",
-                     sprintf(" (%s), %d readings, %d missing; other flags: %s.", downloads$label,
+                     sprintf(", %d readings, %d missing; other flags: %s.",
                              downloads$readings, downloads$missing, downloads$flags))), "",
       "Readings flagged Missing are gaps. Other flags (Suspect, Estimated, Unchecked) are kept",
       "and only counted here: quality control belongs upstream, in reach.validate.")
