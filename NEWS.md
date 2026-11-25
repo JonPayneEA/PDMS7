@@ -1,3 +1,27 @@
+# pdmS7 0.42.2
+
+- **H19 is quicker to read.** `h19_radar()` reads each file with ncdf4, opening it once and
+  reading only the cells around the catchment, every layer in one call; with `layouts`, the
+  steps come from the file names and no file is opened to index them. Before, each file was
+  opened about five times and read in full through terra before cropping. terra is no longer
+  needed. A step a short day lacks is now `NA`, not a shift of the rest of the day.
+- **`h19_layouts()` samples.** By default (`every = "month"`) it reads the first file of each
+  month and bisects between any two that differ to find the change to the day: ten years
+  take about 130 headers rather than 3,650. `every = "file"` reads them all. Each header is
+  read in one open, not three.
+- On a year of test files the H19 check runs in 5 seconds rather than 21, with the same
+  totals; on a network drive, where opening a file is the slow part, the gain is larger.
+- `check_h19.R` and `compare_rain.R` find the archive's newer file names too: from 2020 the
+  files are named by the date alone, such as `20200101000000.nc`, not `..._1km_H19.nc`, and
+  were missed. A scan of 2019 to 2022 found the change on 1 January 2020: the variable
+  renamed, the units, grid and time stamps unchanged. The pattern is
+  now 14 digits, anything, then `.nc`, and only the year folders of the period are searched,
+  not the processed folders or zips beside them, which also lists faster.
+- `h19_layouts()` no longer fails with "missing value where TRUE/FALSE needed" on a file
+  whose grid gives no cell size: that is reported as a problem of its layout, and each
+  layout names an example file. A test reads a file laid out as the archive's 2010 files are
+  (whole numbers scaled by 0.03125, missing -999, eastings from -166500, start stamps).
+
 # pdmS7 0.42.1
 
 - **A quick look at H19**, `inst/scripts/check_h19.R`: for a folder of daily H19 files and a

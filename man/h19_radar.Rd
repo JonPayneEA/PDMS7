@@ -19,50 +19,63 @@ h19_radar(
 
 \item{varname}{Name of the radar variable; by default found in each file among the H19 names.}
 
-\item{fallback_crs}{Coordinate reference system assumed when a file does not state one.}
+\item{fallback_crs}{Kept for compatibility; not used. The grid is read in the files' own
+coordinates, British National Grid metres.}
 
 \item{layouts}{Optional result of \code{\link[=h19_layouts]{h19_layouts()}} for these files. Given it, each file's
 times are moved to the start of their step and its values put in mm per step, by the
-file's own layout, before the steps are put in order: an archive whose time stamp changed
-part way through would otherwise put the last step before the change and the first after
-it at the same time. Without it, times and values are as the files hold them.}
+file's own layout: an archive whose time stamp changed part way through would otherwise
+put the last step before the change and the first after it at the same time. Without it,
+times and values are as the files hold them.}
 }
 \value{
 A list of class \code{pdm_h19} with \code{grid} (cell-centre \code{x} and \code{y}, both increasing),
 \code{time} (the time of every step, POSIXct in UTC), \code{radar} (a function of the step number
 returning that step's grid, mm, as a matrix of \code{length(grid$x)} rows by \code{length(grid$y)}
-columns) and \code{index} (the file, layer and unit factor of every step).
+columns) and \code{index} (the file and unit factor of every step).
 }
 \description{
 H19 radar comes as daily NetCDF files, each holding that day's 15-minute accumulations on
 British National Grid, in year and month folders. Sixteen years of it will not fit in memory
-at once. \code{h19_radar()} indexes the files (the time of every layer in every file), crops them to
-an extent around the catchment and its gauges, and returns a reader that gives one step's grid
-when asked, loading each daily file once as the steps are read in order. Pass its \code{radar}
-and \code{grid} to \code{\link[=merge_rainfall]{merge_rainfall()}}.
+at once. \code{h19_radar()} indexes the files, reads from each only the window of cells around the
+catchment and its gauges, and returns a reader that gives one step's grid when asked,
+loading each daily file once as the steps are read in order. Pass its \code{radar} and \code{grid} to
+\code{\link[=merge_rainfall]{merge_rainfall()}}.
 }
 \details{
+\strong{Speed.} Each file is opened once, when its first step is asked for, and its window of
+cells for every layer is read in one call. On a network drive most of the time goes on
+opening files: copying the period wanted to a local disk first is often quicker overall.
+
 \strong{Variable names.} The archive uses \code{"radar rain-accum H19"} for 2010 to 2019 and
-\code{"rainfall_radar_amount"} from 2021. By default each file's variable is found among these;
+\code{"rainfall_radar_amount"} from 1 January 2020, when its files were also renamed from
+\code{..._1km_H19.nc} to the date alone, such as \verb{20200101000000.nc}; the units (mm), grid and
+time stamps (the start of each step) are the same either side. By default each file's
+variable is found among these;
 name another with \code{varname}.
 
-\strong{Times} are read from each file's \code{time} variable and its units, such as
-\code{"minutes since 1970-01-01 00:00:00"}, in UTC. Check whether they mark the start or the end of
-each accumulation, and align the gauges to match: an hour's offset moves every peak.
+\strong{Times.} Without \code{layouts}, each file is opened once at the start to read its times, from
+its \code{time} variable and units (such as \code{"minutes since 1970-01-01 00:00:00"}, in UTC), as
+they stand: check whether they mark the start or the end of each accumulation. With
+\code{layouts} from \code{\link[=h19_layouts]{h19_layouts()}}, no file is opened at the start: each day's 96 steps are
+taken from the date at the start of its file name, at the start of each step, and when the
+file is read its own times, moved by its layout, are matched to those steps. A step the
+file does not hold is \code{NA}.
 
-\strong{Extent.} Crop to a box that holds the catchment and the gauges used with it, with a margin:
-the merged field needs radar at every gauge. Cells with no radar value are \code{NA}, and a merged
-step that needs one is \code{NA}.
+\strong{Extent.} A box that holds the catchment and the gauges used with it, with a margin: the
+merged field needs radar at every gauge. The cells whose centres fall in the box are read.
+Cells with no radar value are \code{NA}, and a merged step that needs one is \code{NA}.
 }
 \examples{
 \dontrun{
 files <- list.files("F:/.../01_H19", pattern = "\\\\.nc$", recursive = TRUE, full.names = TRUE)
-h19 <- h19_radar(files, extent = c(290000, 330000, 120000, 160000))
+h19 <- h19_radar(files, extent = c(290000, 330000, 120000, 160000),
+                 layouts = h19_layouts(files))
 mask <- catchment_mask(h19$grid$x, h19$grid$y, boundary)
 merged <- merge_rainfall(gauges, gauge_rain, h19$grid, mask, radar = h19$radar,
                          method = "conditional")
 }
 }
 \seealso{
-\code{\link[=merge_rainfall]{merge_rainfall()}}, \code{\link[=catchment_mask]{catchment_mask()}}
+\code{\link[=h19_layouts]{h19_layouts()}}, \code{\link[=merge_rainfall]{merge_rainfall()}}, \code{\link[=catchment_mask]{catchment_mask()}}
 }

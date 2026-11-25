@@ -35,7 +35,6 @@ h19_files <- function(env = parent.frame()) {
 
 # Guards: steps come out in time order, on an increasing grid, with each cell in its place
 test_that("h19_radar indexes days in order and keeps every cell in its place", {
-  skip_if_not_installed("terra")
   skip_if_not_installed("ncdf4")
   d <- h19_files()
   h <- h19_radar(rev(d$files), extent = c(300000, 306000, 140000, 145000))
@@ -54,7 +53,6 @@ test_that("h19_radar indexes days in order and keeps every cell in its place", {
 
 # Guards: cropping keeps the cells inside the extent, and the radar feeds merge_rainfall()
 test_that("a cropped H19 grid feeds conditional merging", {
-  skip_if_not_installed("terra")
   skip_if_not_installed("ncdf4")
   d <- h19_files()
   h <- h19_radar(d$files, extent = c(301000, 305000, 141000, 144000))
@@ -75,7 +73,6 @@ test_that("a cropped H19 grid feeds conditional merging", {
 
 # Guards: the older variable name is found, and unknown names and bad inputs are refused
 test_that("h19_radar finds the variable and checks its inputs", {
-  skip_if_not_installed("terra")
   skip_if_not_installed("ncdf4")
   dir <- tempfile("h19-old-")
   dir.create(dir)
@@ -151,7 +148,6 @@ test_that("h19_layouts reports a misaligned grid and unknown units", {
 # reader refused them as the same time; with them, each is moved to its own step's start, and
 # a rate is put in mm per step.
 test_that("h19_radar lines up an archive whose time stamp and units changed", {
-  skip_if_not_installed("terra")
   skip_if_not_installed("ncdf4")
   dir <- tempfile("h19-change-")
   dir.create(dir)
@@ -172,4 +168,121 @@ test_that("h19_radar lines up an archive whose time stamp and units changed", {
   # The old file's values as they are; the new file's rate times 0.25 h.
   expect_equal(h$radar(96), old$values[, , 96])
   expect_equal(h$radar(97), 0.25 * new$values[, , 1])
+})
+
+# Guards: the layout scan reads a file a month and bisects to the change, finding it to the day
+# with far fewer headers than files; every = "file" reads them all.
+test_that("h19_layouts samples a file a month and still finds each change to the day", {
+  skip_if_not_installed("ncdf4")
+  dir <- tempfile("h19-sample-")
+  dir.create(dir)
+  on.exit(unlink(dir, recursive = TRUE), add = TRUE)
+  days <- seq(as.Date("2024-01-01"), as.Date("2024-03-10"), by = "day")
+  for (d in as.list(days)) {
+    new <- d >= as.Date("2024-02-20")
+    write_h19_day(file.path(dir, paste0(format(d, "%Y%m%d"), "000000_H19.nc")), format(d),
+                  varname = if (new) "rainfall_radar_amount" else "radar rain-accum H19",
+                  stamp = if (new) "start" else "end", units = if (new) "mm/h" else "mm",
+                  nx = 2, ny = 2, layers = 96)
+  }
+  files <- list.files(dir, full.names = TRUE)
+  lay <- h19_layouts(files)
+  # 70 files: 31 in January, 19 in February before the 20th (50 old), 20 new.
+  expect_equal(lay$layouts$files, c(50, 20))
+  expect_equal(lay$layouts$first_day, c("2024-01-01", "2024-02-20"))
+  expect_equal(lay$layouts$last_day, c("2024-02-19", "2024-03-10"))
+  # Samples: 1 January, 1 February, 1 March, 10 March; then bisecting the 29 files from
+  # 1 February to 1 March takes at most ceiling(log2(29)) = 5 more.
+  expect_lte(lay$checked, 9)
+  expect_equal(sum(lay$files$checked), lay$checked)
+  # Every file, read or not, gets its layout's shift and factor.
+  new <- as.Date(substr(basename(lay$files$file), 1, 8), "%Y%m%d") >= as.Date("2024-02-20")
+  expect_equal(lay$files$shift_minutes, ifelse(new, 0, 15))
+  expect_equal(lay$files$factor, ifelse(new, 0.25, 1))
+  all_read <- h19_layouts(files, every = "file")
+  expect_equal(all_read$checked, 70)
+  expect_equal(all_read$layouts$files, c(50, 20))
+})
+
+# Guards: with layouts, a day's steps come from its file name, and a layer the file does not
+# hold comes back as NA rather than shifting the rest of the day.
+test_that("h19_radar with layouts gives NA for a step a short day lacks", {
+  skip_if_not_installed("ncdf4")
+  dir <- tempfile("h19-short-")
+  dir.create(dir)
+  on.exit(unlink(dir, recursive = TRUE), add = TRUE)
+  full <- write_h19_day(file.path(dir, "20240101.nc"), "2024-01-01", layers = 96)
+  short <- write_h19_day(file.path(dir, "20240102.nc"), "2024-01-02", layers = 95)
+  files <- file.path(dir, c("20240101.nc", "20240102.nc"))
+  h <- h19_radar(files, c(300000, 306000, 140000, 145000), layouts = h19_layouts(files))
+  # Two days of 96 steps from the names, at the start of each step.
+  expect_length(h$time, 192)
+  expect_equal(format(h$time[c(1, 192)], "%Y-%m-%d %H:%M", tz = "UTC"),
+               c("2024-01-01 00:00", "2024-01-02 23:45"))
+  # End stamps: the file's layer k is the step starting (k - 1) x 15 minutes.
+  expect_equal(h$radar(1), full$values[, , 1])
+  expect_equal(h$radar(97 + 94), short$values[, , 95])
+  # The short day holds 95 layers: its last step, 23:45, is missing.
+  expect_true(all(is.na(h$radar(192))))
+})
+
+# Guards (regression): a file whose grid has a single column could not give a cell size, and
+# the check of the cell size failed with "missing value where TRUE/FALSE needed". It is now a
+# problem of its layout, naming a file.
+test_that("h19_layouts reports a grid without a cell size instead of failing", {
+  skip_if_not_installed("ncdf4")
+  dir <- tempfile("h19-onecol-")
+  dir.create(dir)
+  on.exit(unlink(dir, recursive = TRUE), add = TRUE)
+  write_h19_day(file.path(dir, "20240101.nc"), "2024-01-01")
+  write_h19_day(file.path(dir, "20240102.nc"), "2024-01-02", nx = 1)
+  lay <- h19_layouts(file.path(dir, c("20240101.nc", "20240102.nc")), every = "file")
+  expect_equal(nrow(lay$layouts), 2)
+  expect_match(lay$layouts$problems[2], "no grid cell size")
+  expect_match(lay$layouts$example_file[2], "20240102.nc", fixed = TRUE)
+  expect_output(print(lay), "For example")
+})
+
+# Guards: a file laid out as the archive's 2010 files are (seen in a real file's header): the
+# variable stored as whole numbers with scale_factor 0.03125 and _FillValue -999, a crs
+# variable beside it, x and y from negative eastings and northings, and time in minutes since
+# "1970-01-01 00:00:00.0 +0000", stamped at the start of each step.
+test_that("a file laid out like the archive's is read and scaled", {
+  skip_if_not_installed("ncdf4")
+  dir <- tempfile("h19-archive-")
+  dir.create(dir)
+  on.exit(unlink(dir, recursive = TRUE), add = TRUE)
+  path <- file.path(dir, "20101201000000_u1024_ng_radar_15min_advect_accum_1km_H19.nc")
+  x <- -166500 + 1000 * (0:5)
+  y <- -144500 + 1000 * (0:4)
+  start <- as.numeric(difftime(as.POSIXct("2010-12-01", tz = "UTC"),
+                               as.POSIXct("1970-01-01", tz = "UTC"), units = "mins"))
+  dx <- ncdf4::ncdim_def("x", "m", x)
+  dy <- ncdf4::ncdim_def("y", "m", y)
+  dt <- ncdf4::ncdim_def("time", "minutes since 1970-01-01 00:00:00.0 +0000",
+                         start + 15 * (0:95), unlim = TRUE)
+  rain <- ncdf4::ncvar_def("radar rain-accum H19", "mm", list(dx, dy, dt), missval = -999,
+                           prec = "short")
+  crs <- ncdf4::ncvar_def("crs", "", list(), prec = "integer")
+  nc <- ncdf4::nc_create(path, list(rain, crs))
+  ncdf4::ncatt_put(nc, rain, "scale_factor", 0.03125)
+  ncdf4::ncatt_put(nc, rain, "add_offset", 0)
+  # Stored counts: 32 in every cell of layer k is k mm once scaled; one cell missing.
+  counts <- array(rep(32 * (1:96), each = 30), c(6, 5, 96))
+  counts[1, 1, 1] <- -999
+  ncdf4::ncvar_put(nc, rain, counts)
+  ncdf4::nc_close(nc)
+  lay <- h19_layouts(path)
+  expect_equal(lay$layouts$problems, "")
+  expect_equal(lay$layouts$stamp, "start")
+  expect_equal(lay$layouts$x_offset, 500)
+  expect_true(lay$layouts$scaled)
+  h <- h19_radar(path, c(-167000, -161000, -145000, -140000), layouts = lay)
+  expect_equal(h$grid$x, x)
+  expect_equal(h$grid$y, y)
+  expect_equal(format(h$time[1], "%Y-%m-%d %H:%M", tz = "UTC"), "2010-12-01 00:00")
+  # Layer 3 holds 96 stored as 3 x 32: 3 mm once scaled.
+  expect_equal(h$radar(3), matrix(3, 6, 5))
+  expect_true(is.na(h$radar(1)[1, 1]))
+  expect_equal(h$radar(1)[2, 1], 1)
 })

@@ -4,26 +4,37 @@
 \alias{h19_layouts}
 \title{The layouts of a set of H19 files}
 \usage{
-h19_layouts(files)
+h19_layouts(files, every = c("month", "file"))
 }
 \arguments{
 \item{files}{Paths of H19 NetCDF files.}
+
+\item{every}{\code{"month"} (the default) to read a file a month and bisect to each change, or
+\code{"file"} to read every file's header.}
 }
 \value{
 A list of class \code{pdm_h19_layouts}: \code{layouts}, one row per layout (its fields, the
-number of files, the first and last day, and \code{problems}, empty when it passes); and
-\code{files}, one row per file with its layout number, \code{shift_minutes} (to subtract from its
-times so each marks the start of its step) and \code{factor} (to multiply its values by, to give
-mm per step).
+number of files, the first and last day, and \code{problems}, empty when it passes); \code{files},
+one row per file with its layout number, whether its header was read (\code{checked}),
+\code{shift_minutes} (to subtract from its times so each marks the start of its step) and
+\code{factor} (to multiply its values by, to give mm per step); and \code{checked}, the number of
+headers read.
 }
 \description{
-The H19 archive was not written the same way throughout: the radar variable was renamed in
-2021, and a change of time stamp, units or grid would shift or scale part of a record
-without any error. \code{h19_layouts()} reads only the headers of every file (no radar values, so
-it takes seconds for years of files), groups the files by layout, and checks each layout
-before any radar is used.
+The H19 archive was not written the same way throughout: the radar variable was renamed on
+1 January 2020, and a change of time stamp, units or grid would shift or scale part of a record
+without any error. \code{h19_layouts()} reads the headers of the files (no radar values), groups
+the files by layout, and checks each layout before any radar is used.
 }
 \details{
+\strong{Sampling.} A layout changes rarely, so by default (\code{every = "month"}) the first file of
+each month and the last file are read, and wherever two neighbouring samples differ, the
+files between them are bisected to find the first of the new layout: ten years take about
+130 headers, not 3,650, and each change is still found to the day. Every other file is given
+the layout of the last file read before it. A layout that came and went within a month
+between samples would be missed: \code{every = "file"} reads every header. Files whose names do
+not start with a date (\code{YYYYMMDD}) are all read.
+
 A layout is what a file's header says about how its rain is stored: the radar variable and
 its units, the order of its dimensions, the grid's cell size, alignment and orientation, the
 time units, the number of 15-minute layers, and where in its step each layer is stamped.

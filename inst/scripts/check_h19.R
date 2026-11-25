@@ -10,7 +10,7 @@
 # Inputs:       A folder of daily H19 NetCDF files; a point and a polygon (CSV of x and y),
 #               both in metres on British National Grid
 # Outputs:      A folder: h19_layouts.csv, point and catchment series (CSV), and three plots
-# Dependencies: pdmS7 (0.42.0 or later), terra, ncdf4, data.table
+# Dependencies: pdmS7 (0.42.2 or later), ncdf4, data.table
 # ============================================================ #
 #
 # How to use it
@@ -26,8 +26,11 @@ library(data.table)
 
 # ---- Settings: fill these in -------------------------------------------------------------
 
-radar_folder <- "C:/.../04_RADAR/01_H19"   # searched with its sub-folders
-radar_pattern <- "_H19\\.nc$"
+radar_folder <- "C:/.../04_RADAR/01_H19"   # holding a folder for each year: 2010, 2011, ...
+# H19 file names: the date and time (14 digits), anything, then .nc. This matches both the
+# older 20101201000000_u1024_ng_radar_15min_advect_accum_1km_H19.nc and the newer
+# 20210401000000.nc.
+radar_pattern <- "^[0-9]{14}.*\\.nc$"
 from <- "2010-12-01"                        # first day (inclusive)
 to <- "2011-01-01"                          # last day (exclusive)
 
@@ -42,7 +45,13 @@ output_folder <- "h19_check"
 
 say <- function(...) cat(sprintf(...), "\n", sep = "")
 dir.create(output_folder, recursive = TRUE, showWarnings = FALSE)
-files <- list.files(radar_folder, pattern = radar_pattern, recursive = TRUE, full.names = TRUE)
+# Only the year folders of the period, and their month folders: not other folders beside them
+# (processed products, polygons) nor zips. Without year folders, the whole folder is searched.
+years <- seq(as.integer(substr(from, 1, 4)), as.integer(format(as.Date(to) - 1, "%Y")))
+year_dirs <- file.path(radar_folder, years)
+year_dirs <- year_dirs[dir.exists(year_dirs)]
+files <- list.files(if (length(year_dirs)) year_dirs else radar_folder, pattern = radar_pattern,
+                    recursive = TRUE, full.names = TRUE)
 day <- as.Date(substr(basename(files), 1, 8), "%Y%m%d")
 files <- files[!is.na(day) & day >= as.Date(from) & day < as.Date(to)]
 if (!length(files)) {
