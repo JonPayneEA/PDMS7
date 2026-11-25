@@ -1,3 +1,11 @@
+# pdmS7 0.42.1
+
+- **A quick look at H19**, `inst/scripts/check_h19.R`: for a folder of daily H19 files and a
+  period, it reports the files' layouts (`h19_layouts()`, stopping on a problem), reads the
+  radar with each layout lined up, and draws the rain at a point and the catchment average
+  over a polygon through time (bars above, the running total below, the changes of layout
+  marked), and a map of the total with the polygon and point. The series go to CSV.
+
 # pdmS7 0.42.0
 
 - **`h19_layouts()`** reads the headers of a set of H19 files (no radar values, so seconds for
