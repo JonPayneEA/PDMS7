@@ -4,7 +4,13 @@
 \alias{h19_radar}
 \title{Gridded H19 radar for merging with gauges}
 \usage{
-h19_radar(files, extent, varname = NULL, fallback_crs = "EPSG:27700")
+h19_radar(
+  files,
+  extent,
+  varname = NULL,
+  fallback_crs = "EPSG:27700",
+  layouts = NULL
+)
 }
 \arguments{
 \item{files}{Paths of the daily NetCDF files, in any order; they are sorted by time.}
@@ -14,12 +20,18 @@ h19_radar(files, extent, varname = NULL, fallback_crs = "EPSG:27700")
 \item{varname}{Name of the radar variable; by default found in each file among the H19 names.}
 
 \item{fallback_crs}{Coordinate reference system assumed when a file does not state one.}
+
+\item{layouts}{Optional result of \code{\link[=h19_layouts]{h19_layouts()}} for these files. Given it, each file's
+times are moved to the start of their step and its values put in mm per step, by the
+file's own layout, before the steps are put in order: an archive whose time stamp changed
+part way through would otherwise put the last step before the change and the first after
+it at the same time. Without it, times and values are as the files hold them.}
 }
 \value{
 A list of class \code{pdm_h19} with \code{grid} (cell-centre \code{x} and \code{y}, both increasing),
 \code{time} (the time of every step, POSIXct in UTC), \code{radar} (a function of the step number
 returning that step's grid, mm, as a matrix of \code{length(grid$x)} rows by \code{length(grid$y)}
-columns) and \code{index} (the file and layer of every step).
+columns) and \code{index} (the file, layer and unit factor of every step).
 }
 \description{
 H19 radar comes as daily NetCDF files, each holding that day's 15-minute accumulations on

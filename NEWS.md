@@ -1,3 +1,24 @@
+# pdmS7 0.42.0
+
+- **`h19_layouts()`** reads the headers of a set of H19 files (no radar values, so seconds for
+  years of files), groups them by layout (radar variable and units, dimensions, grid cell size,
+  alignment and orientation, time units, step and time stamp) and checks each layout: 1 km
+  cells, aligned alike, layers 15 minutes apart, units in mm per step or mm per hour. Each file
+  gets the shift that puts its times at the start of their step (15 minutes for layers stamped
+  at the end) and the factor that puts its values in mm per step (0.25 for a rate).
+- **`h19_radar(layouts = )`**: given those layouts, the reader moves each file's times and
+  converts its values before putting the steps in order. Without it an archive whose time
+  stamp changed from the end of each step to its start failed with "Two files hold layers at
+  the same time", the last step before the change and the first after both reading midnight.
+  Without `layouts` the reader works as before.
+- **`compare_rain.R` reads H19.** Given the folder of daily files, it checks their layouts
+  first (`radar_scan_only` to see them and stop), reads the radar in a window around the
+  catchment and the gauges, and keeps what it read, so a rerun reads nothing. The radar over
+  the catchment joins the comparison as `h19`; the radar over each gauge is set against the
+  gauge, day by day, by month and season (`radar_vs_gauges.csv`), as a first look at gauge
+  undercatch: a ratio higher in winter points to the gauge losing rain to wind. The summary
+  list of downloaded gauges is laid out as a list.
+
 # pdmS7 0.41.0
 
 - **`compare_rain.R` builds the catchment rainfall itself.** Give it the rain gauge files and
