@@ -10,7 +10,7 @@
 # Inputs:       A folder of daily H19 NetCDF files; a point and a polygon (CSV of x and y),
 #               both in metres on British National Grid
 # Outputs:      A folder: h19_layouts.csv, point and catchment series (CSV), and three plots
-# Dependencies: pdmS7 (0.42.0 or later), terra, ncdf4, data.table
+# Dependencies: pdmS7 (0.42.2 or later), ncdf4, data.table
 # ============================================================ #
 #
 # How to use it

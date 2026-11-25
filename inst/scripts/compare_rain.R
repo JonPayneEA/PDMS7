@@ -17,7 +17,7 @@
 # Outputs:      A folder: summary.md, rain_ranking.csv, weights_and_error.csv, plots each with a
 #               note on how to read it, and catchment_rain/ with each average built, as CSV
 #               ready for calibrate_site.R
-# Dependencies: pdmS7 (0.42.0 or later); reach.io to download the gauges; terra and ncdf4
+# Dependencies: pdmS7 (0.42.2 or later); reach.io to download the gauges; ncdf4
 #               for H19 radar
 # ============================================================ #
 #
