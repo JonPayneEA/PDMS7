@@ -7,7 +7,8 @@
 # Created:      2026-11-07
 # Modified:     2026-11-25 - h19_layouts(); h19_radar(layouts = ); read with ncdf4, one open
 #               per file and only the window needed, in place of terra; the layout scan
-#               samples a file a month and bisects to each change
+#               samples a file a month and bisects to each change; a file that will not
+#               read is skipped, its steps NA, not the end of the run
 # Tier:         1
 # Inputs:       Daily H19 NetCDF files (British National Grid), an extent in metres
 # Outputs:      The cropped grid, the times of every layer, a reader for one step's grid, and
@@ -61,7 +62,12 @@
 #' @return A list of class `pdm_h19` with `grid` (cell-centre `x` and `y`, both increasing),
 #'   `time` (the time of every step, POSIXct in UTC), `radar` (a function of the step number
 #'   returning that step's grid, mm, as a matrix of `length(grid$x)` rows by `length(grid$y)`
-#'   columns) and `index` (the file and unit factor of every step).
+#'   columns), `index` (the file and unit factor of every step) and `skipped` (a function
+#'   returning the files skipped so far, with the reason, as a data frame).
+#'
+#'   A file that cannot be read over the extent (its grid elsewhere or of another size, or the
+#'   file damaged) does not end the run: a message names it, its steps are `NA`, and it is
+#'   listed by `skipped()`. The grid is taken from the first file that reads.
 #' @examples
 #' \dontrun{
 #' files <- list.files("F:/.../01_H19", pattern = "\\.nc$", recursive = TRUE, full.names = TRUE)
@@ -102,18 +108,46 @@ h19_radar <- function(files, extent, varname = NULL, fallback_crs = "EPSG:27700"
   index <- index[order(index$time, index$file), ]
   rownames(index) <- NULL
   .check(!anyDuplicated(index$time), "Two files hold layers at the same time")
-  first <- .h19_window(index$file[1], varname, extent)
   state <- new.env(parent = emptyenv())
   state$file <- ""
+  state$skipped <- data.frame(file = character(0), reason = character(0))
+  skip <- function(path, reason) {
+    message("Skipping ", basename(path), ": ", reason, "; its steps are NA")
+    state$skipped <- rbind(state$skipped, data.frame(file = path, reason = reason))
+  }
+  # The grid comes from the first file that reads; a file that will not read (no cells in the
+  # extent, a different grid, damaged) is skipped, its steps NA, rather than ending the run.
+  first <- NULL
+  for (path in unique(index$file)) {
+    first <- tryCatch(.h19_window(path, varname, extent), error = function(e) {
+      skip(path, conditionMessage(e))
+      NULL
+    })
+    if (!is.null(first)) break
+  }
+  .check(!is.null(first), paste0("None of the H19 files could be read over the extent; ",
+                                 basename(state$skipped$file[1]), ": ",
+                                 state$skipped$reason[1]))
+  first_file <- path
   load <- function(path) {
-    w <- if (identical(path, index$file[1]) && is.null(state$seen_first)) first else
-      .h19_window(path, varname, extent)
+    w <- if (identical(path, first_file) && is.null(state$seen_first)) first else
+      tryCatch(.h19_window(path, varname, extent), error = function(e) {
+        skip(path, conditionMessage(e))
+        NULL
+      })
     state$seen_first <- TRUE
-    .check(identical(w$x, first$x) && identical(w$y, first$y),
-           paste("The grid of", basename(path), "differs from the first file's"))
+    if (!is.null(w) && !(identical(w$x, first$x) && identical(w$y, first$y))) {
+      skip(path, paste0("its grid differs from that of ", basename(first_file)))
+      w <- NULL
+    }
     rows <- which(index$file == path)
-    times <- round(as.numeric(w$time - shift[[path]]))
     state$file <- path
+    if (is.null(w)) {
+      state$values <- NULL
+      state$layer <- stats::setNames(rep(NA_integer_, length(rows)), rows)
+      return(invisible())
+    }
+    times <- round(as.numeric(w$time - shift[[path]]))
     state$values <- w$values
     state$layer <- stats::setNames(match(round(as.numeric(index$time[rows])), times), rows)
   }
@@ -125,7 +159,7 @@ h19_radar <- function(files, extent, varname = NULL, fallback_crs = "EPSG:27700"
     state$values[, , layer] * index$factor[t]
   }
   structure(list(grid = list(x = first$x, y = first$y), time = index$time, radar = reader,
-                 index = index), class = "pdm_h19")
+                 index = index, skipped = function() state$skipped), class = "pdm_h19")
 }
 
 #' @export

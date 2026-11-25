@@ -1,3 +1,13 @@
+# pdmS7 0.42.3
+
+- **A file H19 cannot read no longer ends the run.** One file in the archive (10 June 2015)
+  has a grid that does not cover the catchment, and `h19_radar()` stopped with "No cells of
+  ... fall inside the extent" hours into a read of ten years. Now a file that will not read
+  over the extent, whose grid differs, or that is damaged, is skipped: a message names it,
+  its steps are `NA`, and `h19$skipped()` lists the files with the reason. The grid is taken
+  from the first file that reads. `compare_rain.R` and `check_h19.R` write the list to
+  `radar_skipped_files.csv` and `h19_skipped_files.csv`.
+
 # pdmS7 0.42.2
 
 - **H19 is quicker to read.** `h19_radar()` reads each file with ncdf4, opening it once and

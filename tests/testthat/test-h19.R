@@ -83,7 +83,9 @@ test_that("h19_radar finds the variable and checks its inputs", {
   expect_equal(dim(h$radar(1)), c(6, 5))
   other <- file.path(dir, "other.nc")
   write_h19_day(other, "2015-01-02", varname = "precip")
-  expect_error(h19_radar(other, extent = c(300000, 306000, 140000, 145000)), "No H19 variable")
+  # A file it cannot read is skipped; when none can be read, the error gives the first reason.
+  expect_error(suppressMessages(h19_radar(other, extent = c(300000, 306000, 140000, 145000))),
+               "No H19 variable")
   expect_error(h19_radar(old, extent = c(1, 0, 0, 1)), "extent")
   expect_error(h19_radar(file.path(dir, "missing.nc"), extent = c(0, 1, 0, 1)), "existing")
   expect_error(h$radar(99), "No such step")
@@ -285,4 +287,50 @@ test_that("a file laid out like the archive's is read and scaled", {
   expect_equal(h$radar(3), matrix(3, 6, 5))
   expect_true(is.na(h$radar(1)[1, 1]))
   expect_equal(h$radar(1)[2, 1], 1)
+})
+
+# Guards (regression): a file in the middle of a run whose grid lies elsewhere (seen in the
+# archive on 10 June 2015) ended the whole read with "No cells of ... fall inside the extent".
+# It is now skipped: a message names it, its steps are NA, and skipped() lists it.
+test_that("h19_radar skips a file it cannot read over the extent", {
+  skip_if_not_installed("ncdf4")
+  dir <- tempfile("h19-skip-")
+  dir.create(dir)
+  on.exit(unlink(dir, recursive = TRUE), add = TRUE)
+  day1 <- write_h19_day(file.path(dir, "20240101.nc"), "2024-01-01")
+  # Day 2's grid starts 100 km east, clear of the extent.
+  write_h19_day(file.path(dir, "20240102.nc"), "2024-01-02", x0 = 400500)
+  day3 <- write_h19_day(file.path(dir, "20240103.nc"), "2024-01-03")
+  files <- file.path(dir, c("20240101.nc", "20240102.nc", "20240103.nc"))
+  h <- h19_radar(files, c(300000, 306000, 140000, 145000))
+  # Four layers a day: steps 1 to 4 day 1, 5 to 8 day 2, 9 to 12 day 3.
+  expect_length(h$time, 12)
+  expect_equal(h$radar(4), day1$values[, , 4])
+  expect_message(step5 <- h$radar(5), "Skipping 20240102.nc")
+  expect_true(all(is.na(step5)))
+  expect_true(all(is.na(h$radar(8))))
+  expect_equal(h$radar(9), day3$values[, , 1])
+  expect_equal(basename(h$skipped()$file), "20240102.nc")
+  expect_match(h$skipped()$reason, "No cells")
+})
+
+# Guards: when the first file is the bad one, the grid comes from the next that reads.
+test_that("h19_radar takes its grid from the first file that reads", {
+  skip_if_not_installed("ncdf4")
+  dir <- tempfile("h19-skip-first-")
+  dir.create(dir)
+  on.exit(unlink(dir, recursive = TRUE), add = TRUE)
+  write_h19_day(file.path(dir, "20240101.nc"), "2024-01-01", x0 = 400500)
+  day2 <- write_h19_day(file.path(dir, "20240102.nc"), "2024-01-02")
+  files <- file.path(dir, c("20240101.nc", "20240102.nc"))
+  expect_message(h <- h19_radar(files, c(300000, 306000, 140000, 145000)), "Skipping")
+  expect_equal(h$grid$x, day2$x)
+  expect_true(all(is.na(h$radar(1))))
+  expect_equal(h$radar(5), day2$values[, , 1])
+  # A file shifted by one cell overlaps the extent but would not line up: skipped too.
+  write_h19_day(file.path(dir, "20240103.nc"), "2024-01-03", x0 = 301500)
+  h <- h19_radar(file.path(dir, c("20240102.nc", "20240103.nc")),
+                 c(300000, 306000, 140000, 145000))
+  expect_message(h$radar(5), "grid differs")
+  expect_equal(nrow(h$skipped()), 1)
 })
