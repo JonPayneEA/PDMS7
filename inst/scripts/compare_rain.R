@@ -17,7 +17,8 @@
 # Outputs:      A folder: summary.md, rain_ranking.csv, weights_and_error.csv, plots each with a
 #               note on how to read it, and catchment_rain/ with each average built, as CSV
 #               ready for calibrate_site.R
-# Dependencies: pdmS7 (0.41.0 or later); reach.io to download the gauges
+# Dependencies: pdmS7 (0.42.0 or later); reach.io to download the gauges; terra and ncdf4
+#               for H19 radar
 # ============================================================ #
 #
 # How to use it
@@ -106,6 +107,16 @@ thiessen_weights <- c(gauge_A = 0.264, gauge_B = 0.737)
 catchment_boundary <- NULL     # such as "boundary.csv"
 grid_spacing_m <- 500
 
+# H19 radar (optional): the folder of daily H19 NetCDF files, searched with its sub-folders.
+# The files' layouts are checked first (the archive changed how it saved them part way
+# through): set radar_scan_only to TRUE to see them and stop. Then the radar over the catchment
+# joins the comparison as "h19" (with a boundary), and the radar over each gauge is set against
+# the gauge (with the gauges' positions). H19 is restricted: keep the output folder on
+# restricted storage, as the radar extracts are written there.
+radar_folder <- NULL           # such as "C:/.../04_RADAR/01_H19"
+radar_pattern <- "_H19\\.nc$"
+radar_scan_only <- FALSE
+
 # Other catchment rain series built elsewhere, to compare as well (optional), such as
 # other_rain_files <- c(multiquadric_ea = "rain_multiquadric.csv", radar = "rain_h19.csv")
 other_rain_files <- c()
@@ -123,7 +134,7 @@ if (!dir.exists(data_folder)) {
 dir.create(output_folder, recursive = TRUE, showWarnings = FALSE)
 here <- function(f) file.path(data_folder, f)
 gauge_names <- as.character(gauges$name)
-built_names <- c("thiessen", "equal", "equal_all", "multiquadric")
+built_names <- c("thiessen", "equal", "equal_all", "multiquadric", "h19")
 clash <- intersect(c(gauge_names, names(other_rain_files)), built_names)
 if (length(clash) || anyDuplicated(c(gauge_names, names(other_rain_files)))) {
   stop("Give each gauge and other series a name of its own, not one of ",
@@ -270,6 +281,114 @@ if (!is.null(catchment_boundary)) {
   nearest <- apply(outer(cx, gauges$x, `-`)^2 + outer(cy, gauges$y, `-`)^2, 1, which.min)
   geometry_weights <- stats::setNames(tabulate(nearest, length(gauge_names)) / length(nearest),
                                       gauge_names)
+}
+
+# ---- H19 radar ------------------------------------------------------------------------------
+
+# The files' layouts first, from their headers alone: each layout's time stamp, units and grid
+# are checked, and each file gets the shift and factor that put it on the same footing (times
+# at the start of each step, depths in mm per step). Then the radar is read in a window around
+# the catchment and the gauges, one daily file at a time, and kept: a rerun with the same files
+# reads nothing.
+radar_at_gauges <- NULL
+radar_layouts <- NULL
+if (!is.null(radar_folder)) {
+  say("H19 radar")
+  radar_files <- list.files(radar_folder, pattern = radar_pattern, recursive = TRUE,
+                            full.names = TRUE)
+  if (!length(radar_files)) {
+    stop("No files matching ", radar_pattern, " in ", radar_folder, ".", call. = FALSE)
+  }
+  file_day <- as.Date(substr(basename(radar_files), 1, 8), "%Y%m%d")
+  span <- as.Date(range(grid$time))
+  radar_files <- radar_files[is.na(file_day) | (file_day >= span[1] - 1 &
+                                                  file_day <= span[2] + 1)]
+  if (!length(radar_files)) stop("No H19 files fall within the record.", call. = FALSE)
+  radar_layouts <- h19_layouts(radar_files)
+  print(radar_layouts)
+  fwrite(radar_layouts$layouts, file.path(output_folder, "radar_layouts.csv"))
+  if (radar_scan_only) {
+    say("radar_scan_only is TRUE: layouts written to radar_layouts.csv; stopping here.")
+    if (interactive()) invokeRestart("abort") else quit(save = "no")
+  }
+  bad <- radar_layouts$layouts[nzchar(radar_layouts$layouts$problems), ]
+  if (nrow(bad)) {
+    stop("H19 layout ", paste(sprintf("%d (%s to %s): %s", bad$layout, bad$first_day,
+                                      bad$last_day, bad$problems), collapse = "; "),
+         ". See radar_layouts.csv.", call. = FALSE)
+  }
+  have_boundary <- !is.null(catchment_boundary)
+  have_positions <- !anyNA(gauges$x) && !anyNA(gauges$y)
+  if (!have_boundary && !have_positions) {
+    stop("The radar needs the catchment boundary or the gauges' positions, to know where to ",
+         "read.", call. = FALSE)
+  }
+  if (have_boundary && !exists("boundary")) boundary <- fread(here(catchment_boundary))
+  px <- c(if (have_boundary) boundary$x, if (have_positions) gauges$x)
+  py <- c(if (have_boundary) boundary$y, if (have_positions) gauges$y)
+  extent <- c(min(px) - 3000, max(px) + 3000, min(py) - 3000, max(py) + 3000)
+  cache <- file.path(output_folder, "radar_extract.csv")
+  cache_files <- file.path(output_folder, "radar_extract_files.txt")
+  cached <- file.exists(cache) && file.exists(cache_files) &&
+    identical(sort(readLines(cache_files)), sort(radar_files))
+  if (cached) {
+    say("  using the radar already extracted (%s)", basename(cache))
+    extract <- fread(cache)
+    extract$time <- as.POSIXct(extract$time, tz = "UTC")
+  } else {
+    # With the layouts, the reader moves each file's times to the start of their step and puts
+    # its values in mm per step, by that file's own layout.
+    h <- h19_radar(radar_files, extent, layouts = radar_layouts)
+    in_catchment <- if (have_boundary) catchment_mask(h$grid$x, h$grid$y, boundary)
+    # The 3 x 3 cells around each gauge: a gauge and the cell it sits in rarely line up.
+    near <- if (have_positions) {
+      lapply(seq_len(nrow(gauges)), function(k) {
+        i <- which.min(abs(h$grid$x - gauges$x[k]))
+        j <- which.min(abs(h$grid$y - gauges$y[k]))
+        list(i = max(1, i - 1):min(length(h$grid$x), i + 1),
+             j = max(1, j - 1):min(length(h$grid$y), j + 1))
+      })
+    }
+    say("  reading %d steps from %d files", length(h$time), length(radar_files))
+    values <- t(vapply(seq_along(h$time), function(s) {
+      r <- h$radar(s)
+      r[r < 0] <- NA
+      catchment <- if (have_boundary) {
+        inside <- r[in_catchment]
+        if (mean(is.na(inside)) > 0.1) NA_real_ else mean(inside, na.rm = TRUE)
+      } else {
+        NA_real_
+      }
+      at_gauges <- if (have_positions) {
+        vapply(near, function(n) mean(r[n$i, n$j], na.rm = TRUE), numeric(1))
+      } else {
+        rep(NA_real_, length(gauge_names))
+      }
+      c(catchment, at_gauges)
+    }, numeric(1 + length(gauge_names))))
+    extract <- data.table(time = h$time, values)
+    setnames(extract, c("time", "h19", paste0("radar_at_", gauge_names)))
+    fwrite(extract[, time := format(time, "%Y-%m-%d %H:%M:%S", tz = "UTC")], cache)
+    extract$time <- as.POSIXct(extract$time, tz = "UTC")
+    writeLines(radar_files, cache_files)
+  }
+  # Onto the record's steps: 15-minute radar summed into longer steps when step_hours is
+  # longer, a step counting only when all its quarter hours are present.
+  bucket <- floor(as.numeric(extract$time) / (step_hours * 3600))
+  per_step <- 4 * step_hours
+  onto_grid <- function(v) {
+    total <- tapply(v, bucket, function(x) if (sum(!is.na(x)) == per_step) sum(x) else NA)
+    out <- rep(NA_real_, length(grid$time))
+    k <- match(floor(as.numeric(grid$time) / (step_hours * 3600)), as.numeric(names(total)))
+    out[!is.na(k)] <- total[k[!is.na(k)]]
+    out
+  }
+  if (have_boundary) built$h19 <- onto_grid(extract$h19)
+  if (have_positions) {
+    radar_at_gauges <- vapply(gauge_names, function(n) onto_grid(extract[[paste0("radar_at_",
+                                                                                 n)]]),
+                              numeric(length(grid$time)))
+  }
 }
 
 # Write the averages out, ready for calibrate_site.R.
@@ -497,7 +616,7 @@ if (length(gauge_series) > 1) {
   if (length(unknown)) {
     stop("gauge_series names series not in rain_files: ", toString(unknown), call. = FALSE)
   }
-  averages <- setdiff(names_r, gauge_series)
+  averages <- setdiff(names_r, c(gauge_series, "h19"))
   G <- as.matrix(as.data.frame(rains[gauge_series]))
   given <- weights[intersect(names(weights), averages)]
   for (n in names(given)) {
@@ -626,6 +745,86 @@ if (length(gauge_series) > 1) {
   })
 }
 
+# ---- 7. Radar against the gauges ----------------------------------------------------------
+
+# The radar sees the rain aloft and does not lose it to wind at the gauge's rim; the gauge
+# does. Day by day, at each gauge, the radar's total over the gauge against the gauge's own:
+# days complete in both, with at least 1 mm in both. The radar has errors of its own (range,
+# beam height, bright band), which change little from month to month; a gauge's wind loss is
+# larger in winter. So a ratio that rises in winter points to the gauge catching less, and a
+# ratio away from 1 all year points to the radar's own scaling.
+radar_done <- FALSE
+if (!is.null(radar_at_gauges)) {
+  say("Radar against the gauges")
+  day <- as.Date(grid$time)
+  steps_a_day <- 24 / step_hours
+  daily <- function(v) {
+    total <- tapply(v, day, function(x) if (sum(!is.na(x)) == steps_a_day) sum(x) else NA)
+    stats::setNames(as.numeric(total), names(total))
+  }
+  pairs_rg <- do.call(rbind, lapply(gauge_names, function(n) {
+    g <- daily(G[, n])
+    r <- daily(radar_at_gauges[, n])
+    ok <- is.finite(g) & is.finite(r) & g >= 1 & r >= 1
+    if (!any(ok)) return(NULL)
+    d <- as.Date(names(g)[ok])
+    data.frame(gauge = n, day = d, month = as.integer(format(d, "%m")),
+               gauge_mm = g[ok], radar_mm = r[ok], ratio = r[ok] / g[ok])
+  }))
+  if (!is.null(pairs_rg) && nrow(pairs_rg)) {
+    season_of <- c("Winter", "Winter", "Spring", "Spring", "Spring", "Summer", "Summer",
+                   "Summer", "Autumn", "Autumn", "Autumn", "Winter")
+    pairs_rg$season <- season_of[pairs_rg$month]
+    radar_table <- do.call(rbind, lapply(split(pairs_rg, pairs_rg$gauge), function(p) {
+      s <- tapply(p$ratio, p$season, stats::median)
+      data.frame(gauge = p$gauge[1], days = nrow(p),
+                 ratio_all = round(stats::median(p$ratio), 2),
+                 ratio_winter = round(unname(s["Winter"]), 2),
+                 ratio_spring = round(unname(s["Spring"]), 2),
+                 ratio_summer = round(unname(s["Summer"]), 2),
+                 ratio_autumn = round(unname(s["Autumn"]), 2))
+    }))
+    radar_table <- radar_table[match(gauge_names, radar_table$gauge), ]
+    radar_table <- radar_table[!is.na(radar_table$gauge), ]
+    radar_table$winter_over_summer <- round(radar_table$ratio_winter /
+                                              radar_table$ratio_summer, 2)
+    fwrite(radar_table, file.path(output_folder, "radar_vs_gauges.csv"))
+    fwrite(pairs_rg, file.path(output_folder, "radar_vs_gauges_daily.csv"))
+    radar_done <- TRUE
+    # HOW TO READ radar_vs_gauge_by_month.png
+    # One line per gauge: in each calendar month, the median of the radar's daily total over
+    # the gauge divided by the gauge's own, over days with at least 1 mm in both. The line at 1
+    # is where they agree. October to September, as the water year runs.
+    # What it shows: a line above 1 means the radar saw more rain than the gauge caught.
+    # Good: lines close to 1 and flat through the year.
+    # Worry if: a line rises in the winter months and falls in summer. Gauges lose more rain to
+    #   wind in winter (stronger winds, lighter rain, snow), so a winter rise points to the
+    #   gauge under-catching. A line away from 1 by the same amount all year is more likely the
+    #   radar's own scaling. One gauge apart from the rest points to that gauge's exposure or
+    #   siting. Months with few rain days are noisy: radar_vs_gauges_daily.csv has the days.
+    png_of("radar_vs_gauge_by_month.png", function() {
+      months <- c(10:12, 1:9)
+      by_month <- vapply(gauge_names, function(n) {
+        p <- pairs_rg[pairs_rg$gauge == n, ]
+        vapply(months, function(m) {
+          x <- p$ratio[p$month == m]
+          if (length(x) >= 3) stats::median(x) else NA_real_
+        }, numeric(1))
+      }, numeric(12))
+      graphics::par(mar = c(4, 4.5, 2, 1))
+      top <- max(c(1.5, by_month), na.rm = TRUE) * 1.1
+      graphics::matplot(seq_along(months), by_month, type = "b", pch = 19, lty = 1, lwd = 2,
+                        col = colours[match(gauge_names, names_r)], xaxt = "n", xlab = "",
+                        ylim = c(0, top), ylab = "Radar / gauge, daily totals (median)",
+                        main = "Radar against each gauge, month by month")
+      graphics::axis(1, at = seq_along(months), labels = month.abb[months])
+      graphics::abline(h = 1, lty = 2, col = "grey50")
+      graphics::legend("top", gauge_names, col = colours[match(gauge_names, names_r)],
+                       lwd = 2, pch = 19, bty = "n", ncol = min(5, length(gauge_names)))
+    })
+  }
+}
+
 # ---- The ranking ---------------------------------------------------------------------------
 
 rs <- response$summary[match(names_r, response$summary$gauge), ]
@@ -722,11 +921,11 @@ lines <- c(
   "", "Each is in `catchment_rain/`, as a CSV ready for calibrate_site.R.",
   if (!is.null(downloads)) {
     c("", sprintf(paste("Gauges downloaded from the EA Hydrology API with reach.io, %s to %s",
-                        "(`gauge_downloads.csv`):"), download_from, download_to),
+                        "(`gauge_downloads.csv`):"), download_from, download_to), "",
       sprintf("- %s: WISKI ID %s%s", downloads$gauge, downloads$wiski_id,
               ifelse(is.na(downloads$readings), ", already downloaded.",
                      sprintf(" (%s), %d readings, %d missing; other flags: %s.", downloads$label,
-                             downloads$readings, downloads$missing, downloads$flags))),
+                             downloads$readings, downloads$missing, downloads$flags))), "",
       "Readings flagged Missing are gaps. Other flags (Suspect, Estimated, Unchecked) are kept",
       "and only counted here: quality control belongs upstream, in reach.validate.")
   },
@@ -768,6 +967,31 @@ lines <- c(
       "- If gauges' errors are partly shared (wind on all of them), less cancels: see the",
       "  error_factor_rho columns in `weights_and_error.csv`.")
   },
+  if (!is.null(radar_layouts)) {
+    l <- radar_layouts$layouts
+    c("", "## H19 radar", "",
+      sprintf("%d files in %d layout%s (`radar_layouts.csv`):", sum(l$files), nrow(l),
+              if (nrow(l) == 1) "" else "s"),
+      sprintf(paste("- Layout %d, %d files, %s to %s: `%s` in %s, stamped at the %s of each",
+                    "step%s."), l$layout, l$files, l$first_day, l$last_day, l$variable,
+              l$units, l$stamp,
+              ifelse(l$stamp == "end", " (moved back 15 minutes)", "")),
+      "",
+      if (radar_done) {
+        c("The radar over each gauge against the gauge, daily totals (`radar_vs_gauges.csv`):",
+          "",
+          sprintf(paste("- **%s**: radar / gauge %.2f over %d days; winter %.2f, summer %.2f",
+                        "(winter over summer %.2f)."), radar_table$gauge,
+                  radar_table$ratio_all, radar_table$days, radar_table$ratio_winter,
+                  radar_table$ratio_summer, radar_table$winter_over_summer),
+          "",
+          paste("A winter ratio clearly above the summer one points to the gauge losing rain",
+                "to wind; the same ratio all year points to the radar's own scaling. Wind",
+                "speed would separate them further."))
+      },
+      "", "H19 and everything made from it are restricted: keep this folder on restricted",
+      "storage.")
+  },
   "", "## What next", "",
   "- The ranking is a guide. A series that ranks well but carries a warning may still be the",
   "  best choice once the fault is fixed (a clock corrected, a gap filled).",
@@ -782,6 +1006,10 @@ lines <- c(
   if (weights_done) {
     paste("Weights: `weights_and_error.csv`, `gauge_pair_error.csv`,",
           "`effective_gauges_over_time.png`.")
+  },
+  if (radar_done) {
+    paste("Radar: `radar_layouts.csv`, `radar_vs_gauges.csv`, `radar_vs_gauges_daily.csv`,",
+          "`radar_vs_gauge_by_month.png`.")
   })
 writeLines(lines, file.path(output_folder, "summary.md"))
 print(ranking[, c("rain", "mean_rank", "runoff_ratio", "total_apart_pct", "response_r",
