@@ -199,8 +199,10 @@ plot shows and what should worry you.
 
 `inst/scripts/compare_rain.R` sets several rain series (Thiessen, multiquadric, single gauges)
 against one flow record, from the data alone, and ranks them: the water balance, double-mass
-curves, how closely the river follows each series and at what lag, and storms each missed.
-Copy it, fill in the area, the time step and the files at the top, and run it:
+curves, how closely the river follows each series and at what lag, and storms each missed. Given the gauge weights each average uses, it also
+says how many gauges' worth of rain each average uses and how much of a gauge's error
+survives into it. Copy it, fill in the area, the time step and the files at the top, and run
+it:
 
 ```r
 file.copy(system.file("scripts", "compare_rain.R", package = "pdmS7"), "compare_rain.R")

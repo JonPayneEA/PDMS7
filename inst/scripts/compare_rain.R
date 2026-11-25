@@ -36,6 +36,10 @@
 #     5. Flood by flood: on one common set of floods, how often each series had less rain
 #        than the flood's quick flow (a storm it missed), and how steady each series' flood
 #        runoff ratios are. Good rain gives steady ratios; poor rain makes them jump about.
+#     6. Weights (when the gauges and weights are given): how many gauges' worth of independent
+#        rain each catchment average uses, how much of a single gauge's random error survives
+#        into it, the single-gauge error the gauges' own disagreement suggests, and when gauges
+#        dropping out left the average resting on fewer of them.
 #   The ranking at the end puts the evidence together. It is a guide, not a verdict: read
 #   the reasons, and look at the plots.
 
@@ -60,6 +64,15 @@ rain_files <- c(
   gauge_A = "gauge_a.csv",
   gauge_B = "gauge_b.csv",
   gauge_C = "gauge_c.csv"
+)
+
+# Optional: which of the series above are single gauges, and the weights each catchment
+# average gives them. Weights need not include every gauge (a gauge outside the catchment has
+# none) and should add up to 1. A catchment average with no weights here (multiquadric, say)
+# has its weights estimated from the data. Leave gauge_series empty to skip the weights.
+gauge_series <- c("gauge_A", "gauge_B", "gauge_C")
+weights <- list(
+  thiessen = c(gauge_A = 0.264, gauge_B = 0.737)
 )
 
 # ---- Read and line up the data ------------------------------------------------------------
@@ -280,6 +293,152 @@ png_of("flood_runoff_ratios.png", function() {
   graphics::abline(h = 1, col = "#B3261E")
 })
 
+# ---- 6. Weights -------------------------------------------------------------------------
+
+# How much of one gauge's random error survives into a weighted average. With weights w that
+# add up to 1 and independent gauge errors of the same size, the average's error is the single
+# gauge's error times sqrt(sum(w^2)), and 1 / sum(w^2) is the effective number of gauges: how
+# many equal, independent gauges the average is worth. Weights that add up to something else
+# (a method that also scales the rain) are divided by their sum first, so the effective number
+# is sum(w)^2 / sum(w^2) and the error is relative to the average's own level. Errors the gauges share (wind on all of
+# them) do not cancel: with a correlation rho between gauges' errors the factor becomes
+# sqrt((1 - rho) sum(w^2) + rho).
+weights_done <- FALSE
+if (length(gauge_series)) {
+  say("Weights and the effective number of gauges")
+  unknown <- setdiff(gauge_series, names_r)
+  if (length(unknown)) {
+    stop("gauge_series names series not in rain_files: ", toString(unknown), call. = FALSE)
+  }
+  averages <- setdiff(names_r, gauge_series)
+  G <- as.matrix(as.data.frame(rains[gauge_series]))
+  given <- weights[intersect(names(weights), averages)]
+  for (n in names(given)) {
+    bad <- setdiff(names(given[[n]]), gauge_series)
+    if (length(bad)) {
+      stop("The weights for ", n, " name gauges not in gauge_series: ", toString(bad),
+           call. = FALSE)
+    }
+  }
+  # Weights not given are estimated: the average regressed on the gauges, with no intercept,
+  # over wet steps where every gauge and the average have a value. A linear method with steady
+  # weights fits closely (R2 near 1); a poor fit means the weights change over time, or the
+  # method is not a weighted sum of these gauges (radar merging, say).
+  fit_weights <- function(n) {
+    y <- rains[[n]]
+    ok <- stats::complete.cases(G) & is.finite(y) & (rowSums(G) > 0 | y > 0)
+    fit <- stats::lm.fit(G[ok, , drop = FALSE], y[ok])
+    w <- stats::setNames(as.numeric(fit$coefficients), gauge_series)
+    w[!is.finite(w)] <- 0
+    r2 <- 1 - sum(fit$residuals^2) / sum((y[ok] - mean(y[ok]))^2)
+    list(weights = w, r2 = r2)
+  }
+  weight_sets <- list()
+  fit_r2 <- list()
+  for (n in averages) {
+    if (n %in% names(given)) {
+      w <- stats::setNames(rep(0, length(gauge_series)), gauge_series)
+      w[names(given[[n]])] <- given[[n]]
+      weight_sets[[n]] <- w
+    } else {
+      f <- fit_weights(n)
+      weight_sets[[n]] <- f$weights
+      fit_r2[[n]] <- f$r2
+    }
+  }
+
+  # The single-gauge error, from the gauges' own disagreement. For two gauges with the same
+  # random error s, the spread of their relative difference over the same floods is about
+  # s x sqrt(2). Real differences in rain between the two sites add to that spread, so this is
+  # an upper limit on s. Floods where both gauges saw at least 1 mm.
+  pairs <- utils::combn(gauge_series, 2, simplify = FALSE)
+  pair_error <- do.call(rbind, lapply(pairs, function(p) {
+    a <- event_rain[, match(p[1], names_r)]
+    b <- event_rain[, match(p[2], names_r)]
+    k <- is.finite(a) & is.finite(b) & a >= 1 & b >= 1
+    d <- (a[k] - b[k]) / ((a[k] + b[k]) / 2)
+    data.frame(gauges = paste(p, collapse = " and "), floods = sum(k),
+               single_gauge_error_pct = round(100 * stats::sd(d) / sqrt(2), 1))
+  }))
+  sigma <- stats::median(pair_error$single_gauge_error_pct, na.rm = TRUE)
+  fwrite(pair_error, file.path(output_folder, "gauge_pair_error.csv"))
+
+  # Through time: at each step, the weights renormalised over the gauges reporting, as a
+  # weighting method does when a gauge is missing.
+  available <- !is.na(G)
+  n_eff_series <- lapply(weight_sets, function(w) {
+    wa <- sweep(available, 2, w, `*`)
+    s <- rowSums(wa)
+    out <- s^2 / rowSums(wa^2)
+    out[!is.finite(out) | s <= 0] <- NA
+    out
+  })
+  largest <- utils::head(order(-floods$peak_flow), 20)
+  low_in_flood <- vapply(n_eff_series, function(ne) {
+    lows <- vapply(largest, function(e) {
+      w <- floods$rain_start[e]:floods$rain_end[e]
+      if (all(is.na(ne[w]))) NA else min(ne[w], na.rm = TRUE) < 1.5
+    }, logical(1))
+    sum(lows, na.rm = TRUE)
+  }, numeric(1))
+
+  weights_table <- do.call(rbind, lapply(names(weight_sets), function(n) {
+    w <- weight_sets[[n]]
+    s2 <- sum((w / sum(w))^2)
+    data.frame(
+      rain = n,
+      weights = paste(sprintf("%s %.3f", names(w)[w != 0], w[w != 0]), collapse = ", "),
+      source = if (n %in% names(given)) "given" else sprintf("estimated, R2 %.3f",
+                                                             fit_r2[[n]]),
+      weights_sum = round(sum(w), 3),
+      sum_of_squares = round(s2, 3),
+      effective_gauges = round(1 / s2, 2),
+      error_factor = round(sqrt(s2), 2),
+      error_factor_rho_0.3 = round(sqrt(0.7 * s2 + 0.3), 2),
+      error_factor_rho_0.5 = round(sqrt(0.5 * s2 + 0.5), 2),
+      suggested_rain_error = round(sigma / 100 * sqrt(s2), 3),
+      effective_gauges_p05 = round(stats::quantile(n_eff_series[[n]], 0.05, na.rm = TRUE), 2),
+      largest_floods_below_1.5 = as.integer(low_in_flood[[n]]))
+  }))
+  fwrite(weights_table, file.path(output_folder, "weights_and_error.csv"))
+  weights_done <- TRUE
+
+  # HOW TO READ effective_gauges_over_time.png
+  # One line per catchment average: how many gauges' worth of independent rain it used, day by
+  # day (the lowest value in each day). Flat at its full value when every gauge reports; it
+  # drops when a gauge is missing and the average leans on the rest. Grey ticks along the top
+  # mark the 20 largest floods. The dashed line is 1.5, below which the average is effectively
+  # one gauge.
+  # Good: lines flat at their full value, with few and short dips, none of them during the
+  #   large floods.
+  # Worry if: a line sits below 1.5 even when every gauge reports (the weighting rests on one
+  #   gauge: its faults go straight into the catchment rain); long dips (gauges missing for
+  #   weeks); dips under the flood ticks (those floods' rain rests on fewer gauges, so their
+  #   scores in calibration are less to be trusted).
+  png_of("effective_gauges_over_time.png", function() {
+    day <- as.Date(grid$time)
+    daily <- lapply(n_eff_series, function(ne) {
+      suppressWarnings(tapply(ne, day, min, na.rm = TRUE))
+    })
+    days <- as.Date(names(daily[[1]]))
+    top <- max(c(1.5, unlist(daily)[is.finite(unlist(daily))])) * 1.15
+    graphics::par(mar = c(4, 4.5, 2, 1))
+    graphics::plot(range(days), c(0, top), type = "n", xlab = "",
+                   ylab = "Effective number of gauges",
+                   main = "How many gauges each catchment average used, day by day")
+    graphics::abline(h = 1.5, lty = 2, col = "grey50")
+    for (i in seq_along(daily)) {
+      v <- daily[[i]]
+      v[!is.finite(v)] <- NA
+      graphics::lines(days, v, col = colours[match(names(daily)[i], names_r)], lwd = 2)
+    }
+    graphics::rug(as.Date(grid$time[floods$rain_start[largest]]), side = 3, col = "grey40",
+                  lwd = 2)
+    graphics::legend("bottomleft", names(daily), bty = "n", lwd = 2,
+                     col = colours[match(names(daily), names_r)])
+  })
+}
+
 # ---- The ranking ---------------------------------------------------------------------------
 
 rs <- response$summary[match(names_r, response$summary$gauge), ]
@@ -363,6 +522,33 @@ lines <- c(
                         "a whole hour or more apart often mean a clock or time-zone error in",
                         "one."), min(lags), max(lags)))
   },
+  if (weights_done) {
+    c("", "## Weights: how many gauges each average uses", "",
+      sprintf(paste("A single gauge's storm totals look to be up to %.0f%% out, from how much",
+                    "the gauges disagree flood by flood (an upper limit: real differences in"),
+              sigma),
+      "rain between sites count too). How much of that survives into each average:", "",
+      sprintf(paste("- **%s**, weights %s (%s): worth %.1f gauges; it keeps %.0f%% of a single",
+                    "gauge's random error, so about %.1f%% storm error. Suggested rain_error",
+                    "%.3f. Through the record it fell to %.1f gauges' worth or less 5%% of the",
+                    "time; %d of the 20 largest floods fell while it was below 1.5."),
+              weights_table$rain, weights_table$weights, weights_table$source,
+              weights_table$effective_gauges, 100 * weights_table$error_factor,
+              sigma * weights_table$error_factor, weights_table$suggested_rain_error,
+              weights_table$effective_gauges_p05, weights_table$largest_floods_below_1.5),
+      if (any(abs(weights_table$weights_sum - 1) > 0.02)) {
+        sprintf(paste("- Weights for %s do not add up to 1: the method scales the rain as",
+                      "well as weighting it. The balance checks will see the scaling."),
+                toString(weights_table$rain[abs(weights_table$weights_sum - 1) > 0.02]))
+      },
+      if (length(fit_r2) && any(unlist(fit_r2) < 0.95)) {
+        sprintf(paste("- The estimated weights for %s fit poorly (R2 below 0.95): the method",
+                      "is not a fixed weighting of these gauges, so read its figures with care."),
+                toString(names(fit_r2)[unlist(fit_r2) < 0.95]))
+      },
+      "- If gauges' errors are partly shared (wind on all of them), less cancels: see the",
+      "  error_factor_rho columns in `weights_and_error.csv`.")
+  },
   "", "## What next", "",
   "- The ranking is a guide. A series that ranks well but carries a warning may still be the",
   "  best choice once the fault is fixed (a clock corrected, a gap filled).",
@@ -373,9 +559,17 @@ lines <- c(
   "  calibrate_site.R with each as the first rain series, into separate output folders.",
   "", "Tables: `rain_ranking.csv`, `quick_response.csv`. Plots: `rain_by_year.png`,",
   "`runoff_ratio_by_series.png`, `double_mass_by_series.png`, `quick_response.png`,",
-  "`flood_runoff_ratios.png`.")
+  "`flood_runoff_ratios.png`.",
+  if (weights_done) {
+    paste("Weights: `weights_and_error.csv`, `gauge_pair_error.csv`,",
+          "`effective_gauges_over_time.png`.")
+  })
 writeLines(lines, file.path(output_folder, "summary.md"))
 print(ranking[, c("rain", "mean_rank", "runoff_ratio", "total_apart_pct", "response_r",
                   "lag_h", "flood_wins", "missed_storms_pct", "flood_ratio_spread")],
       row.names = FALSE)
+if (weights_done) {
+  print(weights_table[, c("rain", "source", "effective_gauges", "error_factor",
+                          "suggested_rain_error")], row.names = FALSE)
+}
 say("\nWritten to %s. Read summary.md.", normalizePath(output_folder))

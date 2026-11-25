@@ -10,6 +10,12 @@
   twelve measures, warnings for each series in plain English (more flow than rain, a bend, a
   clock an hour out, storms missed), five plots with notes on how to read them, and
   `summary.md`. Copy the script, fill in the area, the step and the files, and run it.
+  Given which series are single gauges, and the weights each catchment average uses (or
+  estimated from the data where not given), it also works out each average's effective number
+  of gauges, `sum(w)^2 / sum(w^2)`, how much of a single gauge's random error survives into it,
+  the single-gauge error the gauges' own disagreement over the same floods suggests, a
+  suggested `rain_error` for the starter, and the effective number through the record as gauges
+  drop out, with the large floods that fell while it was low.
 
 # pdmS7 0.39.0
 
