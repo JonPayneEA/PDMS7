@@ -107,14 +107,16 @@ thiessen_weights <- c(gauge_A = 0.264, gauge_B = 0.737)
 catchment_boundary <- NULL     # such as "boundary.csv"
 grid_spacing_m <- 500
 
-# H19 radar (optional): the folder of daily H19 NetCDF files, searched with its sub-folders.
+# H19 radar (optional): the folder of daily H19 NetCDF files, with a folder for each year.
 # The files' layouts are checked first (the archive changed how it saved them part way
 # through): set radar_scan_only to TRUE to see them and stop. Then the radar over the catchment
 # joins the comparison as "h19" (with a boundary), and the radar over each gauge is set against
 # the gauge (with the gauges' positions). H19 is restricted: keep the output folder on
 # restricted storage, as the radar extracts are written there.
 radar_folder <- NULL           # such as "C:/.../04_RADAR/01_H19"
-radar_pattern <- "_H19\\.nc$"
+# H19 file names: the date and time (14 digits), anything, then .nc: both the older
+# ..._1km_H19.nc names and the newer 20210401000000.nc.
+radar_pattern <- "^[0-9]{14}.*\\.nc$"
 radar_scan_only <- FALSE
 
 # Other catchment rain series built elsewhere, to compare as well (optional), such as
@@ -294,13 +296,18 @@ radar_at_gauges <- NULL
 radar_layouts <- NULL
 if (!is.null(radar_folder)) {
   say("H19 radar")
-  radar_files <- list.files(radar_folder, pattern = radar_pattern, recursive = TRUE,
-                            full.names = TRUE)
+  # Only the year folders of the record (and their month folders), not other folders beside
+  # them; without year folders, the whole folder is searched.
+  span <- as.Date(range(grid$time))
+  year_dirs <- file.path(radar_folder, seq(as.integer(format(span[1] - 1, "%Y")),
+                                           as.integer(format(span[2] + 1, "%Y"))))
+  year_dirs <- year_dirs[dir.exists(year_dirs)]
+  radar_files <- list.files(if (length(year_dirs)) year_dirs else radar_folder,
+                            pattern = radar_pattern, recursive = TRUE, full.names = TRUE)
   if (!length(radar_files)) {
     stop("No files matching ", radar_pattern, " in ", radar_folder, ".", call. = FALSE)
   }
   file_day <- as.Date(substr(basename(radar_files), 1, 8), "%Y%m%d")
-  span <- as.Date(range(grid$time))
   radar_files <- radar_files[is.na(file_day) | (file_day >= span[1] - 1 &
                                                   file_day <= span[2] + 1)]
   if (!length(radar_files)) stop("No H19 files fall within the record.", call. = FALSE)
