@@ -1,3 +1,21 @@
+# pdmS7 0.41.0
+
+- **`compare_rain.R` builds the catchment rainfall itself.** Give it the rain gauge files and
+  the Thiessen weights, and it builds `thiessen` (the weights given), `equal` (the same gauges
+  weighted equally) and, where a gauge has no Thiessen weight, `equal_all` (every gauge
+  equally); each renormalised over the gauges reporting at each step. With each gauge's
+  position and a boundary file (British National Grid metres) it also builds `multiquadric`
+  with `merge_rainfall()`, on the wet steps only, and works out Thiessen weights from the
+  geometry to check those given. Each average is written to `catchment_rain/`, ready for
+  `calibrate_site.R`, and compared with the single gauges and any other series given, as
+  before.
+- With `gauge_source <- "hydrology_api"` and each gauge's WISKI ID, `compare_rain.R` downloads
+  the gauges' 15-minute rain from the EA Hydrology API with reach.io (`find_stations()`,
+  `make_date_chunks()`, `fetch_readings()`): one request at a time with a pause between them,
+  a year per request, positions filled from the API, and each gauge saved so a rerun
+  downloads nothing. Readings flagged Missing become gaps; other quality flags are counted in
+  the summary.
+
 # pdmS7 0.40.0
 
 - **Which rain series best explains the flow**, `inst/scripts/compare_rain.R`: any number of
