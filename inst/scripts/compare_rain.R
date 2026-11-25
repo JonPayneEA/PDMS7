@@ -1,0 +1,575 @@
+# ============================================================ #
+# Tool:         compare_rain
+# Description:  Which rain series best explains a river's flow, judged from the data alone,
+#               before any model: the water balance, the double-mass curve, how closely the
+#               river's quick response follows each series, and storms each series missed
+# Flode Module: standalone; target reach.forcing
+# Author:       pdmS7 contributors
+# Created:      2026-11-24
+# Tier:         1
+# Inputs:       CSV files: flow (m3/s), potential evaporation and each rain series (mm per
+#               step), each a date-time column and a value column
+# Outputs:      A folder: summary.md, rain_ranking.csv and plots, each with a note on how to
+#               read it
+# Dependencies: pdmS7 (0.40.0 or later)
+# ============================================================ #
+#
+# How to use it
+#   1. Copy the script to your own folder, so you can fill in its settings:
+#        file.copy(system.file("scripts", "compare_rain.R", package = "pdmS7"), "compare_rain.R")
+#        file.edit("compare_rain.R")
+#   2. Fill in the settings below: the catchment area, the time step, and the files.
+#   3. Run the whole script (Ctrl+Shift+S in RStudio). It takes a minute or two.
+#   4. Read summary.md in the output folder.
+#
+# What it does
+#   Every rain series is set against the same flow, five ways. None needs a model, so the
+#   comparison is not coloured by how well a model can make up for poor rain.
+#     1. Gaps: how much of the record each series is missing.
+#     2. Water balance: the runoff ratio (flow / rain) and the losses against potential
+#        evaporation. A series that gives more flow than rain, or losses evaporation cannot
+#        explain, has the wrong total.
+#     3. Double-mass: each series' cumulative rain against the others'. A series whose curve
+#        bends changed part way through (a gauge moved, replaced or failing).
+#     4. Quick response: how closely the rise in river flow follows each series, and at what
+#        lag. The series the river answers to best catches the storms that matter for floods.
+#     5. Flood by flood: on one common set of floods, how often each series had less rain
+#        than the flood's quick flow (a storm it missed), and how steady each series' flood
+#        runoff ratios are. Good rain gives steady ratios; poor rain makes them jump about.
+#     6. Weights (when the gauges and weights are given): how many gauges' worth of independent
+#        rain each catchment average uses, how much of a single gauge's random error survives
+#        into it, the single-gauge error the gauges' own disagreement suggests, and when gauges
+#        dropping out left the average resting on fewer of them.
+#   The ranking at the end puts the evidence together. It is a guide, not a verdict: read
+#   the reasons, and look at the plots.
+
+library(pdmS7)
+library(data.table)
+
+# ---- Settings: fill these in -------------------------------------------------------------
+
+area_km2 <- NA            # catchment area, km2: fill in, such as 52.3
+step_hours <- 0.25        # time step: 0.25 for 15-minute data, 1 for hourly
+data_folder <- "data"     # where the files below are, relative to the working directory
+output_folder <- "rain_comparison"
+
+flow_file <- "flow.csv"   # river flow, m3/s
+pet_file <- "pet.csv"     # potential evaporation, mm per step
+
+# Every rain series to compare, each with a short name. Catchment averages and single gauges
+# alike; add or remove lines as needed.
+rain_files <- c(
+  thiessen = "rain_thiessen.csv",
+  multiquadric = "rain_multiquadric.csv",
+  gauge_A = "gauge_a.csv",
+  gauge_B = "gauge_b.csv",
+  gauge_C = "gauge_c.csv"
+)
+
+# Optional: which of the series above are single gauges, and the weights each catchment
+# average gives them. Weights need not include every gauge (a gauge outside the catchment has
+# none) and should add up to 1. A catchment average with no weights here (multiquadric, say)
+# has its weights estimated from the data. Leave gauge_series empty to skip the weights.
+gauge_series <- c("gauge_A", "gauge_B", "gauge_C")
+weights <- list(
+  thiessen = c(gauge_A = 0.264, gauge_B = 0.737)
+)
+
+# ---- Read and line up the data ------------------------------------------------------------
+
+say <- function(...) cat(sprintf(...), "\n", sep = "")
+if (!is.numeric(area_km2) || !is.finite(area_km2) || area_km2 <= 0) {
+  stop("Fill in area_km2 at the top of the script: the catchment area in km2.", call. = FALSE)
+}
+if (!dir.exists(data_folder)) {
+  stop("No folder ", normalizePath(data_folder, mustWork = FALSE), ": set data_folder at the ",
+       "top of the script to the folder holding the CSV files.", call. = FALSE)
+}
+dir.create(output_folder, recursive = TRUE, showWarnings = FALSE)
+here <- function(f) file.path(data_folder, f)
+say("Reading %d rain series, the flow and the evaporation", length(rain_files))
+raw <- c(list(flow = read_hydro_series(here(flow_file)), pe = read_hydro_series(here(pet_file))),
+         lapply(rain_files, function(f) read_hydro_series(here(f))))
+grid <- do.call(align_series, c(raw, list(dt = step_hours)))
+flow <- convert_units(grid$flow, "auto", step_hours, "flow")
+pe <- fill_gaps(convert_units(grid$pe, "mm_per_step", step_hours, "pet"), "interpolate",
+                grid$time, "pe")
+names_r <- names(rain_files)
+rains <- lapply(names_r, function(n) convert_units(grid[[n]], "mm_per_step", step_hours, "rain"))
+names(rains) <- names_r
+years <- as.numeric(difftime(max(grid$time), min(grid$time), units = "days")) / 365.25
+colours <- grDevices::hcl.colors(max(3L, length(names_r)), "Dark 3")[seq_along(names_r)]
+png_of <- function(name, draw, width = 1600, height = 900) {
+  grDevices::png(file.path(output_folder, name), width = width, height = height, res = 150)
+  on.exit(grDevices::dev.off())
+  draw()
+}
+
+# Steps where every series has a value: each comparison uses the same steps, so a series is
+# not judged on a different stretch of the record from the others.
+common <- Reduce(`&`, lapply(rains, is.finite)) & is.finite(flow)
+say("%.1f years of data; %.0f%% of steps have every series and the flow", years,
+    100 * mean(common))
+
+# ---- 1. Gaps ------------------------------------------------------------------------------
+
+missing_pct <- vapply(rains, function(r) 100 * mean(!is.finite(r)), numeric(1))
+
+# ---- 2. Water balance ---------------------------------------------------------------------
+
+say("Water balance")
+# Gaps are set to zero only for the balance, on the common steps; elsewhere the flow is set
+# missing, so no series gains or loses rain from another's gaps.
+balance_of <- function(r) {
+  rr <- ifelse(common, r, 0)
+  q <- ifelse(common, flow, NA_real_)
+  water_balance(data.frame(time = grid$time, rain = rr, pet = pe), q, area_km2)
+}
+balances <- lapply(rains, balance_of)
+balance <- data.frame(
+  rain = names_r,
+  rain_mm_per_year = round(vapply(balances, function(b) b$record$rain_mm, 0) /
+                             (sum(common) * step_hours / 8766)),
+  runoff_ratio = round(vapply(balances, function(b) b$record$runoff_ratio, 0), 3),
+  loss_over_pet = round(vapply(balances, function(b) b$record$loss_over_pet, 0), 3),
+  flagged_years = vapply(balances, function(b) sum(nzchar(b$years$flags) &
+                                                     b$years$flags != "incomplete"), 0L))
+# A balance is implausible when the flow exceeds the rain (runoff ratio above 1) or the losses
+# exceed what evaporation can take (loss over potential evaporation above 1). Distance beyond
+# either limit counts against a series.
+balance$balance_problem <- round(pmax(balance$runoff_ratio - 1, 0) +
+                                   pmax(balance$loss_over_pet - 1, 0), 3)
+
+# HOW TO READ rain_by_year.png
+# One group of bars per water year (October to September), one bar per rain series: the rain
+# each series gives the catchment that year.
+# Good: the series agree within a few per cent every year, or differ by the same amount every
+#   year (a steady difference is a matter of scale, which the water balance then judges).
+# Worry if: one series drops or jumps in some years only. A gauge failed, moved or was
+#   replaced then; check its record for those years.
+png_of("rain_by_year.png", function() {
+  periods <- balances[[1]]$years$period
+  totals <- vapply(balances, function(b) b$years$rain_mm, numeric(length(periods)))
+  if (is.null(dim(totals))) totals <- matrix(totals, nrow = 1)
+  graphics::par(mar = c(5, 4.5, 2, 1))
+  graphics::barplot(t(totals), beside = TRUE, names.arg = periods, col = colours, border = NA,
+                    las = 2, ylab = "Rain (mm)", main = "Rain by water year, each series",
+                    ylim = c(0, 1.3 * max(totals, na.rm = TRUE)), legend.text = names_r,
+                    args.legend = list(bty = "n", x = "top", ncol = min(5, length(names_r))))
+})
+
+# HOW TO READ runoff_ratio_by_series.png
+# The runoff ratio (flow / rain) year by year, one line per series, with a red line at 1.
+# Good: a level line well below 1. Typical ratios: 0.3 to 0.5 in the lowlands, 0.6 to 0.9 in
+#   wet uplands, lower on chalk.
+# Worry if: a line crosses 1 (that series gives less rain than flowed out: it under-catches,
+#   or misses storms); a line steps up or down part way (that series changed); the lines
+#   cross each other, swapping order (the series disagree in different years in different
+#   ways, so no one scaling fixes them).
+png_of("runoff_ratio_by_series.png", function() {
+  periods <- balances[[1]]$years$period
+  ratio <- vapply(balances, function(b) b$years$runoff_ratio, numeric(length(periods)))
+  if (is.null(dim(ratio))) ratio <- matrix(ratio, nrow = 1)
+  graphics::par(mar = c(5, 4.5, 2, 1))
+  graphics::matplot(seq_along(periods), ratio, type = "b", pch = 19, lty = 1, lwd = 2,
+                    col = colours, xaxt = "n", xlab = "", ylab = "Runoff ratio (flow / rain)",
+                    ylim = c(0, 1.3 * max(1.1, max(ratio, na.rm = TRUE))),
+                    main = "Runoff ratio by water year, each series")
+  graphics::axis(1, at = seq_along(periods), labels = periods, las = 2)
+  graphics::abline(h = 1, col = "#B3261E")
+  graphics::legend("top", names_r, col = colours, lwd = 2, pch = 19, bty = "n",
+                   ncol = min(5, length(names_r)))
+})
+
+# ---- 3. Double-mass ------------------------------------------------------------------------
+
+say("Double-mass curves")
+# Each series against the others: cumulative rain of the series against cumulative rain of
+# the median of all the series, step by step, both as shares of their totals. Wet and dry
+# spells fall on every series alike and cancel; what is left is a change in one series. The
+# bend is the largest gap between its curve and the diagonal, in per cent.
+reference <- apply(as.data.frame(rains), 1, stats::median)
+cum_share <- function(x) {
+  x <- ifelse(common, x, 0)
+  cumsum(x) / sum(x)
+}
+ref_share <- cum_share(reference)
+cumulative <- lapply(rains, function(r) data.frame(reference = ref_share, rain = cum_share(r)))
+bend_pct <- vapply(cumulative, function(d) round(100 * max(abs(d$rain - d$reference)), 1), 0)
+
+# HOW TO READ double_mass_by_series.png
+# Each series' cumulative rain against the cumulative rain of the median of all the series,
+# both as shares of their totals, one line per series. The dashed diagonal is a series that
+# keeps step with the others throughout.
+# Good: every line on the diagonal. The weather falls on every gauge alike, so it cancels out
+#   here: only a change in one series shows.
+# Worry if: a line bends away and keeps the new slope. That series changed at the bend: a
+#   gauge moved, replaced, overgrown, or its logger failing. The bend's size is in the legend;
+#   a few per cent or more deserves a look at that series' record around the bend.
+png_of("double_mass_by_series.png", function() {
+  graphics::par(mar = c(4.5, 4.5, 2, 1))
+  graphics::plot(c(0, 1), c(0, 1), type = "n",
+                 xlab = "Cumulative rain of the median series (share of total)",
+                 ylab = "Cumulative rain of each series (share of total)",
+                 main = "Double-mass curves, each series against the others")
+  graphics::abline(0, 1, lty = 2, col = "grey50")
+  for (i in seq_along(cumulative)) {
+    d <- cumulative[[i]]
+    k <- unique(round(seq(1, nrow(d), length.out = 2000)))
+    graphics::lines(d$reference[k], d$rain[k], col = colours[i], lwd = 2)
+  }
+  graphics::legend("topleft", sprintf("%s (bend %.1f%%)", names_r, bend_pct), col = colours,
+                   lwd = 2, bty = "n")
+})
+
+# ---- 4. Quick response ---------------------------------------------------------------------
+
+say("How closely the river follows each series")
+response <- gauge_response(as.data.frame(rains), flow, grid$time, dt = step_hours,
+                           area_km2 = area_km2)
+fwrite(response$summary, file.path(output_folder, "quick_response.csv"))
+
+# HOW TO READ quick_response.png
+# One line per rain series: how closely the rise in river flow follows that series' rain
+# (correlation, up) at each lag (across, hours after the rain). The peak of each line is the
+# series' best lag. quick_response.csv adds, flood by flood, which series explained the rise
+# best (event_wins), whether a series sees the big storms as big (size_r), and how often it
+# saw almost no rain when the others saw a storm (dry_events).
+# Good: one series peaks clearly highest and wins most floods: the river answers to it. All
+#   lags positive and a few hours.
+# Worry if: a series peaks at a negative lag (rain cannot follow the flow it causes: its
+#   clock is wrong); one series' lag differs from the rest by a whole hour or more (a clock or
+#   time-zone error); a series has several dry events (a blocked funnel or a logger down). The
+#   series are correlated with each other, which blurs the differences: read the order and
+#   the gaps between the lines, not the values alone.
+png_of("quick_response.png", function() plot(response))
+
+# ---- 5. Flood by flood ---------------------------------------------------------------------
+
+say("Flood by flood")
+# One common set of floods, found on the average of all the series, so no series picks its
+# own. For each flood, each series' rain over the flood's rain window, against the flood's
+# quick flow (the water above the baseflow, from the flow alone).
+average <- rowMeans(as.data.frame(rains), na.rm = TRUE)
+average[!is.finite(average)] <- 0
+floods <- screen_events(find_events(average, ifelse(is.finite(flow), flow, NA_real_),
+                                    grid$time, dt = step_hours, area_km2 = area_km2),
+                        flow, exclude = c("small_rise", "gaps"))
+floods <- floods[floods$use & is.finite(floods$quickflow_mm) & floods$quickflow_mm > 0, ]
+event_rain <- vapply(rains, function(r) {
+  vapply(seq_len(nrow(floods)), function(e) {
+    w <- floods$rain_start[e]:floods$rain_end[e]
+    if (any(!is.finite(r[w]))) NA_real_ else sum(r[w])
+  }, 0)
+}, numeric(nrow(floods)))
+if (is.null(dim(event_rain))) event_rain <- matrix(event_rain, ncol = length(rains))
+ratio <- floods$quickflow_mm / event_rain
+missed <- colSums(ratio > 1 | event_rain < 0.5, na.rm = TRUE)
+missed_pct <- round(100 * missed / colSums(is.finite(ratio)), 1)
+# Steadiness: the spread of the log of the flood runoff ratios, over floods the series saw
+# some rain for (the others count as missed storms above). Floods differ, so the ratios always
+# vary; poor rain adds its own scatter on top.
+seen <- ratio
+seen[!is.finite(seen) | event_rain < 0.5] <- NA
+spread <- round(apply(log(seen), 2, stats::sd, na.rm = TRUE), 3)
+flood_table <- data.frame(rain = names_r, floods = colSums(is.finite(ratio)),
+                          missed_storms = as.integer(missed), missed_pct = missed_pct,
+                          ratio_spread = spread)
+
+# HOW TO READ flood_runoff_ratios.png
+# One box per rain series: the runoff ratios of the same floods (quick flow over that series'
+# rain for the flood). The red line is 1: above it, the flood had more quick flow than the
+# series recorded rain, so the series missed or under-caught that storm.
+# Good: a narrow box well below 1, with few points above the line.
+# Worry if: a box is wide (the series sees some storms well and others badly), or many
+#   points sit above 1 (storms that passed the gauges by). Convective summer storms are where
+#   single gauges fail most: a catchment average from several gauges usually does better.
+png_of("flood_runoff_ratios.png", function() {
+  graphics::par(mar = c(5, 4.5, 2, 1))
+  graphics::boxplot(as.data.frame(seen), names = names_r, col = colours, log = "y", las = 2,
+                    ylab = "Flood runoff ratio (quick flow / rain), log scale",
+                    main = sprintf("Runoff ratios of the same %d floods, each series",
+                                   nrow(floods)))
+  graphics::abline(h = 1, col = "#B3261E")
+})
+
+# ---- 6. Weights -------------------------------------------------------------------------
+
+# How much of one gauge's random error survives into a weighted average. With weights w that
+# add up to 1 and independent gauge errors of the same size, the average's error is the single
+# gauge's error times sqrt(sum(w^2)), and 1 / sum(w^2) is the effective number of gauges: how
+# many equal, independent gauges the average is worth. Weights that add up to something else
+# (a method that also scales the rain) are divided by their sum first, so the effective number
+# is sum(w)^2 / sum(w^2) and the error is relative to the average's own level. Errors the gauges share (wind on all of
+# them) do not cancel: with a correlation rho between gauges' errors the factor becomes
+# sqrt((1 - rho) sum(w^2) + rho).
+weights_done <- FALSE
+if (length(gauge_series)) {
+  say("Weights and the effective number of gauges")
+  unknown <- setdiff(gauge_series, names_r)
+  if (length(unknown)) {
+    stop("gauge_series names series not in rain_files: ", toString(unknown), call. = FALSE)
+  }
+  averages <- setdiff(names_r, gauge_series)
+  G <- as.matrix(as.data.frame(rains[gauge_series]))
+  given <- weights[intersect(names(weights), averages)]
+  for (n in names(given)) {
+    bad <- setdiff(names(given[[n]]), gauge_series)
+    if (length(bad)) {
+      stop("The weights for ", n, " name gauges not in gauge_series: ", toString(bad),
+           call. = FALSE)
+    }
+  }
+  # Weights not given are estimated: the average regressed on the gauges, with no intercept,
+  # over wet steps where every gauge and the average have a value. A linear method with steady
+  # weights fits closely (R2 near 1); a poor fit means the weights change over time, or the
+  # method is not a weighted sum of these gauges (radar merging, say).
+  fit_weights <- function(n) {
+    y <- rains[[n]]
+    ok <- stats::complete.cases(G) & is.finite(y) & (rowSums(G) > 0 | y > 0)
+    fit <- stats::lm.fit(G[ok, , drop = FALSE], y[ok])
+    w <- stats::setNames(as.numeric(fit$coefficients), gauge_series)
+    w[!is.finite(w)] <- 0
+    r2 <- 1 - sum(fit$residuals^2) / sum((y[ok] - mean(y[ok]))^2)
+    list(weights = w, r2 = r2)
+  }
+  weight_sets <- list()
+  fit_r2 <- list()
+  for (n in averages) {
+    if (n %in% names(given)) {
+      w <- stats::setNames(rep(0, length(gauge_series)), gauge_series)
+      w[names(given[[n]])] <- given[[n]]
+      weight_sets[[n]] <- w
+    } else {
+      f <- fit_weights(n)
+      weight_sets[[n]] <- f$weights
+      fit_r2[[n]] <- f$r2
+    }
+  }
+
+  # The single-gauge error, from the gauges' own disagreement. For two gauges with the same
+  # random error s, the spread of their relative difference over the same floods is about
+  # s x sqrt(2). Real differences in rain between the two sites add to that spread, so this is
+  # an upper limit on s. Floods where both gauges saw at least 1 mm.
+  pairs <- utils::combn(gauge_series, 2, simplify = FALSE)
+  pair_error <- do.call(rbind, lapply(pairs, function(p) {
+    a <- event_rain[, match(p[1], names_r)]
+    b <- event_rain[, match(p[2], names_r)]
+    k <- is.finite(a) & is.finite(b) & a >= 1 & b >= 1
+    d <- (a[k] - b[k]) / ((a[k] + b[k]) / 2)
+    data.frame(gauges = paste(p, collapse = " and "), floods = sum(k),
+               single_gauge_error_pct = round(100 * stats::sd(d) / sqrt(2), 1))
+  }))
+  sigma <- stats::median(pair_error$single_gauge_error_pct, na.rm = TRUE)
+  fwrite(pair_error, file.path(output_folder, "gauge_pair_error.csv"))
+
+  # Through time: at each step, the weights renormalised over the gauges reporting, as a
+  # weighting method does when a gauge is missing.
+  available <- !is.na(G)
+  n_eff_series <- lapply(weight_sets, function(w) {
+    wa <- sweep(available, 2, w, `*`)
+    s <- rowSums(wa)
+    out <- s^2 / rowSums(wa^2)
+    out[!is.finite(out) | s <= 0] <- NA
+    out
+  })
+  largest <- utils::head(order(-floods$peak_flow), 20)
+  low_in_flood <- vapply(n_eff_series, function(ne) {
+    lows <- vapply(largest, function(e) {
+      w <- floods$rain_start[e]:floods$rain_end[e]
+      if (all(is.na(ne[w]))) NA else min(ne[w], na.rm = TRUE) < 1.5
+    }, logical(1))
+    sum(lows, na.rm = TRUE)
+  }, numeric(1))
+
+  weights_table <- do.call(rbind, lapply(names(weight_sets), function(n) {
+    w <- weight_sets[[n]]
+    s2 <- sum((w / sum(w))^2)
+    data.frame(
+      rain = n,
+      weights = paste(sprintf("%s %.3f", names(w)[w != 0], w[w != 0]), collapse = ", "),
+      source = if (n %in% names(given)) "given" else sprintf("estimated, R2 %.3f",
+                                                             fit_r2[[n]]),
+      weights_sum = round(sum(w), 3),
+      sum_of_squares = round(s2, 3),
+      effective_gauges = round(1 / s2, 2),
+      error_factor = round(sqrt(s2), 2),
+      error_factor_rho_0.3 = round(sqrt(0.7 * s2 + 0.3), 2),
+      error_factor_rho_0.5 = round(sqrt(0.5 * s2 + 0.5), 2),
+      suggested_rain_error = round(sigma / 100 * sqrt(s2), 3),
+      effective_gauges_p05 = round(stats::quantile(n_eff_series[[n]], 0.05, na.rm = TRUE), 2),
+      largest_floods_below_1.5 = as.integer(low_in_flood[[n]]))
+  }))
+  fwrite(weights_table, file.path(output_folder, "weights_and_error.csv"))
+  weights_done <- TRUE
+
+  # HOW TO READ effective_gauges_over_time.png
+  # One line per catchment average: how many gauges' worth of independent rain it used, day by
+  # day (the lowest value in each day). Flat at its full value when every gauge reports; it
+  # drops when a gauge is missing and the average leans on the rest. Grey ticks along the top
+  # mark the 20 largest floods. The dashed line is 1.5, below which the average is effectively
+  # one gauge.
+  # Good: lines flat at their full value, with few and short dips, none of them during the
+  #   large floods.
+  # Worry if: a line sits below 1.5 even when every gauge reports (the weighting rests on one
+  #   gauge: its faults go straight into the catchment rain); long dips (gauges missing for
+  #   weeks); dips under the flood ticks (those floods' rain rests on fewer gauges, so their
+  #   scores in calibration are less to be trusted).
+  png_of("effective_gauges_over_time.png", function() {
+    day <- as.Date(grid$time)
+    daily <- lapply(n_eff_series, function(ne) {
+      suppressWarnings(tapply(ne, day, min, na.rm = TRUE))
+    })
+    days <- as.Date(names(daily[[1]]))
+    top <- max(c(1.5, unlist(daily)[is.finite(unlist(daily))])) * 1.15
+    graphics::par(mar = c(4, 4.5, 2, 1))
+    graphics::plot(range(days), c(0, top), type = "n", xlab = "",
+                   ylab = "Effective number of gauges",
+                   main = "How many gauges each catchment average used, day by day")
+    graphics::abline(h = 1.5, lty = 2, col = "grey50")
+    for (i in seq_along(daily)) {
+      v <- daily[[i]]
+      v[!is.finite(v)] <- NA
+      graphics::lines(days, v, col = colours[match(names(daily)[i], names_r)], lwd = 2)
+    }
+    graphics::rug(as.Date(grid$time[floods$rain_start[largest]]), side = 3, col = "grey40",
+                  lwd = 2)
+    graphics::legend("bottomleft", names(daily), bty = "n", lwd = 2,
+                     col = colours[match(names(daily), names_r)])
+  })
+}
+
+# ---- The ranking ---------------------------------------------------------------------------
+
+rs <- response$summary[match(names_r, response$summary$gauge), ]
+ranking <- data.frame(
+  rain = names_r,
+  missing_pct = round(missing_pct, 2),
+  rain_mm_per_year = balance$rain_mm_per_year,
+  runoff_ratio = balance$runoff_ratio,
+  loss_over_pet = balance$loss_over_pet,
+  balance_problem = balance$balance_problem,
+  flagged_years = balance$flagged_years,
+  double_mass_bend_pct = bend_pct,
+  response_r = round(rs$r, 3),
+  lag_h = rs$lag_h,
+  flood_wins = rs$event_wins,
+  storm_size_r = round(rs$size_r, 3),
+  dry_events = rs$dry_events,
+  missed_storms_pct = flood_table$missed_pct,
+  flood_ratio_spread = flood_table$ratio_spread)
+# Two measures against the other series, since a catchment's true rain is never known: how
+# far a series' total sits from the median of all the series, and how far its lag sits from
+# their median lag. One series well apart from the rest is the likelier to be wrong; when
+# most of the series are poor, read these with care.
+med_total <- stats::median(ranking$rain_mm_per_year)
+ranking$total_apart_pct <- round(100 * abs(ranking$rain_mm_per_year - med_total) / med_total, 1)
+ranking$lag_apart_h <- abs(ranking$lag_h - stats::median(ranking$lag_h))
+# Each measure ranks the series, best first; the overall rank is the mean. Higher is better
+# for the response correlation, the flood wins and the storm size correlation; lower for the
+# rest.
+better_low <- c("missing_pct", "balance_problem", "flagged_years", "double_mass_bend_pct",
+                "dry_events", "missed_storms_pct", "flood_ratio_spread", "total_apart_pct",
+                "lag_apart_h")
+better_high <- c("response_r", "flood_wins", "storm_size_r")
+ranks <- cbind(sapply(better_low, function(m) rank(ranking[[m]], ties.method = "average")),
+               sapply(better_high, function(m) rank(-ranking[[m]], ties.method = "average")))
+if (is.null(dim(ranks))) ranks <- matrix(ranks, nrow = 1)
+ranking$mean_rank <- round(rowMeans(ranks), 2)
+ranking <- ranking[order(ranking$mean_rank), ]
+fwrite(ranking, file.path(output_folder, "rain_ranking.csv"))
+
+# Plain-English warnings for each series.
+warnings_for <- function(i) {
+  x <- ranking[i, ]
+  c(if (x$runoff_ratio > 1) "more flow than rain: it under-catches or misses storms",
+    if (x$loss_over_pet > 1) "losses beyond what evaporation can take: too much rain",
+    if (x$double_mass_bend_pct > 2) sprintf("it bends %.0f%% from the other series",
+                                            x$double_mass_bend_pct),
+    if (x$lag_h < 0) "the river rises before its rain: check its clock",
+    if (x$dry_events > 1) sprintf("%d floods it saw almost no rain for", x$dry_events),
+    if (x$missed_storms_pct > 5) sprintf("%.0f%% of floods had more quick flow than its rain",
+                                          x$missed_storms_pct),
+    if (x$missing_pct > 5) sprintf("%.0f%% of its record is missing", x$missing_pct),
+    if (x$total_apart_pct > 10) sprintf("its total is %.0f%% from the median of the series",
+                                        x$total_apart_pct),
+    if (x$lag_apart_h >= 1) sprintf("its lag is %g h from the others': check its clock",
+                                    x$lag_apart_h))
+}
+lags <- stats::setNames(ranking$lag_h, ranking$rain)
+best <- ranking$rain[1]
+lines <- c(
+  "# Which rain series best explains the flow", "",
+  sprintf("%.1f years of %s data; %d rain series; %d floods compared.", years,
+          if (step_hours < 1) sprintf("%g-minute", step_hours * 60) else
+            sprintf("%g-hour", step_hours), length(names_r), nrow(floods)),
+  "Judged from the data alone, before any model. How to read each plot: the HOW TO READ",
+  "notes in compare_rain.R, beside the line that draws it.", "",
+  sprintf("**Best by the data: %s.** The ranking, best first (mean rank over twelve",
+          best), "measures):", "",
+  sprintf(paste("%d. **%s** (mean rank %.1f): runoff ratio %.2f, quick-response correlation",
+                "%.2f, first for %d of %d floods."), seq_len(nrow(ranking)), ranking$rain,
+          ranking$mean_rank, ranking$runoff_ratio, ranking$response_r, ranking$flood_wins,
+          sum(response$summary$event_wins)),
+  "", "## Warnings", "",
+  unlist(lapply(seq_len(nrow(ranking)), function(i) {
+    w <- warnings_for(i)
+    sprintf("- %s: %s.", ranking$rain[i], if (length(w)) paste(w, collapse = "; ") else
+      "none")
+  })),
+  if (diff(range(lags)) >= 1) {
+    c("", sprintf(paste("The river answers to the series at lags from %g to %g hours. Series",
+                        "a whole hour or more apart often mean a clock or time-zone error in",
+                        "one."), min(lags), max(lags)))
+  },
+  if (weights_done) {
+    c("", "## Weights: how many gauges each average uses", "",
+      sprintf(paste("A single gauge's storm totals look to be up to %.0f%% out, from how much",
+                    "the gauges disagree flood by flood (an upper limit: real differences in"),
+              sigma),
+      "rain between sites count too). How much of that survives into each average:", "",
+      sprintf(paste("- **%s**, weights %s (%s): worth %.1f gauges; it keeps %.0f%% of a single",
+                    "gauge's random error, so about %.1f%% storm error. Suggested rain_error",
+                    "%.3f. Through the record it fell to %.1f gauges' worth or less 5%% of the",
+                    "time; %d of the 20 largest floods fell while it was below 1.5."),
+              weights_table$rain, weights_table$weights, weights_table$source,
+              weights_table$effective_gauges, 100 * weights_table$error_factor,
+              sigma * weights_table$error_factor, weights_table$suggested_rain_error,
+              weights_table$effective_gauges_p05, weights_table$largest_floods_below_1.5),
+      if (any(abs(weights_table$weights_sum - 1) > 0.02)) {
+        sprintf(paste("- Weights for %s do not add up to 1: the method scales the rain as",
+                      "well as weighting it. The balance checks will see the scaling."),
+                toString(weights_table$rain[abs(weights_table$weights_sum - 1) > 0.02]))
+      },
+      if (length(fit_r2) && any(unlist(fit_r2) < 0.95)) {
+        sprintf(paste("- The estimated weights for %s fit poorly (R2 below 0.95): the method",
+                      "is not a fixed weighting of these gauges, so read its figures with care."),
+                toString(names(fit_r2)[unlist(fit_r2) < 0.95]))
+      },
+      "- If gauges' errors are partly shared (wind on all of them), less cancels: see the",
+      "  error_factor_rho columns in `weights_and_error.csv`.")
+  },
+  "", "## What next", "",
+  "- The ranking is a guide. A series that ranks well but carries a warning may still be the",
+  "  best choice once the fault is fixed (a clock corrected, a gap filled).",
+  "- A catchment average from several gauges usually beats any single gauge for floods,",
+  "  because storms miss single gauges. If a single gauge ranks first, ask why: it may sit",
+  "  where the storms that drive floods fall, or the averages may be built on poor gauges.",
+  "- Next, calibrate the PDM on the best two or three and compare their validation scores:",
+  "  calibrate_site.R with each as the first rain series, into separate output folders.",
+  "", "Tables: `rain_ranking.csv`, `quick_response.csv`. Plots: `rain_by_year.png`,",
+  "`runoff_ratio_by_series.png`, `double_mass_by_series.png`, `quick_response.png`,",
+  "`flood_runoff_ratios.png`.",
+  if (weights_done) {
+    paste("Weights: `weights_and_error.csv`, `gauge_pair_error.csv`,",
+          "`effective_gauges_over_time.png`.")
+  })
+writeLines(lines, file.path(output_folder, "summary.md"))
+print(ranking[, c("rain", "mean_rank", "runoff_ratio", "total_apart_pct", "response_r",
+                  "lag_h", "flood_wins", "missed_storms_pct", "flood_ratio_spread")],
+      row.names = FALSE)
+if (weights_done) {
+  print(weights_table[, c("rain", "source", "effective_gauges", "error_factor",
+                          "suggested_rain_error")], row.names = FALSE)
+}
+say("\nWritten to %s. Read summary.md.", normalizePath(output_folder))
