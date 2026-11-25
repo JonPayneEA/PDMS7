@@ -6,11 +6,12 @@
 # Flode Module: standalone; target reach.forcing
 # Author:       pdmS7 contributors
 # Created:      2026-11-25
+# Modified:     2026-11-25 - the polygon from a shapefile
 # Tier:         1
-# Inputs:       A folder of daily H19 NetCDF files; a point and a polygon (CSV of x and y),
-#               both in metres on British National Grid
+# Inputs:       A folder of daily H19 NetCDF files; a point in metres on British National Grid;
+#               a polygon (a shapefile, GeoPackage, or CSV of x and y)
 # Outputs:      A folder: h19_layouts.csv, point and catchment series (CSV), and three plots
-# Dependencies: pdmS7 (0.42.2 or later), ncdf4, data.table
+# Dependencies: pdmS7 (0.43.0 or later), ncdf4, data.table; sf for a shapefile
 # ============================================================ #
 #
 # How to use it
@@ -37,8 +38,8 @@ to <- "2011-01-01"                          # last day (exclusive)
 point <- c(x = 426784, y = 241058)          # British National Grid metres
 point_name <- "Shipston gauge"
 
-boundary_file <- "boundary.csv"             # CSV with columns x and y, the corners in order;
-                                            # NULL for the point only
+boundary_file <- "catchment.shp"            # a shapefile or GeoPackage, or a CSV with columns
+                                            # x and y; NULL for the point only
 output_folder <- "h19_check"
 
 # ---- The files and their layouts ----------------------------------------------------------
@@ -73,10 +74,7 @@ changes <- as.POSIXct(layouts$layouts$first_day[-1], tz = "UTC")
 
 # ---- Read the radar ---------------------------------------------------------------------
 
-boundary <- if (!is.null(boundary_file)) fread(boundary_file)
-if (!is.null(boundary) && !all(c("x", "y") %in% names(boundary))) {
-  stop(boundary_file, " needs columns x and y.", call. = FALSE)
-}
+boundary <- if (!is.null(boundary_file)) read_boundary(boundary_file)
 px <- c(point[["x"]], boundary$x)
 py <- c(point[["y"]], boundary$y)
 extent <- c(min(px) - 3000, max(px) + 3000, min(py) - 3000, max(py) + 3000)
