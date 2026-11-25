@@ -9,6 +9,12 @@
   geometry to check those given. Each average is written to `catchment_rain/`, ready for
   `calibrate_site.R`, and compared with the single gauges and any other series given, as
   before.
+- With `gauge_source <- "hydrology_api"` and each gauge's WISKI ID, `compare_rain.R` downloads
+  the gauges' 15-minute rain from the EA Hydrology API with reach.io (`find_stations()`,
+  `make_date_chunks()`, `fetch_readings()`): one request at a time with a pause between them,
+  a year per request, positions filled from the API, and each gauge saved so a rerun
+  downloads nothing. Readings flagged Missing become gaps; other quality flags are counted in
+  the summary.
 
 # pdmS7 0.40.0
 

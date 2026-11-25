@@ -10,13 +10,14 @@
 # Created:      2026-11-24
 # Tier:         1
 # Inputs:       CSV files: flow (m3/s), potential evaporation, and each rain gauge (mm per
-#               step), each a date-time column and a value column; the Thiessen weights; for
+#               step), each a date-time column and a value column, or the gauges downloaded
+#               from the EA Hydrology API with reach.io; the Thiessen weights; for
 #               multiquadric, the gauges' positions and the catchment boundary
 #               (British National Grid metres); optionally other catchment series
 # Outputs:      A folder: summary.md, rain_ranking.csv, weights_and_error.csv, plots each with a
 #               note on how to read it, and catchment_rain/ with each average built, as CSV
 #               ready for calibrate_site.R
-# Dependencies: pdmS7 (0.41.0 or later)
+# Dependencies: pdmS7 (0.41.0 or later); reach.io to download the gauges
 # ============================================================ #
 #
 # How to use it
@@ -24,8 +25,9 @@
 #        file.copy(system.file("scripts", "compare_rain.R", package = "pdmS7"), "compare_rain.R")
 #        file.edit("compare_rain.R")
 #   2. Fill in the settings below: the catchment area, the time step, the flow and evaporation
-#      files, the rain gauges and the Thiessen weights. For the multiquadric average add each
-#      gauge's position and a boundary file.
+#      files, the rain gauges and the Thiessen weights. To download the gauges instead, give
+#      each its WISKI ID and set gauge_source to "hydrology_api". For the multiquadric average,
+#      add a boundary file and, unless they are downloaded, each gauge's position.
 #   3. Run the whole script (Ctrl+Shift+S in RStudio). It takes a minute or two.
 #   4. Read summary.md in the output folder.
 #
@@ -75,13 +77,24 @@ pet_file <- "pet.csv"     # potential evaporation, mm per step
 
 # The rain gauges: one file each, rain in mm per step. x and y are each gauge's position in
 # metres on British National Grid (easting and northing); they are needed only for the
-# multiquadric average, so they can stay NA when there is no boundary below.
+# multiquadric average, so they can stay NA when there is no boundary below. wiski_id is the
+# gauge's WISKI ID, needed only to download it.
 gauges <- data.frame(
   name = c("gauge_A", "gauge_B", "gauge_C"),
   file = c("gauge_a.csv", "gauge_b.csv", "gauge_c.csv"),
+  wiski_id = c(NA, NA, NA),
   x = c(NA, NA, NA),
   y = c(NA, NA, NA)
 )
+
+# Where the gauge data come from. "files": the CSV files above, already in data_folder.
+# "hydrology_api": each gauge's 15-minute rain downloaded from the EA Hydrology API with
+# reach.io, by its WISKI ID, and saved to data_folder under the file name above. A file already
+# there is used as it is, so a rerun downloads nothing; delete a file to download it again.
+# Positions left NA are filled from the API. Dates: from (inclusive) to (exclusive).
+gauge_source <- "files"
+download_from <- "2014-10-01"
+download_to <- "2025-10-01"
 
 # The Thiessen weights: each gauge's share of the catchment. A gauge outside the catchment has
 # none: leave it out, or give it 0. They should add up to 1.
@@ -120,6 +133,66 @@ if (length(setdiff(names(thiessen_weights), gauge_names))) {
   stop("thiessen_weights names gauges not in the gauges table: ",
        toString(setdiff(names(thiessen_weights), gauge_names)), call. = FALSE)
 }
+# ---- Download the gauges (gauge_source "hydrology_api") ------------------------------------
+
+# One request at a time, with a pause between them, as the EA asks of Hydrology API users:
+# one to find each gauge, then one for each year of its record. Missing readings become gaps;
+# other quality flags are counted, not acted on (quality control belongs upstream).
+downloads <- NULL
+if (identical(gauge_source, "hydrology_api")) {
+  if (!requireNamespace("reach.io", quietly = TRUE)) {
+    stop("gauge_source \"hydrology_api\" needs the reach.io package: ",
+         "remotes::install_github(\"JonPayneEA/reach.io\").", call. = FALSE)
+  }
+  if (anyNA(gauges$wiski_id) || any(!nzchar(as.character(gauges$wiski_id)))) {
+    stop("Give every gauge its wiski_id in the gauges table to download it.", call. = FALSE)
+  }
+  pause <- function() Sys.sleep(1)
+  downloads <- do.call(rbind, lapply(seq_len(nrow(gauges)), function(i) {
+    path <- here(gauges$file[i])
+    id <- as.character(gauges$wiski_id[i])
+    if (file.exists(path) && !is.na(gauges$x[i]) && !is.na(gauges$y[i])) {
+      say("  %s (%s): using %s, already downloaded", gauges$name[i], id, basename(path))
+      return(data.frame(gauge = gauges$name[i], wiski_id = id, label = NA, measure = NA,
+                        readings = NA, missing = NA, flags = NA, file = basename(path)))
+    }
+    pause()
+    found <- reach.io::find_stations(wiski_ids = id)
+    rain <- found[found$parameter %in% "rainfall" & found$period %in% "15min", ]
+    if (!nrow(rain)) stop("No 15-minute rainfall at WISKI ID ", id, ".", call. = FALSE)
+    rain <- rain[order(!grepl("qualified$", rain$measure_notation)), ][1, ]
+    if (is.na(gauges$x[i])) gauges$x[i] <<- rain$easting
+    if (is.na(gauges$y[i])) gauges$y[i] <<- rain$northing
+    if (file.exists(path)) {
+      say("  %s (%s): using %s, already downloaded", gauges$name[i], id, basename(path))
+      return(data.frame(gauge = gauges$name[i], wiski_id = id, label = rain$label,
+                        measure = rain$measure_notation, readings = NA, missing = NA,
+                        flags = NA, file = basename(path)))
+    }
+    chunks <- reach.io::make_date_chunks(download_from, download_to)
+    say("  %s (%s, %s): downloading %d year%s", gauges$name[i], id, rain$label, nrow(chunks),
+        if (nrow(chunks) == 1) "" else "s")
+    readings <- data.table::rbindlist(lapply(seq_len(nrow(chunks)), function(k) {
+      pause()
+      reach.io::fetch_readings(rain$measure_notation, chunks$chunk_from[k], chunks$chunk_to[k])
+    }), fill = TRUE)
+    if (!nrow(readings)) stop("No readings for ", id, " in the dates asked.", call. = FALSE)
+    value <- as.numeric(readings$value)
+    quality <- if ("quality" %in% names(readings)) readings$quality else rep(NA, nrow(readings))
+    value[quality %in% "Missing"] <- NA
+    data.table::fwrite(data.table::data.table(
+      time = format(readings$dateTime, "%Y-%m-%d %H:%M:%S", tz = "UTC"), value = value), path)
+    flagged <- table(quality[!quality %in% c("Good", "Missing", NA)])
+    data.frame(gauge = gauges$name[i], wiski_id = id, label = rain$label,
+               measure = rain$measure_notation, readings = nrow(readings),
+               missing = sum(is.na(value)),
+               flags = if (length(flagged)) {
+                 paste(sprintf("%s %d", names(flagged), as.integer(flagged)), collapse = ", ")
+               } else "none", file = basename(path))
+  }))
+  fwrite(downloads, file.path(output_folder, "gauge_downloads.csv"))
+}
+
 inputs <- c(stats::setNames(as.character(gauges$file), gauge_names), other_rain_files)
 missing_files <- inputs[!file.exists(here(inputs))]
 if (length(missing_files)) {
@@ -647,6 +720,16 @@ lines <- c(
     "- multiquadric: not built (no catchment_boundary given)."
   },
   "", "Each is in `catchment_rain/`, as a CSV ready for calibrate_site.R.",
+  if (!is.null(downloads)) {
+    c("", sprintf(paste("Gauges downloaded from the EA Hydrology API with reach.io, %s to %s",
+                        "(`gauge_downloads.csv`):"), download_from, download_to),
+      sprintf("- %s: WISKI ID %s%s", downloads$gauge, downloads$wiski_id,
+              ifelse(is.na(downloads$readings), ", already downloaded.",
+                     sprintf(" (%s), %d readings, %d missing; other flags: %s.", downloads$label,
+                             downloads$readings, downloads$missing, downloads$flags))),
+      "Readings flagged Missing are gaps. Other flags (Suspect, Estimated, Unchecked) are kept",
+      "and only counted here: quality control belongs upstream, in reach.validate.")
+  },
   "", "## Warnings", "",
   unlist(lapply(seq_len(nrow(ranking)), function(i) {
     w <- warnings_for(i)

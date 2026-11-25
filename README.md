@@ -203,7 +203,8 @@ from the data alone, and ranks them: the water balance, double-mass
 curves, how closely the river follows each series and at what lag, and storms each missed. Given the gauge weights each average uses, it also
 says how many gauges' worth of rain each average uses and how much of a gauge's error
 survives into it. Copy it, fill in the area, the time step, the gauges and the Thiessen
-weights at the top, and run it:
+weights at the top, and run it. Given each gauge's WISKI ID it can download the gauges
+itself, with reach.io:
 
 ```r
 file.copy(system.file("scripts", "compare_rain.R", package = "pdmS7"), "compare_rain.R")
