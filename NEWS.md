@@ -4,6 +4,13 @@
   averages to build; delete any you do not want. A name the script cannot build is refused.
   An average asked for whose inputs are missing (a boundary, the long-term average grid, the
   radar, 15-minute data) is skipped, and the summary and the report list it with the reason.
+- **A gauge map on every run.** `gauge_map.png`, in the report's "The data", shows the
+  catchment and the gauges in use, each named with its Thiessen weight, over the part of the
+  catchment nearest each gauge (the shares the Thiessen weights are). Other gauges from the
+  search are shown in grey. Before, the report had a map only when the search had run into the
+  same folder.
+- The `grid_spacing_m` setting now says what it is: the averaging grid, not the catchment's
+  delineation. 500 m suits most catchments.
 - **Inverse distance weighting.** `merge_rainfall()`, `rainfall_field()` and
   `rainfall_cross_validation()` take `method = "idw"`: each cell a mean of the gauges reporting,
   weighted by 1 / distance^`power` (2 by default). `compare_rain.R` builds it as `idw`.

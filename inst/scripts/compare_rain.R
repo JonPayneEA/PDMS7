@@ -95,9 +95,12 @@ pet_file <- "pet.csv"     # potential evaporation, mm per step
 
 # The catchment boundary: a shapefile (.shp, with its .dbf, .shx and .prj beside it), a
 # GeoPackage, or a CSV with columns x and y, in data_folder. A shapefile is moved onto British
-# National Grid. Its centroid is the centre of the gauge search, and it bounds the
-# multiquadric average, worked out on a grid with cells this many metres across.
+# National Grid. Its centroid is the centre of the gauge search, and it bounds the averages.
 catchment_boundary <- "catchment.shp"
+# The averaging grid, not the catchment's delineation: the spacing of the points over the
+# catchment where the surfaces (idw, the multiquadrics) are worked out and averaged. 500 m
+# suits most catchments, 250 m one under about 20 km2; finer gains nothing (the gauges are
+# kilometres apart) and is much slower.
 grid_spacing_m <- 500
 
 # A long-term average rainfall grid (optional): NetCDF in data_folder, on British National Grid,
@@ -1257,6 +1260,56 @@ if (!is.null(lta)) {
   fwrite(lta_check, file.path(output_folder, "long_term_average_check.csv"))
 }
 
+# HOW TO READ gauge_map.png
+# The catchment (outlined) and the gauges in use (filled, each named with its Thiessen weight
+# in brackets), over the part of the catchment nearest each gauge (shaded in that gauge's
+# colour): the Thiessen weights are the shares of those parts. Other gauges the search found
+# are open grey circles.
+# Good: the gauges spread across the catchment and around it, each part a fair share.
+# Worry if: one gauge's part covers most of the catchment (the averages lean on that gauge:
+#   see the effective number of gauges); a gauge in the wrong place (its position: x and y
+#   swapped, or the wrong grid); weights given that differ from the parts drawn.
+if (!is.null(boundary) && have_positions) {
+  png_of("gauge_map.png", function() {
+    gauge_colours <- colours[match(gauge_names, names_r)]
+    gauge_colours[is.na(gauge_colours)] <- "grey40"
+    # The catchment and the gauges in use, with a 2 km margin.
+    graphics::par(mar = c(4, 4.5, 2, 1))
+    graphics::plot(range(c(boundary$x, gauges$x)) + c(-2000, 2000),
+                   range(c(boundary$y, gauges$y)) + c(-2000, 2000),
+                   type = "n",
+                   asp = 1,
+                   xlab = "Easting (m)",
+                   ylab = "Northing (m)",
+                   main = "The catchment, and the part of it nearest each gauge")
+    # Each cell inside the catchment shaded by its nearest gauge.
+    zone <- matrix(NA_real_, length(cells_x), length(cells_y))
+    zone[inside_cells] <- nearest
+    graphics::image(cells_x,
+                    cells_y,
+                    zone,
+                    col = grDevices::adjustcolor(gauge_colours, alpha.f = 0.35),
+                    breaks = seq(0.5, length(gauge_names) + 0.5),
+                    add = TRUE)
+    graphics::polygon(boundary$x, boundary$y, border = "#B3261E", lwd = 2)
+    # Other gauges the search found, where there was a search.
+    if (file.exists(nearby_file)) {
+      others <- fread(nearby_file)
+      others <- others[!as.character(others$wiski_id) %in% as.character(gauges$wiski_id)]
+      graphics::points(others$x, others$y, pch = 1, col = "grey55", cex = 1.1)
+    }
+    # The gauges in use, each with the Thiessen weight the averages use.
+    weight <- stats::setNames(rep(0, length(gauge_names)), gauge_names)
+    weight[names(thiessen_weights)] <- thiessen_weights
+    graphics::points(gauges$x, gauges$y, pch = 21, bg = gauge_colours, cex = 1.6)
+    graphics::text(gauges$x,
+                   gauges$y,
+                   sprintf("%s (%.2f)", gauge_names, weight),
+                   pos = 3,
+                   cex = 0.8)
+  }, width = 1400, height = 1400)
+}
+
 # HOW TO READ rain_by_year.png
 # One group of bars per water year (October to September), one bar per rain series: the rain
 # each series gives the catchment that year.
@@ -2332,7 +2385,8 @@ blocks <- c(
                            length(other_rain_files),
                            step_text)),
        report_table(gauge_table, caption = "The gauges")),
-  plot_blocks("nearby_gauges.png", "The gauges around the catchment"),
+  plot_blocks("gauge_map.png", "The catchment and the gauges in use"),
+  plot_blocks("nearby_gauges.png", "The gauges around the catchment, from the search"),
 
   # The averages and their weights.
   list(report_heading("The catchment averages"),
