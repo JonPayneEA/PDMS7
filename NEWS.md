@@ -1,3 +1,8 @@
+# pdmS7 0.46.1
+
+- 0.46.0 would not install: the new `R/report_blocks.R` was missing from the `Collate` field
+  in DESCRIPTION. It is there now, and a test checks that every file in `R/` is collated.
+
 # pdmS7 0.46.0
 
 - **`compare_rain.R` writes `report.html`.** It is one self-contained page, with every plot
