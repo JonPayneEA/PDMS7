@@ -1342,8 +1342,8 @@ if (!is.null(lta)) {
 # HOW TO READ gauge_map.png
 # The catchment (outlined) and the gauges in use (filled, each named with its Thiessen weight
 # in brackets), over the part of the catchment nearest each gauge (shaded in that gauge's
-# colour): the Thiessen weights are the shares of those parts. Other gauges the search found
-# are open grey circles.
+# colour): the Thiessen weights are the shares of those parts. The grey rings are 5 and 10 km
+# out from the boundary; other gauges the search found are open grey circles.
 # Good: the gauges spread across the catchment and around it, each part a fair share.
 # Worry if: one gauge's part covers most of the catchment (the averages lean on that gauge:
 #   see the effective number of gauges); a gauge in the wrong place (its position: x and y
@@ -1352,10 +1352,18 @@ if (!is.null(boundary) && have_positions) {
   png_of("gauge_map.png", function() {
     gauge_colours <- colours[match(gauge_names, names_r)]
     gauge_colours[is.na(gauge_colours)] <- "grey40"
-    # The catchment and the gauges in use, with a 2 km margin.
+    # The rings 5 and 10 km out from the boundary, by buffering it (with sf, where installed).
+    rings <- if (requireNamespace("sf", quietly = TRUE)) {
+      ring <- sf::st_sfc(sf::st_polygon(list(as.matrix(rbind(boundary, boundary[1, ])))),
+                         crs = 27700)
+      lapply(c(5, 10), function(km) sf::st_coordinates(sf::st_buffer(ring, 1000 * km)))
+    }
+    # The catchment, the gauges in use and the rings, with a margin.
+    reach_x <- c(boundary$x, gauges$x, if (length(rings)) rings[[2]][, "X"])
+    reach_y <- c(boundary$y, gauges$y, if (length(rings)) rings[[2]][, "Y"])
     graphics::par(mar = c(4, 4.5, 2, 1))
-    graphics::plot(range(c(boundary$x, gauges$x)) + c(-2000, 2000),
-                   range(c(boundary$y, gauges$y)) + c(-2000, 2000),
+    graphics::plot(range(reach_x) + c(-1000, 1000),
+                   range(reach_y) + c(-1000, 1000),
                    type = "n",
                    asp = 1,
                    xlab = "Easting (m)",
@@ -1370,6 +1378,7 @@ if (!is.null(boundary) && have_positions) {
                     col = grDevices::adjustcolor(gauge_colours, alpha.f = 0.35),
                     breaks = seq(0.5, length(gauge_names) + 0.5),
                     add = TRUE)
+    for (xy in rings) graphics::lines(xy[, "X"], xy[, "Y"], col = "grey70", lty = 2)
     graphics::polygon(boundary$x, boundary$y, border = "#B3261E", lwd = 2)
     # Other gauges the search found, where there was a search.
     if (file.exists(nearby_file)) {
@@ -1386,6 +1395,16 @@ if (!is.null(boundary) && have_positions) {
                    sprintf("%s (%.2f)", gauge_names, weight),
                    pos = 3,
                    cex = 0.8)
+    graphics::legend("bottomleft",
+                     bty = "n",
+                     cex = 0.8,
+                     c("Catchment", "Gauge in use (Thiessen weight)", "Other gauge found",
+                       if (length(rings)) "5 and 10 km from the boundary"),
+                     col = c("#B3261E", "grey30", "grey55", if (length(rings)) "grey70"),
+                     pch = c(NA, 21, 1, if (length(rings)) NA),
+                     pt.bg = c(NA, "grey80", NA, if (length(rings)) NA),
+                     lty = c(1, NA, NA, if (length(rings)) 2),
+                     lwd = c(2, NA, NA, if (length(rings)) 1))
   }, width = 1400, height = 1400)
 }
 

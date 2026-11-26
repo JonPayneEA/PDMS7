@@ -31,8 +31,8 @@
   Water years are unchanged.
 - **A gauge map on every run.** `gauge_map.png`, in the report's "The data", shows the
   catchment and the gauges in use, each named with its Thiessen weight, over the part of the
-  catchment nearest each gauge (the shares the Thiessen weights are). Other gauges from the
-  search are shown in grey. Before, the report had a map only when the search had run into the
+  catchment nearest each gauge (the shares the Thiessen weights are), with rings 5 and 10 km out
+  from the boundary. Other gauges from the search are shown in grey. Before, the report had a map only when the search had run into the
   same folder.
 - The `grid_spacing_m` setting now says what it is: the averaging grid, not the catchment's
   delineation. 500 m suits most catchments.
