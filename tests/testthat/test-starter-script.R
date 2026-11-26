@@ -220,5 +220,24 @@ test_that("the rain comparison has one period for everything, and both multiquad
   expect_true(any(grepl("^period_to <- ", code)))
   expect_false(any(grepl("download_from|download_to", code)))
   # The gauges-only and gauges-with-H19 multiquadric averages are both built names.
-  expect_true(any(grepl('"multiquadric", "multiquadric_h19"', code, fixed = TRUE)))
+  expect_true(any(grepl('built_names <- c("thiessen", "equal", "equal_all", "multiquadric",',
+                        code, fixed = TRUE)))
+  expect_true(any(grepl('"multiquadric_h19"', code, fixed = TRUE)))
+})
+
+test_that("the rain comparison can scale the multiquadric by a long-term average grid", {
+  code <- readLines(system.file("scripts", "compare_rain.R", package = "pdmS7"))
+  # Off by default; the grid's average is set against each series when given.
+  expect_true(any(grepl("^lta_rain_file <- NULL", code)))
+  expect_true(any(grepl('"multiquadric_lta"', code, fixed = TRUE)))
+  expect_true(any(grepl("long_term_average_check.csv", code, fixed = TRUE)))
+})
+
+test_that("the gauges can be corrected to the long-term average over a long record", {
+  code <- readLines(system.file("scripts", "compare_rain.R", package = "pdmS7"))
+  # Off by default; the correction record has its own window, and the downloads cover both.
+  expect_true(any(grepl('^lta_correction <- "none"', code)))
+  expect_true(any(grepl("^correction_from <- ", code)))
+  expect_true(any(grepl("^correction_to <- ", code)))
+  expect_true(any(grepl("gauge_downloads_record.csv", code, fixed = TRUE)))
 })

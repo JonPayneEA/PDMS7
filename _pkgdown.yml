@@ -333,6 +333,8 @@ reference:
   - h19_radar
   - h19_layouts
   - h19_processed
+  - read_lta_grid
+  - lta_at
   - read_boundary
   - distance_to_boundary
 - title: Standard visuals

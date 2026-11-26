@@ -9,7 +9,10 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-24
 # Tier:         1
-# Modified:     2026-11-25 - H19 from the team's processed yearly extracts, in seconds
+# Modified:     2026-11-26 - laid out one argument a line, with in-line comments
+#               2026-11-26 - multiquadric scaled by a long-term average grid; the check
+#               against it
+#               2026-11-25 - H19 from the team's processed yearly extracts, in seconds
 #               2026-11-25 - the gauges found by a search around the catchment's centroid
 #               and downloaded with reach.io by default; the boundary from a shapefile;
 #               Thiessen weights from the geometry when none are given
@@ -50,6 +53,8 @@
 #                   when some gauge has no Thiessen weight);
 #     multiquadric  a smooth surface through every gauge, averaged over the catchment (with the
 #                   positions and the boundary): the gauges only;
+#     multiquadric_lta  the same, fitted to each gauge's rain as a share of its long-term
+#                   average and scaled back by the grid (with lta_rain_file);
 #     multiquadric_h19  the same surface through the gauges, with the radar's pattern between
 #                   them (conditional merging): with H19 from radar_folder, at 15-minute steps.
 #   Each is renormalised over the gauges reporting at each step. With the boundary it also
@@ -94,6 +99,26 @@ pet_file <- "pet.csv"     # potential evaporation, mm per step
 # multiquadric average, worked out on a grid with cells this many metres across.
 catchment_boundary <- "catchment.shp"
 grid_spacing_m <- 500
+
+# A long-term average rainfall grid (optional): NetCDF in data_folder, on British National Grid,
+# mm a year, such as the Met Office's HadUK-Grid average for 1991 to 2020,
+# "rainfall_hadukgrid_uk_1km_ann-30y_199101-202012.nc". With it, the multiquadric is also fitted
+# to each gauge's rain as a share of its long-term average and scaled back by the grid
+# (multiquadric_lta), and each series' annual rain is set against the long-term average.
+lta_rain_file <- NULL
+
+# Correcting the gauges to the long-term average (optional; needs lta_rain_file). Each gauge's
+# average year over a long record, correction_from to correction_to, set against the grid at
+# the gauge, gives the gauge a factor, which then scales its rain over the period compared.
+#   "relative": each factor divided by the gauges' median factor, so the gauges keep their
+#               overall level and only how they differ from each other is corrected; the long
+#               record's own weather, wetter or drier than the grid's years, cancels.
+#   "absolute": each gauge put onto the grid's own level.
+#   "none":     the gauges as measured.
+# The gauge downloads cover both the correction record and the period compared.
+lta_correction <- "none"
+correction_from <- "2010-10-01"
+correction_to <- "2024-10-01"
 
 # The period compared: from (inclusive) to (exclusive), in UTC. Every series (flow,
 # evaporation, gauges, radar) is cut to it, and gauges are downloaded for it. A series that does
@@ -153,16 +178,26 @@ other_rain_files <- c()
 
 # ---- Read and line up the data ------------------------------------------------------------
 
+# A message to the console, with sprintf()'s formatting.
 say <- function(...) cat(sprintf(...), "\n", sep = "")
+
+# The area is left blank in the settings, so the script cannot run on a wrong default.
 if (!is.numeric(area_km2) || !is.finite(area_km2) || area_km2 <= 0) {
-  stop("Fill in area_km2 at the top of the script: the catchment area in km2.", call. = FALSE)
+  stop("Fill in area_km2 at the top of the script: the catchment area in km2.",
+       call. = FALSE)
 }
 if (!dir.exists(data_folder)) {
-  stop("No folder ", normalizePath(data_folder, mustWork = FALSE), ": set data_folder at the ",
-       "top of the script to the folder holding the CSV files.", call. = FALSE)
+  stop("No folder ",
+       normalizePath(data_folder, mustWork = FALSE),
+       ": set data_folder at the ",
+       "top of the script to the folder holding the CSV files.",
+       call. = FALSE)
 }
 dir.create(output_folder, recursive = TRUE, showWarnings = FALSE)
+
+# The path of a file in the data folder.
 here <- function(f) file.path(data_folder, f)
+
 # Stops a run part way, at a point the settings ask for, without an error.
 stop_here <- function(...) {
   say(...)
@@ -174,37 +209,51 @@ stop_here <- function(...) {
 boundary <- NULL
 if (!is.null(catchment_boundary)) {
   if (!file.exists(here(catchment_boundary))) {
-    stop("Cannot find the boundary ", here(catchment_boundary), ". Set catchment_boundary to ",
-         "its file name in data_folder, or NULL to do without it.", call. = FALSE)
+    stop("Cannot find the boundary ",
+         here(catchment_boundary),
+         ". Set catchment_boundary to ",
+         "its file name in data_folder, or NULL to do without it.",
+         call. = FALSE)
   }
+  # The outer ring on British National Grid, with its centroid and area as attributes.
   boundary <- read_boundary(here(catchment_boundary))
   centroid <- attr(boundary, "centroid")
-  say("Catchment boundary: %.1f km2, centroid %.0f, %.0f", attr(boundary, "area_km2"),
-      centroid[["x"]], centroid[["y"]])
+  say("Catchment boundary: %.1f km2, centroid %.0f, %.0f",
+      attr(boundary, "area_km2"),
+      centroid[["x"]],
+      centroid[["y"]])
+  # A boundary far from the area given is probably another catchment's, or the area is wrong.
   if (abs(attr(boundary, "area_km2") / area_km2 - 1) > 0.05) {
     warning(sprintf(paste("The boundary encloses %.1f km2, but area_km2 is %g: check that the",
                           "boundary is this catchment's, and the area."),
-                    attr(boundary, "area_km2"), area_km2), call. = FALSE)
+                    attr(boundary, "area_km2"),
+                    area_km2),
+            call. = FALSE)
   }
 }
 
 # ---- The rain gauges: found and downloaded (gauge_source "hydrology_api") --------------------
 
 # One request at a time, with a pause between them, as the EA asks of Hydrology API users.
-# A gauge's name in the tables and plots comes from its station name, made short and safe.
 downloads <- NULL
 nearby_file <- file.path(output_folder, "nearby_gauges.csv")
+
+# A gauge's name in the tables and plots: its station name, made short and safe (lower case,
+# underscores, never starting with a digit, and never the same as another's).
 name_of <- function(label) {
   n <- gsub("^_+|_+$", "", gsub("[^a-z0-9]+", "_", tolower(label)))
   n <- ifelse(nzchar(n) & !grepl("^[0-9]", n), n, paste0("gauge_", n))
   make.unique(n, sep = "_")
 }
+
 if (identical(gauge_source, "hydrology_api")) {
   if (!requireNamespace("reach.io", quietly = TRUE)) {
     stop("gauge_source \"hydrology_api\" needs the reach.io package: ",
-         "remotes::install_github(\"JonPayneEA/reach.io\").", call. = FALSE)
+         "remotes::install_github(\"JonPayneEA/reach.io\").",
+         call. = FALSE)
   }
   pause <- function() Sys.sleep(1)
+
   # The 15-minute rain measure of each station found, the qualified one first where there are
   # two.
   rain_measures <- function(found) {
@@ -217,33 +266,55 @@ if (identical(gauge_source, "hydrology_api")) {
     # The search: every 15-minute rain gauge within the radius of the centroid.
     if (is.null(boundary)) {
       stop("The gauge search needs the catchment boundary: set catchment_boundary, or list ",
-           "the gauges in gauge_ids.", call. = FALSE)
+           "the gauges in gauge_ids.",
+           call. = FALSE)
     }
     if (!requireNamespace("sf", quietly = TRUE)) {
-      stop("The gauge search needs the sf package: install.packages(\"sf\").", call. = FALSE)
+      stop("The gauge search needs the sf package: install.packages(\"sf\").",
+           call. = FALSE)
     }
+
+    # By default, the radius reaches the boundary's farthest point from the centroid, plus
+    # 10 km: a fixed radius would miss gauges beyond the far end of a long catchment.
     reach_km <- max(sqrt((boundary$x - centroid[["x"]])^2 +
                            (boundary$y - centroid[["y"]])^2)) / 1000
     radius <- if (is.null(search_radius_km)) ceiling(reach_km + 10) else search_radius_km
-    lonlat <- sf::st_coordinates(sf::st_transform(
-      sf::st_sfc(sf::st_point(unname(centroid)), crs = 27700), 4326))
+
+    # The API searches by latitude and longitude, so the centroid is moved off the grid.
+    lonlat <- sf::st_coordinates(sf::st_transform(sf::st_sfc(sf::st_point(unname(centroid)),
+                                                             crs = 27700),
+                                                  4326))
     say("Searching for 15-minute rain gauges within %g km of the centroid", radius)
-    rain <- rain_measures(reach.io::find_stations(lat = lonlat[1, "Y"], long = lonlat[1, "X"],
+    rain <- rain_measures(reach.io::find_stations(lat = lonlat[1, "Y"],
+                                                  long = lonlat[1, "X"],
                                                   dist = radius))
+    # Gauges are chosen and downloaded by WISKI ID, so a station without one is left out.
     rain <- rain[!is.na(rain$wiskiID) & nzchar(rain$wiskiID), ]
     if (!nrow(rain)) {
-      stop("No 15-minute rain gauges with a WISKI ID within ", radius, " km. Set ",
-           "search_radius_km larger.", call. = FALSE)
+      stop("No 15-minute rain gauges with a WISKI ID within ",
+           radius,
+           " km. Set ",
+           "search_radius_km larger.",
+           call. = FALSE)
     }
+
+    # Each gauge's place: inside or how far outside the boundary, and how far from the
+    # centroid. The list is sorted nearest the catchment first.
     x <- as.numeric(rain$easting)
     y <- as.numeric(rain$northing)
     outside <- distance_to_boundary(x, y, boundary) / 1000
     nearby <- data.frame(
-      wiski_id = rain$wiskiID, label = rain$label, name = name_of(rain$label), x = x, y = y,
-      inside = outside == 0, km_outside = round(outside, 1),
+      wiski_id = rain$wiskiID,
+      label = rain$label,
+      name = name_of(rain$label),
+      x = x,
+      y = y,
+      inside = outside == 0,
+      km_outside = round(outside, 1),
       km_from_centroid = round(sqrt((x - centroid[["x"]])^2 + (y - centroid[["y"]])^2) / 1000,
                                1),
-      measure = rain$measure_notation)
+      measure = rain$measure_notation
+    )
     nearby <- nearby[order(nearby$km_outside, nearby$km_from_centroid), ]
     fwrite(nearby, nearby_file)
 
@@ -258,151 +329,355 @@ if (identical(gauge_source, "hydrology_api")) {
     #   the rest on high ground (it may see a different climate). Gauges more than 10 km out
     #   rarely add anything. The API lists EA gauges only: a gap here may not be a gap on the
     #   ground.
-    grDevices::png(file.path(output_folder, "nearby_gauges.png"), width = 1400, height = 1400,
+    grDevices::png(file.path(output_folder, "nearby_gauges.png"),
+                   width = 1400,
+                   height = 1400,
                    res = 150)
     graphics::par(mar = c(4, 4.5, 2, 1))
+
+    # The search circle first, as it sets the extent of the map.
     circle <- seq(0, 2 * pi, length.out = 200)
     graphics::plot(centroid[["x"]] + 1000 * radius * cos(circle),
-                   centroid[["y"]] + 1000 * radius * sin(circle), type = "l", lty = 2,
-                   col = "grey50", asp = 1, xlab = "Easting (m)", ylab = "Northing (m)",
+                   centroid[["y"]] + 1000 * radius * sin(circle),
+                   type = "l",
+                   lty = 2,
+                   col = "grey50",
+                   asp = 1,
+                   xlab = "Easting (m)",
+                   ylab = "Northing (m)",
                    main = sprintf("Rain gauges within %g km of the centroid", radius))
+
+    # Rings 5 and 10 km out from the boundary, by buffering it.
     ring <- sf::st_sfc(sf::st_polygon(list(as.matrix(rbind(boundary, boundary[1, ])))),
                        crs = 27700)
     for (km in c(5, 10)) {
       xy <- sf::st_coordinates(sf::st_buffer(ring, 1000 * km))
       graphics::lines(xy[, "X"], xy[, "Y"], col = "grey75")
     }
+
+    # The catchment, its centroid, and the gauges (filled inside, open outside).
     graphics::polygon(boundary$x, boundary$y, border = "#B3261E", lwd = 2)
     graphics::points(centroid[["x"]], centroid[["y"]], pch = 3, cex = 1.5, lwd = 2)
-    graphics::points(nearby$x, nearby$y, pch = ifelse(nearby$inside, 19, 1), cex = 1.3,
-                     col = "#1B6F80", lwd = 2)
+    graphics::points(nearby$x,
+                     nearby$y,
+                     pch = ifelse(nearby$inside, 19, 1),
+                     cex = 1.3,
+                     col = "#1B6F80",
+                     lwd = 2)
     graphics::text(nearby$x, nearby$y, nearby$wiski_id, pos = 3, cex = 0.7)
-    graphics::legend("bottomleft", bty = "n", cex = 0.8,
+    graphics::legend("bottomleft",
+                     bty = "n",
+                     cex = 0.8,
                      c("Catchment", "Centroid", "Gauge inside", "Gauge outside",
                        "5 and 10 km from the boundary", "Search radius"),
                      col = c("#B3261E", "black", "#1B6F80", "#1B6F80", "grey75", "grey50"),
-                     pch = c(NA, 3, 19, 1, NA, NA), lty = c(1, NA, NA, NA, 1, 2),
+                     pch = c(NA, 3, 19, 1, NA, NA),
+                     lty = c(1, NA, NA, NA, 1, 2),
                      lwd = c(2, 2, 2, 2, 1, 1))
     grDevices::dev.off()
 
+    # The list, and a line ready to paste for the gauges inside or within 5 km; then stop, so
+    # the gauges can be chosen before anything is downloaded.
     print(nearby[, c("wiski_id", "label", "inside", "km_outside", "km_from_centroid")],
           row.names = FALSE)
     near <- nearby$wiski_id[nearby$km_outside <= 5]
     stop_here(paste0("\n%d gauges listed in %s, with a map in nearby_gauges.png. Choose the ",
                      "ones to use and put their WISKI IDs in gauge_ids, then run again. Those ",
                      "inside or within 5 km:\n  gauge_ids <- c(%s)"),
-              nrow(nearby), nearby_file,
+              nrow(nearby),
+              nearby_file,
               paste0('"', near, '"', collapse = ", "))
   }
 
   # The gauges chosen: from the search's list where they are in it, otherwise looked up.
-  listed <- if (file.exists(nearby_file)) fread(nearby_file, colClasses = "character") else
+  listed <- if (file.exists(nearby_file)) {
+    fread(nearby_file, colClasses = "character")
+  } else {
     data.table(wiski_id = character(0))
+  }
   ids <- as.character(gauge_ids)
   if (anyDuplicated(ids)) stop("gauge_ids lists a gauge twice.", call. = FALSE)
   info <- do.call(rbind, lapply(ids, function(id) {
     k <- match(id, listed$wiski_id)
     if (!is.na(k)) {
-      return(data.frame(wiski_id = id, label = listed$label[k], x = as.numeric(listed$x[k]),
-                        y = as.numeric(listed$y[k]), measure = listed$measure[k]))
+      return(data.frame(wiski_id = id,
+                        label = listed$label[k],
+                        x = as.numeric(listed$x[k]),
+                        y = as.numeric(listed$y[k]),
+                        measure = listed$measure[k]))
     }
+    # Not in the list (chosen without a search, or from further away): one request to find it.
     pause()
     rain <- rain_measures(reach.io::find_stations(wiski_ids = id))
     if (!nrow(rain)) stop("No 15-minute rainfall at WISKI ID ", id, ".", call. = FALSE)
-    data.frame(wiski_id = id, label = rain$label[1], x = as.numeric(rain$easting[1]),
-               y = as.numeric(rain$northing[1]), measure = rain$measure_notation[1])
+    data.frame(wiski_id = id,
+               label = rain$label[1],
+               x = as.numeric(rain$easting[1]),
+               y = as.numeric(rain$northing[1]),
+               measure = rain$measure_notation[1])
   }))
-  gauges <- data.frame(name = name_of(info$label), file = paste0("rain_", ids, ".csv"),
-                       wiski_id = ids, x = info$x, y = info$y)
+  # The same table as for gauge files of your own, so the rest of the script treats both alike.
+  gauges <- data.frame(name = name_of(info$label),
+                       file = paste0("rain_", ids, ".csv"),
+                       wiski_id = ids,
+                       x = info$x,
+                       y = info$y)
 
-  # The downloads: missing readings become gaps; other quality flags are counted, not acted
-  # on (quality control belongs upstream).
+  # The downloads cover the period compared and, when the gauges are corrected, the long
+  # record too. A file already there is used when it was downloaded for at least that window
+  # (as gauge_downloads_record.csv in data_folder says), or, with no record, when its readings
+  # span it; otherwise it is downloaded again. Missing readings become gaps; other quality
+  # flags are counted, not acted on (quality control belongs upstream).
+  correcting <- !identical(lta_correction, "none")
+  dl_from <- if (correcting) min(period_from, correction_from) else period_from
+  dl_to <- if (correcting) max(period_to, correction_to) else period_to
+  record_file <- here("gauge_downloads_record.csv")
+  record <- if (file.exists(record_file)) {
+    fread(record_file, colClasses = "character")
+  } else {
+    data.table(wiski_id = character(0), from = character(0), to = character(0))
+  }
+
+  # Whether gauge i's file already covers the download window. The dates are ISO text, so
+  # they compare in order as text.
+  covered <- function(i, path) {
+    k <- match(ids[i], record$wiski_id)
+    if (!is.na(k)) return(record$from[k] <= dl_from && record$to[k] >= dl_to)
+    t <- as.POSIXct(fread(path, select = 1L)[[1]], tz = "UTC")
+    min(t, na.rm = TRUE) <= as.POSIXct(dl_from, tz = "UTC") + 86400 &&
+      max(t, na.rm = TRUE) >= as.POSIXct(dl_to, tz = "UTC") - 2 * 86400
+  }
+
   downloads <- do.call(rbind, lapply(seq_len(nrow(gauges)), function(i) {
     path <- here(gauges$file[i])
-    if (file.exists(path)) {
+    if (file.exists(path) && covered(i, path)) {
       say("  %s (%s): using %s, already downloaded", gauges$name[i], ids[i], basename(path))
-      return(data.frame(gauge = gauges$name[i], wiski_id = ids[i], label = info$label[i],
-                        readings = NA, missing = NA, flags = NA, file = basename(path)))
+      return(data.frame(gauge = gauges$name[i],
+                        wiski_id = ids[i],
+                        label = info$label[i],
+                        readings = NA,
+                        missing = NA,
+                        flags = NA,
+                        file = basename(path)))
     }
-    chunks <- reach.io::make_date_chunks(period_from, period_to)
-    say("  %s (%s, %s): downloading %d year%s", gauges$name[i], ids[i], info$label[i],
-        nrow(chunks), if (nrow(chunks) == 1) "" else "s")
+
+    # A year at a time, each request after a pause.
+    chunks <- reach.io::make_date_chunks(dl_from, dl_to)
+    say("  %s (%s, %s): downloading %d year%s",
+        gauges$name[i],
+        ids[i],
+        info$label[i],
+        nrow(chunks),
+        if (nrow(chunks) == 1) "" else "s")
     readings <- data.table::rbindlist(lapply(seq_len(nrow(chunks)), function(k) {
       pause()
       reach.io::fetch_readings(info$measure[i], chunks$chunk_from[k], chunks$chunk_to[k])
     }), fill = TRUE)
     if (!nrow(readings)) stop("No readings for ", ids[i], " in the dates asked.", call. = FALSE)
+
+    # Readings flagged Missing become gaps; the rest are written as they came.
     value <- as.numeric(readings$value)
     quality <- if ("quality" %in% names(readings)) readings$quality else rep(NA, nrow(readings))
     value[quality %in% "Missing"] <- NA
-    data.table::fwrite(data.table::data.table(
-      time = format(readings$dateTime, "%Y-%m-%d %H:%M:%S", tz = "UTC"), value = value), path)
+    data.table::fwrite(data.table::data.table(time = format(readings$dateTime,
+                                                            "%Y-%m-%d %H:%M:%S",
+                                                            tz = "UTC"),
+                                              value = value),
+                       path)
+
+    # Note the window downloaded, so the next run knows the file covers it.
+    record <<- rbind(record[record$wiski_id != ids[i]],
+                     data.table(wiski_id = ids[i], from = dl_from, to = dl_to))
+    fwrite(record, record_file)
+
+    # The other quality flags, counted for the summary.
     flagged <- table(quality[!quality %in% c("Good", "Missing", NA)])
-    data.frame(gauge = gauges$name[i], wiski_id = ids[i], label = info$label[i],
-               readings = nrow(readings), missing = sum(is.na(value)),
+    data.frame(gauge = gauges$name[i],
+               wiski_id = ids[i],
+               label = info$label[i],
+               readings = nrow(readings),
+               missing = sum(is.na(value)),
                flags = if (length(flagged)) {
                  paste(sprintf("%s %d", names(flagged), as.integer(flagged)), collapse = ", ")
-               } else "none", file = basename(path))
+               } else "none",
+               file = basename(path))
   }))
   fwrite(downloads, file.path(output_folder, "gauge_downloads.csv"))
 } else if (!identical(gauge_source, "files")) {
   stop("gauge_source must be \"hydrology_api\" or \"files\".", call. = FALSE)
 }
 
+# ---- The names of the series --------------------------------------------------------------
+
 gauge_names <- as.character(gauges$name)
+
 # Thiessen weights may name a gauge by its WISKI ID: put its name in its place.
 if (length(thiessen_weights) && !is.null(gauges$wiski_id)) {
   by_id <- match(names(thiessen_weights), gauges$wiski_id)
   names(thiessen_weights)[!is.na(by_id)] <- gauge_names[by_id[!is.na(by_id)]]
 }
-built_names <- c("thiessen", "equal", "equal_all", "multiquadric", "multiquadric_h19", "h19")
+
+# The averages the script builds have these names, so no gauge or other series may take one.
+built_names <- c("thiessen", "equal", "equal_all", "multiquadric", "multiquadric_lta",
+                 "multiquadric_h19", "h19")
 clash <- intersect(c(gauge_names, names(other_rain_files)), built_names)
 if (length(clash) || anyDuplicated(c(gauge_names, names(other_rain_files)))) {
   stop("Give each gauge and other series a name of its own, not one of ",
-       toString(built_names), ".", call. = FALSE)
+       toString(built_names),
+       ".",
+       call. = FALSE)
 }
 if (length(setdiff(names(thiessen_weights), gauge_names))) {
-  in_use <- if (is.null(gauges$wiski_id)) gauge_names else
+  in_use <- if (is.null(gauges$wiski_id)) {
+    gauge_names
+  } else {
     sprintf("%s (WISKI ID %s)", gauge_names, gauges$wiski_id)
+  }
   stop("thiessen_weights names gauges not in use: ",
-       toString(setdiff(names(thiessen_weights), gauge_names)), ". Name each gauge by its ",
-       "WISKI ID or its name here. The gauges in use: ", toString(in_use), call. = FALSE)
+       toString(setdiff(names(thiessen_weights), gauge_names)),
+       ". Name each gauge by its ",
+       "WISKI ID or its name here. The gauges in use: ",
+       toString(in_use),
+       call. = FALSE)
 }
+
+# ---- Read the files and put them on one time step ---------------------------------------
 
 inputs <- c(stats::setNames(as.character(gauges$file), gauge_names), other_rain_files)
 missing_files <- inputs[!file.exists(here(inputs))]
 if (length(missing_files)) {
   stop("Cannot find ", toString(here(missing_files)), ".", call. = FALSE)
 }
-say("Reading %d rain gauges, %d other series, the flow and the evaporation", length(gauge_names),
+say("Reading %d rain gauges, %d other series, the flow and the evaporation",
+    length(gauge_names),
     length(other_rain_files))
-raw <- c(list(flow = read_hydro_series(here(flow_file)), pe = read_hydro_series(here(pet_file))),
+raw <- c(list(flow = read_hydro_series(here(flow_file)),
+              pe = read_hydro_series(here(pet_file))),
          lapply(inputs, function(f) read_hydro_series(here(f))))
+
 from_t <- as.POSIXct(period_from, tz = "UTC")
 to_t <- as.POSIXct(period_to, tz = "UTC")
 if (is.na(from_t) || is.na(to_t) || from_t >= to_t) {
-  stop("period_from and period_to must be dates, the first before the second.", call. = FALSE)
+  stop("period_from and period_to must be dates, the first before the second.",
+       call. = FALSE)
 }
+
 # Each series against the period: one that starts late or ends early is padded with gaps.
+# A day's slack at the start and two at the end, so a file that stops at 23:45 on the last day
+# is not flagged.
 for (n in names(raw)) {
   span <- range(raw[[n]]$time[is.finite(raw[[n]]$value)])
   if (span[1] > from_t + 86400 || span[2] < to_t - 2 * 86400) {
     warning(sprintf(paste("%s covers %s to %s only, not the whole period %s to %s: the rest",
-                          "is gaps.%s"), n, format(span[1], "%Y-%m-%d"),
-                    format(span[2], "%Y-%m-%d"), period_from, period_to,
+                          "is gaps.%s"),
+                    n,
+                    format(span[1], "%Y-%m-%d"),
+                    format(span[2], "%Y-%m-%d"),
+                    period_from,
+                    period_to,
                     if (n %in% gauge_names && !is.null(downloads)) {
                       " Delete its file to download it again for the period."
-                    } else ""), call. = FALSE)
+                    } else ""),
+            call. = FALSE)
   }
 }
-grid <- do.call(align_series, c(raw, list(dt = step_hours, start = from_t,
+
+# Every series on the same steps over the period (the end is the start of the last step), then
+# each in its own units: flow in m3/s, evaporation and rain in mm per step.
+grid <- do.call(align_series, c(raw, list(dt = step_hours,
+                                          start = from_t,
                                           end = to_t - 3600 * step_hours)))
 flow <- convert_units(grid$flow, "auto", step_hours, "flow")
-pe <- fill_gaps(convert_units(grid$pe, "mm_per_step", step_hours, "pet"), "interpolate",
-                grid$time, "pe")
+pe <- fill_gaps(convert_units(grid$pe, "mm_per_step", step_hours, "pet"),
+                "interpolate",
+                grid$time,
+                "pe")
 as_rain <- function(n) convert_units(grid[[n]], "mm_per_step", step_hours, "rain")
+
+# G: the gauges' rain, one column per gauge, one row per step.
 G <- vapply(gauge_names, as_rain, numeric(length(grid$time)))
 if (is.null(dim(G))) G <- matrix(G, ncol = 1, dimnames = list(NULL, gauge_names))
+
+# ---- The long-term average grid, and the gauges corrected to it ----------------------------
+
+have_positions <- !anyNA(gauges$x) && !anyNA(gauges$y)
+lta <- NULL
+corrections <- NULL
+if (!lta_correction %in% c("none", "relative", "absolute")) {
+  stop("lta_correction must be \"none\", \"relative\" or \"absolute\".", call. = FALSE)
+}
+if (!identical(lta_correction, "none") && is.null(lta_rain_file)) {
+  stop("lta_correction needs lta_rain_file, the long-term average grid.", call. = FALSE)
+}
+
+if (!is.null(lta_rain_file)) {
+  if (is.null(boundary) || !have_positions) {
+    stop("The long-term average grid needs the boundary and every gauge's position.",
+         call. = FALSE)
+  }
+  if (!file.exists(here(lta_rain_file))) {
+    stop("Cannot find ", here(lta_rain_file), ".", call. = FALSE)
+  }
+  # Only the cells around the catchment and the gauges, with a 3 km margin.
+  lta <- read_lta_grid(here(lta_rain_file),
+                       extent = c(range(c(boundary$x, gauges$x)) + c(-3000, 3000),
+                                  range(c(boundary$y, gauges$y)) + c(-3000, 3000)))
+  # Each gauge's long-term average: the value of the grid cell it sits in.
+  lta_gauges <- stats::setNames(lta_at(lta, gauges$x, gauges$y), gauge_names)
+  if (anyNA(lta_gauges)) {
+    stop("The long-term average grid has no value at ",
+         toString(gauge_names[is.na(lta_gauges)]),
+         ".",
+         call. = FALSE)
+  }
+}
+
+if (!identical(lta_correction, "none")) {
+  # Each gauge's average year over the long record: its rain over the steps it has, scaled to
+  # a year by the share of the record those steps cover. Under 70% of the record is too little
+  # to trust: that gauge is left as measured.
+  c_from <- as.POSIXct(correction_from, tz = "UTC")
+  c_to <- as.POSIXct(correction_to, tz = "UTC")
+  corrections <- do.call(rbind, lapply(gauge_names, function(n) {
+    # The gauge's whole file, read above, not only the period compared.
+    d <- raw[[n]]
+    k <- d$time >= c_from & d$time < c_to & is.finite(d$value)
+    step_h <- stats::median(as.numeric(diff(d$time), units = "hours"))
+    cover <- sum(k) * step_h / as.numeric(difftime(c_to, c_from, units = "hours"))
+    # 8766 hours: a year of 365.25 days.
+    mean_year <- if (cover > 0) sum(d$value[k]) / (sum(k) * step_h / 8766) else NA_real_
+    data.frame(gauge = n,
+               record_years = round(sum(k) * step_h / 8766, 1),
+               coverage = round(cover, 3),
+               mm_per_year = round(mean_year, 1),
+               lta_mm_per_year = round(lta_gauges[[n]], 1),
+               raw_factor = if (cover >= 0.7) lta_gauges[[n]] / mean_year else NA_real_)
+  }))
+  short <- corrections$gauge[is.na(corrections$raw_factor)]
+  if (length(short)) {
+    warning("Under 70% of the correction record for ",
+            toString(short),
+            ": left as measured.",
+            call. = FALSE)
+  }
+
+  # Relative: divided by the median factor, so the network keeps its level. Absolute: as is.
+  corrections$factor <- if (identical(lta_correction, "relative")) {
+    corrections$raw_factor / stats::median(corrections$raw_factor, na.rm = TRUE)
+  } else {
+    corrections$raw_factor
+  }
+  corrections$factor[is.na(corrections$factor)] <- 1
+  corrections$raw_factor <- round(corrections$raw_factor, 3)
+  corrections$factor <- round(corrections$factor, 3)
+  fwrite(corrections, file.path(output_folder, "lta_corrections.csv"))
+  say("Gauges corrected to the long-term average (%s): %s",
+      lta_correction,
+      paste(sprintf("%s x %.3f", corrections$gauge, corrections$factor), collapse = ", "))
+
+  # Each gauge's column scaled by its factor: every series built below uses the corrected rain.
+  G <- sweep(G, 2, corrections$factor, "*")
+}
 
 # ---- The catchment averages -------------------------------------------------------------------
 
@@ -413,36 +688,45 @@ weighted_average <- function(w) {
   full <- stats::setNames(rep(0, length(gauge_names)), gauge_names)
   full[names(w)] <- w
   reporting <- !is.na(G)
+  # At each step: the weight of the gauges reporting, and their weighted rain.
   share <- as.numeric(reporting %*% full)
   total <- as.numeric(ifelse(reporting, G, 0) %*% full)
   out <- total / share
   out[share <= 0] <- NA
   out
 }
+
 # The grid over the catchment, for the multiquadric average and the Thiessen weights from the
 # geometry: each gauge's share of the cells inside the boundary that lie nearest to it.
-have_positions <- !anyNA(gauges$x) && !anyNA(gauges$y)
 geometry_weights <- NULL
 if (!is.null(boundary) && have_positions) {
-  cells_x <- seq(min(boundary$x) - grid_spacing_m, max(boundary$x) + grid_spacing_m,
+  cells_x <- seq(min(boundary$x) - grid_spacing_m,
+                 max(boundary$x) + grid_spacing_m,
                  by = grid_spacing_m)
-  cells_y <- seq(min(boundary$y) - grid_spacing_m, max(boundary$y) + grid_spacing_m,
+  cells_y <- seq(min(boundary$y) - grid_spacing_m,
+                 max(boundary$y) + grid_spacing_m,
                  by = grid_spacing_m)
   cell_grid <- list(x = cells_x, y = cells_y)
+  # TRUE for the cells whose centres fall inside the boundary.
   mask <- catchment_mask(cells_x, cells_y, boundary)
   inside_cells <- which(mask, arr.ind = TRUE)
   cx <- cells_x[inside_cells[, 1]]
   cy <- cells_y[inside_cells[, 2]]
+  # For each cell inside, the nearest gauge; each gauge's weight is its share of the cells.
   nearest <- apply(outer(cx, gauges$x, `-`)^2 + outer(cy, gauges$y, `-`)^2, 1, which.min)
   geometry_weights <- stats::setNames(tabulate(nearest, length(gauge_names)) / length(nearest),
                                       gauge_names)
 }
+
+# With no Thiessen weights given, those from the geometry stand in.
 thiessen_source <- "given"
 if (!length(thiessen_weights) && !is.null(geometry_weights)) {
   thiessen_weights <- geometry_weights[geometry_weights > 0]
   thiessen_source <- "from the geometry"
 }
 
+# thiessen and equal use the gauges with a Thiessen weight; equal_all every gauge, built only
+# when some gauge has no weight (otherwise it would be the same as equal).
 inside <- names(thiessen_weights)[thiessen_weights > 0]
 weights <- list()
 if (length(inside)) {
@@ -466,12 +750,48 @@ if (!is.null(boundary)) {
   say("Multiquadric average over the catchment")
   located <- data.frame(id = gauge_names, x = gauges$x, y = gauges$y)
   wet_steps <- which(rowSums(G > 0, na.rm = TRUE) > 0)
+  # Dry steps are 0 where some gauge reports, missing where none does.
   multiquadric <- ifelse(rowSums(!is.na(G)) > 0, 0, NA_real_)
-  fit <- merge_rainfall(located, G[wet_steps, , drop = FALSE], cell_grid, mask,
+  # The shape parameter c is chosen by leaving out one gauge at a time.
+  fit <- merge_rainfall(located,
+                        G[wet_steps, , drop = FALSE],
+                        cell_grid,
+                        mask,
                         method = "multiquadric")
   multiquadric[wet_steps] <- fit$rain
   built$multiquadric <- multiquadric
   multiquadric_c <- fit$c
+}
+
+# Multiquadric scaled by the long-term average: at each step, each gauge's rain as a share of
+# its long-term average, a multiquadric surface through those shares, and the surface times
+# the grid, averaged over the catchment. A storm then falls more heavily where it usually rains
+# more. The shares are kept in mm by scaling each gauge to the catchment's mean long-term
+# average L (z = g x L / L_gauge); with each cell weighted by its own long-term average, the
+# merge's weighted mean of the surface through z is then the mean of share times average. A
+# flat grid gives the plain multiquadric exactly.
+if (!is.null(lta)) {
+  # The long-term average at every cell of the multiquadric's grid.
+  lta_cells <- matrix(lta_at(lta,
+                             rep(cells_x, length(cells_y)),
+                             rep(cells_y, each = length(cells_x))),
+                      length(cells_x))
+  if (anyNA(lta_cells[mask])) {
+    stop("The long-term average grid has no value for part of the catchment.", call. = FALSE)
+  }
+  lta_catchment <- mean(lta_cells[mask])
+  say("Multiquadric scaled by the long-term average (catchment %.0f mm a year)", lta_catchment)
+  scaled <- sweep(G, 2, lta_catchment / lta_gauges, "*")
+  # The cells' weights are their long-term averages (0 outside the catchment).
+  fit_lta <- merge_rainfall(located,
+                            scaled[wet_steps, , drop = FALSE],
+                            cell_grid,
+                            ifelse(mask, lta_cells, 0),
+                            method = "multiquadric")
+  multiquadric_lta <- ifelse(rowSums(!is.na(G)) > 0, 0, NA_real_)
+  multiquadric_lta[wet_steps] <- fit_lta$rain
+  built$multiquadric_lta <- multiquadric_lta
+  multiquadric_lta_c <- fit_lta$c
 }
 
 # ---- H19 radar ------------------------------------------------------------------------------
@@ -484,10 +804,12 @@ if (!is.null(boundary)) {
 radar_at_gauges <- NULL
 radar_layouts <- NULL
 radar_processed <- NULL
+
 # Onto the record's steps: 15-minute radar summed into longer steps when step_hours is longer,
 # a step counting only when all its quarter hours are present.
 per_step <- 4 * step_hours
 onto_grid <- function(v, time) {
+  # The record step each radar step falls in, by the step's start time.
   bucket <- floor(as.numeric(time) / (step_hours * 3600))
   total <- tapply(v, bucket, function(x) if (sum(!is.na(x)) == per_step) sum(x) else NA)
   out <- rep(NA_real_, length(grid$time))
@@ -495,34 +817,50 @@ onto_grid <- function(v, time) {
   out[!is.na(k)] <- total[k[!is.na(k)]]
   out
 }
+
+# The quick way: the catchment average from the team's processed yearly extracts.
 if (!is.null(radar_processed_folder)) {
   if (is.null(radar_polygon_id)) {
     stop("Give radar_polygon_id, the catchment's polygon ID in Hyrad, with ",
-         "radar_processed_folder.", call. = FALSE)
+         "radar_processed_folder.",
+         call. = FALSE)
   }
   say("H19 radar from the processed extracts, polygon %s", radar_polygon_id)
-  radar_processed <- h19_processed(radar_processed_folder, radar_polygon_id, min(grid$time),
+  # To the last quarter hour of the last record step.
+  radar_processed <- h19_processed(radar_processed_folder,
+                                   radar_polygon_id,
+                                   min(grid$time),
                                    max(grid$time) + 3600 * step_hours - 900)
   built$h19 <- onto_grid(radar_processed$rain, radar_processed$time)
   say("  %.1f%% of 15-minute steps missing", 100 * mean(is.na(radar_processed$rain)))
 }
+
+# The slow way: the daily NetCDF files.
 if (!is.null(radar_folder)) {
   say("H19 radar")
   # Only the year folders of the record (and their month folders), not other folders beside
   # them; without year folders, the whole folder is searched.
   span <- as.Date(range(grid$time))
-  year_dirs <- file.path(radar_folder, seq(as.integer(format(span[1] - 1, "%Y")),
-                                           as.integer(format(span[2] + 1, "%Y"))))
+  year_dirs <- file.path(radar_folder,
+                         seq(as.integer(format(span[1] - 1, "%Y")),
+                             as.integer(format(span[2] + 1, "%Y"))))
   year_dirs <- year_dirs[dir.exists(year_dirs)]
   radar_files <- list.files(if (length(year_dirs)) year_dirs else radar_folder,
-                            pattern = radar_pattern, recursive = TRUE, full.names = TRUE)
+                            pattern = radar_pattern,
+                            recursive = TRUE,
+                            full.names = TRUE)
   if (!length(radar_files)) {
     stop("No files matching ", radar_pattern, " in ", radar_folder, ".", call. = FALSE)
   }
+
+  # The files of the record's days, by the date at the start of each name, with a day either
+  # side; a file whose name holds no date is kept.
   file_day <- as.Date(substr(basename(radar_files), 1, 8), "%Y%m%d")
   radar_files <- radar_files[is.na(file_day) | (file_day >= span[1] - 1 &
                                                   file_day <= span[2] + 1)]
   if (!length(radar_files)) stop("No H19 files fall within the record.", call. = FALSE)
+
+  # The layouts, from a file a month, bisecting to each change.
   radar_layouts <- h19_layouts(radar_files)
   print(radar_layouts)
   fwrite(radar_layouts$layouts, file.path(output_folder, "radar_layouts.csv"))
@@ -532,29 +870,43 @@ if (!is.null(radar_folder)) {
   }
   bad <- radar_layouts$layouts[nzchar(radar_layouts$layouts$problems), ]
   if (nrow(bad)) {
-    stop("H19 layout ", paste(sprintf("%d (%s to %s): %s", bad$layout, bad$first_day,
-                                      bad$last_day, bad$problems), collapse = "; "),
-         ". See radar_layouts.csv.", call. = FALSE)
+    stop("H19 layout ",
+         paste(sprintf("%d (%s to %s): %s",
+                       bad$layout,
+                       bad$first_day,
+                       bad$last_day,
+                       bad$problems),
+               collapse = "; "),
+         ". See radar_layouts.csv.",
+         call. = FALSE)
   }
+
   have_boundary <- !is.null(boundary)
   if (!have_boundary && !have_positions) {
     stop("The radar needs the catchment boundary or the gauges' positions, to know where to ",
-         "read.", call. = FALSE)
+         "read.",
+         call. = FALSE)
   }
+  # The window read from each file: the catchment and the gauges, with a 3 km margin.
   px <- c(if (have_boundary) boundary$x, if (have_positions) gauges$x)
   py <- c(if (have_boundary) boundary$y, if (have_positions) gauges$y)
   extent <- c(min(px) - 3000, max(px) + 3000, min(py) - 3000, max(py) + 3000)
+
   # Multiquadric through the gauges and the radar (conditional merging): the multiquadric
   # surface through the gauges, plus the radar's own pattern between them (the radar field less
   # a multiquadric surface through the radar at the gauges), averaged over the catchment's
   # radar cells. Worked out step by step as the radar is read, at 15-minute steps.
   conditional <- have_boundary && have_positions && exists("multiquadric_c") &&
     step_hours == 0.25
+
+  # A radar extract kept from an earlier run is used when it came from the same files (and has
+  # the conditional merge, when that is wanted).
   cache <- file.path(output_folder, "radar_extract.csv")
   cache_files <- file.path(output_folder, "radar_extract_files.txt")
   cached <- file.exists(cache) && file.exists(cache_files) &&
     identical(sort(readLines(cache_files)), sort(radar_files)) &&
     (!conditional || "h19_multiquadric" %in% names(fread(cache, nrows = 0)))
+
   if (cached) {
     say("  using the radar already extracted (%s)", basename(cache))
     extract <- fread(cache)
@@ -564,6 +916,7 @@ if (!is.null(radar_folder)) {
     # its values in mm per step, by that file's own layout.
     h <- h19_radar(radar_files, extent, layouts = radar_layouts)
     in_catchment <- if (have_boundary) catchment_mask(h$grid$x, h$grid$y, boundary)
+
     # The 3 x 3 cells around each gauge: a gauge and the cell it sits in rarely line up.
     near <- if (have_positions) {
       lapply(seq_len(nrow(gauges)), function(k) {
@@ -574,20 +927,34 @@ if (!is.null(radar_folder)) {
       })
     }
     say("  reading %d steps from %d files", length(h$time), length(radar_files))
+
+    # The record step of each radar step, to find the gauges' rain at the same time.
     gauge_row <- match(as.numeric(h$time), as.numeric(grid$time))
+
     # The cell each gauge sits in, for the conditional merge.
     gauge_cell <- if (have_positions) {
       cbind(vapply(gauges$x, function(x) which.min(abs(h$grid$x - x)), integer(1)),
             vapply(gauges$y, function(y) which.min(abs(h$grid$y - y)), integer(1)))
     }
+
+    # One step's conditional merge: missing without the gauges, or with radar missing over the
+    # catchment or at a gauge; 0 when gauges and radar are all dry.
     merge_step <- function(r, s) {
       g <- if (is.na(gauge_row[s])) rep(NA_real_, length(gauge_names)) else G[gauge_row[s], ]
       inside <- r[in_catchment]
       if (all(is.na(g)) || anyNA(inside) || anyNA(r[gauge_cell])) return(NA_real_)
       if (all(g <= 0, na.rm = TRUE) && all(inside <= 0) && all(r[gauge_cell] <= 0)) return(0)
-      merge_rainfall(located, matrix(g, nrow = 1), h$grid, in_catchment,
-                     radar = function(t) r, method = "conditional", c = multiquadric_c)$rain
+      merge_rainfall(located,
+                     matrix(g, nrow = 1),
+                     h$grid,
+                     in_catchment,
+                     radar = function(t) r,
+                     method = "conditional",
+                     c = multiquadric_c)$rain
     }
+
+    # Every radar step: the catchment average, the conditional merge, and the radar over each
+    # gauge. A step missing more than a tenth of the catchment's cells is missing.
     values <- t(vapply(seq_along(h$time), function(s) {
       r <- h$radar(s)
       r[r < 0] <- NA
@@ -604,6 +971,8 @@ if (!is.null(radar_folder)) {
       }
       c(catchment, if (conditional) merge_step(r, s) else NA_real_, at_gauges)
     }, numeric(2 + length(gauge_names))))
+
+    # Files the reader could not use: their steps are missing, and they are listed.
     skipped <- h$skipped()
     if (nrow(skipped)) {
       fwrite(skipped, file.path(output_folder, "radar_skipped_files.csv"))
@@ -611,12 +980,15 @@ if (!is.null(radar_folder)) {
           nrow(skipped))
       say("  radar_skipped_files.csv")
     }
+
+    # Kept for the next run, with the list of files it came from.
     extract <- data.table(time = h$time, values)
     setnames(extract, c("time", "h19", "h19_multiquadric", paste0("radar_at_", gauge_names)))
     fwrite(extract[, time := format(time, "%Y-%m-%d %H:%M:%S", tz = "UTC")], cache)
     extract$time <- as.POSIXct(extract$time, tz = "UTC")
     writeLines(radar_files, cache_files)
   }
+
   # The processed extract, where given, is the catchment average; the daily files then give
   # only the radar over each gauge.
   if (have_boundary && is.null(radar_processed)) {
@@ -640,12 +1012,20 @@ for (n in names(built)) {
          file.path(output_folder, "catchment_rain", paste0(n, ".csv")))
 }
 
-rains <- c(built, lapply(stats::setNames(gauge_names, gauge_names), function(n) G[, n]),
+# ---- Every series together ------------------------------------------------------------------
+
+# The averages built, then each gauge, then any other series given: each is judged alike.
+rains <- c(built,
+           lapply(stats::setNames(gauge_names, gauge_names), function(n) G[, n]),
            lapply(stats::setNames(names(other_rain_files), names(other_rain_files)), as_rain))
 names_r <- names(rains)
 gauge_series <- gauge_names
 years <- as.numeric(difftime(max(grid$time), min(grid$time), units = "days")) / 365.25
+
+# One colour per series, the same in every plot.
 colours <- grDevices::hcl.colors(max(3L, length(names_r)), "Dark 3")[seq_along(names_r)]
+
+# Draws a plot into a PNG in the output folder.
 png_of <- function(name, draw, width = 1600, height = 900) {
   grDevices::png(file.path(output_folder, name), width = width, height = height, res = 150)
   on.exit(grDevices::dev.off())
@@ -655,7 +1035,8 @@ png_of <- function(name, draw, width = 1600, height = 900) {
 # Steps where every series has a value: each comparison uses the same steps, so a series is
 # not judged on a different stretch of the record from the others.
 common <- Reduce(`&`, lapply(rains, is.finite)) & is.finite(flow)
-say("%.1f years of data; %.0f%% of steps have every series and the flow", years,
+say("%.1f years of data; %.0f%% of steps have every series and the flow",
+    years,
     100 * mean(common))
 
 # ---- 1. Gaps ------------------------------------------------------------------------------
@@ -673,19 +1054,38 @@ balance_of <- function(r) {
   water_balance(data.frame(time = grid$time, rain = rr, pet = pe), q, area_km2)
 }
 balances <- lapply(rains, balance_of)
+
+# The whole record's figures for each series; the rain per year over the common steps.
 balance <- data.frame(
   rain = names_r,
   rain_mm_per_year = round(vapply(balances, function(b) b$record$rain_mm, 0) /
                              (sum(common) * step_hours / 8766)),
   runoff_ratio = round(vapply(balances, function(b) b$record$runoff_ratio, 0), 3),
   loss_over_pet = round(vapply(balances, function(b) b$record$loss_over_pet, 0), 3),
-  flagged_years = vapply(balances, function(b) sum(nzchar(b$years$flags) &
-                                                     b$years$flags != "incomplete"), 0L))
+  flagged_years = vapply(balances, function(b) {
+    sum(nzchar(b$years$flags) & b$years$flags != "incomplete")
+  }, 0L)
+)
 # A balance is implausible when the flow exceeds the rain (runoff ratio above 1) or the losses
 # exceed what evaporation can take (loss over potential evaporation above 1). Distance beyond
 # either limit counts against a series.
 balance$balance_problem <- round(pmax(balance$runoff_ratio - 1, 0) +
                                    pmax(balance$loss_over_pet - 1, 0), 3)
+
+# Each series' annual rain against the long-term average: a catchment average against the
+# catchment's, a gauge against its own cell's. Over a short record the years' own weather
+# moves this as much as any fault does.
+lta_check <- NULL
+if (!is.null(lta)) {
+  lta_of <- ifelse(names_r %in% gauge_names,
+                   lta_gauges[match(names_r, gauge_names)],
+                   lta_catchment)
+  lta_check <- data.frame(rain = names_r,
+                          rain_mm_per_year = balance$rain_mm_per_year,
+                          lta_mm_per_year = round(lta_of),
+                          ratio = round(balance$rain_mm_per_year / lta_of, 3))
+  fwrite(lta_check, file.path(output_folder, "long_term_average_check.csv"))
+}
 
 # HOW TO READ rain_by_year.png
 # One group of bars per water year (October to September), one bar per rain series: the rain
@@ -699,9 +1099,16 @@ png_of("rain_by_year.png", function() {
   totals <- vapply(balances, function(b) b$years$rain_mm, numeric(length(periods)))
   if (is.null(dim(totals))) totals <- matrix(totals, nrow = 1)
   graphics::par(mar = c(5, 4.5, 2, 1))
-  graphics::barplot(t(totals), beside = TRUE, names.arg = periods, col = colours, border = NA,
-                    las = 2, ylab = "Rain (mm)", main = "Rain by water year, each series",
-                    ylim = c(0, 1.3 * max(totals, na.rm = TRUE)), legend.text = names_r,
+  graphics::barplot(t(totals),
+                    beside = TRUE,
+                    names.arg = periods,
+                    col = colours,
+                    border = NA,
+                    las = 2,
+                    ylab = "Rain (mm)",
+                    main = "Rain by water year, each series",
+                    ylim = c(0, 1.3 * max(totals, na.rm = TRUE)),
+                    legend.text = names_r,
                     args.legend = list(bty = "n", x = "top", ncol = min(5, length(names_r))))
 })
 
@@ -718,13 +1125,26 @@ png_of("runoff_ratio_by_series.png", function() {
   ratio <- vapply(balances, function(b) b$years$runoff_ratio, numeric(length(periods)))
   if (is.null(dim(ratio))) ratio <- matrix(ratio, nrow = 1)
   graphics::par(mar = c(5, 4.5, 2, 1))
-  graphics::matplot(seq_along(periods), ratio, type = "b", pch = 19, lty = 1, lwd = 2,
-                    col = colours, xaxt = "n", xlab = "", ylab = "Runoff ratio (flow / rain)",
+  graphics::matplot(seq_along(periods),
+                    ratio,
+                    type = "b",
+                    pch = 19,
+                    lty = 1,
+                    lwd = 2,
+                    col = colours,
+                    xaxt = "n",
+                    xlab = "",
+                    ylab = "Runoff ratio (flow / rain)",
                     ylim = c(0, 1.3 * max(1.1, max(ratio, na.rm = TRUE))),
                     main = "Runoff ratio by water year, each series")
   graphics::axis(1, at = seq_along(periods), labels = periods, las = 2)
   graphics::abline(h = 1, col = "#B3261E")
-  graphics::legend("top", names_r, col = colours, lwd = 2, pch = 19, bty = "n",
+  graphics::legend("top",
+                   names_r,
+                   col = colours,
+                   lwd = 2,
+                   pch = 19,
+                   bty = "n",
                    ncol = min(5, length(names_r)))
 })
 
@@ -755,24 +1175,33 @@ bend_pct <- vapply(cumulative, function(d) round(100 * max(abs(d$rain - d$refere
 #   a few per cent or more deserves a look at that series' record around the bend.
 png_of("double_mass_by_series.png", function() {
   graphics::par(mar = c(4.5, 4.5, 2, 1))
-  graphics::plot(c(0, 1), c(0, 1), type = "n",
+  graphics::plot(c(0, 1),
+                 c(0, 1),
+                 type = "n",
                  xlab = "Cumulative rain of the median series (share of total)",
                  ylab = "Cumulative rain of each series (share of total)",
                  main = "Double-mass curves, each series against the others")
   graphics::abline(0, 1, lty = 2, col = "grey50")
   for (i in seq_along(cumulative)) {
     d <- cumulative[[i]]
+    # 2,000 points per line are plenty to draw, and keep the plot quick.
     k <- unique(round(seq(1, nrow(d), length.out = 2000)))
     graphics::lines(d$reference[k], d$rain[k], col = colours[i], lwd = 2)
   }
-  graphics::legend("topleft", sprintf("%s (bend %.1f%%)", names_r, bend_pct), col = colours,
-                   lwd = 2, bty = "n")
+  graphics::legend("topleft",
+                   sprintf("%s (bend %.1f%%)", names_r, bend_pct),
+                   col = colours,
+                   lwd = 2,
+                   bty = "n")
 })
 
 # ---- 4. Quick response ---------------------------------------------------------------------
 
 say("How closely the river follows each series")
-response <- gauge_response(as.data.frame(rains), flow, grid$time, dt = step_hours,
+response <- gauge_response(as.data.frame(rains),
+                           flow,
+                           grid$time,
+                           dt = step_hours,
                            area_km2 = area_km2)
 fwrite(response$summary, file.path(output_folder, "quick_response.csv"))
 
@@ -799,10 +1228,16 @@ say("Flood by flood")
 # quick flow (the water above the baseflow, from the flow alone).
 average <- rowMeans(as.data.frame(rains), na.rm = TRUE)
 average[!is.finite(average)] <- 0
-floods <- screen_events(find_events(average, ifelse(is.finite(flow), flow, NA_real_),
-                                    grid$time, dt = step_hours, area_km2 = area_km2),
-                        flow, exclude = c("small_rise", "gaps"))
+floods <- screen_events(find_events(average,
+                                    ifelse(is.finite(flow), flow, NA_real_),
+                                    grid$time,
+                                    dt = step_hours,
+                                    area_km2 = area_km2),
+                        flow,
+                        exclude = c("small_rise", "gaps"))
 floods <- floods[floods$use & is.finite(floods$quickflow_mm) & floods$quickflow_mm > 0, ]
+
+# Each series' rain over each flood: missing if any step of the window is missing.
 event_rain <- vapply(rains, function(r) {
   vapply(seq_len(nrow(floods)), function(e) {
     w <- floods$rain_start[e]:floods$rain_end[e]
@@ -810,17 +1245,22 @@ event_rain <- vapply(rains, function(r) {
   }, 0)
 }, numeric(nrow(floods)))
 if (is.null(dim(event_rain))) event_rain <- matrix(event_rain, ncol = length(rains))
+
+# A storm missed: more quick flow than rain, or under half a millimetre of rain at all.
 ratio <- floods$quickflow_mm / event_rain
 missed <- colSums(ratio > 1 | event_rain < 0.5, na.rm = TRUE)
 missed_pct <- round(100 * missed / colSums(is.finite(ratio)), 1)
+
 # Steadiness: the spread of the log of the flood runoff ratios, over floods the series saw
 # some rain for (the others count as missed storms above). Floods differ, so the ratios always
 # vary; poor rain adds its own scatter on top.
 seen <- ratio
 seen[!is.finite(seen) | event_rain < 0.5] <- NA
 spread <- round(apply(log(seen), 2, stats::sd, na.rm = TRUE), 3)
-flood_table <- data.frame(rain = names_r, floods = colSums(is.finite(ratio)),
-                          missed_storms = as.integer(missed), missed_pct = missed_pct,
+flood_table <- data.frame(rain = names_r,
+                          floods = colSums(is.finite(ratio)),
+                          missed_storms = as.integer(missed),
+                          missed_pct = missed_pct,
                           ratio_spread = spread)
 
 # HOW TO READ flood_runoff_ratios.png
@@ -833,7 +1273,11 @@ flood_table <- data.frame(rain = names_r, floods = colSums(is.finite(ratio)),
 #   single gauges fail most: a catchment average from several gauges usually does better.
 png_of("flood_runoff_ratios.png", function() {
   graphics::par(mar = c(5, 4.5, 2, 1))
-  graphics::boxplot(as.data.frame(seen), names = names_r, col = colours, log = "y", las = 2,
+  graphics::boxplot(as.data.frame(seen),
+                    names = names_r,
+                    col = colours,
+                    log = "y",
+                    las = 2,
                     ylab = "Flood runoff ratio (quick flow / rain), log scale",
                     main = sprintf("Runoff ratios of the same %d floods, each series",
                                    nrow(floods)))
@@ -857,16 +1301,21 @@ if (length(gauge_series) > 1) {
   if (length(unknown)) {
     stop("gauge_series names series not in rain_files: ", toString(unknown), call. = FALSE)
   }
+  # The radar-based series are not weightings of the gauges, so they are left out here.
   averages <- setdiff(names_r, c(gauge_series, "h19", "multiquadric_h19"))
   G <- as.matrix(as.data.frame(rains[gauge_series]))
   given <- weights[intersect(names(weights), averages)]
   for (n in names(given)) {
     bad <- setdiff(names(given[[n]]), gauge_series)
     if (length(bad)) {
-      stop("The weights for ", n, " name gauges not in gauge_series: ", toString(bad),
+      stop("The weights for ",
+           n,
+           " name gauges not in gauge_series: ",
+           toString(bad),
            call. = FALSE)
     }
   }
+
   # Weights not given are estimated: the average regressed on the gauges, with no intercept,
   # over wet steps where every gauge and the average have a value. A linear method with steady
   # weights fits closely (R2 near 1); a poor fit means the weights change over time, or the
@@ -904,7 +1353,8 @@ if (length(gauge_series) > 1) {
     b <- event_rain[, match(p[2], names_r)]
     k <- is.finite(a) & is.finite(b) & a >= 1 & b >= 1
     d <- (a[k] - b[k]) / ((a[k] + b[k]) / 2)
-    data.frame(gauges = paste(p, collapse = " and "), floods = sum(k),
+    data.frame(gauges = paste(p, collapse = " and "),
+               floods = sum(k),
                single_gauge_error_pct = round(100 * stats::sd(d) / sqrt(2), 1))
   }))
   sigma <- stats::median(pair_error$single_gauge_error_pct, na.rm = TRUE)
@@ -920,6 +1370,8 @@ if (length(gauge_series) > 1) {
     out[!is.finite(out) | s <= 0] <- NA
     out
   })
+
+  # How many of the 20 largest floods fell while an average rested on under 1.5 gauges.
   largest <- utils::head(order(-floods$peak_flow), 20)
   low_in_flood <- vapply(n_eff_series, function(ne) {
     lows <- vapply(largest, function(e) {
@@ -931,12 +1383,20 @@ if (length(gauge_series) > 1) {
 
   weights_table <- do.call(rbind, lapply(names(weight_sets), function(n) {
     w <- weight_sets[[n]]
+    # The sum of the squared weights, after dividing them by their sum.
     s2 <- sum((w / sum(w))^2)
     data.frame(
       rain = n,
       weights = paste(sprintf("%s %.3f", names(w)[w != 0], w[w != 0]), collapse = ", "),
-      source = if (n == "thiessen") thiessen_source else if (n %in% c("equal", "equal_all")) "equal" else
-        if (n %in% names(given)) "given" else sprintf("estimated, R2 %.3f", fit_r2[[n]]),
+      source = if (n == "thiessen") {
+        thiessen_source
+      } else if (n %in% c("equal", "equal_all")) {
+        "equal"
+      } else if (n %in% names(given)) {
+        "given"
+      } else {
+        sprintf("estimated, R2 %.3f", fit_r2[[n]])
+      },
       weights_sum = round(sum(w), 3),
       sum_of_squares = round(s2, 3),
       effective_gauges = round(1 / s2, 2),
@@ -945,7 +1405,8 @@ if (length(gauge_series) > 1) {
       error_factor_rho_0.5 = round(sqrt(0.5 * s2 + 0.5), 2),
       suggested_rain_error = round(sigma / 100 * sqrt(s2), 3),
       effective_gauges_p05 = round(stats::quantile(n_eff_series[[n]], 0.05, na.rm = TRUE), 2),
-      largest_floods_below_1.5 = as.integer(low_in_flood[[n]]))
+      largest_floods_below_1.5 = as.integer(low_in_flood[[n]])
+    )
   }))
   fwrite(weights_table, file.path(output_folder, "weights_and_error.csv"))
   weights_done <- TRUE
@@ -970,7 +1431,10 @@ if (length(gauge_series) > 1) {
     days <- as.Date(names(daily[[1]]))
     top <- max(c(1.5, unlist(daily)[is.finite(unlist(daily))])) * 1.15
     graphics::par(mar = c(4, 4.5, 2, 1))
-    graphics::plot(range(days), c(0, top), type = "n", xlab = "",
+    graphics::plot(range(days),
+                   c(0, top),
+                   type = "n",
+                   xlab = "",
                    ylab = "Effective number of gauges",
                    main = "How many gauges each catchment average used, day by day")
     graphics::abline(h = 1.5, lty = 2, col = "grey50")
@@ -979,9 +1443,14 @@ if (length(gauge_series) > 1) {
       v[!is.finite(v)] <- NA
       graphics::lines(days, v, col = colours[match(names(daily)[i], names_r)], lwd = 2)
     }
-    graphics::rug(as.Date(grid$time[floods$rain_start[largest]]), side = 3, col = "grey40",
+    graphics::rug(as.Date(grid$time[floods$rain_start[largest]]),
+                  side = 3,
+                  col = "grey40",
                   lwd = 2)
-    graphics::legend("bottomleft", names(daily), bty = "n", lwd = 2,
+    graphics::legend("bottomleft",
+                     names(daily),
+                     bty = "n",
+                     lwd = 2,
                      col = colours[match(names(daily), names_r)])
   })
 }
@@ -999,6 +1468,7 @@ if (!is.null(radar_at_gauges)) {
   say("Radar against the gauges")
   day <- as.Date(grid$time)
   steps_a_day <- 24 / step_hours
+  # A day's total, missing unless every step of the day is there.
   daily <- function(v) {
     total <- tapply(v, day, function(x) if (sum(!is.na(x)) == steps_a_day) sum(x) else NA)
     stats::setNames(as.numeric(total), names(total))
@@ -1009,22 +1479,29 @@ if (!is.null(radar_at_gauges)) {
     ok <- is.finite(g) & is.finite(r) & g >= 1 & r >= 1
     if (!any(ok)) return(NULL)
     d <- as.Date(names(g)[ok])
-    data.frame(gauge = n, day = d, month = as.integer(format(d, "%m")),
-               gauge_mm = g[ok], radar_mm = r[ok], ratio = r[ok] / g[ok])
+    data.frame(gauge = n,
+               day = d,
+               month = as.integer(format(d, "%m")),
+               gauge_mm = g[ok],
+               radar_mm = r[ok],
+               ratio = r[ok] / g[ok])
   }))
   if (!is.null(pairs_rg) && nrow(pairs_rg)) {
+    # Meteorological seasons, by calendar month.
     season_of <- c("Winter", "Winter", "Spring", "Spring", "Spring", "Summer", "Summer",
                    "Summer", "Autumn", "Autumn", "Autumn", "Winter")
     pairs_rg$season <- season_of[pairs_rg$month]
     radar_table <- do.call(rbind, lapply(split(pairs_rg, pairs_rg$gauge), function(p) {
       s <- tapply(p$ratio, p$season, stats::median)
-      data.frame(gauge = p$gauge[1], days = nrow(p),
+      data.frame(gauge = p$gauge[1],
+                 days = nrow(p),
                  ratio_all = round(stats::median(p$ratio), 2),
                  ratio_winter = round(unname(s["Winter"]), 2),
                  ratio_spring = round(unname(s["Spring"]), 2),
                  ratio_summer = round(unname(s["Summer"]), 2),
                  ratio_autumn = round(unname(s["Autumn"]), 2))
     }))
+    # In the gauges' own order, without gauges that had no days.
     radar_table <- radar_table[match(gauge_names, radar_table$gauge), ]
     radar_table <- radar_table[!is.na(radar_table$gauge), ]
     radar_table$winter_over_summer <- round(radar_table$ratio_winter /
@@ -1032,6 +1509,7 @@ if (!is.null(radar_at_gauges)) {
     fwrite(radar_table, file.path(output_folder, "radar_vs_gauges.csv"))
     fwrite(pairs_rg, file.path(output_folder, "radar_vs_gauges_daily.csv"))
     radar_done <- TRUE
+
     # HOW TO READ radar_vs_gauge_by_month.png
     # One line per gauge: in each calendar month, the median of the radar's daily total over
     # the gauge divided by the gauge's own, over days with at least 1 mm in both. The line at 1
@@ -1045,6 +1523,7 @@ if (!is.null(radar_at_gauges)) {
     #   siting. Months with few rain days are noisy: radar_vs_gauges_daily.csv has the days.
     png_of("radar_vs_gauge_by_month.png", function() {
       months <- c(10:12, 1:9)
+      # A month's median needs at least three days.
       by_month <- vapply(gauge_names, function(n) {
         p <- pairs_rg[pairs_rg$gauge == n, ]
         vapply(months, function(m) {
@@ -1054,20 +1533,34 @@ if (!is.null(radar_at_gauges)) {
       }, numeric(12))
       graphics::par(mar = c(4, 4.5, 2, 1))
       top <- max(c(1.5, by_month), na.rm = TRUE) * 1.1
-      graphics::matplot(seq_along(months), by_month, type = "b", pch = 19, lty = 1, lwd = 2,
-                        col = colours[match(gauge_names, names_r)], xaxt = "n", xlab = "",
-                        ylim = c(0, top), ylab = "Radar / gauge, daily totals (median)",
+      graphics::matplot(seq_along(months),
+                        by_month,
+                        type = "b",
+                        pch = 19,
+                        lty = 1,
+                        lwd = 2,
+                        col = colours[match(gauge_names, names_r)],
+                        xaxt = "n",
+                        xlab = "",
+                        ylim = c(0, top),
+                        ylab = "Radar / gauge, daily totals (median)",
                         main = "Radar against each gauge, month by month")
       graphics::axis(1, at = seq_along(months), labels = month.abb[months])
       graphics::abline(h = 1, lty = 2, col = "grey50")
-      graphics::legend("top", gauge_names, col = colours[match(gauge_names, names_r)],
-                       lwd = 2, pch = 19, bty = "n", ncol = min(5, length(gauge_names)))
+      graphics::legend("top",
+                       gauge_names,
+                       col = colours[match(gauge_names, names_r)],
+                       lwd = 2,
+                       pch = 19,
+                       bty = "n",
+                       ncol = min(5, length(gauge_names)))
     })
   }
 }
 
 # ---- The ranking ---------------------------------------------------------------------------
 
+# One row per series, every measure side by side.
 rs <- response$summary[match(names_r, response$summary$gauge), ]
 ranking <- data.frame(
   rain = names_r,
@@ -1084,14 +1577,18 @@ ranking <- data.frame(
   storm_size_r = round(rs$size_r, 3),
   dry_events = rs$dry_events,
   missed_storms_pct = flood_table$missed_pct,
-  flood_ratio_spread = flood_table$ratio_spread)
+  flood_ratio_spread = flood_table$ratio_spread
+)
+
 # Two measures against the other series, since a catchment's true rain is never known: how
 # far a series' total sits from the median of all the series, and how far its lag sits from
 # their median lag. One series well apart from the rest is the likelier to be wrong; when
 # most of the series are poor, read these with care.
 med_total <- stats::median(ranking$rain_mm_per_year)
-ranking$total_apart_pct <- round(100 * abs(ranking$rain_mm_per_year - med_total) / med_total, 1)
+ranking$total_apart_pct <- round(100 * abs(ranking$rain_mm_per_year - med_total) / med_total,
+                                 1)
 ranking$lag_apart_h <- abs(ranking$lag_h - stats::median(ranking$lag_h))
+
 # Each measure ranks the series, best first; the overall rank is the mean. Higher is better
 # for the response correlation, the flood wins and the storm size correlation; lower for the
 # rest.
@@ -1111,54 +1608,84 @@ warnings_for <- function(i) {
   x <- ranking[i, ]
   c(if (x$runoff_ratio > 1) "more flow than rain: it under-catches or misses storms",
     if (x$loss_over_pet > 1) "losses beyond what evaporation can take: too much rain",
-    if (x$double_mass_bend_pct > 2) sprintf("it bends %.0f%% from the other series",
-                                            x$double_mass_bend_pct),
+    if (x$double_mass_bend_pct > 2) {
+      sprintf("it bends %.0f%% from the other series", x$double_mass_bend_pct)
+    },
     if (x$lag_h < 0) "the river rises before its rain: check its clock",
     if (x$dry_events > 1) sprintf("%d floods it saw almost no rain for", x$dry_events),
-    if (x$missed_storms_pct > 5) sprintf("%.0f%% of floods had more quick flow than its rain",
-                                          x$missed_storms_pct),
+    if (x$missed_storms_pct > 5) {
+      sprintf("%.0f%% of floods had more quick flow than its rain", x$missed_storms_pct)
+    },
     if (x$missing_pct > 5) sprintf("%.0f%% of its record is missing", x$missing_pct),
-    if (x$total_apart_pct > 10) sprintf("its total is %.0f%% from the median of the series",
-                                        x$total_apart_pct),
-    if (x$lag_apart_h >= 1) sprintf("its lag is %g h from the others': check its clock",
-                                    x$lag_apart_h))
+    if (x$total_apart_pct > 10) {
+      sprintf("its total is %.0f%% from the median of the series", x$total_apart_pct)
+    },
+    if (x$lag_apart_h >= 1) {
+      sprintf("its lag is %g h from the others': check its clock", x$lag_apart_h)
+    })
 }
 lags <- stats::setNames(ranking$lag_h, ranking$rain)
 best <- ranking$rain[1]
+
+# ---- The summary ---------------------------------------------------------------------------
+
+# summary.md, built a section at a time; a section left out is NULL, which c() drops.
 lines <- c(
   "# Which rain series best explains the flow", "",
-  sprintf("%.1f years of %s data; %d rain series; %d floods compared.", years,
-          if (step_hours < 1) sprintf("%g-minute", step_hours * 60) else
-            sprintf("%g-hour", step_hours), length(names_r), nrow(floods)),
+  sprintf("%.1f years of %s data; %d rain series; %d floods compared.",
+          years,
+          if (step_hours < 1) {
+            sprintf("%g-minute", step_hours * 60)
+          } else {
+            sprintf("%g-hour", step_hours)
+          },
+          length(names_r),
+          nrow(floods)),
+
   # The balance and double-mass checks use only the steps where every series has a value, so
   # a short series narrows them all.
   if (mean(common) < 0.8) {
     short <- names(missing_pct)[missing_pct > 20]
-    c("", sprintf(paste("**Only %.0f%% of the record (%.1f years) has every series.** The water",
-                        "balance and double-mass checks use those steps alone; the flood checks",
-                        "judge each series on the floods it covers. The shortest: %s. Leave",
-                        "it out for a fair comparison over the whole record, or keep it to",
-                        "compare everything over its period."),
-                  100 * mean(common), years * mean(common),
-                  paste(sprintf("%s (%.0f%% missing)", short, missing_pct[short]),
-                        collapse = ", ")), "")
+    c("",
+      sprintf(paste("**Only %.0f%% of the record (%.1f years) has every series.** The water",
+                    "balance and double-mass checks use those steps alone; the flood checks",
+                    "judge each series on the floods it covers. The shortest: %s. Leave",
+                    "it out for a fair comparison over the whole record, or keep it to",
+                    "compare everything over its period."),
+              100 * mean(common),
+              years * mean(common),
+              paste(sprintf("%s (%.0f%% missing)", short, missing_pct[short]),
+                    collapse = ", ")),
+      "")
   },
   "Judged from the data alone, before any model. How to read each plot: the HOW TO READ",
   "notes in compare_rain.R, beside the line that draws it.", "",
-  sprintf("**Best by the data: %s.** The ranking, best first (mean rank over twelve",
-          best), "measures):", "",
+
+  # The ranking.
+  sprintf("**Best by the data: %s.** The ranking, best first (mean rank over twelve", best),
+  "measures):", "",
   sprintf(paste("%d. **%s** (mean rank %.1f): runoff ratio %.2f, quick-response correlation",
-                "%.2f, first for %d of %d floods."), seq_len(nrow(ranking)), ranking$rain,
-          ranking$mean_rank, ranking$runoff_ratio, ranking$response_r, ranking$flood_wins,
+                "%.2f, first for %d of %d floods."),
+          seq_len(nrow(ranking)),
+          ranking$rain,
+          ranking$mean_rank,
+          ranking$runoff_ratio,
+          ranking$response_r,
+          ranking$flood_wins,
           sum(response$summary$event_wins)),
+
+  # The averages built, with their weights.
   "", "## The catchment averages built", "",
-  sprintf("- **%s**: %s.", names(weights), vapply(names(weights), function(n) {
-    w <- weights[[n]]
-    paste(sprintf("%s %.3f", names(w), w), collapse = ", ")
-  }, "")),
+  sprintf("- **%s**: %s.",
+          names(weights),
+          vapply(names(weights), function(n) {
+            w <- weights[[n]]
+            paste(sprintf("%s %.3f", names(w), w), collapse = ", ")
+          }, "")),
   if (!is.null(boundary)) {
     c(sprintf(paste("- **multiquadric**: every gauge, on a %g m grid, shape parameter c = %.0f m",
-                    "(chosen by leaving out one gauge at a time)."), grid_spacing_m,
+                    "(chosen by leaving out one gauge at a time)."),
+              grid_spacing_m,
               multiquadric_c),
       if (!is.null(built$multiquadric_h19)) {
         paste("- **multiquadric_h19**: the same surface through the gauges, with H19's pattern",
@@ -1168,6 +1695,7 @@ lines <- c(
         "- multiquadric_h19: not built (it needs 15-minute data)."
       },
       "",
+      # The Thiessen weights given, against those from the geometry.
       if (thiessen_source == "given") {
         c(sprintf("Thiessen weights from the gauge positions and the boundary: %s. Given: %s.",
                   paste(sprintf("%s %.3f", names(geometry_weights), geometry_weights),
@@ -1185,28 +1713,56 @@ lines <- c(
   } else {
     "- multiquadric: not built (no catchment_boundary given)."
   },
+  if (!is.null(lta)) {
+    sprintf(paste("- **multiquadric_lta**: each gauge's rain as a share of its long-term",
+                  "average (%s), a multiquadric surface through the shares (c = %.0f m), times",
+                  "the grid."),
+            lta_rain_file,
+            multiquadric_lta_c)
+  },
   "", "Each is in `catchment_rain/`, as a CSV ready for calibrate_site.R.",
+
+  # The downloads, with each gauge's quality flags.
   if (!is.null(downloads)) {
-    c("", sprintf(paste("Gauges downloaded from the EA Hydrology API with reach.io, %s to %s",
-                        "(`gauge_downloads.csv`):"), period_from, period_to), "",
-      sprintf("- %s: %s, WISKI ID %s%s", downloads$gauge, downloads$label, downloads$wiski_id,
-              ifelse(is.na(downloads$readings), ", already downloaded.",
+    c("",
+      sprintf(paste("Gauges downloaded from the EA Hydrology API with reach.io, %s to %s",
+                    "(`gauge_downloads.csv`):"),
+              period_from,
+              period_to),
+      "",
+      sprintf("- %s: %s, WISKI ID %s%s",
+              downloads$gauge,
+              downloads$label,
+              downloads$wiski_id,
+              ifelse(is.na(downloads$readings),
+                     ", already downloaded.",
                      sprintf(", %d readings, %d missing; other flags: %s.",
-                             downloads$readings, downloads$missing, downloads$flags))), "",
+                             downloads$readings,
+                             downloads$missing,
+                             downloads$flags))),
+      "",
       "Readings flagged Missing are gaps. Other flags (Suspect, Estimated, Unchecked) are kept",
       "and only counted here: quality control belongs upstream, in reach.validate.")
   },
+
+  # The warnings, series by series.
   "", "## Warnings", "",
   unlist(lapply(seq_len(nrow(ranking)), function(i) {
     w <- warnings_for(i)
-    sprintf("- %s: %s.", ranking$rain[i], if (length(w)) paste(w, collapse = "; ") else
-      "none")
+    sprintf("- %s: %s.",
+            ranking$rain[i],
+            if (length(w)) paste(w, collapse = "; ") else "none")
   })),
   if (diff(range(lags)) >= 1) {
-    c("", sprintf(paste("The river answers to the series at lags from %g to %g hours. Series",
-                        "a whole hour or more apart often mean a clock or time-zone error in",
-                        "one."), min(lags), max(lags)))
+    c("",
+      sprintf(paste("The river answers to the series at lags from %g to %g hours. Series",
+                    "a whole hour or more apart often mean a clock or time-zone error in",
+                    "one."),
+              min(lags),
+              max(lags)))
   },
+
+  # The weights and the error each average keeps.
   if (weights_done) {
     c("", "## Weights: how many gauges each average uses", "",
       sprintf(paste("A single gauge's storm totals look to be up to %.0f%% out, from how much",
@@ -1217,10 +1773,15 @@ lines <- c(
                     "gauge's random error, so about %.1f%% storm error. Suggested rain_error",
                     "%.3f. Through the record it fell to %.1f gauges' worth or less 5%% of the",
                     "time; %d of the 20 largest floods fell while it was below 1.5."),
-              weights_table$rain, weights_table$weights, weights_table$source,
-              weights_table$effective_gauges, 100 * weights_table$error_factor,
-              sigma * weights_table$error_factor, weights_table$suggested_rain_error,
-              weights_table$effective_gauges_p05, weights_table$largest_floods_below_1.5),
+              weights_table$rain,
+              weights_table$weights,
+              weights_table$source,
+              weights_table$effective_gauges,
+              100 * weights_table$error_factor,
+              sigma * weights_table$error_factor,
+              weights_table$suggested_rain_error,
+              weights_table$effective_gauges_p05,
+              weights_table$largest_floods_below_1.5),
       if (any(abs(weights_table$weights_sum - 1) > 0.02)) {
         sprintf(paste("- Weights for %s do not add up to 1: the method scales the rain as",
                       "well as weighting it. The balance checks will see the scaling."),
@@ -1234,12 +1795,15 @@ lines <- c(
       "- If gauges' errors are partly shared (wind on all of them), less cancels: see the",
       "  error_factor_rho columns in `weights_and_error.csv`.")
   },
+
+  # H19 from the processed extracts.
   if (!is.null(radar_processed)) {
     c("", "## H19 radar from the processed extracts", "",
       sprintf(paste("h19 is polygon %s from the yearly extracts in %s: the area-weighted mean",
                     "over Hyrad's polygon, which may not match catchment_boundary exactly.",
                     "%.1f%% of its 15-minute steps are missing%s."),
-              radar_polygon_id, radar_processed_folder,
+              radar_polygon_id,
+              radar_processed_folder,
               100 * mean(is.na(radar_processed$rain)),
               if (length(attr(radar_processed, "years_missing"))) {
                 paste0(" (no extract for ", toString(attr(radar_processed, "years_missing")), ")")
@@ -1247,23 +1811,37 @@ lines <- c(
       "", "H19 and everything made from it are restricted: keep this folder on restricted",
       "storage.")
   },
+
+  # H19 from the daily files: the layouts, and the radar against the gauges.
   if (!is.null(radar_layouts)) {
     l <- radar_layouts$layouts
     c("", "## H19 radar", "",
-      sprintf("%d files in %d layout%s (`radar_layouts.csv`):", sum(l$files), nrow(l),
+      sprintf("%d files in %d layout%s (`radar_layouts.csv`):",
+              sum(l$files),
+              nrow(l),
               if (nrow(l) == 1) "" else "s"),
       sprintf(paste("- Layout %d, %d files, %s to %s: `%s` in %s, stamped at the %s of each",
-                    "step%s."), l$layout, l$files, l$first_day, l$last_day, l$variable,
-              l$units, l$stamp,
+                    "step%s."),
+              l$layout,
+              l$files,
+              l$first_day,
+              l$last_day,
+              l$variable,
+              l$units,
+              l$stamp,
               ifelse(l$stamp == "end", " (moved back 15 minutes)", "")),
       "",
       if (radar_done) {
         c("The radar over each gauge against the gauge, daily totals (`radar_vs_gauges.csv`):",
           "",
           sprintf(paste("- **%s**: radar / gauge %.2f over %d days; winter %.2f, summer %.2f",
-                        "(winter over summer %.2f)."), radar_table$gauge,
-                  radar_table$ratio_all, radar_table$days, radar_table$ratio_winter,
-                  radar_table$ratio_summer, radar_table$winter_over_summer),
+                        "(winter over summer %.2f)."),
+                  radar_table$gauge,
+                  radar_table$ratio_all,
+                  radar_table$days,
+                  radar_table$ratio_winter,
+                  radar_table$ratio_summer,
+                  radar_table$winter_over_summer),
           "",
           paste("A winter ratio clearly above the summer one points to the gauge losing rain",
                 "to wind; the same ratio all year points to the radar's own scaling. Wind",
@@ -1272,6 +1850,57 @@ lines <- c(
       "", "H19 and everything made from it are restricted: keep this folder on restricted",
       "storage.")
   },
+
+  # The gauges' corrections to the long-term average.
+  if (!is.null(corrections)) {
+    c("", "## Gauges corrected to the long-term average", "",
+      sprintf(paste("Each gauge's average year over %s to %s, against %s at the gauge",
+                    "(`lta_corrections.csv`); the factors are %s:"),
+              correction_from,
+              correction_to,
+              lta_rain_file,
+              if (identical(lta_correction, "relative")) {
+                "relative (each divided by the median), so the gauges keep their overall level"
+              } else {
+                "absolute, putting each gauge on the grid's level"
+              }),
+      "",
+      sprintf(paste("- **%s**: %.0f mm a year over %.1f years (%.0f%% of the record) against",
+                    "%.0f; factor %.3f."),
+              corrections$gauge,
+              corrections$mm_per_year,
+              corrections$record_years,
+              100 * corrections$coverage,
+              corrections$lta_mm_per_year,
+              corrections$factor),
+      "",
+      paste("Every series built from the gauges, and the gauges themselves, use the corrected",
+            "rain. Readings flagged Suspect are kept in the averages."))
+  },
+
+  # Each series against the long-term average.
+  if (!is.null(lta_check)) {
+    c("", "## Against the long-term average", "",
+      sprintf(paste("The catchment's long-term average is %.0f mm a year (%s). Each series'",
+                    "annual rain over the period compared, against it (a gauge against its own",
+                    "cell's; `long_term_average_check.csv`):"),
+              lta_catchment,
+              lta_rain_file),
+      "",
+      sprintf("- **%s**: %.0f mm a year against %.0f, ratio %.2f.",
+              lta_check$rain,
+              lta_check$rain_mm_per_year,
+              lta_check$lta_mm_per_year,
+              lta_check$ratio),
+      "",
+      sprintf(paste("Over %.1f years the years' own weather moves every ratio together: read",
+                    "the differences between series, not their level. A gauge well below the",
+                    "others may undercatch. A grid made from gauges (as HadUK-Grid is) is not",
+                    "independent of them."),
+              years))
+  },
+
+  # What to do next, and the files written.
   "", "## What next", "",
   "- The ranking is a guide. A series that ranks well but carries a warning may still be the",
   "  best choice once the fault is fixed (a clock corrected, a gap filled).",
@@ -1290,13 +1919,17 @@ lines <- c(
   if (radar_done) {
     paste("Radar: `radar_layouts.csv`, `radar_vs_gauges.csv`, `radar_vs_gauges_daily.csv`,",
           "`radar_vs_gauge_by_month.png`.")
-  })
+  }
+)
 writeLines(lines, file.path(output_folder, "summary.md"))
+
+# The ranking and the weights in the console too.
 print(ranking[, c("rain", "mean_rank", "runoff_ratio", "total_apart_pct", "response_r",
                   "lag_h", "flood_wins", "missed_storms_pct", "flood_ratio_spread")],
       row.names = FALSE)
 if (weights_done) {
   print(weights_table[, c("rain", "source", "effective_gauges", "error_factor",
-                          "suggested_rain_error")], row.names = FALSE)
+                          "suggested_rain_error")],
+        row.names = FALSE)
 }
 say("\nWritten to %s. Read summary.md.", normalizePath(output_folder))
