@@ -91,3 +91,19 @@ test_that("water balance plots draw in both engines", {
     expect_silent(ggplot2::ggplot_build(ggplot2::autoplot(wb, type = type)))
   }
 })
+
+# Guards (regression): with water_year_start = 1 every year was named by the year after it,
+# since a year was named by adding one to the calendar year from the start month on. A
+# calendar year is now named by itself. A record from 1 October 2018 for six 365-day years
+# (2,190 days, to 28 September 2024) holds the end of 2018, 2019 to 2023 whole, and most of
+# 2024: seven calendar years, 2018 to 2024, and the rain of 2020 is the rain dated 2020.
+test_that("calendar years are named by themselves", {
+  d <- balance_record()
+  wb <- water_balance(d$forcing, d$flow, 20, water_year_start = 1)
+  expect_equal(wb$years$period, as.character(2018:2024))
+  in_2020 <- format(d$forcing$time, "%Y") == "2020"
+  expect_equal(wb$years$rain_mm[wb$years$period == "2020"], sum(d$forcing$rain[in_2020]),
+               tolerance = 1e-9)
+  # Water years are named by the year they end in, as before.
+  expect_equal(water_balance(d$forcing, d$flow, 20)$years$period, as.character(2019:2024))
+})

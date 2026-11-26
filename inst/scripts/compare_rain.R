@@ -128,6 +128,9 @@ correction_to <- "2024-10-01"
 # not cover the whole period is padded with gaps, with a warning.
 period_from <- "2015-10-01"
 period_to <- "2024-10-01"
+# The years the water balance and its plots are counted in: 1 for calendar years (January to
+# December, as H19 is stored), 10 for water years (October to September).
+year_start_month <- 1
 
 # The rain gauges, from the EA Hydrology API with reach.io (gauge_source "hydrology_api").
 #   1. Leave gauge_ids empty and run: every 15-minute rain gauge within search_radius_km of
@@ -1224,9 +1227,20 @@ say("Water balance")
 balance_of <- function(r) {
   rr <- ifelse(common, r, 0)
   q <- ifelse(common, flow, NA_real_)
-  water_balance(data.frame(time = grid$time, rain = rr, pet = pe), q, area_km2)
+  water_balance(data.frame(time = grid$time, rain = rr, pet = pe),
+                q,
+                area_km2,
+                water_year_start = year_start_month)
 }
 balances <- lapply(rains, balance_of)
+# The years' name in the plots' titles.
+year_word <- if (year_start_month == 1) {
+  "calendar year"
+} else if (year_start_month == 10) {
+  "water year"
+} else {
+  sprintf("year from %s", month.name[year_start_month])
+}
 
 # The whole record's figures for each series; the rain per year over the common steps.
 balance <- data.frame(
@@ -1311,8 +1325,9 @@ if (!is.null(boundary) && have_positions) {
 }
 
 # HOW TO READ rain_by_year.png
-# One group of bars per water year (October to September), one bar per rain series: the rain
-# each series gives the catchment that year.
+# One group of bars per year (calendar or water year, as year_start_month sets; each named by
+# the year it ends in), one bar per rain series: the rain each series gives the catchment that
+# year.
 # Good: the series agree within a few per cent every year, or differ by the same amount every
 #   year (a steady difference is a matter of scale, which the water balance then judges).
 # Worry if: one series drops or jumps in some years only. A gauge failed, moved or was
@@ -1329,7 +1344,7 @@ png_of("rain_by_year.png", function() {
                     border = NA,
                     las = 2,
                     ylab = "Rain (mm)",
-                    main = "Rain by water year, each series",
+                    main = sprintf("Rain by %s, each series", year_word),
                     ylim = c(0, 1.3 * max(totals, na.rm = TRUE)),
                     legend.text = names_r,
                     args.legend = list(bty = "n", x = "top", ncol = min(5, length(names_r))))
@@ -1359,7 +1374,7 @@ png_of("runoff_ratio_by_series.png", function() {
                     xlab = "",
                     ylab = "Runoff ratio (flow / rain)",
                     ylim = c(0, 1.3 * max(1.1, max(ratio, na.rm = TRUE))),
-                    main = "Runoff ratio by water year, each series")
+                    main = sprintf("Runoff ratio by %s, each series", year_word))
   graphics::axis(1, at = seq_along(periods), labels = periods, las = 2)
   graphics::abline(h = 1, col = "#B3261E")
   graphics::legend("top",
@@ -2473,8 +2488,8 @@ blocks <- c(
                    "series with more flow than rain, or losses evaporation cannot explain, has",
                    "the wrong total; one that changes from year to year changed itself."),
        report_table(balance, caption = "The water balance over the record")),
-  plot_blocks("rain_by_year.png", "Rain by water year"),
-  plot_blocks("runoff_ratio_by_series.png", "Runoff ratio by water year"),
+  plot_blocks("rain_by_year.png", paste("Rain by", year_word)),
+  plot_blocks("runoff_ratio_by_series.png", paste("Runoff ratio by", year_word)),
   list(report_heading("Test 2: double-mass"),
        report_text("Did any series change part way through? Each series' running total against",
                    "that of the median series: the weather falls on all alike and cancels, so a",

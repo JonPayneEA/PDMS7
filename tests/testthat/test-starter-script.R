@@ -263,3 +263,9 @@ test_that("the rain comparison builds the averages chosen in rain_methods", {
                         fixed = TRUE)))
   expect_true(any(grepl("Not built, though asked for:", code, fixed = TRUE)))
 })
+
+test_that("the rain comparison counts its years from the month set, calendar years by default", {
+  code <- readLines(system.file("scripts", "compare_rain.R", package = "pdmS7"))
+  expect_true(any(grepl("^year_start_month <- 1$", code)))
+  expect_true(any(grepl("water_year_start = year_start_month", code, fixed = TRUE)))
+})

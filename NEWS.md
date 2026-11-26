@@ -4,6 +4,13 @@
   averages to build; delete any you do not want. A name the script cannot build is refused.
   An average asked for whose inputs are missing (a boundary, the long-term average grid, the
   radar, 15-minute data) is skipped, and the summary and the report list it with the reason.
+- **Calendar or water years.** `compare_rain.R`'s new `year_start_month` sets the years its
+  water balance and yearly plots are counted in. It is 1 (calendar years, as H19 is stored) by
+  default, or 10 for water years. The plots' titles say which.
+- **Fix: `water_balance(water_year_start = 1)` named every year by the year after it.** A year
+  is named by the year it ends in, and that rule added one from the start month on, which is
+  right for water years but not for calendar years. A calendar year is now named by itself.
+  Water years are unchanged.
 - **A gauge map on every run.** `gauge_map.png`, in the report's "The data", shows the
   catchment and the gauges in use, each named with its Thiessen weight, over the part of the
   catchment nearest each gauge (the shares the Thiessen weights are). Other gauges from the
