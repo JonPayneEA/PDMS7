@@ -5,7 +5,8 @@
 # Flode Module: standalone; target reach.hydro
 # Author:       pdmS7 contributors
 # Created:      2026-11-07
-# Modified:     2026-11-07 - First version
+# Modified:     2026-11-26 - inverse distance weighting (method = "idw")
+#               2026-11-07 - First version
 # Tier:         1
 # Inputs:       Gauge locations and depths (mm per step); optionally radar grids (mm per step);
 #               a catchment mask on the grid
@@ -17,12 +18,13 @@
 #'
 #' Rain gauges measure the amount of rain well at a point; radar shows where and when it fell
 #' but gets the amount wrong, by beam height, bright band and the conversion from reflectivity.
-#' `merge_rainfall()` builds the catchment-average rainfall three ways, so that they can be
+#' `merge_rainfall()` builds the catchment-average rainfall four ways, so that they can be
 #' compared on the gauges and, through the model, on the river.
 #'
 #' | Method | Field at each step | Uses radar |
 #' |---|---|---|
 #' | `thiessen` | Each cell takes its nearest gauge with a value | No |
+#' | `idw` | Each cell a mean of the gauges, weighted by 1 / distance^`power` | No |
 #' | `multiquadric` | A smooth surface through the gauges (Hardy, 1971) | No |
 #' | `conditional` | The gauge surface plus the radar's departure from its own surface | Yes |
 #'
@@ -32,6 +34,12 @@
 #' through every gauge, unless `smooth` is positive, which lets it miss them slightly to allow
 #' for gauge error. The shape parameter `c` (metres, or whatever the coordinates are in) sets
 #' how flat the cones are; by default it is chosen by leaving out one gauge at a time.
+#'
+#' **Inverse distance weighting.** Each cell takes a weighted mean of the gauges reporting, the
+#' weight of a gauge `d` away being `1 / d^power`: the nearer a gauge, the more it counts, and a
+#' cell on a gauge takes that gauge's value. The field stays within the gauges' range, so it
+#' never overshoots as a surface can, but makes "bull's-eyes" around each gauge. `power` 2 is
+#' usual; a larger power leans harder on the nearest gauge, towards Thiessen.
 #'
 #' **Conditional merging** (Sinclair and Pegram, 2005). The gauge surface sets the level; the
 #' radar adds the storm's shape between gauges. At each step: fit a surface to the gauges, and
@@ -69,11 +77,12 @@
 #'   at once, a function of the step number returning that step's grid as a matrix of
 #'   `length(grid$x)` rows by `length(grid$y)` columns (such as one that reads that step's file).
 #'   Sixteen years of 15-minute radar on a 30 km grid would take about 4 GB as an array.
-#' @param method `thiessen`, `multiquadric` or `conditional`.
+#' @param method `thiessen`, `idw`, `multiquadric` or `conditional`.
 #' @param c Multiquadric shape parameter, in the units of the coordinates; by default chosen by
 #'   `rainfall_cross_validation()` from `c_candidates`.
 #' @param smooth Nonnegative smoothing added to the diagonal of the multiquadric system, in the
 #'   units of the basis (coordinate units); 0 passes exactly through the gauges.
+#' @param power With `method = "idw"`, the power of the distance in the weights.
 #' @param c_candidates Multiples of the median distance between neighbouring gauges tried for
 #'   `c`.
 #' @param wet Depth, mm per step, above which a step counts as wet in the cross-validation.
@@ -105,36 +114,41 @@
 #' @seealso [find_events()], [calibration_checks()]
 #' @export
 merge_rainfall <- function(gauges, gauge_rain, grid, mask, radar = NULL,
-                           method = c("multiquadric", "conditional", "thiessen"), c = NULL,
-                           smooth = 0, c_candidates = c(0.1, 0.25, 0.5, 1, 2, 4), wet = 0.1,
-                           max_steps = 2000L, seed = 1L) {
+                           method = c("multiquadric", "conditional", "thiessen", "idw"),
+                           c = NULL, smooth = 0, c_candidates = c(0.1, 0.25, 0.5, 1, 2, 4),
+                           wet = 0.1, max_steps = 2000L, seed = 1L, power = 2) {
   method <- match.arg(method)
   .check_merge_inputs(gauges, gauge_rain, grid, mask, radar, method, smooth)
+  .check(.scalar(power, 0, strict = TRUE), "power must be a positive number")
   checks <- NULL
-  if (method != "thiessen" && is.null(c)) {
+  uses_c <- method %in% c("multiquadric", "conditional")
+  if (uses_c && is.null(c)) {
     checks <- rainfall_cross_validation(gauges, gauge_rain, grid, radar, method, NULL, smooth,
                                         c_candidates, wet, max_steps, seed)
     c <- checks$c[which.min(checks$rmse)]
   }
-  .check(method == "thiessen" || .scalar(c, 0, strict = TRUE), "c must be a positive number")
+  .check(!uses_c || .scalar(c, 0, strict = TRUE), "c must be a positive number")
   cells <- .mask_cells(grid, mask)
   at_gauge <- .gauge_cells(gauges, grid)
   rain <- vapply(seq_len(nrow(gauge_rain)), function(t) {
     field <- .rain_field(gauges, gauge_rain[t, ], cells, method, c, smooth,
-                         if (method == "conditional") .radar_step(radar, t, cells, at_gauge))
+                         if (method == "conditional") .radar_step(radar, t, cells, at_gauge),
+                         power)
     sum(field * cells$w) / sum(cells$w)
   }, numeric(1))
-  structure(list(rain = rain, method = method, c = c, smooth = smooth, checks = checks),
+  structure(list(rain = rain, method = method, c = if (uses_c) c else NULL, smooth = smooth,
+                 power = if (method == "idw") power else NULL, checks = checks),
             class = "pdm_rainfall")
 }
 
 #' @rdname merge_rainfall
 #' @export
 rainfall_cross_validation <- function(gauges, gauge_rain, grid, radar = NULL,
-                                      method = c("multiquadric", "conditional", "thiessen"),
+                                      method = c("multiquadric", "conditional", "thiessen",
+                                                 "idw"),
                                       c = NULL, smooth = 0,
                                       c_candidates = c(0.1, 0.25, 0.5, 1, 2, 4), wet = 0.1,
-                                      max_steps = 2000L, seed = 1L) {
+                                      max_steps = 2000L, seed = 1L, power = 2) {
   method <- match.arg(method)
   .check(nrow(gauges) >= 3, "Cross-validation needs at least three gauges")
   at_gauge <- .gauge_cells(gauges, grid)
@@ -145,7 +159,11 @@ rainfall_cross_validation <- function(gauges, gauge_rain, grid, radar = NULL,
   if (length(steps) > max_steps) {
     steps <- sort(.with_seed(seed, steps[sample.int(length(steps), max_steps)]))
   }
-  cs <- if (method == "thiessen") NA_real_ else c %||% (c_candidates * .gauge_spacing(gauges))
+  cs <- if (method %in% c("thiessen", "idw")) {
+    NA_real_
+  } else {
+    c %||% (c_candidates * .gauge_spacing(gauges))
+  }
   do.call(rbind, lapply(cs, function(cc) {
     errors <- unlist(lapply(steps, function(t) {
       vapply(seq_len(nrow(gauges)), function(g) {
@@ -156,7 +174,8 @@ rainfall_cross_validation <- function(gauges, gauge_rain, grid, radar = NULL,
         radar_t <- if (method == "conditional") {
           .radar_step(radar, t, list(i = at_gauge$i[g], j = at_gauge$j[g]), at_gauge)
         }
-        .rain_field(gauges, others, cell, method, cc, smooth, radar_t) - gauge_rain[t, g]
+        .rain_field(gauges, others, cell, method, cc, smooth, radar_t, power) -
+          gauge_rain[t, g]
       }, numeric(1))
     }))
     observed <- unlist(lapply(steps, function(t) gauge_rain[t, ]))
@@ -204,8 +223,8 @@ catchment_mask <- function(x, y, polygon) {
 #' @seealso [merge_rainfall()]
 #' @export
 rainfall_field <- function(gauges, values, grid, method = c("multiquadric", "conditional",
-                                                            "thiessen"),
-                           c = NULL, smooth = 0, radar = NULL) {
+                                                            "thiessen", "idw"),
+                           c = NULL, smooth = 0, radar = NULL, power = 2) {
   method <- match.arg(method)
   .check_gauge_inputs(gauges, matrix(values, nrow = 1))
   .check(is.list(grid) && is.numeric(grid$x) && is.numeric(grid$y),
@@ -224,7 +243,7 @@ rainfall_field <- function(gauges, values, grid, method = c("multiquadric", "con
   step <- if (method == "conditional") {
     list(cells = radar[cbind(cells$i, cells$j)], gauges = radar[cbind(at$i, at$j)])
   }
-  matrix(.rain_field(gauges, values, cells, method, c, smooth, step), nx, ny)
+  matrix(.rain_field(gauges, values, cells, method, c, smooth, step, power), nx, ny)
 }
 
 #' @export
@@ -303,7 +322,7 @@ print.pdm_rainfall <- function(x, ...) {
 }
 
 # The rain field at the target points for one step.
-.rain_field <- function(gauges, values, target, method, c, smooth, radar) {
+.rain_field <- function(gauges, values, target, method, c, smooth, radar, power = 2) {
   ok <- is.finite(values)
   if (!any(ok)) return(rep(NA_real_, length(target$x)))
   gx <- gauges$x[ok]
@@ -311,6 +330,7 @@ print.pdm_rainfall <- function(x, ...) {
   z <- values[ok]
   field <- switch(method,
     thiessen = z[.nearest(target$x, target$y, gx, gy)],
+    idw = .idw(gx, gy, z, target$x, target$y, power),
     multiquadric = .multiquadric(gx, gy, z, target$x, target$y, c, smooth),
     conditional = {
       if (all(z <= 0) && all(radar$gauges[ok] <= 0)) {
@@ -328,6 +348,19 @@ print.pdm_rainfall <- function(x, ...) {
 
 .nearest <- function(x, y, gx, gy) {
   vapply(seq_along(x), function(k) which.min((gx - x[k])^2 + (gy - y[k])^2), integer(1))
+}
+
+# Inverse distance weighting: at each target, the gauges' mean weighted by 1 / d^power; a target
+# on a gauge takes that gauge's value.
+.idw <- function(gx, gy, z, tx, ty, power) {
+  d <- sqrt(outer(tx, gx, "-")^2 + outer(ty, gy, "-")^2)
+  w <- 1 / d^power
+  on_gauge <- d == 0
+  w[on_gauge] <- 0
+  out <- drop(w %*% z) / rowSums(w)
+  hit <- rowSums(on_gauge) > 0
+  if (any(hit)) out[hit] <- vapply(which(hit), function(k) z[which(on_gauge[k, ])[1]], 0)
+  out
 }
 
 # Multiquadric interpolation with a constant term: solve

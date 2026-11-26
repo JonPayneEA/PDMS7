@@ -5,7 +5,8 @@
 # Flode Module: standalone; target reach.hydro
 # Author:       pdmS7 contributors
 # Created:      2026-11-08
-# Modified:     2026-11-08 - First version
+# Modified:     2026-11-26 - calendar years (water_year_start = 1) named by themselves
+#               2026-11-08 - First version
 # Tier:         1
 # Inputs:       Forcing (time, rain, pet in mm per step), observed flow (m3/s), area (km2)
 # Outputs:      A pdm_water_balance with a table by water year, flags and plots
@@ -50,7 +51,9 @@
 #' @param forcing Data frame of `time`, `rain` and `pet`, mm per step.
 #' @param observed Observed flow, m3/s, aligned with `forcing`.
 #' @param area_km2 Catchment area.
-#' @param water_year_start Month the water year starts: 10 (October) in the UK.
+#' @param water_year_start Month the water year starts: 10 (October) in the UK; 1 for calendar
+#'   years. Each year is named by the year it ends in, so with 1 a calendar year is named by
+#'   itself.
 #' @param min_complete Least share of a year's flow that must be present to judge the year.
 #' @param tolerance How far a year's runoff ratio may stand from the median of the years, as a
 #'   share of it, before the year is flagged.
@@ -95,7 +98,9 @@ water_balance <- function(forcing, observed, area_km2, water_year_start = 10,
   to_mm <- dt * 3.6 / area_km2
   ok <- is.finite(observed) & is.finite(forcing$rain) & is.finite(forcing$pet)
   month <- as.integer(format(time, "%m"))
-  year <- as.integer(format(time, "%Y")) + (month >= water_year_start)
+  # Named by the year it ends in: a water year starting in October 2022 ends in 2023; a
+  # calendar year ends in the year it starts.
+  year <- as.integer(format(time, "%Y")) + (water_year_start > 1 & month >= water_year_start)
   # A year is complete when its present steps cover a whole year, so a part year at either end
   # of the record is reported but not judged against whole ones.
   full_year <- 8766 / dt
@@ -179,7 +184,10 @@ water_balance <- function(forcing, observed, area_km2, water_year_start = 10,
   judged <- x$years[x$years$flags != "incomplete" & nzchar(x$years$flags), ]
   c(
     if (nzchar(x$record$flags)) paste("Whole record:", x$record$flags),
-    if (nrow(judged)) paste0("Water year ending ", judged$period, ": ", judged$flags)
+    if (nrow(judged)) {
+      paste0(if (x$water_year_start == 1) "Year " else "Water year ending ", judged$period, ": ",
+             judged$flags)
+    }
   )
 }
 

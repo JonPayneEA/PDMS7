@@ -182,7 +182,7 @@ test_that("the rain comparison parses, stops until the area is set, and names it
   expect_true(any(grepl("^area_km2 <- NA ", code)))
   # Every HOW TO READ note names a plot the script writes.
   notes <- sub("^\\s*# HOW TO READ ", "", grep("^\\s*# HOW TO READ ", code, value = TRUE))
-  expect_length(notes, 9)
+  expect_length(notes, 10)
   written <- code[!grepl("^\\s*#", code)]
   for (name in notes) {
     expect_true(any(grepl(sprintf('"%s"', name), written, fixed = TRUE)), info = name)
@@ -220,7 +220,7 @@ test_that("the rain comparison has one period for everything, and both multiquad
   expect_true(any(grepl("^period_to <- ", code)))
   expect_false(any(grepl("download_from|download_to", code)))
   # The gauges-only and gauges-with-H19 multiquadric averages are both built names.
-  expect_true(any(grepl('built_names <- c("thiessen", "equal", "equal_all", "multiquadric",',
+  expect_true(any(grepl('built_names <- c("thiessen", "equal", "equal_all", "idw", "multiquadric",',
                         code, fixed = TRUE)))
   expect_true(any(grepl('"multiquadric_h19"', code, fixed = TRUE)))
 })
@@ -247,4 +247,25 @@ test_that("the rain comparison is cut to the stretch every series covers", {
   # The latest first value and the earliest last one, across every series and the flow.
   expect_true(any(grepl("keep <- seq(max(spans[1, ]), min(spans[2, ]))", code, fixed = TRUE)))
   expect_true(any(grepl("the stretch every series covers", code, fixed = TRUE)))
+})
+
+test_that("the rain comparison builds the averages chosen in rain_methods", {
+  code <- readLines(system.file("scripts", "compare_rain.R", package = "pdmS7"))
+  # Every average is on the list by default, including the two new ones.
+  start <- grep("^rain_methods <- c\\(", code)
+  expect_length(start, 1)
+  default <- eval(parse(text = paste(code[start:(start + 1)], collapse = "\n")))
+  expect_identical(default, c("thiessen", "equal", "equal_all", "idw", "multiquadric",
+                              "multiquadric_lta", "h19", "h19_bias", "multiquadric_h19"))
+  # A name the script cannot build is refused, and an average whose inputs are missing is
+  # listed as not built, with the reason.
+  expect_true(any(grepl("rain_methods names averages the script cannot build", code,
+                        fixed = TRUE)))
+  expect_true(any(grepl("Not built, though asked for:", code, fixed = TRUE)))
+})
+
+test_that("the rain comparison counts its years from the month set, calendar years by default", {
+  code <- readLines(system.file("scripts", "compare_rain.R", package = "pdmS7"))
+  expect_true(any(grepl("^year_start_month <- 1$", code)))
+  expect_true(any(grepl("water_year_start = year_start_month", code, fixed = TRUE)))
 })

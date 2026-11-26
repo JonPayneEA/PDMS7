@@ -8,10 +8,11 @@ rainfall_field(
   gauges,
   values,
   grid,
-  method = c("multiquadric", "conditional", "thiessen"),
+  method = c("multiquadric", "conditional", "thiessen", "idw"),
   c = NULL,
   smooth = 0,
-  radar = NULL
+  radar = NULL,
+  power = 2
 )
 }
 \arguments{
@@ -22,7 +23,7 @@ as British National Grid metres).}
 
 \item{grid}{List with \code{x} and \code{y}, the cell-centre coordinates of the grid's columns and rows.}
 
-\item{method}{\code{thiessen}, \code{multiquadric} or \code{conditional}.}
+\item{method}{\code{thiessen}, \code{idw}, \code{multiquadric} or \code{conditional}.}
 
 \item{c}{Multiquadric shape parameter; by default the median distance between neighbouring
 gauges.}
@@ -32,6 +33,8 @@ units of the basis (coordinate units); 0 passes exactly through the gauges.}
 
 \item{radar}{With \code{method = "conditional"}, that step's radar grid, mm: a matrix of
 \code{length(grid$x)} rows by \code{length(grid$y)} columns.}
+
+\item{power}{With \code{method = "idw"}, the power of the distance in the weights.}
 }
 \value{
 A matrix of rain, mm, with \code{length(grid$x)} rows and \code{length(grid$y)} columns.

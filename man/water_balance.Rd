@@ -28,7 +28,9 @@ water_balance(
 
 \item{area_km2}{Catchment area.}
 
-\item{water_year_start}{Month the water year starts: 10 (October) in the UK.}
+\item{water_year_start}{Month the water year starts: 10 (October) in the UK; 1 for calendar
+years. Each year is named by the year it ends in, so with 1 a calendar year is named by
+itself.}
 
 \item{min_complete}{Least share of a year's flow that must be present to judge the year.}
 
