@@ -1,3 +1,18 @@
+# pdmS7 0.45.0
+
+- **Multiquadric scaled by a long-term average rainfall grid.** The new `read_lta_grid()`
+  reads a NetCDF grid of average annual rainfall, such as the Met Office's HadUK-Grid
+  1991-2020 average (`rainfall_hadukgrid_uk_1km_ann-30y_199101-202012.nc`), for a window;
+  `lta_at()` looks up points. Given `lta_rain_file`, `compare_rain.R` builds
+  `multiquadric_lta`. Each gauge's rain is taken as a share of its long-term average, a
+  multiquadric surface is fitted through the shares, and the surface is scaled back by the
+  grid, so a storm falls more heavily where it usually rains more. A flat grid gives the plain
+  multiquadric exactly.
+- **The check against the long-term average.** `compare_rain.R` sets each series' annual rain
+  against the long-term average: a catchment average against the catchment's, a gauge against
+  its own cell's. The results go to `long_term_average_check.csv` and a section of
+  `summary.md`.
+
 # pdmS7 0.44.0
 
 - **H19 in seconds, from the processed extracts.** The ProcessingNetCDF scripts have already

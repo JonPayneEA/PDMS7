@@ -9,7 +9,9 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-24
 # Tier:         1
-# Modified:     2026-11-25 - H19 from the team's processed yearly extracts, in seconds
+# Modified:     2026-11-26 - multiquadric scaled by a long-term average grid; the check
+#               against it
+#               2026-11-25 - H19 from the team's processed yearly extracts, in seconds
 #               2026-11-25 - the gauges found by a search around the catchment's centroid
 #               and downloaded with reach.io by default; the boundary from a shapefile;
 #               Thiessen weights from the geometry when none are given
@@ -50,6 +52,8 @@
 #                   when some gauge has no Thiessen weight);
 #     multiquadric  a smooth surface through every gauge, averaged over the catchment (with the
 #                   positions and the boundary): the gauges only;
+#     multiquadric_lta  the same, fitted to each gauge's rain as a share of its long-term
+#                   average and scaled back by the grid (with lta_rain_file);
 #     multiquadric_h19  the same surface through the gauges, with the radar's pattern between
 #                   them (conditional merging): with H19 from radar_folder, at 15-minute steps.
 #   Each is renormalised over the gauges reporting at each step. With the boundary it also
@@ -94,6 +98,13 @@ pet_file <- "pet.csv"     # potential evaporation, mm per step
 # multiquadric average, worked out on a grid with cells this many metres across.
 catchment_boundary <- "catchment.shp"
 grid_spacing_m <- 500
+
+# A long-term average rainfall grid (optional): NetCDF in data_folder, on British National Grid,
+# mm a year, such as the Met Office's HadUK-Grid average for 1991 to 2020,
+# "rainfall_hadukgrid_uk_1km_ann-30y_199101-202012.nc". With it, the multiquadric is also fitted
+# to each gauge's rain as a share of its long-term average and scaled back by the grid
+# (multiquadric_lta), and each series' annual rain is set against the long-term average.
+lta_rain_file <- NULL
 
 # The period compared: from (inclusive) to (exclusive), in UTC. Every series (flow,
 # evaporation, gauges, radar) is cut to it, and gauges are downloaded for it. A series that does
@@ -355,7 +366,8 @@ if (length(thiessen_weights) && !is.null(gauges$wiski_id)) {
   by_id <- match(names(thiessen_weights), gauges$wiski_id)
   names(thiessen_weights)[!is.na(by_id)] <- gauge_names[by_id[!is.na(by_id)]]
 }
-built_names <- c("thiessen", "equal", "equal_all", "multiquadric", "multiquadric_h19", "h19")
+built_names <- c("thiessen", "equal", "equal_all", "multiquadric", "multiquadric_lta",
+                 "multiquadric_h19", "h19")
 clash <- intersect(c(gauge_names, names(other_rain_files)), built_names)
 if (length(clash) || anyDuplicated(c(gauge_names, names(other_rain_files)))) {
   stop("Give each gauge and other series a name of its own, not one of ",
@@ -472,6 +484,46 @@ if (!is.null(boundary)) {
   multiquadric[wet_steps] <- fit$rain
   built$multiquadric <- multiquadric
   multiquadric_c <- fit$c
+}
+
+# Multiquadric scaled by the long-term average: at each step, each gauge's rain as a share of
+# its long-term average, a multiquadric surface through those shares, and the surface times
+# the grid, averaged over the catchment. A storm then falls more heavily where it usually rains
+# more. The shares are kept in mm by scaling each gauge to the catchment's mean long-term
+# average L (z = g x L / L_gauge); with each cell weighted by its own long-term average, the
+# merge's weighted mean of the surface through z is then the mean of share times average. A
+# flat grid gives the plain multiquadric exactly.
+lta <- NULL
+if (!is.null(lta_rain_file)) {
+  if (is.null(boundary) || !have_positions) {
+    stop("The long-term average grid needs the boundary and every gauge's position.",
+         call. = FALSE)
+  }
+  if (!file.exists(here(lta_rain_file))) {
+    stop("Cannot find ", here(lta_rain_file), ".", call. = FALSE)
+  }
+  lta <- read_lta_grid(here(lta_rain_file),
+                       extent = c(range(c(cells_x, gauges$x)) + c(-2000, 2000),
+                                  range(c(cells_y, gauges$y)) + c(-2000, 2000)))
+  lta_gauges <- stats::setNames(lta_at(lta, gauges$x, gauges$y), gauge_names)
+  if (anyNA(lta_gauges)) {
+    stop("The long-term average grid has no value at ",
+         toString(gauge_names[is.na(lta_gauges)]), ".", call. = FALSE)
+  }
+  lta_cells <- matrix(lta_at(lta, rep(cells_x, length(cells_y)),
+                             rep(cells_y, each = length(cells_x))), length(cells_x))
+  if (anyNA(lta_cells[mask])) {
+    stop("The long-term average grid has no value for part of the catchment.", call. = FALSE)
+  }
+  lta_catchment <- mean(lta_cells[mask])
+  say("Multiquadric scaled by the long-term average (catchment %.0f mm a year)", lta_catchment)
+  scaled <- sweep(G, 2, lta_catchment / lta_gauges, "*")
+  fit_lta <- merge_rainfall(located, scaled[wet_steps, , drop = FALSE], cell_grid,
+                            ifelse(mask, lta_cells, 0), method = "multiquadric")
+  multiquadric_lta <- ifelse(rowSums(!is.na(G)) > 0, 0, NA_real_)
+  multiquadric_lta[wet_steps] <- fit_lta$rain
+  built$multiquadric_lta <- multiquadric_lta
+  multiquadric_lta_c <- fit_lta$c
 }
 
 # ---- H19 radar ------------------------------------------------------------------------------
@@ -686,6 +738,19 @@ balance <- data.frame(
 # either limit counts against a series.
 balance$balance_problem <- round(pmax(balance$runoff_ratio - 1, 0) +
                                    pmax(balance$loss_over_pet - 1, 0), 3)
+
+# Each series' annual rain against the long-term average: a catchment average against the
+# catchment's, a gauge against its own cell's. Over a short record the years' own weather
+# moves this as much as any fault does.
+lta_check <- NULL
+if (!is.null(lta)) {
+  lta_of <- ifelse(names_r %in% gauge_names, lta_gauges[match(names_r, gauge_names)],
+                   lta_catchment)
+  lta_check <- data.frame(rain = names_r, rain_mm_per_year = balance$rain_mm_per_year,
+                          lta_mm_per_year = round(lta_of),
+                          ratio = round(balance$rain_mm_per_year / lta_of, 3))
+  fwrite(lta_check, file.path(output_folder, "long_term_average_check.csv"))
+}
 
 # HOW TO READ rain_by_year.png
 # One group of bars per water year (October to September), one bar per rain series: the rain
@@ -1185,6 +1250,11 @@ lines <- c(
   } else {
     "- multiquadric: not built (no catchment_boundary given)."
   },
+  if (!is.null(lta)) {
+    sprintf(paste("- **multiquadric_lta**: each gauge's rain as a share of its long-term",
+                  "average (%s), a multiquadric surface through the shares (c = %.0f m), times",
+                  "the grid."), lta_rain_file, multiquadric_lta_c)
+  },
   "", "Each is in `catchment_rain/`, as a CSV ready for calibrate_site.R.",
   if (!is.null(downloads)) {
     c("", sprintf(paste("Gauges downloaded from the EA Hydrology API with reach.io, %s to %s",
@@ -1271,6 +1341,20 @@ lines <- c(
       },
       "", "H19 and everything made from it are restricted: keep this folder on restricted",
       "storage.")
+  },
+  if (!is.null(lta_check)) {
+    c("", "## Against the long-term average", "",
+      sprintf(paste("The catchment's long-term average is %.0f mm a year (%s). Each series'",
+                    "annual rain over the period compared, against it (a gauge against its own",
+                    "cell's; `long_term_average_check.csv`):"), lta_catchment, lta_rain_file),
+      "",
+      sprintf("- **%s**: %.0f mm a year against %.0f, ratio %.2f.", lta_check$rain,
+              lta_check$rain_mm_per_year, lta_check$lta_mm_per_year, lta_check$ratio),
+      "",
+      sprintf(paste("Over %.1f years the years' own weather moves every ratio together: read",
+                    "the differences between series, not their level. A gauge well below the",
+                    "others may undercatch. A grid made from gauges (as HadUK-Grid is) is not",
+                    "independent of them."), years))
   },
   "", "## What next", "",
   "- The ranking is a guide. A series that ranks well but carries a warning may still be the",
