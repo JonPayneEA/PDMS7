@@ -1039,6 +1039,44 @@ rains <- c(built,
            lapply(stats::setNames(names(other_rain_files), names(other_rain_files)), as_rain))
 names_r <- names(rains)
 gauge_series <- gauge_names
+
+# The comparison runs over the stretch every series and the flow cover: from the latest first
+# value to the earliest last one. A series that covers less of the period (one or two years of
+# H19 beside ten of gauges, say) would otherwise leave the tests that need every series at
+# once with empty years. The catchment averages written above keep the whole period.
+span_of <- function(r) {
+  k <- which(is.finite(r))
+  if (length(k)) c(k[1], k[length(k)]) else c(NA_real_, NA_real_)
+}
+spans <- vapply(c(rains, list(flow = flow)), span_of, numeric(2))
+empty <- colnames(spans)[is.na(spans[1, ])]
+if (length(empty)) {
+  stop("No values over the period for ", toString(empty), ".", call. = FALSE)
+}
+keep <- seq(max(spans[1, ]), min(spans[2, ]))
+if (!length(keep) || max(spans[1, ]) > min(spans[2, ])) {
+  stop("The series share no stretch of the period: check their dates.", call. = FALSE)
+}
+if (length(keep) < length(grid$time)) {
+  # The series that set the start and the end, named in the message and the report.
+  limiting <- unique(c(colnames(spans)[spans[1, ] == max(spans[1, ])],
+                       colnames(spans)[spans[2, ] == min(spans[2, ])]))
+  say("Compared over %s to %s, the stretch every series covers (set by %s)",
+      format(grid$time[keep[1]], "%Y-%m-%d %H:%M"),
+      format(grid$time[keep[length(keep)]], "%Y-%m-%d %H:%M"),
+      toString(limiting))
+  grid <- grid[keep, , drop = FALSE]
+  flow <- flow[keep]
+  pe <- pe[keep]
+  G <- G[keep, , drop = FALSE]
+  rains <- lapply(rains, function(r) r[keep])
+  if (!is.null(radar_at_gauges)) radar_at_gauges <- radar_at_gauges[keep, , drop = FALSE]
+} else {
+  limiting <- character(0)
+}
+# The first and last steps compared, and the time after the last.
+compared_from <- format(min(grid$time), "%Y-%m-%d %H:%M")
+compared_to <- format(max(grid$time) + 3600 * step_hours, "%Y-%m-%d %H:%M")
 years <- as.numeric(difftime(max(grid$time), min(grid$time), units = "days")) / 365.25
 
 # One colour per series, the same in every plot.
@@ -1730,15 +1768,26 @@ best <- ranking$rain[1]
 # summary.md, built a section at a time; a section left out is NULL, which c() drops.
 lines <- c(
   "# Which rain series best explains the flow", "",
-  sprintf("%.1f years of %s data; %d rain series; %d floods compared.",
+  sprintf("%.1f years of %s data, %s to %s; %d rain series; %d floods compared.",
           years,
           if (step_hours < 1) {
             sprintf("%g-minute", step_hours * 60)
           } else {
             sprintf("%g-hour", step_hours)
           },
+          compared_from,
+          compared_to,
           length(names_r),
           nrow(floods)),
+  if (length(limiting)) {
+    c("",
+      sprintf(paste("The period asked for was %s to %s; the comparison is cut to the stretch",
+                    "every series covers, set by %s. The averages in `catchment_rain/` cover",
+                    "the whole period."),
+              period_from,
+              period_to,
+              toString(limiting)))
+  },
 
   # The balance and double-mass checks use only the steps where every series has a value, so
   # a short series narrows them all.
@@ -2103,10 +2152,18 @@ blocks <- c(
                                  "before any model, against the same flow and the same steps."),
                            years,
                            step_text,
-                           period_from,
-                           period_to,
+                           compared_from,
+                           compared_to,
                            length(names_r),
                            nrow(floods)))),
+  if (length(limiting)) {
+    list(report_text(sprintf(paste("The period asked for was %s to %s; the comparison is cut",
+                                   "to the stretch every series covers, set by %s. The",
+                                   "averages in catchment_rain/ cover the whole period."),
+                             period_from,
+                             period_to,
+                             toString(limiting))))
+  },
   if (uses_radar) {
     list(report_alert(paste("This report holds H19 radar and results made from it, which are",
                             "restricted: keep it on restricted storage. Run without",

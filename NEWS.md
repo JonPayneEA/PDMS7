@@ -23,6 +23,12 @@
   `report_list()`, `report_table()`, `report_alert()`, `report_figure()`, `report_image()`
   (a PNG already on disk) and `write_report()` build such pages, using the renderer behind the
   calibration report. `read_plot_notes()` reads a script's HOW TO READ notes back as text.
+- **The comparison runs over the stretch every series covers.** One or two years of H19
+  beside ten years of gauges left the water balance, the double-mass curves and the yearly
+  plots with empty years, since those tests need every series at once. `compare_rain.R` now
+  cuts the period compared to the latest first value and the earliest last one, across every
+  series and the flow. The summary and the report say so and name the series that set the
+  cut. The averages in `catchment_rain/` still cover the whole period, for calibration.
 - A gauge already downloaded keeps its counts of readings and quality flags from the run that
   downloaded it, in place of "already downloaded".
 

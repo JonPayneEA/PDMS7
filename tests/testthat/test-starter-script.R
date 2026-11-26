@@ -241,3 +241,10 @@ test_that("the gauges can be corrected to the long-term average over a long reco
   expect_true(any(grepl("^correction_to <- ", code)))
   expect_true(any(grepl("gauge_downloads_record.csv", code, fixed = TRUE)))
 })
+
+test_that("the rain comparison is cut to the stretch every series covers", {
+  code <- readLines(system.file("scripts", "compare_rain.R", package = "pdmS7"))
+  # The latest first value and the earliest last one, across every series and the flow.
+  expect_true(any(grepl("keep <- seq(max(spans[1, ]), min(spans[2, ]))", code, fixed = TRUE)))
+  expect_true(any(grepl("the stretch every series covers", code, fixed = TRUE)))
+})
