@@ -23,7 +23,7 @@ as British National Grid metres).}
 
 \item{grid}{List with \code{x} and \code{y}, the cell-centre coordinates of the grid's columns and rows.}
 
-\item{method}{\code{thiessen}, \code{idw}, \code{multiquadric} or \code{conditional}.}
+\item{method}{\code{thiessen}, \code{idw}, \code{multiquadric}, \code{kriging}, \code{ked} or \code{conditional}.}
 
 \item{c}{Multiquadric shape parameter; by default the median distance between neighbouring
 gauges.}

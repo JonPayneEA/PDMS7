@@ -12,14 +12,17 @@ merge_rainfall(
   grid,
   mask,
   radar = NULL,
-  method = c("multiquadric", "conditional", "thiessen", "idw"),
+  method = c("multiquadric", "conditional", "thiessen", "idw", "kriging", "ked"),
   c = NULL,
   smooth = 0,
   c_candidates = c(0.1, 0.25, 0.5, 1, 2, 4),
   wet = 0.1,
   max_steps = 2000L,
   seed = 1L,
-  power = 2
+  power = 2,
+  variogram = NULL,
+  drift = NULL,
+  drift_at_gauges = NULL
 )
 
 rainfall_cross_validation(
@@ -58,7 +61,7 @@ at once, a function of the step number returning that step's grid as a matrix of
 \code{length(grid$x)} rows by \code{length(grid$y)} columns (such as one that reads that step's file).
 Sixteen years of 15-minute radar on a 30 km grid would take about 4 GB as an array.}
 
-\item{method}{\code{thiessen}, \code{idw}, \code{multiquadric} or \code{conditional}.}
+\item{method}{\code{thiessen}, \code{idw}, \code{multiquadric}, \code{kriging}, \code{ked} or \code{conditional}.}
 
 \item{c}{Multiquadric shape parameter, in the units of the coordinates; by default chosen by
 \code{rainfall_cross_validation()} from \code{c_candidates}.}
@@ -78,15 +81,26 @@ long 15-minute record is checked in seconds.}
 
 \item{power}{With \code{method = "idw"}, the power of the distance in the weights.}
 
+\item{variogram}{With \code{method = "kriging"} or \code{"ked"}, a variogram from
+\code{\link[=rainfall_variogram]{rainfall_variogram()}}; by default fitted to \code{gauge_rain}.}
+
+\item{drift}{With \code{method = "ked"}, the drift: a matrix on the grid like \code{mask}, such as a
+long-term average rainfall at every cell. Its value in the cell holding each gauge is used
+at that gauge, unless \code{drift_at_gauges} is given.}
+
+\item{drift_at_gauges}{With \code{method = "ked"}, the drift at each gauge, in the order of
+\code{gauges}: for gauges outside the grid, or a drift known exactly at the gauges.}
+
 \item{x, y}{Cell-centre coordinates of a grid's columns and rows.}
 
 \item{polygon}{Data frame or matrix with the catchment boundary's \code{x} and \code{y}, in order.}
 }
 \value{
 \code{merge_rainfall()}: a list of class \code{pdm_rainfall} with \code{rain} (catchment-average rain,
-mm per step), \code{method}, \code{c}, \code{smooth} and the cross-validation table \code{checks} when \code{c} was
-chosen. \code{rainfall_cross_validation()}: a data frame with one row per \code{c} tried (or one row
-for a method without \code{c}), giving the mean absolute error, root mean square error, bias and
+mm per step), \code{se} (for kriging, its standard error, mm per step), \code{method}, \code{c}, \code{smooth},
+\code{variogram} (for kriging) and the cross-validation table \code{checks} when \code{c} was chosen.
+\code{rainfall_cross_validation()}: a data frame with one row per \code{c} tried (or one row for a
+method without \code{c}), giving the mean absolute error, root mean square error, bias and
 correlation of the left-out gauges over the wet steps. \code{catchment_mask()}: a logical matrix,
 \code{TRUE} for cells whose centres lie inside the polygon.
 }
@@ -101,6 +115,8 @@ compared on the gauges and, through the model, on the river.
    Method \tab Field at each step \tab Uses radar \cr
    \code{thiessen} \tab Each cell takes its nearest gauge with a value \tab No \cr
    \code{idw} \tab Each cell a mean of the gauges, weighted by 1 / distance^\code{power} \tab No \cr
+   \code{kriging} \tab Ordinary block kriging of the catchment, with a standard error \tab No \cr
+   \code{ked} \tab Block kriging with an external drift, such as a long-term average grid \tab No \cr
    \code{multiquadric} \tab A smooth surface through the gauges (Hardy, 1971) \tab No \cr
    \code{conditional} \tab The gauge surface plus the radar's departure from its own surface \tab Yes \cr
 }
@@ -118,6 +134,21 @@ weight of a gauge \code{d} away being \code{1 / d^power}: the nearer a gauge, th
 cell on a gauge takes that gauge's value. The field stays within the gauges' range, so it
 never overshoots as a surface can, but makes "bull's-eyes" around each gauge. \code{power} 2 is
 usual; a larger power leans harder on the nearest gauge, towards Thiessen.
+
+\strong{Block kriging.} The catchment average is a weighting of the gauges chosen, from a
+variogram (\code{\link[=rainfall_variogram]{rainfall_variogram()}}, fitted to the gauges unless one is given), to be unbiased
+with the least error for the block as a whole, not cell by cell. The error is returned as
+\code{se}, mm per step: from the kriging variance of relative rain, times the step's mean over the
+gauges. It grows when a gauge is missing and where the gauges are sparse for the variogram's
+range. With \code{method = "ked"} the gauges are fitted around a drift, a field known everywhere
+(\code{drift}, on the grid), such as a long-term average rainfall: the average then follows the
+drift's pattern between gauges. With fewer than three gauges reporting, or a drift equal at
+every gauge, the step falls back to ordinary kriging.
+
+\strong{Speed.} Every method but conditional merging weights the gauges linearly: for a given set
+of gauges reporting, the field (or for kriging the catchment average) is a fixed weighting of
+their depths. The weights are worked out once for each set seen, and the steps done together,
+so a long record takes seconds where it took minutes step by step.
 
 \strong{Conditional merging} (Sinclair and Pegram, 2005). The gauge surface sets the level; the
 radar adds the storm's shape between gauges. At each step: fit a surface to the gauges, and
