@@ -1,3 +1,32 @@
+# pdmS7 0.44.0
+
+- **H19 in seconds, from the processed extracts.** The ProcessingNetCDF scripts have already
+  extracted H19 for every current PDM polygon, one Parquet file a year
+  (`Processed_Annual/H19_YYYY_all_polygons.parquet`). The new `h19_processed()` reads one
+  polygon from them onto a complete 15-minute timeline, with `NA` where the extracts have
+  nothing, and names the closest IDs when the polygon is not there. With arrow, only that
+  polygon's rows are read. `compare_rain.R` uses it when given `radar_processed_folder` and
+  `radar_polygon_id`. Reading the daily NetCDF files then becomes optional, needed only for
+  the radar over each gauge.
+- **One period for the whole comparison.** `compare_rain.R`'s `period_from` and `period_to`
+  (in place of `download_from` and `download_to`) cut every series (flow, evaporation,
+  gauges, radar) to the period, as well as setting the downloads. A series that does not cover
+  it is padded with gaps, with a warning naming it; for a downloaded gauge, the warning says to
+  delete its file to download it again.
+- **Multiquadric with H19.** Beside `multiquadric` (the gauges only), `compare_rain.R` builds
+  `multiquadric_h19` when it reads the daily H19 files at 15-minute steps. That is the
+  multiquadric surface through the gauges, with H19's pattern between them: conditional
+  merging, `merge_rainfall(method = "conditional")`, at the gauges' shape parameter, worked out
+  step by step as the radar is read and kept in the radar extract.
+- **A gap is no longer a dry gauge.** `gauge_response()` summed each gauge's rain over a flood
+  with missing steps left out, so a series missing for a whole flood came to 0 mm and was
+  counted as having "saw almost no rain". With one year of H19 beside nine years of gauges,
+  the radar was charged with every flood outside its year. A gauge missing any step of a
+  flood's rain now has no depth for it (`NA`) and is never counted dry for it.
+- `compare_rain.R` says, at the top of `summary.md`, when under 80% of the record has every
+  series. The water balance and double-mass checks use those steps alone. It names the
+  shortest series, so it can be left out for a comparison over the whole record.
+
 # pdmS7 0.43.0
 
 - **`compare_rain.R` finds its own gauges.** By default the script now searches the EA

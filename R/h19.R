@@ -8,12 +8,13 @@
 # Modified:     2026-11-25 - h19_layouts(); h19_radar(layouts = ); read with ncdf4, one open
 #               per file and only the window needed, in place of terra; the layout scan
 #               samples a file a month and bisects to each change; a file that will not
-#               read is skipped, its steps NA, not the end of the run
+#               read is skipped, its steps NA, not the end of the run; h19_processed()
+#               reads a polygon from the team's processed yearly Parquet extracts
 # Tier:         1
 # Inputs:       Daily H19 NetCDF files (British National Grid), an extent in metres
 # Outputs:      The cropped grid, the times of every layer, a reader for one step's grid, and
 #               the files' layouts
-# Dependencies: ncdf4 (suggested)
+# Dependencies: ncdf4 (suggested); arrow or nanoparquet (suggested, for the extracts)
 # ============================================================ #
 
 #' Gridded H19 radar for merging with gauges
@@ -451,4 +452,109 @@ print.pdm_h19_layouts <- function(x, ...) {
   if (u %in% c("mm", "millimetres", "millimeters", "mm/15min", "mm per 15 minutes")) return(1)
   if (u %in% c("mm/h", "mm/hr", "mm h-1", "mm hr-1", "mm/hour", "mm per hour")) return(0.25)
   NA_real_
+}
+
+#' H19 for a catchment from the processed yearly extracts
+#'
+#' The team's processing scripts (the ProcessingNetCDF repository) have already extracted H19
+#' for every current PDM polygon, as one Parquet file a year,
+#' `H19_YYYY_all_polygons.parquet`, in the archive's `Processed_Annual` folder: the
+#' area-weighted mean rain over each polygon (Hyrad's IDs), mm per 15 minutes. Reading a
+#' catchment from them takes seconds, where reading the daily NetCDF files with [h19_radar()]
+#' takes hours over a network drive. `h19_processed()` reads the years spanning `from` to `to`,
+#' keeps one polygon, and puts it on a complete 15-minute timeline, with `NA` for any step the
+#' extracts lack.
+#'
+#' **Times** are as the extracts hold them, the start of each 15-minute step, in UTC (the
+#' archive stamps both its layouts this way). A step held twice keeps its first value, with a
+#' warning.
+#'
+#' **The polygon** is the one in Hyrad, not necessarily your own boundary: check the two
+#' agree, or the averages are over different areas. An ID not in the extracts is refused,
+#' naming the closest IDs that are.
+#'
+#' @param folder The folder holding `H19_YYYY_all_polygons.parquet`.
+#' @param polygon_id The polygon's ID, as in Hyrad, such as `"02_10_Southern"`.
+#' @param from,to The first and last times wanted (POSIXct, or text such as `"2015-10-01"`),
+#'   in UTC; both included.
+#' @return A data frame with `time` (POSIXct, UTC, every 15 minutes from `from` to `to`) and
+#'   `rain` (mm per 15 minutes, `NA` where missing), with attribute `years_missing`, the years
+#'   with no file.
+#' @examples
+#' \dontrun{
+#' h19 <- h19_processed("F:/.../01_H19/Processed_Annual", "02_10_Southern",
+#'                      "2015-10-01", "2024-09-30 23:45")
+#' }
+#' @seealso [h19_radar()]
+#' @export
+h19_processed <- function(folder, polygon_id, from, to) {
+  .check(is.character(folder) && length(folder) == 1 && dir.exists(folder),
+         paste("No folder", folder))
+  .check(is.character(polygon_id) && length(polygon_id) == 1 && nzchar(polygon_id),
+         "polygon_id must be one polygon's ID")
+  from <- as.POSIXct(from, tz = "UTC")
+  to <- as.POSIXct(to, tz = "UTC")
+  .check(!is.na(from) && !is.na(to) && from <= to, "from must be a time no later than to")
+  from <- as.POSIXct(ceiling(as.numeric(from) / 900) * 900, origin = "1970-01-01", tz = "UTC")
+  to <- as.POSIXct(floor(as.numeric(to) / 900) * 900, origin = "1970-01-01", tz = "UTC")
+  years <- seq(as.integer(format(from, "%Y", tz = "UTC")),
+               as.integer(format(to, "%Y", tz = "UTC")))
+  files <- file.path(folder, sprintf("H19_%d_all_polygons.parquet", years))
+  have <- file.exists(files)
+  .check(any(have), paste0("No H19_YYYY_all_polygons.parquet in ", folder, " for ",
+                           min(years), " to ", max(years)))
+  if (!all(have)) {
+    warning("No processed H19 for ", toString(years[!have]), ": those steps are NA",
+            call. = FALSE)
+  }
+  parts <- lapply(files[have], .h19_processed_polygon, polygon_id = polygon_id)
+  found <- vapply(parts, is.data.frame, logical(1))
+  if (!any(found)) {
+    ids <- parts[[1]]
+    near <- ids[order(utils::adist(tolower(polygon_id), tolower(ids)))]
+    near <- near[seq_len(min(5, length(near)))]
+    .check(FALSE, paste0("No polygon ", polygon_id, " in the processed H19 (", length(ids),
+                         " polygons). The closest IDs: ", toString(near)))
+  }
+  got <- do.call(rbind, parts[found])
+  got <- got[got$time >= from & got$time <= to, ]
+  twice <- duplicated(got$time)
+  if (any(twice)) {
+    warning(sum(twice), " steps held twice in the processed H19: the first value kept",
+            call. = FALSE)
+    got <- got[!twice, ]
+  }
+  time <- seq(from, to, by = 900)
+  out <- data.frame(time = time, rain = got$rain[match(as.numeric(time), as.numeric(got$time))])
+  attr(out, "years_missing") <- years[!have]
+  out
+}
+
+# One year's extract: the polygon's times and rain, or, when the polygon is not in it, the IDs
+# it holds. With arrow, only the polygon's rows are read, filtered as the file is scanned;
+# with nanoparquet, the three columns are read whole and then filtered.
+.h19_processed_polygon <- function(path, polygon_id) {
+  cols <- c("polygon_id", "time", "rain_accum_mm_15min")
+  if (requireNamespace("arrow", quietly = TRUE)) {
+    ds <- arrow::open_dataset(path)
+    .check(all(cols %in% names(ds)), paste(basename(path), "needs columns", toString(cols)))
+    keep <- arrow::Expression$field_ref("polygon_id") == arrow::Expression$scalar(polygon_id)
+    d <- as.data.frame(arrow::Scanner$create(ds, projection = cols, filter = keep)$ToTable())
+    if (!nrow(d)) {
+      ids <- arrow::read_parquet(path, col_select = "polygon_id")$polygon_id
+      return(sort(unique(as.character(ids))))
+    }
+  } else {
+    .check(requireNamespace("nanoparquet", quietly = TRUE),
+           "Reading Parquet needs the arrow or nanoparquet package: install.packages(\"arrow\")")
+    d <- as.data.frame(nanoparquet::read_parquet(path, col_select = cols))
+    .check(all(cols %in% names(d)), paste(basename(path), "needs columns", toString(cols)))
+    in_it <- d$polygon_id == polygon_id
+    if (!any(in_it)) return(sort(unique(as.character(d$polygon_id))))
+    d <- d[in_it, ]
+  }
+  time <- d$time
+  if (!inherits(time, "POSIXct")) time <- as.POSIXct(time, tz = "UTC")
+  attr(time, "tzone") <- "UTC"
+  data.frame(time = time, rain = as.numeric(d$rain_accum_mm_15min))
 }

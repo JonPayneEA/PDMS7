@@ -70,3 +70,22 @@ test_that("missing readings are allowed and bad inputs refused", {
   expect_error(gauge_response(g, r$flow, floods = 0), "floods")
   expect_error(gauge_response(g, r$flow, lead_h = -1), "lead_h")
 })
+
+# Guards (regression): a series missing for a whole event summed to 0 mm over it, and was
+# counted dry. A run with one year of radar beside nine years of gauges charged the radar
+# with every flood outside its year. Missing is now NA, never dry.
+test_that("a gauge missing during the storms is not counted dry", {
+  r <- gauge_river()
+  ev <- find_events(rowMeans(r$gauges), r$flow)
+  x0 <- gauge_response(r$gauges, r$flow, floods = 5, events = ev)
+  gappy <- r$gauges
+  for (e in x0$events$event) {
+    row <- ev[ev$event == e, ]
+    gappy$hill[row$rain_start:row$rain_end] <- NA
+  }
+  x <- gauge_response(gappy, r$flow, floods = 5, events = ev)
+  # The same five floods; hill has no rain for any of them, so none can count against it.
+  expect_identical(x$summary$dry_events[x$summary$gauge == "hill"], 0L)
+  expect_true(all(is.na(x$events$hill.rain_mm)))
+  expect_true(all(is.finite(x$events$town.rain_mm)))
+})

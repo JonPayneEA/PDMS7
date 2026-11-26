@@ -332,6 +332,7 @@ reference:
   - rainfall_field
   - h19_radar
   - h19_layouts
+  - h19_processed
   - read_boundary
   - distance_to_boundary
 - title: Standard visuals
