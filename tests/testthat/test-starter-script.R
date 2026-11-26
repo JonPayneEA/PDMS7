@@ -182,7 +182,7 @@ test_that("the rain comparison parses, stops until the area is set, and names it
   expect_true(any(grepl("^area_km2 <- NA ", code)))
   # Every HOW TO READ note names a plot the script writes.
   notes <- sub("^\\s*# HOW TO READ ", "", grep("^\\s*# HOW TO READ ", code, value = TRUE))
-  expect_length(notes, 8)
+  expect_length(notes, 9)
   written <- code[!grepl("^\\s*#", code)]
   for (name in notes) {
     expect_true(any(grepl(sprintf('"%s"', name), written, fixed = TRUE)), info = name)

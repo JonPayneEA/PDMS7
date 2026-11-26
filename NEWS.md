@@ -1,3 +1,31 @@
+# pdmS7 0.46.0
+
+- **`compare_rain.R` writes `report.html`.** It is one self-contained page, with every plot
+  embedded, so it can be emailed or archived. The page opens with alerts: the best series, a
+  short-record warning, and a warning that it holds restricted H19 when it does. Then come:
+  - the ranking, with each series' warnings;
+  - the gauges, with where each sits, how much of the period it has, and its flags and
+    correction;
+  - the averages, with a table of each one's weights by gauge, beside its effective number of
+    gauges, error factor and suggested `rain_error`;
+  - the long-term average corrections and check;
+  - each test in turn, saying what it tests, with its plot, its notes and its table;
+  - the radar;
+  - what to do next.
+
+  The text under each plot is the script's own HOW TO READ note, so the two never disagree.
+  `summary.md` is still written.
+- **The five largest floods.** The new `largest_floods_cumulative.png` has one panel per
+  flood. Each panel shows every series' rain added up through the flood, the averages bold and
+  the gauges thin, over the hydrograph. `largest_floods.csv` gives each series' total and
+  runoff ratio for each flood.
+- **Report blocks for scripts.** New exported functions `report_heading()`, `report_text()`,
+  `report_list()`, `report_table()`, `report_alert()`, `report_figure()`, `report_image()`
+  (a PNG already on disk) and `write_report()` build such pages, using the renderer behind the
+  calibration report. `read_plot_notes()` reads a script's HOW TO READ notes back as text.
+- A gauge already downloaded keeps its counts of readings and quality flags from the run that
+  downloaded it, in place of "already downloaded".
+
 # pdmS7 0.45.0
 
 - **Multiquadric scaled by a long-term average rainfall grid.** The new `read_lta_grid()`
