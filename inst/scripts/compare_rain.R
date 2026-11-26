@@ -24,7 +24,7 @@
 # Outputs:      A folder: summary.md, rain_ranking.csv, weights_and_error.csv, plots each with a
 #               note on how to read it, and catchment_rain/ with each average built, as CSV
 #               ready for calibrate_site.R
-# Dependencies: pdmS7 (0.44.0 or later); sf for a shapefile and the search; reach.io
+# Dependencies: pdmS7 (0.47.0 or later); sf for a shapefile and the search; reach.io
 #               to find and download the gauges; arrow (or nanoparquet) for the processed
 #               H19 extracts, ncdf4 for the daily H19 files
 # ============================================================ #
@@ -82,6 +82,15 @@
 
 library(pdmS7)
 library(data.table)
+
+# The script is written for this pdmS7 or later: an older one lacks functions it uses, and
+# would fail part way through.
+if (utils::packageVersion("pdmS7") < "0.47.0") {
+  stop("compare_rain.R needs pdmS7 0.47.0 or later; this is ",
+       as.character(utils::packageVersion("pdmS7")),
+       ". Update it with remotes::install_github(\"JonPayneEA/PDMS7\"), then restart R.",
+       call. = FALSE)
+}
 
 # ---- Settings: fill these in -------------------------------------------------------------
 

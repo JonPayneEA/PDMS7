@@ -269,3 +269,11 @@ test_that("the rain comparison counts its years from the month set, calendar yea
   expect_true(any(grepl("^year_start_month <- 1$", code)))
   expect_true(any(grepl("water_year_start = year_start_month", code, fixed = TRUE)))
 })
+
+test_that("the rain comparison needs the pdmS7 it was written for", {
+  code <- readLines(system.file("scripts", "compare_rain.R", package = "pdmS7"))
+  need <- sub('.*< "([0-9.]+)".*', "\\1", grep('packageVersion\\("pdmS7"\\) <', code, value = TRUE))
+  expect_length(need, 1)
+  # The version it asks for is never newer than the package it ships in.
+  expect_true(utils::packageVersion("pdmS7") >= need)
+})
