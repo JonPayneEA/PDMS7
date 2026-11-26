@@ -27,7 +27,9 @@
 #' storms as big. `dry_events` counts events where a gauge recorded under a tenth of the
 #' median gauge, when that median is at least `dry_mm`: a funnel blocked, a logger down, or a
 #' storm that missed the gauge. A storm over one gauge alone leaves the median low and flags
-#' nobody.
+#' nobody. A gauge missing any step of an event's rain has no depth for that event (`NA`) and
+#' is never counted dry for it: a series that covers only part of the record, such as radar
+#' for one year, is not charged with the storms outside it.
 #'
 #' **Reading it.** A gauge with a clearly higher `r` and most of the wins drives the
 #' spike. Rain cannot follow the flow it causes, so a negative best lag means the gauge's clock
@@ -128,16 +130,20 @@ gauge_response <- function(gauges, flow, time = NULL, dt = 1, rain = NULL, area_
   rows <- lapply(seq_len(nrow(events)), function(e) {
     r0 <- events$rain_start[e]
     r1 <- events$flow_end[e]
+    # A gauge missing any step of the event's rain has no depth for it (NA), rather than the
+    # sum of what it has: a gap is not a dry gauge.
     depth <- vapply(names_g, function(g) {
-      sum(gauges[[g]][events$rain_start[e]:events$rain_end[e]], na.rm = TRUE)
+      x <- gauges[[g]][events$rain_start[e]:events$rain_end[e]]
+      if (anyNA(x)) NA_real_ else sum(x)
     }, numeric(1))
     fit <- vapply(names_g, function(g) {
       k <- lags[[g]]
       if (!is.finite(k) || r1 - r0 - abs(k) < 2L) return(NA_real_)
       .lag_correlation(gauges[[g]][r0:r1], rise[r0:r1], k)
     }, numeric(1))
-    typical <- stats::median(depth)
-    dry <- length(depth) > 1L & is.finite(typical) & typical >= dry_mm & depth < 0.1 * typical
+    typical <- stats::median(depth, na.rm = TRUE)
+    dry <- sum(is.finite(depth)) > 1L & is.finite(typical) & typical >= dry_mm &
+      is.finite(depth) & depth < 0.1 * typical
     winner <- if (all(is.na(fit))) NA_character_ else names_g[which.max(fit)]
     data.frame(event = events$event[e], winner = winner,
                dry = paste(names_g[dry], collapse = ";"),

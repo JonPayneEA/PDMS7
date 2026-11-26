@@ -212,3 +212,13 @@ test_that("the rain comparison finds its gauges by default, from a shapefile's c
   expect_true(any(grepl('^catchment_boundary <- "catchment.shp"', code)))
   expect_true(any(grepl("^thiessen_weights <- c\\(\\)", code)))
 })
+
+test_that("the rain comparison has one period for everything, and both multiquadric averages", {
+  code <- readLines(system.file("scripts", "compare_rain.R", package = "pdmS7"))
+  # One period cuts every series and sets the downloads; the old download_ names are gone.
+  expect_true(any(grepl("^period_from <- ", code)))
+  expect_true(any(grepl("^period_to <- ", code)))
+  expect_false(any(grepl("download_from|download_to", code)))
+  # The gauges-only and gauges-with-H19 multiquadric averages are both built names.
+  expect_true(any(grepl('"multiquadric", "multiquadric_h19"', code, fixed = TRUE)))
+})

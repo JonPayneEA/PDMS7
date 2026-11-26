@@ -75,7 +75,9 @@ events, of a gauge's event rain with the event's quick flow: whether the gauge s
 storms as big. \code{dry_events} counts events where a gauge recorded under a tenth of the
 median gauge, when that median is at least \code{dry_mm}: a funnel blocked, a logger down, or a
 storm that missed the gauge. A storm over one gauge alone leaves the median low and flags
-nobody.
+nobody. A gauge missing any step of an event's rain has no depth for that event (\code{NA}) and
+is never counted dry for it: a series that covers only part of the record, such as radar
+for one year, is not charged with the storms outside it.
 
 \strong{Reading it.} A gauge with a clearly higher \code{r} and most of the wins drives the
 spike. Rain cannot follow the flow it causes, so a negative best lag means the gauge's clock

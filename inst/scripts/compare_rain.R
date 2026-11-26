@@ -49,7 +49,9 @@
 #     equal_all     every gauge listed, inside the catchment or not, weighted equally (only
 #                   when some gauge has no Thiessen weight);
 #     multiquadric  a smooth surface through every gauge, averaged over the catchment (with the
-#                   positions and the boundary).
+#                   positions and the boundary): the gauges only;
+#     multiquadric_h19  the same surface through the gauges, with the radar's pattern between
+#                   them (conditional merging): with H19 from radar_folder, at 15-minute steps.
 #   Each is renormalised over the gauges reporting at each step. With the boundary it also
 #   works out Thiessen weights from the geometry, to check those given.
 #   Then every series (the averages, each gauge, and any other series given) is set against the
@@ -93,6 +95,12 @@ pet_file <- "pet.csv"     # potential evaporation, mm per step
 catchment_boundary <- "catchment.shp"
 grid_spacing_m <- 500
 
+# The period compared: from (inclusive) to (exclusive), in UTC. Every series (flow,
+# evaporation, gauges, radar) is cut to it, and gauges are downloaded for it. A series that does
+# not cover the whole period is padded with gaps, with a warning.
+period_from <- "2015-10-01"
+period_to <- "2024-10-01"
+
 # The rain gauges, from the EA Hydrology API with reach.io (gauge_source "hydrology_api").
 #   1. Leave gauge_ids empty and run: every 15-minute rain gauge within search_radius_km of
 #      the catchment's centroid is listed in nearby_gauges.csv, nearest the catchment first,
@@ -100,12 +108,10 @@ grid_spacing_m <- 500
 #   2. Put the WISKI IDs you choose in gauge_ids and run again: each gauge's rain is downloaded
 #      to data_folder (a file already there is used as it is; delete it to download again).
 # search_radius_km NULL searches from the centroid to the boundary's farthest point, plus
-# 10 km. Dates: from (inclusive) to (exclusive).
+# 10 km. The downloads cover period_from to period_to.
 gauge_source <- "hydrology_api"
 search_radius_km <- NULL
 gauge_ids <- c()               # such as c("254336TP", "SS92F014")
-download_from <- "2014-10-01"
-download_to <- "2025-10-01"
 
 # Gauge files of your own instead (gauge_source "files"): one file each, rain in mm per step,
 # in data_folder. x and y are each gauge's position in metres on British National Grid, for
@@ -318,7 +324,7 @@ if (identical(gauge_source, "hydrology_api")) {
       return(data.frame(gauge = gauges$name[i], wiski_id = ids[i], label = info$label[i],
                         readings = NA, missing = NA, flags = NA, file = basename(path)))
     }
-    chunks <- reach.io::make_date_chunks(download_from, download_to)
+    chunks <- reach.io::make_date_chunks(period_from, period_to)
     say("  %s (%s, %s): downloading %d year%s", gauges$name[i], ids[i], info$label[i],
         nrow(chunks), if (nrow(chunks) == 1) "" else "s")
     readings <- data.table::rbindlist(lapply(seq_len(nrow(chunks)), function(k) {
@@ -349,7 +355,7 @@ if (length(thiessen_weights) && !is.null(gauges$wiski_id)) {
   by_id <- match(names(thiessen_weights), gauges$wiski_id)
   names(thiessen_weights)[!is.na(by_id)] <- gauge_names[by_id[!is.na(by_id)]]
 }
-built_names <- c("thiessen", "equal", "equal_all", "multiquadric", "h19")
+built_names <- c("thiessen", "equal", "equal_all", "multiquadric", "multiquadric_h19", "h19")
 clash <- intersect(c(gauge_names, names(other_rain_files)), built_names)
 if (length(clash) || anyDuplicated(c(gauge_names, names(other_rain_files)))) {
   stop("Give each gauge and other series a name of its own, not one of ",
@@ -372,7 +378,25 @@ say("Reading %d rain gauges, %d other series, the flow and the evaporation", len
     length(other_rain_files))
 raw <- c(list(flow = read_hydro_series(here(flow_file)), pe = read_hydro_series(here(pet_file))),
          lapply(inputs, function(f) read_hydro_series(here(f))))
-grid <- do.call(align_series, c(raw, list(dt = step_hours)))
+from_t <- as.POSIXct(period_from, tz = "UTC")
+to_t <- as.POSIXct(period_to, tz = "UTC")
+if (is.na(from_t) || is.na(to_t) || from_t >= to_t) {
+  stop("period_from and period_to must be dates, the first before the second.", call. = FALSE)
+}
+# Each series against the period: one that starts late or ends early is padded with gaps.
+for (n in names(raw)) {
+  span <- range(raw[[n]]$time[is.finite(raw[[n]]$value)])
+  if (span[1] > from_t + 86400 || span[2] < to_t - 2 * 86400) {
+    warning(sprintf(paste("%s covers %s to %s only, not the whole period %s to %s: the rest",
+                          "is gaps.%s"), n, format(span[1], "%Y-%m-%d"),
+                    format(span[2], "%Y-%m-%d"), period_from, period_to,
+                    if (n %in% gauge_names && !is.null(downloads)) {
+                      " Delete its file to download it again for the period."
+                    } else ""), call. = FALSE)
+  }
+}
+grid <- do.call(align_series, c(raw, list(dt = step_hours, start = from_t,
+                                          end = to_t - 3600 * step_hours)))
 flow <- convert_units(grid$flow, "auto", step_hours, "flow")
 pe <- fill_gaps(convert_units(grid$pe, "mm_per_step", step_hours, "pet"), "interpolate",
                 grid$time, "pe")
@@ -520,10 +544,17 @@ if (!is.null(radar_folder)) {
   px <- c(if (have_boundary) boundary$x, if (have_positions) gauges$x)
   py <- c(if (have_boundary) boundary$y, if (have_positions) gauges$y)
   extent <- c(min(px) - 3000, max(px) + 3000, min(py) - 3000, max(py) + 3000)
+  # Multiquadric through the gauges and the radar (conditional merging): the multiquadric
+  # surface through the gauges, plus the radar's own pattern between them (the radar field less
+  # a multiquadric surface through the radar at the gauges), averaged over the catchment's
+  # radar cells. Worked out step by step as the radar is read, at 15-minute steps.
+  conditional <- have_boundary && have_positions && exists("multiquadric_c") &&
+    step_hours == 0.25
   cache <- file.path(output_folder, "radar_extract.csv")
   cache_files <- file.path(output_folder, "radar_extract_files.txt")
   cached <- file.exists(cache) && file.exists(cache_files) &&
-    identical(sort(readLines(cache_files)), sort(radar_files))
+    identical(sort(readLines(cache_files)), sort(radar_files)) &&
+    (!conditional || "h19_multiquadric" %in% names(fread(cache, nrows = 0)))
   if (cached) {
     say("  using the radar already extracted (%s)", basename(cache))
     extract <- fread(cache)
@@ -543,6 +574,20 @@ if (!is.null(radar_folder)) {
       })
     }
     say("  reading %d steps from %d files", length(h$time), length(radar_files))
+    gauge_row <- match(as.numeric(h$time), as.numeric(grid$time))
+    # The cell each gauge sits in, for the conditional merge.
+    gauge_cell <- if (have_positions) {
+      cbind(vapply(gauges$x, function(x) which.min(abs(h$grid$x - x)), integer(1)),
+            vapply(gauges$y, function(y) which.min(abs(h$grid$y - y)), integer(1)))
+    }
+    merge_step <- function(r, s) {
+      g <- if (is.na(gauge_row[s])) rep(NA_real_, length(gauge_names)) else G[gauge_row[s], ]
+      inside <- r[in_catchment]
+      if (all(is.na(g)) || anyNA(inside) || anyNA(r[gauge_cell])) return(NA_real_)
+      if (all(g <= 0, na.rm = TRUE) && all(inside <= 0) && all(r[gauge_cell] <= 0)) return(0)
+      merge_rainfall(located, matrix(g, nrow = 1), h$grid, in_catchment,
+                     radar = function(t) r, method = "conditional", c = multiquadric_c)$rain
+    }
     values <- t(vapply(seq_along(h$time), function(s) {
       r <- h$radar(s)
       r[r < 0] <- NA
@@ -557,8 +602,8 @@ if (!is.null(radar_folder)) {
       } else {
         rep(NA_real_, length(gauge_names))
       }
-      c(catchment, at_gauges)
-    }, numeric(1 + length(gauge_names))))
+      c(catchment, if (conditional) merge_step(r, s) else NA_real_, at_gauges)
+    }, numeric(2 + length(gauge_names))))
     skipped <- h$skipped()
     if (nrow(skipped)) {
       fwrite(skipped, file.path(output_folder, "radar_skipped_files.csv"))
@@ -567,7 +612,7 @@ if (!is.null(radar_folder)) {
       say("  radar_skipped_files.csv")
     }
     extract <- data.table(time = h$time, values)
-    setnames(extract, c("time", "h19", paste0("radar_at_", gauge_names)))
+    setnames(extract, c("time", "h19", "h19_multiquadric", paste0("radar_at_", gauge_names)))
     fwrite(extract[, time := format(time, "%Y-%m-%d %H:%M:%S", tz = "UTC")], cache)
     extract$time <- as.POSIXct(extract$time, tz = "UTC")
     writeLines(radar_files, cache_files)
@@ -576,6 +621,9 @@ if (!is.null(radar_folder)) {
   # only the radar over each gauge.
   if (have_boundary && is.null(radar_processed)) {
     built$h19 <- onto_grid(extract$h19, extract$time)
+  }
+  if (conditional && "h19_multiquadric" %in% names(extract)) {
+    built$multiquadric_h19 <- onto_grid(extract$h19_multiquadric, extract$time)
   }
   if (have_positions) {
     radar_at_gauges <- vapply(gauge_names, function(n) {
@@ -809,7 +857,7 @@ if (length(gauge_series) > 1) {
   if (length(unknown)) {
     stop("gauge_series names series not in rain_files: ", toString(unknown), call. = FALSE)
   }
-  averages <- setdiff(names_r, c(gauge_series, "h19"))
+  averages <- setdiff(names_r, c(gauge_series, "h19", "multiquadric_h19"))
   G <- as.matrix(as.data.frame(rains[gauge_series]))
   given <- weights[intersect(names(weights), averages)]
   for (n in names(given)) {
@@ -1082,6 +1130,19 @@ lines <- c(
   sprintf("%.1f years of %s data; %d rain series; %d floods compared.", years,
           if (step_hours < 1) sprintf("%g-minute", step_hours * 60) else
             sprintf("%g-hour", step_hours), length(names_r), nrow(floods)),
+  # The balance and double-mass checks use only the steps where every series has a value, so
+  # a short series narrows them all.
+  if (mean(common) < 0.8) {
+    short <- names(missing_pct)[missing_pct > 20]
+    c("", sprintf(paste("**Only %.0f%% of the record (%.1f years) has every series.** The water",
+                        "balance and double-mass checks use those steps alone; the flood checks",
+                        "judge each series on the floods it covers. The shortest: %s. Leave",
+                        "it out for a fair comparison over the whole record, or keep it to",
+                        "compare everything over its period."),
+                  100 * mean(common), years * mean(common),
+                  paste(sprintf("%s (%.0f%% missing)", short, missing_pct[short]),
+                        collapse = ", ")), "")
+  },
   "Judged from the data alone, before any model. How to read each plot: the HOW TO READ",
   "notes in compare_rain.R, beside the line that draws it.", "",
   sprintf("**Best by the data: %s.** The ranking, best first (mean rank over twelve",
@@ -1099,6 +1160,13 @@ lines <- c(
     c(sprintf(paste("- **multiquadric**: every gauge, on a %g m grid, shape parameter c = %.0f m",
                     "(chosen by leaving out one gauge at a time)."), grid_spacing_m,
               multiquadric_c),
+      if (!is.null(built$multiquadric_h19)) {
+        paste("- **multiquadric_h19**: the same surface through the gauges, with H19's pattern",
+              "between them (conditional merging), on the radar's 1 km cells. A step needs",
+              "the radar over the catchment and at every gauge.")
+      } else if (!is.null(radar_folder) && step_hours != 0.25) {
+        "- multiquadric_h19: not built (it needs 15-minute data)."
+      },
       "",
       if (thiessen_source == "given") {
         c(sprintf("Thiessen weights from the gauge positions and the boundary: %s. Given: %s.",
@@ -1120,7 +1188,7 @@ lines <- c(
   "", "Each is in `catchment_rain/`, as a CSV ready for calibrate_site.R.",
   if (!is.null(downloads)) {
     c("", sprintf(paste("Gauges downloaded from the EA Hydrology API with reach.io, %s to %s",
-                        "(`gauge_downloads.csv`):"), download_from, download_to), "",
+                        "(`gauge_downloads.csv`):"), period_from, period_to), "",
       sprintf("- %s: %s, WISKI ID %s%s", downloads$gauge, downloads$label, downloads$wiski_id,
               ifelse(is.na(downloads$readings), ", already downloaded.",
                      sprintf(", %d readings, %d missing; other flags: %s.",
