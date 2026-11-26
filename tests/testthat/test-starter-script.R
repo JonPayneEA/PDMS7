@@ -232,3 +232,12 @@ test_that("the rain comparison can scale the multiquadric by a long-term average
   expect_true(any(grepl('"multiquadric_lta"', code, fixed = TRUE)))
   expect_true(any(grepl("long_term_average_check.csv", code, fixed = TRUE)))
 })
+
+test_that("the gauges can be corrected to the long-term average over a long record", {
+  code <- readLines(system.file("scripts", "compare_rain.R", package = "pdmS7"))
+  # Off by default; the correction record has its own window, and the downloads cover both.
+  expect_true(any(grepl('^lta_correction <- "none"', code)))
+  expect_true(any(grepl("^correction_from <- ", code)))
+  expect_true(any(grepl("^correction_to <- ", code)))
+  expect_true(any(grepl("gauge_downloads_record.csv", code, fixed = TRUE)))
+})

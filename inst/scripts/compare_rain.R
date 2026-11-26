@@ -106,6 +106,19 @@ grid_spacing_m <- 500
 # (multiquadric_lta), and each series' annual rain is set against the long-term average.
 lta_rain_file <- NULL
 
+# Correcting the gauges to the long-term average (optional; needs lta_rain_file). Each gauge's
+# average year over a long record, correction_from to correction_to, set against the grid at
+# the gauge, gives the gauge a factor, which then scales its rain over the period compared.
+#   "relative": each factor divided by the gauges' median factor, so the gauges keep their
+#               overall level and only how they differ from each other is corrected; the long
+#               record's own weather, wetter or drier than the grid's years, cancels.
+#   "absolute": each gauge put onto the grid's own level.
+#   "none":     the gauges as measured.
+# The gauge downloads cover both the correction record and the period compared.
+lta_correction <- "none"
+correction_from <- "2010-10-01"
+correction_to <- "2024-10-01"
+
 # The period compared: from (inclusive) to (exclusive), in UTC. Every series (flow,
 # evaporation, gauges, radar) is cut to it, and gauges are downloaded for it. A series that does
 # not cover the whole period is padded with gaps, with a warning.
@@ -326,16 +339,35 @@ if (identical(gauge_source, "hydrology_api")) {
   gauges <- data.frame(name = name_of(info$label), file = paste0("rain_", ids, ".csv"),
                        wiski_id = ids, x = info$x, y = info$y)
 
-  # The downloads: missing readings become gaps; other quality flags are counted, not acted
-  # on (quality control belongs upstream).
+  # The downloads cover the period compared and, when the gauges are corrected, the long
+  # record too. A file already there is used when it was downloaded for at least that window
+  # (as gauge_downloads_record.csv in data_folder says), or, with no record, when its readings
+  # span it; otherwise it is downloaded again. Missing readings become gaps; other quality
+  # flags are counted, not acted on (quality control belongs upstream).
+  correcting <- !identical(lta_correction, "none")
+  dl_from <- if (correcting) min(period_from, correction_from) else period_from
+  dl_to <- if (correcting) max(period_to, correction_to) else period_to
+  record_file <- here("gauge_downloads_record.csv")
+  record <- if (file.exists(record_file)) {
+    fread(record_file, colClasses = "character")
+  } else {
+    data.table(wiski_id = character(0), from = character(0), to = character(0))
+  }
+  covered <- function(i, path) {
+    k <- match(ids[i], record$wiski_id)
+    if (!is.na(k)) return(record$from[k] <= dl_from && record$to[k] >= dl_to)
+    t <- as.POSIXct(fread(path, select = 1L)[[1]], tz = "UTC")
+    min(t, na.rm = TRUE) <= as.POSIXct(dl_from, tz = "UTC") + 86400 &&
+      max(t, na.rm = TRUE) >= as.POSIXct(dl_to, tz = "UTC") - 2 * 86400
+  }
   downloads <- do.call(rbind, lapply(seq_len(nrow(gauges)), function(i) {
     path <- here(gauges$file[i])
-    if (file.exists(path)) {
+    if (file.exists(path) && covered(i, path)) {
       say("  %s (%s): using %s, already downloaded", gauges$name[i], ids[i], basename(path))
       return(data.frame(gauge = gauges$name[i], wiski_id = ids[i], label = info$label[i],
                         readings = NA, missing = NA, flags = NA, file = basename(path)))
     }
-    chunks <- reach.io::make_date_chunks(period_from, period_to)
+    chunks <- reach.io::make_date_chunks(dl_from, dl_to)
     say("  %s (%s, %s): downloading %d year%s", gauges$name[i], ids[i], info$label[i],
         nrow(chunks), if (nrow(chunks) == 1) "" else "s")
     readings <- data.table::rbindlist(lapply(seq_len(nrow(chunks)), function(k) {
@@ -348,6 +380,9 @@ if (identical(gauge_source, "hydrology_api")) {
     value[quality %in% "Missing"] <- NA
     data.table::fwrite(data.table::data.table(
       time = format(readings$dateTime, "%Y-%m-%d %H:%M:%S", tz = "UTC"), value = value), path)
+    record <<- rbind(record[record$wiski_id != ids[i]],
+                     data.table(wiski_id = ids[i], from = dl_from, to = dl_to))
+    fwrite(record, record_file)
     flagged <- table(quality[!quality %in% c("Good", "Missing", NA)])
     data.frame(gauge = gauges$name[i], wiski_id = ids[i], label = info$label[i],
                readings = nrow(readings), missing = sum(is.na(value)),
@@ -416,6 +451,70 @@ as_rain <- function(n) convert_units(grid[[n]], "mm_per_step", step_hours, "rain
 G <- vapply(gauge_names, as_rain, numeric(length(grid$time)))
 if (is.null(dim(G))) G <- matrix(G, ncol = 1, dimnames = list(NULL, gauge_names))
 
+# ---- The long-term average grid, and the gauges corrected to it ----------------------------
+
+have_positions <- !anyNA(gauges$x) && !anyNA(gauges$y)
+lta <- NULL
+corrections <- NULL
+if (!lta_correction %in% c("none", "relative", "absolute")) {
+  stop("lta_correction must be \"none\", \"relative\" or \"absolute\".", call. = FALSE)
+}
+if (!identical(lta_correction, "none") && is.null(lta_rain_file)) {
+  stop("lta_correction needs lta_rain_file, the long-term average grid.", call. = FALSE)
+}
+if (!is.null(lta_rain_file)) {
+  if (is.null(boundary) || !have_positions) {
+    stop("The long-term average grid needs the boundary and every gauge's position.",
+         call. = FALSE)
+  }
+  if (!file.exists(here(lta_rain_file))) {
+    stop("Cannot find ", here(lta_rain_file), ".", call. = FALSE)
+  }
+  lta <- read_lta_grid(here(lta_rain_file),
+                       extent = c(range(c(boundary$x, gauges$x)) + c(-3000, 3000),
+                                  range(c(boundary$y, gauges$y)) + c(-3000, 3000)))
+  lta_gauges <- stats::setNames(lta_at(lta, gauges$x, gauges$y), gauge_names)
+  if (anyNA(lta_gauges)) {
+    stop("The long-term average grid has no value at ",
+         toString(gauge_names[is.na(lta_gauges)]), ".", call. = FALSE)
+  }
+}
+if (!identical(lta_correction, "none")) {
+  # Each gauge's average year over the long record: its rain over the steps it has, scaled to
+  # a year by the share of the record those steps cover. Under 70% of the record is too little
+  # to trust: that gauge is left as measured.
+  c_from <- as.POSIXct(correction_from, tz = "UTC")
+  c_to <- as.POSIXct(correction_to, tz = "UTC")
+  corrections <- do.call(rbind, lapply(gauge_names, function(n) {
+    d <- raw[[n]]
+    k <- d$time >= c_from & d$time < c_to & is.finite(d$value)
+    step_h <- stats::median(as.numeric(diff(d$time), units = "hours"))
+    cover <- sum(k) * step_h / as.numeric(difftime(c_to, c_from, units = "hours"))
+    mean_year <- if (cover > 0) sum(d$value[k]) / (sum(k) * step_h / 8766) else NA_real_
+    data.frame(gauge = n, record_years = round(sum(k) * step_h / 8766, 1),
+               coverage = round(cover, 3), mm_per_year = round(mean_year, 1),
+               lta_mm_per_year = round(lta_gauges[[n]], 1),
+               raw_factor = if (cover >= 0.7) lta_gauges[[n]] / mean_year else NA_real_)
+  }))
+  short <- corrections$gauge[is.na(corrections$raw_factor)]
+  if (length(short)) {
+    warning("Under 70% of the correction record for ", toString(short), ": left as measured.",
+            call. = FALSE)
+  }
+  corrections$factor <- if (identical(lta_correction, "relative")) {
+    corrections$raw_factor / stats::median(corrections$raw_factor, na.rm = TRUE)
+  } else {
+    corrections$raw_factor
+  }
+  corrections$factor[is.na(corrections$factor)] <- 1
+  corrections$raw_factor <- round(corrections$raw_factor, 3)
+  corrections$factor <- round(corrections$factor, 3)
+  fwrite(corrections, file.path(output_folder, "lta_corrections.csv"))
+  say("Gauges corrected to the long-term average (%s): %s", lta_correction,
+      paste(sprintf("%s x %.3f", corrections$gauge, corrections$factor), collapse = ", "))
+  G <- sweep(G, 2, corrections$factor, "*")
+}
+
 # ---- The catchment averages -------------------------------------------------------------------
 
 # A weighted average, renormalised over the gauges reporting at each step, as a weighting
@@ -433,7 +532,6 @@ weighted_average <- function(w) {
 }
 # The grid over the catchment, for the multiquadric average and the Thiessen weights from the
 # geometry: each gauge's share of the cells inside the boundary that lie nearest to it.
-have_positions <- !anyNA(gauges$x) && !anyNA(gauges$y)
 geometry_weights <- NULL
 if (!is.null(boundary) && have_positions) {
   cells_x <- seq(min(boundary$x) - grid_spacing_m, max(boundary$x) + grid_spacing_m,
@@ -493,23 +591,7 @@ if (!is.null(boundary)) {
 # average L (z = g x L / L_gauge); with each cell weighted by its own long-term average, the
 # merge's weighted mean of the surface through z is then the mean of share times average. A
 # flat grid gives the plain multiquadric exactly.
-lta <- NULL
-if (!is.null(lta_rain_file)) {
-  if (is.null(boundary) || !have_positions) {
-    stop("The long-term average grid needs the boundary and every gauge's position.",
-         call. = FALSE)
-  }
-  if (!file.exists(here(lta_rain_file))) {
-    stop("Cannot find ", here(lta_rain_file), ".", call. = FALSE)
-  }
-  lta <- read_lta_grid(here(lta_rain_file),
-                       extent = c(range(c(cells_x, gauges$x)) + c(-2000, 2000),
-                                  range(c(cells_y, gauges$y)) + c(-2000, 2000)))
-  lta_gauges <- stats::setNames(lta_at(lta, gauges$x, gauges$y), gauge_names)
-  if (anyNA(lta_gauges)) {
-    stop("The long-term average grid has no value at ",
-         toString(gauge_names[is.na(lta_gauges)]), ".", call. = FALSE)
-  }
+if (!is.null(lta)) {
   lta_cells <- matrix(lta_at(lta, rep(cells_x, length(cells_y)),
                              rep(cells_y, each = length(cells_x))), length(cells_x))
   if (anyNA(lta_cells[mask])) {
@@ -1000,7 +1082,8 @@ if (length(gauge_series) > 1) {
     data.frame(
       rain = n,
       weights = paste(sprintf("%s %.3f", names(w)[w != 0], w[w != 0]), collapse = ", "),
-      source = if (n == "thiessen") thiessen_source else if (n %in% c("equal", "equal_all")) "equal" else
+      source = if (n == "thiessen") thiessen_source else
+        if (n %in% c("equal", "equal_all")) "equal" else
         if (n %in% names(given)) "given" else sprintf("estimated, R2 %.3f", fit_r2[[n]]),
       weights_sum = round(sum(w), 3),
       sum_of_squares = round(s2, 3),
@@ -1341,6 +1424,22 @@ lines <- c(
       },
       "", "H19 and everything made from it are restricted: keep this folder on restricted",
       "storage.")
+  },
+  if (!is.null(corrections)) {
+    c("", "## Gauges corrected to the long-term average", "",
+      sprintf(paste("Each gauge's average year over %s to %s, against %s at the gauge",
+                    "(`lta_corrections.csv`); the factors are %s:"), correction_from,
+              correction_to, lta_rain_file,
+              if (identical(lta_correction, "relative")) {
+                "relative (each divided by the median), so the gauges keep their overall level"
+              } else "absolute, putting each gauge on the grid's level"),
+      "",
+      sprintf(paste("- **%s**: %.0f mm a year over %.1f years (%.0f%% of the record) against",
+                    "%.0f; factor %.3f."), corrections$gauge, corrections$mm_per_year, corrections$record_years,
+              100 * corrections$coverage, corrections$lta_mm_per_year, corrections$factor),
+      "",
+      paste("Every series built from the gauges, and the gauges themselves, use the corrected",
+            "rain. Readings flagged Suspect are kept in the averages."))
   },
   if (!is.null(lta_check)) {
     c("", "## Against the long-term average", "",
