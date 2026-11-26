@@ -153,6 +153,20 @@ gauges <- data.frame(
 # Left empty, they are worked out from the gauges' positions and the boundary.
 thiessen_weights <- c()        # such as c("254336TP" = 0.264, SS92F014 = 0.737)
 
+# The catchment averages to build: delete any you do not want. One whose inputs are missing is
+# skipped, and the summary and the report say why.
+#   thiessen          the Thiessen weights (given, or from the gauges' positions)
+#   equal             the gauges with a Thiessen weight, weighted equally
+#   equal_all         every gauge weighted equally (when some gauge has no Thiessen weight)
+#   idw               inverse distance weighting over the catchment (boundary, positions)
+#   multiquadric      a smooth surface through the gauges (boundary, positions)
+#   multiquadric_lta  the same, shaped by the long-term average (lta_rain_file)
+#   h19               the radar alone (radar_folder or radar_processed_folder)
+#   h19_bias          the radar scaled day by day to the gauges (radar_folder, positions)
+#   multiquadric_h19  the gauges' surface with the radar's pattern (radar_folder, 15 minutes)
+rain_methods <- c("thiessen", "equal", "equal_all", "idw", "multiquadric", "multiquadric_lta",
+                  "h19", "h19_bias", "multiquadric_h19")
+
 # H19 radar (optional): the folder of daily H19 NetCDF files, with a folder for each year.
 # The files' layouts are checked first (the archive changed how it saved them part way
 # through): set radar_scan_only to TRUE to see them and stop. Then the radar over the catchment
@@ -537,8 +551,23 @@ if (length(thiessen_weights) && !is.null(gauges$wiski_id)) {
 }
 
 # The averages the script builds have these names, so no gauge or other series may take one.
-built_names <- c("thiessen", "equal", "equal_all", "multiquadric", "multiquadric_lta",
-                 "multiquadric_h19", "h19")
+built_names <- c("thiessen", "equal", "equal_all", "idw", "multiquadric", "multiquadric_lta",
+                 "h19", "h19_bias", "multiquadric_h19")
+unknown_methods <- setdiff(rain_methods, built_names)
+if (length(unknown_methods)) {
+  stop("rain_methods names averages the script cannot build: ",
+       toString(unknown_methods),
+       ". The averages it can build: ",
+       toString(built_names),
+       ".",
+       call. = FALSE)
+}
+
+# The averages asked for that cannot be built, with the reason, for the summary and the report.
+skipped_methods <- character(0)
+skip_method <- function(name, reason) {
+  if (name %in% rain_methods) skipped_methods[[name]] <<- reason
+}
 clash <- intersect(c(gauge_names, names(other_rain_files)), built_names)
 if (length(clash) || anyDuplicated(c(gauge_names, names(other_rain_files)))) {
   stop("Give each gauge and other series a name of its own, not one of ",
@@ -755,31 +784,60 @@ if (length(inside)) {
 if (length(setdiff(gauge_names, inside))) {
   weights$equal_all <- stats::setNames(rep(1 / length(gauge_names), length(gauge_names)),
                                        gauge_names)
+} else {
+  skip_method("equal_all", "every gauge has a Thiessen weight, so it would be the same as equal")
 }
+if (!length(inside)) {
+  skip_method("thiessen", "no Thiessen weights were given and there is no boundary to make them")
+  skip_method("equal", "no Thiessen weights were given and there is no boundary to make them")
+}
+# Only the averages asked for.
+weights <- weights[intersect(names(weights), rain_methods)]
 built <- lapply(weights, weighted_average)
 
 # Multiquadric: a smooth surface through every gauge, inside the catchment or near it, averaged
 # over the cells inside the boundary (pdmS7's merge_rainfall()). Worked out on the wet steps
 # only: a step where every reporting gauge is dry has no rain anywhere.
-if (!is.null(boundary)) {
+surface_methods <- c("idw", "multiquadric", "multiquadric_lta", "multiquadric_h19")
+if (is.null(boundary)) {
+  for (m in surface_methods) skip_method(m, "it needs the catchment boundary")
+} else if (any(surface_methods %in% rain_methods)) {
   if (!have_positions) {
     stop("The multiquadric average needs every gauge's x and y in the gauges table.",
          call. = FALSE)
   }
-  say("Multiquadric average over the catchment")
   located <- data.frame(id = gauge_names, x = gauges$x, y = gauges$y)
   wet_steps <- which(rowSums(G > 0, na.rm = TRUE) > 0)
   # Dry steps are 0 where some gauge reports, missing where none does.
-  multiquadric <- ifelse(rowSums(!is.na(G)) > 0, 0, NA_real_)
-  # The shape parameter c is chosen by leaving out one gauge at a time.
-  fit <- merge_rainfall(located,
-                        G[wet_steps, , drop = FALSE],
-                        cell_grid,
-                        mask,
-                        method = "multiquadric")
-  multiquadric[wet_steps] <- fit$rain
-  built$multiquadric <- multiquadric
-  multiquadric_c <- fit$c
+  dry_or_missing <- ifelse(rowSums(!is.na(G)) > 0, 0, NA_real_)
+
+  # The multiquadric's shape parameter c is chosen by leaving out one gauge at a time; the
+  # conditional merge uses the same c, so it is worked out for either.
+  if (any(c("multiquadric", "multiquadric_h19") %in% rain_methods)) {
+    say("Multiquadric average over the catchment")
+    fit <- merge_rainfall(located,
+                          G[wet_steps, , drop = FALSE],
+                          cell_grid,
+                          mask,
+                          method = "multiquadric")
+    multiquadric_c <- fit$c
+    if ("multiquadric" %in% rain_methods) {
+      built$multiquadric <- dry_or_missing
+      built$multiquadric[wet_steps] <- fit$rain
+    }
+  }
+
+  # Inverse distance weighting: each cell a mean of the gauges, weighted by 1 / distance^2.
+  if ("idw" %in% rain_methods) {
+    say("Inverse distance weighting over the catchment")
+    fit_idw <- merge_rainfall(located,
+                              G[wet_steps, , drop = FALSE],
+                              cell_grid,
+                              mask,
+                              method = "idw")
+    built$idw <- dry_or_missing
+    built$idw[wet_steps] <- fit_idw$rain
+  }
 }
 
 # Multiquadric scaled by the long-term average: at each step, each gauge's rain as a share of
@@ -799,18 +857,22 @@ if (!is.null(lta)) {
     stop("The long-term average grid has no value for part of the catchment.", call. = FALSE)
   }
   lta_catchment <- mean(lta_cells[mask])
-  say("Multiquadric scaled by the long-term average (catchment %.0f mm a year)", lta_catchment)
-  scaled <- sweep(G, 2, lta_catchment / lta_gauges, "*")
-  # The cells' weights are their long-term averages (0 outside the catchment).
-  fit_lta <- merge_rainfall(located,
-                            scaled[wet_steps, , drop = FALSE],
-                            cell_grid,
-                            ifelse(mask, lta_cells, 0),
-                            method = "multiquadric")
-  multiquadric_lta <- ifelse(rowSums(!is.na(G)) > 0, 0, NA_real_)
-  multiquadric_lta[wet_steps] <- fit_lta$rain
-  built$multiquadric_lta <- multiquadric_lta
-  multiquadric_lta_c <- fit_lta$c
+  if ("multiquadric_lta" %in% rain_methods) {
+    say("Multiquadric scaled by the long-term average (catchment %.0f mm a year)",
+        lta_catchment)
+    scaled <- sweep(G, 2, lta_catchment / lta_gauges, "*")
+    # The cells' weights are their long-term averages (0 outside the catchment).
+    fit_lta <- merge_rainfall(located,
+                              scaled[wet_steps, , drop = FALSE],
+                              cell_grid,
+                              ifelse(mask, lta_cells, 0),
+                              method = "multiquadric")
+    built$multiquadric_lta <- dry_or_missing
+    built$multiquadric_lta[wet_steps] <- fit_lta$rain
+    multiquadric_lta_c <- fit_lta$c
+  }
+} else {
+  skip_method("multiquadric_lta", "it needs lta_rain_file, the long-term average grid")
 }
 
 # ---- H19 radar ------------------------------------------------------------------------------
@@ -823,6 +885,9 @@ if (!is.null(lta)) {
 radar_at_gauges <- NULL
 radar_layouts <- NULL
 radar_processed <- NULL
+radar_bias <- NULL
+# The radar's catchment average on the record's steps, from the extracts or the daily files.
+h19_series <- NULL
 
 # Onto the record's steps: 15-minute radar summed into longer steps when step_hours is longer,
 # a step counting only when all its quarter hours are present.
@@ -850,7 +915,7 @@ if (!is.null(radar_processed_folder)) {
                                    radar_polygon_id,
                                    min(grid$time),
                                    max(grid$time) + 3600 * step_hours - 900)
-  built$h19 <- onto_grid(radar_processed$rain, radar_processed$time)
+  h19_series <- onto_grid(radar_processed$rain, radar_processed$time)
   say("  %.1f%% of 15-minute steps missing", 100 * mean(is.na(radar_processed$rain)))
 }
 
@@ -915,8 +980,8 @@ if (!is.null(radar_folder)) {
   # surface through the gauges, plus the radar's own pattern between them (the radar field less
   # a multiquadric surface through the radar at the gauges), averaged over the catchment's
   # radar cells. Worked out step by step as the radar is read, at 15-minute steps.
-  conditional <- have_boundary && have_positions && exists("multiquadric_c") &&
-    step_hours == 0.25
+  conditional <- "multiquadric_h19" %in% rain_methods && have_boundary && have_positions &&
+    exists("multiquadric_c") && step_hours == 0.25
 
   # A radar extract kept from an earlier run is used when it came from the same files (and has
   # the conditional merge, when that is wanted).
@@ -1011,7 +1076,7 @@ if (!is.null(radar_folder)) {
   # The processed extract, where given, is the catchment average; the daily files then give
   # only the radar over each gauge.
   if (have_boundary && is.null(radar_processed)) {
-    built$h19 <- onto_grid(extract$h19, extract$time)
+    h19_series <- onto_grid(extract$h19, extract$time)
   }
   if (conditional && "h19_multiquadric" %in% names(extract)) {
     built$multiquadric_h19 <- onto_grid(extract$h19_multiquadric, extract$time)
@@ -1021,6 +1086,54 @@ if (!is.null(radar_folder)) {
       onto_grid(extract[[paste0("radar_at_", n)]], extract$time)
     }, numeric(length(grid$time)))
   }
+}
+
+# The radar alone, when asked for.
+if (!is.null(h19_series) && "h19" %in% rain_methods) built$h19 <- h19_series
+
+# The radar with a mean-field bias correction: day by day, the radar over the catchment scaled
+# by the gauges' total over the radar's total at the gauges, over the steps where both have a
+# value. It keeps the radar's pattern and timing and takes its level from the gauges. A day
+# with under 1 mm of radar at the gauges keeps the radar as it is (too little to scale by), and
+# the factor is held within 0.2 to 5, so one day's mismatch cannot wipe out or blow up a storm.
+if ("h19_bias" %in% rain_methods && !is.null(h19_series) && !is.null(radar_at_gauges)) {
+  say("H19 with a daily mean-field bias correction")
+  bias_day <- as.Date(grid$time)
+  both <- !is.na(G) & !is.na(radar_at_gauges)
+  gauge_day <- tapply(rowSums(ifelse(both, G, 0)), bias_day, sum)
+  radar_day <- tapply(rowSums(ifelse(both, radar_at_gauges, 0)), bias_day, sum)
+  factor_day <- ifelse(radar_day >= 1, pmin(pmax(gauge_day / radar_day, 0.2), 5), 1)
+  radar_bias <- data.frame(day = names(factor_day),
+                           gauges_mm = round(as.numeric(gauge_day), 2),
+                           radar_mm = round(as.numeric(radar_day), 2),
+                           factor = round(as.numeric(factor_day), 3))
+  fwrite(radar_bias, file.path(output_folder, "radar_bias_factors.csv"))
+  built$h19_bias <- h19_series * as.numeric(factor_day[as.character(bias_day)])
+}
+
+# The radar averages asked for that could not be built, and why.
+radar_given <- !is.null(radar_folder) || !is.null(radar_processed_folder)
+if (is.null(h19_series)) {
+  skip_method("h19",
+              if (radar_given) {
+                "it needs the catchment boundary"
+              } else {
+                "it needs radar_folder or radar_processed_folder"
+              })
+}
+if ((is.null(h19_series) || is.null(radar_at_gauges)) && is.null(built$h19_bias)) {
+  skip_method("h19_bias",
+              "it needs radar_folder (the daily files), the boundary and the gauges' positions")
+}
+if (is.null(built$multiquadric_h19) && !"multiquadric_h19" %in% names(skipped_methods)) {
+  skip_method("multiquadric_h19",
+              if (is.null(radar_folder)) {
+                "it needs radar_folder, the daily H19 files"
+              } else if (step_hours != 0.25) {
+                "it needs 15-minute data"
+              } else {
+                "it needs the catchment boundary and the gauges' positions"
+              })
 }
 
 # Write the averages out, ready for calibrate_site.R.
@@ -1438,7 +1551,7 @@ if (length(gauge_series) > 1) {
     stop("gauge_series names series not in rain_files: ", toString(unknown), call. = FALSE)
   }
   # The radar-based series are not weightings of the gauges, so they are left out here.
-  averages <- setdiff(names_r, c(gauge_series, "h19", "multiquadric_h19"))
+  averages <- setdiff(names_r, c(gauge_series, "h19", "h19_bias", "multiquadric_h19"))
   G <- as.matrix(as.data.frame(rains[gauge_series]))
   given <- weights[intersect(names(weights), averages)]
   for (n in names(given)) {
@@ -1830,10 +1943,20 @@ lines <- c(
             paste(sprintf("%s %.3f", names(w), w), collapse = ", ")
           }, "")),
   if (!is.null(boundary)) {
-    c(sprintf(paste("- **multiquadric**: every gauge, on a %g m grid, shape parameter c = %.0f m",
-                    "(chosen by leaving out one gauge at a time)."),
-              grid_spacing_m,
-              multiquadric_c),
+    c(if (!is.null(built$multiquadric)) {
+        sprintf(paste("- **multiquadric**: every gauge, on a %g m grid, shape parameter c = %.0f m",
+                      "(chosen by leaving out one gauge at a time)."),
+                grid_spacing_m,
+                multiquadric_c)
+      },
+      if (!is.null(built$idw)) {
+        sprintf("- **idw**: every gauge, weighted by 1 / distance^2, on a %g m grid.",
+                grid_spacing_m)
+      },
+      if (!is.null(built$h19_bias)) {
+        paste("- **h19_bias**: H19 over the catchment, scaled day by day by the gauges' total",
+              "over the radar's at the gauges (`radar_bias_factors.csv`).")
+      },
       if (!is.null(built$multiquadric_h19)) {
         paste("- **multiquadric_h19**: the same surface through the gauges, with H19's pattern",
               "between them (conditional merging), on the radar's 1 km cells. A step needs",
@@ -1860,7 +1983,11 @@ lines <- c(
   } else {
     "- multiquadric: not built (no catchment_boundary given)."
   },
-  if (!is.null(lta)) {
+  if (length(skipped_methods)) {
+    c("", "Not built, though asked for:", "",
+      sprintf("- %s: %s.", names(skipped_methods), skipped_methods))
+  },
+  if (!is.null(built$multiquadric_lta)) {
     sprintf(paste("- **multiquadric_lta**: each gauge's rain as a share of its long-term",
                   "average (%s), a multiquadric surface through the shares (c = %.0f m), times",
                   "the grid."),
@@ -2210,10 +2337,24 @@ blocks <- c(
   # The averages and their weights.
   list(report_heading("The catchment averages"),
        report_list(c(
-         "thiessen: each gauge weighted by the share of the catchment nearest it.",
-         "equal: the gauges with a Thiessen weight, weighted equally.",
-         "equal_all: every gauge, inside the catchment or not, weighted equally.",
-         "multiquadric: a smooth surface through every gauge, averaged over the catchment.",
+         if (!is.null(built$thiessen)) {
+           "thiessen: each gauge weighted by the share of the catchment nearest it."
+         },
+         if (!is.null(built$equal)) "equal: the gauges with a Thiessen weight, weighted equally.",
+         if (!is.null(built$equal_all)) {
+           "equal_all: every gauge, inside the catchment or not, weighted equally."
+         },
+         if (!is.null(built$idw)) {
+           "idw: each cell a mean of the gauges, weighted by 1 / distance^2."
+         },
+         if (!is.null(built$multiquadric)) {
+           "multiquadric: a smooth surface through every gauge, averaged over the catchment."
+         },
+         if (!is.null(built$h19)) "h19: the radar over the catchment, as it is.",
+         if (!is.null(built$h19_bias)) {
+           paste("h19_bias: the radar scaled day by day by the gauges' total over the radar's",
+                 "total at the gauges (a mean-field bias correction), held within 0.2 to 5.")
+         },
          if (!is.null(built$multiquadric_lta)) {
            paste("multiquadric_lta: the surface fitted to each gauge's rain as a share of its",
                  "long-term average, scaled back by the grid.")
@@ -2224,6 +2365,12 @@ blocks <- c(
          })),
        report_text("Each is renormalised over the gauges reporting at each step: a missing",
                    "gauge's weight is shared among the rest."),
+       if (length(skipped_methods)) {
+         report_alert(paste("Not built, though asked for:",
+                            paste(sprintf("%s (%s)", names(skipped_methods), skipped_methods),
+                                  collapse = "; ")),
+                      FALSE)
+       },
        if (thiessen_source == "given" && !is.null(geometry_weights)) {
          report_text(sprintf("Thiessen weights from the gauge positions and the boundary: %s.",
                              paste(sprintf("%s %.3f", names(geometry_weights), geometry_weights),

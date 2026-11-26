@@ -12,13 +12,14 @@ merge_rainfall(
   grid,
   mask,
   radar = NULL,
-  method = c("multiquadric", "conditional", "thiessen"),
+  method = c("multiquadric", "conditional", "thiessen", "idw"),
   c = NULL,
   smooth = 0,
   c_candidates = c(0.1, 0.25, 0.5, 1, 2, 4),
   wet = 0.1,
   max_steps = 2000L,
-  seed = 1L
+  seed = 1L,
+  power = 2
 )
 
 rainfall_cross_validation(
@@ -26,13 +27,14 @@ rainfall_cross_validation(
   gauge_rain,
   grid,
   radar = NULL,
-  method = c("multiquadric", "conditional", "thiessen"),
+  method = c("multiquadric", "conditional", "thiessen", "idw"),
   c = NULL,
   smooth = 0,
   c_candidates = c(0.1, 0.25, 0.5, 1, 2, 4),
   wet = 0.1,
   max_steps = 2000L,
-  seed = 1L
+  seed = 1L,
+  power = 2
 )
 
 catchment_mask(x, y, polygon)
@@ -56,7 +58,7 @@ at once, a function of the step number returning that step's grid as a matrix of
 \code{length(grid$x)} rows by \code{length(grid$y)} columns (such as one that reads that step's file).
 Sixteen years of 15-minute radar on a 30 km grid would take about 4 GB as an array.}
 
-\item{method}{\code{thiessen}, \code{multiquadric} or \code{conditional}.}
+\item{method}{\code{thiessen}, \code{idw}, \code{multiquadric} or \code{conditional}.}
 
 \item{c}{Multiquadric shape parameter, in the units of the coordinates; by default chosen by
 \code{rainfall_cross_validation()} from \code{c_candidates}.}
@@ -74,6 +76,8 @@ long 15-minute record is checked in seconds.}
 
 \item{seed}{Seed for that sample; the caller's random state is restored.}
 
+\item{power}{With \code{method = "idw"}, the power of the distance in the weights.}
+
 \item{x, y}{Cell-centre coordinates of a grid's columns and rows.}
 
 \item{polygon}{Data frame or matrix with the catchment boundary's \code{x} and \code{y}, in order.}
@@ -89,13 +93,14 @@ correlation of the left-out gauges over the wet steps. \code{catchment_mask()}: 
 \description{
 Rain gauges measure the amount of rain well at a point; radar shows where and when it fell
 but gets the amount wrong, by beam height, bright band and the conversion from reflectivity.
-\code{merge_rainfall()} builds the catchment-average rainfall three ways, so that they can be
+\code{merge_rainfall()} builds the catchment-average rainfall four ways, so that they can be
 compared on the gauges and, through the model, on the river.
 }
 \details{
 \tabular{lll}{
    Method \tab Field at each step \tab Uses radar \cr
    \code{thiessen} \tab Each cell takes its nearest gauge with a value \tab No \cr
+   \code{idw} \tab Each cell a mean of the gauges, weighted by 1 / distance^\code{power} \tab No \cr
    \code{multiquadric} \tab A smooth surface through the gauges (Hardy, 1971) \tab No \cr
    \code{conditional} \tab The gauge surface plus the radar's departure from its own surface \tab Yes \cr
 }
@@ -107,6 +112,12 @@ far from the gauges the surface stays bounded rather than rising without limit. 
 through every gauge, unless \code{smooth} is positive, which lets it miss them slightly to allow
 for gauge error. The shape parameter \code{c} (metres, or whatever the coordinates are in) sets
 how flat the cones are; by default it is chosen by leaving out one gauge at a time.
+
+\strong{Inverse distance weighting.} Each cell takes a weighted mean of the gauges reporting, the
+weight of a gauge \code{d} away being \code{1 / d^power}: the nearer a gauge, the more it counts, and a
+cell on a gauge takes that gauge's value. The field stays within the gauges' range, so it
+never overshoots as a surface can, but makes "bull's-eyes" around each gauge. \code{power} 2 is
+usual; a larger power leans harder on the nearest gauge, towards Thiessen.
 
 \strong{Conditional merging} (Sinclair and Pegram, 2005). The gauge surface sets the level; the
 radar adds the storm's shape between gauges. At each step: fit a surface to the gauges, and

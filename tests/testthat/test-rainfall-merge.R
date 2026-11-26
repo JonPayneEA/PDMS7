@@ -150,3 +150,29 @@ test_that("rainfall_field maps one step consistently with merge_rainfall", {
   expect_error(rainfall_field(d$gauges, d$gauge_rain[wet, ], d$grid, method = "conditional"),
                "radar must be")
 })
+
+# Guards: inverse distance weighting, worked by hand on two gauges. Gauge A at (0, 0) with 4 mm,
+# B at (3000, 0) with 1 mm; a cell at (1000, 0) is 1000 m from A and 2000 m from B. With power
+# 2 the weights are 1/1e6 and 1/4e6, so the cell gets (4 + 1/4) / (1 + 1/4) = 3.4 mm; with
+# power 1, (4 + 1/2) / (1 + 1/2) = 3 mm. A cell on a gauge takes that gauge's value.
+test_that("inverse distance weighting gives the hand-worked field", {
+  gauges <- data.frame(id = c("A", "B"), x = c(0, 3000), y = c(0, 0))
+  grid <- list(x = c(0, 1000, 3000), y = 0)
+  expect_equal(as.numeric(rainfall_field(gauges, c(4, 1), grid, method = "idw")),
+               c(4, 3.4, 1))
+  expect_equal(as.numeric(rainfall_field(gauges, c(4, 1), grid, method = "idw", power = 1)),
+               c(4, 3, 1))
+  # A gauge missing at a step is left out: the field is the other gauge everywhere.
+  expect_equal(as.numeric(rainfall_field(gauges, c(NA, 1), grid, method = "idw")), c(1, 1, 1))
+  # The catchment average over the middle cell alone, two steps, the second dry.
+  mask <- matrix(c(FALSE, TRUE, FALSE), nrow = 3)
+  out <- merge_rainfall(gauges, rbind(c(4, 1), c(0, 0)), grid, mask, method = "idw")
+  expect_equal(out$rain, c(3.4, 0))
+  expect_identical(out$power, 2)
+  expect_null(out$c)
+  expect_error(merge_rainfall(gauges, rbind(c(4, 1)), grid, mask, method = "idw", power = 0),
+               "power")
+  # Leave-one-out with two gauges needs three, so it is refused as for the other methods.
+  expect_error(rainfall_cross_validation(gauges, rbind(c(4, 1)), grid, method = "idw"),
+               "three gauges")
+})
