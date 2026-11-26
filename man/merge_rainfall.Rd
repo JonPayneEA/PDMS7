@@ -85,8 +85,11 @@ long 15-minute record is checked in seconds.}
 \code{\link[=rainfall_variogram]{rainfall_variogram()}}; by default fitted to \code{gauge_rain}.}
 
 \item{drift}{With \code{method = "ked"}, the drift: a matrix on the grid like \code{mask}, such as a
-long-term average rainfall at every cell. Its value in the cell holding each gauge is used
-at that gauge, unless \code{drift_at_gauges} is given.}
+long-term average rainfall at every cell, or one that changes at each step, such as the
+radar, given as \code{radar} is (an array of grid columns by rows by steps, or a function of
+the step returning that step's matrix). Its value in the cell holding each gauge is used
+at that gauge, unless \code{drift_at_gauges} is given; a step with the drift missing at a
+gauge or in the catchment is missing.}
 
 \item{drift_at_gauges}{With \code{method = "ked"}, the drift at each gauge, in the order of
 \code{gauges}: for gauges outside the grid, or a drift known exactly at the gauges.}

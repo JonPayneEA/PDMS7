@@ -105,8 +105,11 @@
 #' @param variogram With `method = "kriging"` or `"ked"`, a variogram from
 #'   [rainfall_variogram()]; by default fitted to `gauge_rain`.
 #' @param drift With `method = "ked"`, the drift: a matrix on the grid like `mask`, such as a
-#'   long-term average rainfall at every cell. Its value in the cell holding each gauge is used
-#'   at that gauge, unless `drift_at_gauges` is given.
+#'   long-term average rainfall at every cell, or one that changes at each step, such as the
+#'   radar, given as `radar` is (an array of grid columns by rows by steps, or a function of
+#'   the step returning that step's matrix). Its value in the cell holding each gauge is used
+#'   at that gauge, unless `drift_at_gauges` is given; a step with the drift missing at a
+#'   gauge or in the catchment is missing.
 #' @param drift_at_gauges With `method = "ked"`, the drift at each gauge, in the order of
 #'   `gauges`: for gauges outside the grid, or a drift known exactly at the gauges.
 #' @param c_candidates Multiples of the median distance between neighbouring gauges tried for
@@ -150,8 +153,16 @@ merge_rainfall <- function(gauges, gauge_rain, grid, mask, radar = NULL,
   .check_merge_inputs(gauges, gauge_rain, grid, mask, radar, method, smooth)
   .check(.scalar(power, 0, strict = TRUE), "power must be a positive number")
   if (method == "ked") {
-    .check(is.matrix(drift) && nrow(drift) == length(grid$x) && ncol(drift) == length(grid$y),
-           "With method = \"ked\", drift must be a matrix on the grid, like mask")
+    fixed_drift <- is.matrix(drift)
+    .check((fixed_drift && nrow(drift) == length(grid$x) && ncol(drift) == length(grid$y)) ||
+             is.function(drift) ||
+             (is.array(drift) && length(dim(drift)) == 3L &&
+                all(dim(drift) == c(length(grid$x), length(grid$y), nrow(gauge_rain)))),
+           paste("With method = \"ked\", drift must be a matrix on the grid, like mask, or",
+                 "one that changes at each step: an array of grid columns by rows by steps,",
+                 "or a function of the step returning that step's matrix"))
+    .check(fixed_drift || is.null(drift_at_gauges),
+           "drift_at_gauges goes with a drift that is the same at every step")
   }
   checks <- NULL
   uses_c <- method %in% c("multiquadric", "conditional")
@@ -179,16 +190,21 @@ merge_rainfall <- function(gauges, gauge_rain, grid, mask, radar = NULL,
   } else {
     # The other methods weight the gauges linearly, so their weights are worked out once for
     # each set of gauges reporting, not at every step.
-    drift_cells <- if (method == "ked") drift[cbind(cells$i, cells$j)]
-    drift_gauges <- if (method == "ked") {
+    varying <- method == "ked" && !is.matrix(drift)
+    drift_cells <- if (method == "ked" && !varying) drift[cbind(cells$i, cells$j)]
+    drift_gauges <- if (method == "ked" && !varying) {
       if (is.null(drift_at_gauges)) drift[cbind(at_gauge$i, at_gauge$j)] else drift_at_gauges
+    }
+    # A drift that changes at each step, read a step at a time, as the radar is.
+    drift_step <- if (varying) {
+      function(t) .radar_step(drift, t, cells, at_gauge)
     }
     .check(is.null(drift_at_gauges) || length(drift_at_gauges) == nrow(gauges),
            "drift_at_gauges must have one value per gauge")
-    .check(method != "ked" || (!anyNA(drift_cells) && !anyNA(drift_gauges)),
+    .check(method != "ked" || varying || (!anyNA(drift_cells) && !anyNA(drift_gauges)),
            "drift must have a value in every catchment cell and at every gauge")
     out <- .merge_linear(gauges, gauge_rain, cells, method, c, smooth, power, variogram,
-                         drift_cells, drift_gauges)
+                         drift_cells, drift_gauges, drift_step)
     rain <- out$rain
     se <- out$se
   }

@@ -67,6 +67,48 @@ test_that("kriging with an external drift reproduces rain that follows the drift
                "drift must be a matrix")
 })
 
+# Guards: a drift that changes at each step, such as the radar, gives at every step what a
+# fixed drift gives for that step alone, given as an array or as a function of the step. Rain
+# at each gauge 1 + 0.5 x the step's drift there is reproduced exactly, by the same constraints
+# as above: 1 + 0.5 x the block's mean drift at that step. A step with the drift missing at a
+# gauge is missing.
+test_that("kriging with a drift that changes at each step solves each step on its own", {
+  v <- fixed_variogram(0.05, 1, 3000)
+  grid <- list(x = seq(500, 9500, by = 1000), y = seq(500, 9500, by = 1000))
+  mask <- catchment_mask(grid$x, grid$y,
+                         data.frame(x = c(2000, 8000, 8000, 2000), y = c(2000, 2000, 8000, 8000)))
+  gauges <- data.frame(id = 1:4, x = c(1500, 8500, 4500, 6500), y = c(1500, 2500, 8500, 5500))
+  gi <- cbind(match(gauges$x, grid$x), match(gauges$y, grid$y))
+  steps <- 3
+  drift <- array(0, c(10, 10, steps))
+  drift[, , 1] <- outer(grid$x / 1000, rep(1, 10))
+  drift[, , 2] <- outer(rep(1, 10), grid$y / 500)
+  drift[, , 3] <- outer(grid$x / 1000, grid$y / 1000)
+  rain <- t(vapply(seq_len(steps), function(t) 1 + 0.5 * drift[, , t][gi], numeric(4)))
+  rain[2, 3] <- rain[2, 3] + 1
+  as_array <- merge_rainfall(gauges, rain, grid, mask, method = "ked", variogram = v,
+                             drift = drift)
+  as_function <- merge_rainfall(gauges, rain, grid, mask, method = "ked", variogram = v,
+                                drift = function(t) drift[, , t])
+  expect_equal(as_function, as_array)
+  for (t in seq_len(steps)) {
+    one <- merge_rainfall(gauges, rain[t, , drop = FALSE], grid, mask, method = "ked",
+                          variogram = v, drift = drift[, , t])
+    expect_equal(as_array$rain[t], one$rain, info = t)
+    expect_equal(as_array$se[t], one$se, info = t)
+  }
+  expect_equal(as_array$rain[c(1, 3)], 1 + 0.5 * c(mean(drift[, , 1][mask]),
+                                                   mean(drift[, , 3][mask])))
+  gap <- drift
+  gap[gi[1, 1], gi[1, 2], 2] <- NA
+  out <- merge_rainfall(gauges, rain, grid, mask, method = "ked", variogram = v, drift = gap)
+  expect_true(is.na(out$rain[2]))
+  expect_equal(out$rain[c(1, 3)], as_array$rain[c(1, 3)])
+  expect_error(merge_rainfall(gauges, rain, grid, mask, method = "ked", variogram = v,
+                              drift = drift, drift_at_gauges = 1:4),
+               "same at every step")
+})
+
 # Guards: the fast path (weights once per set of gauges reporting) gives the same averages as
 # making the field at every step, for each linear method, with gauges missing in different
 # patterns and a step whose multiquadric surface dips below zero (set to zero cell by cell).

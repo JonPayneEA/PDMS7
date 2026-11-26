@@ -109,19 +109,28 @@ print.pdm_variogram <- function(x, ...) {
   ifelse(h > 0, v$nugget + v$partial_sill * (1 - exp(-h / v$range)), 0)
 }
 
+# The parts of the kriging system that depend only on where the gauges are: the variogram
+# between them, and from each to the block (its mean over the cells).
+.kriging_parts <- function(gx, gy, cells, v) {
+  list(gamma_gg = .vgm(sqrt(outer(gx, gx, "-")^2 + outer(gy, gy, "-")^2), v),
+       gamma_gb = vapply(seq_along(gx), function(i) {
+         sum(cells$w * .vgm(sqrt((cells$x - gx[i])^2 + (cells$y - gy[i])^2), v)) /
+           sum(cells$w)
+       }, 0))
+}
+
 # Block kriging weights for the gauges at (gx, gy) over the catchment's cells: ordinary, or
 # with an external drift known at the gauges (dg) and averaged over the block (db). Returns
-# the weights and the block's kriging variance, in the variogram's (relative) units.
-.block_kriging <- function(gx, gy, cells, v, gamma_bb, dg = NULL, db = NULL) {
+# the weights and the block's kriging variance, in the variogram's (relative) units. The parts
+# that depend only on the gauges' places can be passed in, worked out once.
+.block_kriging <- function(gx, gy, cells, v, gamma_bb, dg = NULL, db = NULL,
+                           parts = .kriging_parts(gx, gy, cells, v)) {
   k <- length(gx)
   if (k == 1) {
-    g1 <- sum(cells$w * .vgm(sqrt((cells$x - gx)^2 + (cells$y - gy)^2), v)) / sum(cells$w)
-    return(list(lambda = 1, variance = 2 * g1 - gamma_bb))
+    return(list(lambda = 1, variance = 2 * parts$gamma_gb - gamma_bb))
   }
-  gamma_gg <- .vgm(sqrt(outer(gx, gx, "-")^2 + outer(gy, gy, "-")^2), v)
-  gamma_gb <- vapply(seq_len(k), function(i) {
-    sum(cells$w * .vgm(sqrt((cells$x - gx[i])^2 + (cells$y - gy[i])^2), v)) / sum(cells$w)
-  }, 0)
+  gamma_gg <- parts$gamma_gg
+  gamma_gb <- parts$gamma_gb
   with_drift <- !is.null(dg) && k >= 3 && stats::var(dg) > 0
   a <- rbind(cbind(gamma_gg, 1), c(rep(1, k), 0))
   rhs <- c(gamma_gb, 1)
@@ -183,7 +192,7 @@ print.pdm_variogram <- function(x, ...) {
 # a block of steps at a time; for kriging the block weights give the average directly, with
 # its standard error.
 .merge_linear <- function(gauges, gauge_rain, cells, method, c, smooth, power, variogram,
-                          drift_cells, drift_gauges) {
+                          drift_cells, drift_gauges, drift_step = NULL) {
   n <- ncol(gauge_rain)
   steps <- nrow(gauge_rain)
   rain <- rep(NA_real_, steps)
@@ -201,7 +210,20 @@ print.pdm_variogram <- function(x, ...) {
     z <- gauge_rain[rows, ok, drop = FALSE]
     gx <- gauges$x[ok]
     gy <- gauges$y[ok]
-    if (kriged) {
+    if (kriged && !is.null(drift_step)) {
+      # A drift that changes at every step (the radar): the gauges' parts once, the system
+      # solved at each step with that step's drift.
+      parts <- .kriging_parts(gx, gy, cells, variogram)
+      for (r in seq_along(rows)) {
+        d <- drift_step(rows[r])
+        dg <- d$gauges[ok]
+        db_t <- sum(cells$w * d$cells) / wsum
+        if (anyNA(dg) || !is.finite(db_t)) next
+        kw <- .block_kriging(gx, gy, cells, variogram, gamma_bb, dg, db_t, parts)
+        rain[rows[r]] <- max(sum(z[r, ] * kw$lambda), 0)
+        se[rows[r]] <- sqrt(max(kw$variance, 0)) * mean(z[r, ])
+      }
+    } else if (kriged) {
       kw <- .block_kriging(gx, gy, cells, variogram, gamma_bb,
                            if (method == "ked") drift_gauges[ok], db)
       estimate <- drop(z %*% kw$lambda)
