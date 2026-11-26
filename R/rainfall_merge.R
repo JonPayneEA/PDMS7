@@ -5,7 +5,9 @@
 # Flode Module: standalone; target reach.hydro
 # Author:       pdmS7 contributors
 # Created:      2026-11-07
-# Modified:     2026-11-26 - inverse distance weighting (method = "idw")
+# Modified:     2026-11-26 - block kriging (kriging, ked); linear methods' weights once per
+#               set of gauges reporting
+#               2026-11-26 - inverse distance weighting (method = "idw")
 #               2026-11-07 - First version
 # Tier:         1
 # Inputs:       Gauge locations and depths (mm per step); optionally radar grids (mm per step);
@@ -25,6 +27,8 @@
 #' |---|---|---|
 #' | `thiessen` | Each cell takes its nearest gauge with a value | No |
 #' | `idw` | Each cell a mean of the gauges, weighted by 1 / distance^`power` | No |
+#' | `kriging` | Ordinary block kriging of the catchment, with a standard error | No |
+#' | `ked` | Block kriging with an external drift, such as a long-term average grid | No |
 #' | `multiquadric` | A smooth surface through the gauges (Hardy, 1971) | No |
 #' | `conditional` | The gauge surface plus the radar's departure from its own surface | Yes |
 #'
@@ -40,6 +44,21 @@
 #' cell on a gauge takes that gauge's value. The field stays within the gauges' range, so it
 #' never overshoots as a surface can, but makes "bull's-eyes" around each gauge. `power` 2 is
 #' usual; a larger power leans harder on the nearest gauge, towards Thiessen.
+#'
+#' **Block kriging.** The catchment average is a weighting of the gauges chosen, from a
+#' variogram ([rainfall_variogram()], fitted to the gauges unless one is given), to be unbiased
+#' with the least error for the block as a whole, not cell by cell. The error is returned as
+#' `se`, mm per step: from the kriging variance of relative rain, times the step's mean over the
+#' gauges. It grows when a gauge is missing and where the gauges are sparse for the variogram's
+#' range. With `method = "ked"` the gauges are fitted around a drift, a field known everywhere
+#' (`drift`, on the grid), such as a long-term average rainfall: the average then follows the
+#' drift's pattern between gauges. With fewer than three gauges reporting, or a drift equal at
+#' every gauge, the step falls back to ordinary kriging.
+#'
+#' **Speed.** Every method but conditional merging weights the gauges linearly: for a given set
+#' of gauges reporting, the field (or for kriging the catchment average) is a fixed weighting of
+#' their depths. The weights are worked out once for each set seen, and the steps done together,
+#' so a long record takes seconds where it took minutes step by step.
 #'
 #' **Conditional merging** (Sinclair and Pegram, 2005). The gauge surface sets the level; the
 #' radar adds the storm's shape between gauges. At each step: fit a surface to the gauges, and
@@ -77,12 +96,22 @@
 #'   at once, a function of the step number returning that step's grid as a matrix of
 #'   `length(grid$x)` rows by `length(grid$y)` columns (such as one that reads that step's file).
 #'   Sixteen years of 15-minute radar on a 30 km grid would take about 4 GB as an array.
-#' @param method `thiessen`, `idw`, `multiquadric` or `conditional`.
+#' @param method `thiessen`, `idw`, `multiquadric`, `kriging`, `ked` or `conditional`.
 #' @param c Multiquadric shape parameter, in the units of the coordinates; by default chosen by
 #'   `rainfall_cross_validation()` from `c_candidates`.
 #' @param smooth Nonnegative smoothing added to the diagonal of the multiquadric system, in the
 #'   units of the basis (coordinate units); 0 passes exactly through the gauges.
 #' @param power With `method = "idw"`, the power of the distance in the weights.
+#' @param variogram With `method = "kriging"` or `"ked"`, a variogram from
+#'   [rainfall_variogram()]; by default fitted to `gauge_rain`.
+#' @param drift With `method = "ked"`, the drift: a matrix on the grid like `mask`, such as a
+#'   long-term average rainfall at every cell, or one that changes at each step, such as the
+#'   radar, given as `radar` is (an array of grid columns by rows by steps, or a function of
+#'   the step returning that step's matrix). Its value in the cell holding each gauge is used
+#'   at that gauge, unless `drift_at_gauges` is given; a step with the drift missing at a
+#'   gauge or in the catchment is missing.
+#' @param drift_at_gauges With `method = "ked"`, the drift at each gauge, in the order of
+#'   `gauges`: for gauges outside the grid, or a drift known exactly at the gauges.
 #' @param c_candidates Multiples of the median distance between neighbouring gauges tried for
 #'   `c`.
 #' @param wet Depth, mm per step, above which a step counts as wet in the cross-validation.
@@ -93,9 +122,10 @@
 #' @param polygon Data frame or matrix with the catchment boundary's `x` and `y`, in order.
 #'
 #' @return `merge_rainfall()`: a list of class `pdm_rainfall` with `rain` (catchment-average rain,
-#'   mm per step), `method`, `c`, `smooth` and the cross-validation table `checks` when `c` was
-#'   chosen. `rainfall_cross_validation()`: a data frame with one row per `c` tried (or one row
-#'   for a method without `c`), giving the mean absolute error, root mean square error, bias and
+#'   mm per step), `se` (for kriging, its standard error, mm per step), `method`, `c`, `smooth`,
+#'   `variogram` (for kriging) and the cross-validation table `checks` when `c` was chosen.
+#'   `rainfall_cross_validation()`: a data frame with one row per `c` tried (or one row for a
+#'   method without `c`), giving the mean absolute error, root mean square error, bias and
 #'   correlation of the left-out gauges over the wet steps. `catchment_mask()`: a logical matrix,
 #'   `TRUE` for cells whose centres lie inside the polygon.
 #' @references Hardy, R. L. (1971). Multiquadric equations of topography and other irregular
@@ -114,12 +144,26 @@
 #' @seealso [find_events()], [calibration_checks()]
 #' @export
 merge_rainfall <- function(gauges, gauge_rain, grid, mask, radar = NULL,
-                           method = c("multiquadric", "conditional", "thiessen", "idw"),
+                           method = c("multiquadric", "conditional", "thiessen", "idw",
+                                      "kriging", "ked"),
                            c = NULL, smooth = 0, c_candidates = c(0.1, 0.25, 0.5, 1, 2, 4),
-                           wet = 0.1, max_steps = 2000L, seed = 1L, power = 2) {
+                           wet = 0.1, max_steps = 2000L, seed = 1L, power = 2,
+                           variogram = NULL, drift = NULL, drift_at_gauges = NULL) {
   method <- match.arg(method)
   .check_merge_inputs(gauges, gauge_rain, grid, mask, radar, method, smooth)
   .check(.scalar(power, 0, strict = TRUE), "power must be a positive number")
+  if (method == "ked") {
+    fixed_drift <- is.matrix(drift)
+    .check((fixed_drift && nrow(drift) == length(grid$x) && ncol(drift) == length(grid$y)) ||
+             is.function(drift) ||
+             (is.array(drift) && length(dim(drift)) == 3L &&
+                all(dim(drift) == c(length(grid$x), length(grid$y), nrow(gauge_rain)))),
+           paste("With method = \"ked\", drift must be a matrix on the grid, like mask, or",
+                 "one that changes at each step: an array of grid columns by rows by steps,",
+                 "or a function of the step returning that step's matrix"))
+    .check(fixed_drift || is.null(drift_at_gauges),
+           "drift_at_gauges goes with a drift that is the same at every step")
+  }
   checks <- NULL
   uses_c <- method %in% c("multiquadric", "conditional")
   if (uses_c && is.null(c)) {
@@ -130,14 +174,43 @@ merge_rainfall <- function(gauges, gauge_rain, grid, mask, radar = NULL,
   .check(!uses_c || .scalar(c, 0, strict = TRUE), "c must be a positive number")
   cells <- .mask_cells(grid, mask)
   at_gauge <- .gauge_cells(gauges, grid)
-  rain <- vapply(seq_len(nrow(gauge_rain)), function(t) {
-    field <- .rain_field(gauges, gauge_rain[t, ], cells, method, c, smooth,
-                         if (method == "conditional") .radar_step(radar, t, cells, at_gauge),
-                         power)
-    sum(field * cells$w) / sum(cells$w)
-  }, numeric(1))
-  structure(list(rain = rain, method = method, c = if (uses_c) c else NULL, smooth = smooth,
-                 power = if (method == "idw") power else NULL, checks = checks),
+  kriged <- method %in% c("kriging", "ked")
+  if (kriged && is.null(variogram)) {
+    variogram <- rainfall_variogram(gauges, gauge_rain, wet = wet, seed = seed)
+  }
+  .check(!kriged || inherits(variogram, "pdm_variogram"),
+         "variogram must come from rainfall_variogram()")
+  se <- NULL
+  if (method == "conditional") {
+    rain <- vapply(seq_len(nrow(gauge_rain)), function(t) {
+      field <- .rain_field(gauges, gauge_rain[t, ], cells, method, c, smooth,
+                           .radar_step(radar, t, cells, at_gauge), power)
+      sum(field * cells$w) / sum(cells$w)
+    }, numeric(1))
+  } else {
+    # The other methods weight the gauges linearly, so their weights are worked out once for
+    # each set of gauges reporting, not at every step.
+    varying <- method == "ked" && !is.matrix(drift)
+    drift_cells <- if (method == "ked" && !varying) drift[cbind(cells$i, cells$j)]
+    drift_gauges <- if (method == "ked" && !varying) {
+      if (is.null(drift_at_gauges)) drift[cbind(at_gauge$i, at_gauge$j)] else drift_at_gauges
+    }
+    # A drift that changes at each step, read a step at a time, as the radar is.
+    drift_step <- if (varying) {
+      function(t) .radar_step(drift, t, cells, at_gauge)
+    }
+    .check(is.null(drift_at_gauges) || length(drift_at_gauges) == nrow(gauges),
+           "drift_at_gauges must have one value per gauge")
+    .check(method != "ked" || varying || (!anyNA(drift_cells) && !anyNA(drift_gauges)),
+           "drift must have a value in every catchment cell and at every gauge")
+    out <- .merge_linear(gauges, gauge_rain, cells, method, c, smooth, power, variogram,
+                         drift_cells, drift_gauges, drift_step)
+    rain <- out$rain
+    se <- out$se
+  }
+  structure(list(rain = rain, se = se, method = method, c = if (uses_c) c else NULL,
+                 smooth = smooth, power = if (method == "idw") power else NULL,
+                 variogram = if (kriged) variogram else NULL, checks = checks),
             class = "pdm_rainfall")
 }
 
@@ -164,20 +237,45 @@ rainfall_cross_validation <- function(gauges, gauge_rain, grid, radar = NULL,
   } else {
     c %||% (c_candidates * .gauge_spacing(gauges))
   }
+  # The linear methods: each left-out gauge predicted from the others' weights, worked out
+  # once for each set of the others reporting, the steps done together. Conditional merging
+  # changes with the radar at every step, so it is done step by step.
+  linear_errors <- function(cc) {
+    sub <- gauge_rain[steps, , drop = FALSE]
+    err <- matrix(NA_real_, length(steps), nrow(gauges))
+    for (g in seq_len(nrow(gauges))) {
+      others <- setdiff(seq_len(nrow(gauges)), g)
+      reporting <- is.finite(sub[, others, drop = FALSE])
+      code <- as.vector(reporting %*% 2^(seq_along(others) - 1))
+      has <- is.finite(sub[, g])
+      for (pattern in unique(code[has & code > 0])) {
+        r <- which(has & code == pattern)
+        ok <- others[reporting[r[1], ]]
+        m <- .field_weights(method, gauges$x[ok], gauges$y[ok],
+                            list(x = gauges$x[g], y = gauges$y[g], w = 1), cc, smooth, power)
+        err[r, g] <- pmax(drop(sub[r, ok, drop = FALSE] %*% t(m)), 0) - sub[r, g]
+      }
+    }
+    as.vector(t(err))
+  }
   do.call(rbind, lapply(cs, function(cc) {
-    errors <- unlist(lapply(steps, function(t) {
-      vapply(seq_len(nrow(gauges)), function(g) {
-        if (!is.finite(gauge_rain[t, g])) return(NA_real_)
-        others <- gauge_rain[t, ]
-        others[g] <- NA
-        cell <- list(x = gauges$x[g], y = gauges$y[g], w = 1)
-        radar_t <- if (method == "conditional") {
-          .radar_step(radar, t, list(i = at_gauge$i[g], j = at_gauge$j[g]), at_gauge)
-        }
-        .rain_field(gauges, others, cell, method, cc, smooth, radar_t, power) -
-          gauge_rain[t, g]
-      }, numeric(1))
-    }))
+    errors <- if (method != "conditional") {
+      linear_errors(cc)
+    } else {
+      unlist(lapply(steps, function(t) {
+        vapply(seq_len(nrow(gauges)), function(g) {
+          if (!is.finite(gauge_rain[t, g])) return(NA_real_)
+          others <- gauge_rain[t, ]
+          others[g] <- NA
+          cell <- list(x = gauges$x[g], y = gauges$y[g], w = 1)
+          radar_t <- if (method == "conditional") {
+            .radar_step(radar, t, list(i = at_gauge$i[g], j = at_gauge$j[g]), at_gauge)
+          }
+          .rain_field(gauges, others, cell, method, cc, smooth, radar_t, power) -
+            gauge_rain[t, g]
+        }, numeric(1))
+      }))
+    }
     observed <- unlist(lapply(steps, function(t) gauge_rain[t, ]))
     ok <- is.finite(errors)
     data.frame(method = method, c = cc, mae = mean(abs(errors[ok])),

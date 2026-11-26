@@ -330,6 +330,7 @@ reference:
   contents:
   - merge_rainfall
   - rainfall_field
+  - rainfall_variogram
   - h19_radar
   - h19_layouts
   - h19_processed

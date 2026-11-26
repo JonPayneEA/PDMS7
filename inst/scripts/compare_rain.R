@@ -24,7 +24,7 @@
 # Outputs:      A folder: summary.md, rain_ranking.csv, weights_and_error.csv, plots each with a
 #               note on how to read it, and catchment_rain/ with each average built, as CSV
 #               ready for calibrate_site.R
-# Dependencies: pdmS7 (0.47.0 or later); sf for a shapefile and the search; reach.io
+# Dependencies: pdmS7 (0.48.0 or later); sf for a shapefile and the search; reach.io
 #               to find and download the gauges; arrow (or nanoparquet) for the processed
 #               H19 extracts, ncdf4 for the daily H19 files
 # ============================================================ #
@@ -56,7 +56,8 @@
 #     multiquadric_lta  the same, fitted to each gauge's rain as a share of its long-term
 #                   average and scaled back by the grid (with lta_rain_file);
 #     multiquadric_h19  the same surface through the gauges, with the radar's pattern between
-#                   them (conditional merging): with H19 from radar_folder, at 15-minute steps.
+#                   them (conditional merging): with H19 from radar_folder, at 15-minute steps;
+#     ked_h19       kriging of the gauges with each step's radar as the drift: the same inputs.
 #   Each is renormalised over the gauges reporting at each step. With the boundary it also
 #   works out Thiessen weights from the geometry, to check those given.
 #   Then every series (the averages, each gauge, and any other series given) is set against the
@@ -85,8 +86,8 @@ library(data.table)
 
 # The script is written for this pdmS7 or later: an older one lacks functions it uses, and
 # would fail part way through.
-if (utils::packageVersion("pdmS7") < "0.47.0") {
-  stop("compare_rain.R needs pdmS7 0.47.0 or later; this is ",
+if (utils::packageVersion("pdmS7") < "0.48.0") {
+  stop("compare_rain.R needs pdmS7 0.48.0 or later; this is ",
        as.character(utils::packageVersion("pdmS7")),
        ". Update it with remotes::install_github(\"JonPayneEA/PDMS7\"), then restart R.",
        call. = FALSE)
@@ -176,11 +177,14 @@ thiessen_weights <- c()        # such as c("254336TP" = 0.264, SS92F014 = 0.737)
 #   idw               inverse distance weighting over the catchment (boundary, positions)
 #   multiquadric      a smooth surface through the gauges (boundary, positions)
 #   multiquadric_lta  the same, shaped by the long-term average (lta_rain_file)
+#   kriging           block kriging, with each step's standard error (boundary, 3+ gauges)
+#   ked_lta           kriging with the long-term average as a drift (lta_rain_file)
 #   h19               the radar alone (radar_folder or radar_processed_folder)
 #   h19_bias          the radar scaled day by day to the gauges (radar_folder, positions)
 #   multiquadric_h19  the gauges' surface with the radar's pattern (radar_folder, 15 minutes)
+#   ked_h19           kriging with each step's radar as the drift (radar_folder, 15 minutes)
 rain_methods <- c("thiessen", "equal", "equal_all", "idw", "multiquadric", "multiquadric_lta",
-                  "h19", "h19_bias", "multiquadric_h19")
+                  "kriging", "ked_lta", "h19", "h19_bias", "multiquadric_h19", "ked_h19")
 
 # H19 radar (optional): the folder of daily H19 NetCDF files, with a folder for each year.
 # The files' layouts are checked first (the archive changed how it saved them part way
@@ -567,7 +571,7 @@ if (length(thiessen_weights) && !is.null(gauges$wiski_id)) {
 
 # The averages the script builds have these names, so no gauge or other series may take one.
 built_names <- c("thiessen", "equal", "equal_all", "idw", "multiquadric", "multiquadric_lta",
-                 "h19", "h19_bias", "multiquadric_h19")
+                 "kriging", "ked_lta", "h19", "h19_bias", "multiquadric_h19", "ked_h19")
 unknown_methods <- setdiff(rain_methods, built_names)
 if (length(unknown_methods)) {
   stop("rain_methods names averages the script cannot build: ",
@@ -813,7 +817,10 @@ built <- lapply(weights, weighted_average)
 # Multiquadric: a smooth surface through every gauge, inside the catchment or near it, averaged
 # over the cells inside the boundary (pdmS7's merge_rainfall()). Worked out on the wet steps
 # only: a step where every reporting gauge is dry has no rain anywhere.
-surface_methods <- c("idw", "multiquadric", "multiquadric_lta", "multiquadric_h19")
+surface_methods <- c("idw", "multiquadric", "multiquadric_lta", "kriging", "ked_lta",
+                     "multiquadric_h19", "ked_h19")
+# The kriging averages' standard errors, mm per step, by average.
+built_se <- list()
 if (is.null(boundary)) {
   for (m in surface_methods) skip_method(m, "it needs the catchment boundary")
 } else if (any(surface_methods %in% rain_methods)) {
@@ -853,6 +860,33 @@ if (is.null(boundary)) {
     built$idw <- dry_or_missing
     built$idw[wet_steps] <- fit_idw$rain
   }
+
+  # Block kriging: a variogram fitted once to the gauges' wet steps (rain relative to each
+  # step's mean), then the catchment average weighted to have the least error as a block, with
+  # that error at every step. It needs three gauges or more to fit the variogram.
+  if (any(c("kriging", "ked_lta", "ked_h19") %in% rain_methods)) {
+    if (nrow(gauges) < 3) {
+      skip_method("kriging", "it needs three gauges or more")
+      skip_method("ked_lta", "it needs three gauges or more")
+      skip_method("ked_h19", "it needs three gauges or more")
+    } else {
+      say("Variogram of the gauges' rain")
+      rain_variogram <- rainfall_variogram(located, G)
+      if ("kriging" %in% rain_methods) {
+        say("Block kriging over the catchment")
+        fit_k <- merge_rainfall(located,
+                                G[wet_steps, , drop = FALSE],
+                                cell_grid,
+                                mask,
+                                method = "kriging",
+                                variogram = rain_variogram)
+        built$kriging <- dry_or_missing
+        built$kriging[wet_steps] <- fit_k$rain
+        built_se$kriging <- dry_or_missing
+        built_se$kriging[wet_steps] <- fit_k$se
+      }
+    }
+  }
 }
 
 # Multiquadric scaled by the long-term average: at each step, each gauge's rain as a share of
@@ -886,8 +920,25 @@ if (!is.null(lta)) {
     built$multiquadric_lta[wet_steps] <- fit_lta$rain
     multiquadric_lta_c <- fit_lta$c
   }
+  # Kriging with the long-term average as the drift: the gauges fitted around its pattern.
+  if ("ked_lta" %in% rain_methods && exists("rain_variogram")) {
+    say("Kriging with the long-term average as the drift")
+    fit_ked <- merge_rainfall(located,
+                              G[wet_steps, , drop = FALSE],
+                              cell_grid,
+                              mask,
+                              method = "ked",
+                              variogram = rain_variogram,
+                              drift = lta_cells,
+                              drift_at_gauges = unname(lta_gauges))
+    built$ked_lta <- dry_or_missing
+    built$ked_lta[wet_steps] <- fit_ked$rain
+    built_se$ked_lta <- dry_or_missing
+    built_se$ked_lta[wet_steps] <- fit_ked$se
+  }
 } else {
   skip_method("multiquadric_lta", "it needs lta_rain_file, the long-term average grid")
+  skip_method("ked_lta", "it needs lta_rain_file, the long-term average grid")
 }
 
 # ---- H19 radar ------------------------------------------------------------------------------
@@ -997,6 +1048,10 @@ if (!is.null(radar_folder)) {
   # radar cells. Worked out step by step as the radar is read, at 15-minute steps.
   conditional <- "multiquadric_h19" %in% rain_methods && have_boundary && have_positions &&
     exists("multiquadric_c") && step_hours == 0.25
+  # Kriging with the radar as the drift: the gauges' variogram, and at each step the weights
+  # that follow that step's radar pattern, from the same cells.
+  want_ked <- "ked_h19" %in% rain_methods && have_boundary && have_positions &&
+    exists("rain_variogram") && step_hours == 0.25
 
   # The radar read from the daily files is kept for later runs: radar_extract.csv holds the
   # catchment average and the radar over each gauge; radar_cells.rds holds the radar in every
@@ -1009,7 +1064,7 @@ if (!is.null(radar_folder)) {
     identical(sort(readLines(cache_files)), sort(radar_files)) &&
     identical(setdiff(names(fread(cache, nrows = 0)), c("time", "h19", "h19_multiquadric")),
               paste0("radar_at_", gauge_names)) &&
-    (!conditional || file.exists(cells_file))
+    (!(conditional || want_ked) || file.exists(cells_file))
 
   if (cached) {
     say("  using the radar already extracted (%s)", basename(cache))
@@ -1144,6 +1199,69 @@ if (!is.null(radar_folder)) {
     }
   }
 
+  # Kriging with each step's radar as the drift, from the cells kept, in one pass: the parts of
+  # the kriging system that depend only on the gauges' places are worked out once for each set
+  # of gauges reporting, and the rest at every step. Kept like the conditional merge, with a key
+  # of the gauges' rain, their places and the variogram.
+  if (want_ked) {
+    ked_file <- file.path(output_folder, "radar_ked.csv")
+    ked_key_file <- file.path(output_folder, "radar_ked_key.txt")
+    ked_key <- paste(c(gauge_names,
+                       format(gauges$x, nsmall = 1),
+                       format(gauges$y, nsmall = 1),
+                       format(colSums(G, na.rm = TRUE), digits = 12),
+                       colSums(is.na(G)),
+                       format(unlist(rain_variogram[c("nugget", "partial_sill", "range")]),
+                              digits = 12),
+                       format(range(grid$time)),
+                       readLines(cache_files)),
+                     collapse = "|")
+    reuse_ked <- file.exists(ked_file) && file.exists(ked_key_file) &&
+      identical(paste(readLines(ked_key_file), collapse = "|"), ked_key)
+    if (reuse_ked) {
+      say("  using the kriging with the radar already worked out (%s)", basename(ked_file))
+      ked <- fread(ked_file)
+      ked$time <- as.POSIXct(ked$time, tz = "UTC")
+    } else {
+      say("  kriging of the gauges with the radar as the drift")
+      kept <- readRDS(cells_file)
+      n_inside <- sum(kept$in_catchment)
+      n_cell <- nrow(kept$gauge_cell)
+      gauge_row <- match(as.numeric(kept$time), as.numeric(grid$time))
+      g_at <- G[gauge_row, , drop = FALSE]
+      # A step needs the radar in every cell kept; with that, a step with every gauge dry is 0.
+      radar_whole <- !apply(is.na(kept$values), 1, any)
+      wet <- which(radar_whole & rowSums(g_at > 0, na.rm = TRUE) > 0)
+      ked_rain <- ifelse(radar_whole & rowSums(!is.na(g_at)) > 0, 0, NA_real_)
+      ked_se <- ked_rain
+      if (length(wet)) {
+        # The step's radar, back on the radar's grid: the cells kept, the rest unused.
+        radar_drift <- function(t) {
+          r <- matrix(NA_real_, length(kept$grid$x), length(kept$grid$y))
+          r[kept$in_catchment] <- kept$values[wet[t], seq_len(n_inside)]
+          r[kept$gauge_cell] <- kept$values[wet[t], n_inside + seq_len(n_cell)]
+          r
+        }
+        fit_kh <- merge_rainfall(located,
+                                 g_at[wet, , drop = FALSE],
+                                 kept$grid,
+                                 kept$in_catchment,
+                                 method = "ked",
+                                 variogram = rain_variogram,
+                                 drift = radar_drift)
+        ked_rain[wet] <- fit_kh$rain
+        ked_se[wet] <- fit_kh$se
+      }
+      ked <- data.table(time = kept$time, h19_ked = ked_rain, h19_ked_se = ked_se)
+      fwrite(ked[, .(time = format(time, "%Y-%m-%d %H:%M:%S", tz = "UTC"),
+                     h19_ked, h19_ked_se)],
+             ked_file)
+      writeLines(strsplit(ked_key, "|", fixed = TRUE)[[1]], ked_key_file)
+    }
+    built$ked_h19 <- onto_grid(ked$h19_ked, ked$time)
+    built_se$ked_h19 <- onto_grid(ked$h19_ked_se, ked$time)
+  }
+
   # The processed extract, where given, is the catchment average; the daily files then give
   # only the radar over each gauge.
   if (have_boundary && is.null(radar_processed)) {
@@ -1207,6 +1325,17 @@ if (is.null(built$multiquadric_h19) && !"multiquadric_h19" %in% names(skipped_me
               })
 }
 
+if (is.null(built$ked_h19) && !"ked_h19" %in% names(skipped_methods)) {
+  skip_method("ked_h19",
+              if (is.null(radar_folder)) {
+                "it needs radar_folder, the daily H19 files"
+              } else if (step_hours != 0.25) {
+                "it needs 15-minute data"
+              } else {
+                "it needs the catchment boundary and the gauges' positions"
+              })
+}
+
 # Write the averages out, ready for calibrate_site.R.
 dir.create(file.path(output_folder, "catchment_rain"), showWarnings = FALSE)
 for (n in names(built)) {
@@ -1254,6 +1383,7 @@ if (length(keep) < length(grid$time)) {
   pe <- pe[keep]
   G <- G[keep, , drop = FALSE]
   rains <- lapply(rains, function(r) r[keep])
+  built_se <- lapply(built_se, function(v) v[keep])
   if (!is.null(radar_at_gauges)) radar_at_gauges <- radar_at_gauges[keep, , drop = FALSE]
 } else {
   limiting <- character(0)
@@ -1406,6 +1536,49 @@ if (!is.null(boundary) && have_positions) {
                      lty = c(1, NA, NA, if (length(rings)) 2),
                      lwd = c(2, NA, NA, if (length(rings)) 1))
   }, width = 1400, height = 1400)
+}
+
+# HOW TO READ variogram.png
+# For each pair of gauges (a point), how differently their rain behaves, as half the mean
+# squared difference of their rain relative to each wet step's mean, against the distance
+# between them; the line is the exponential model kriging uses. Where the line starts (the
+# nugget) is the difference between gauges side by side: gauge error and very local rain. The
+# range is how far the rain stays related: the line is near its top by three times it.
+# Good: points rising with distance and levelling off, close to the line.
+# Worry if: the points are flat (the gauges' rain is no more alike close together than far
+#   apart: kriging then weights them nearly equally); one pair far above the others (a gauge
+#   out of step with its neighbours: check its record); a range far below the gauges' spacing
+#   (the gauges are too far apart to say much about the rain between them). With fewer than
+#   six pairs (four gauges) three parameters rest on very few points: read the fit loosely.
+if (exists("rain_variogram")) {
+  png_of("variogram.png", function() {
+    e <- rain_variogram$empirical
+    e <- e[is.finite(e$semivariance), ]
+    h <- seq(0, max(e$distance) * 1.1, length.out = 200)
+    model <- ifelse(h > 0,
+                    rain_variogram$nugget +
+                      rain_variogram$partial_sill * (1 - exp(-h / rain_variogram$range)),
+                    0)
+    graphics::par(mar = c(4.5, 4.5, 2, 1))
+    graphics::plot(e$distance / 1000,
+                   e$semivariance,
+                   pch = 19,
+                   col = "#1B6F80",
+                   xlim = c(0, max(h) / 1000),
+                   ylim = c(0, max(c(e$semivariance, model)) * 1.1),
+                   xlab = "Distance between the gauges (km)",
+                   ylab = "Semivariance of relative rain",
+                   main = sprintf("Variogram: nugget %.2f, sill %.2f, range %.1f km",
+                                  rain_variogram$nugget,
+                                  rain_variogram$nugget + rain_variogram$partial_sill,
+                                  rain_variogram$range / 1000))
+    graphics::lines(h / 1000, model, lwd = 2, col = "#B3261E")
+    graphics::text(e$distance / 1000,
+                   e$semivariance,
+                   paste(e$gauge_a, e$gauge_b, sep = "-"),
+                   pos = 3,
+                   cex = 0.6)
+  })
 }
 
 # HOW TO READ rain_by_year.png
@@ -1579,6 +1752,33 @@ missed_pct <- round(100 * missed / colSums(is.finite(ratio)), 1)
 seen <- ratio
 seen[!is.finite(seen) | event_rain < 0.5] <- NA
 spread <- round(apply(log(seen), 2, stats::sd, na.rm = TRUE), 3)
+# The kriging averages' error over each flood, as a share of the flood's rain: the steps'
+# errors either independent of each other (the square root of the sum of their squares: the
+# lower bound) or wholly shared through the flood (their sum: the upper). A storm's errors are
+# partly shared, so the truth lies between. Floods with under 1 mm are left out.
+kriging_error <- if (length(built_se)) {
+  do.call(rbind, lapply(names(built_se), function(n) {
+    se <- built_se[[n]]
+    r <- rains[[n]]
+    shares <- vapply(seq_len(nrow(floods)), function(e) {
+      w <- floods$rain_start[e]:floods$rain_end[e]
+      total <- sum(r[w])
+      if (!is.finite(total) || total < 1 || anyNA(se[w])) {
+        c(NA_real_, NA_real_)
+      } else {
+        c(sqrt(sum(se[w]^2)), sum(se[w])) / total
+      }
+    }, numeric(2))
+    data.frame(average = n,
+               floods = sum(is.finite(shares[1, ])),
+               error_independent = round(stats::median(shares[1, ], na.rm = TRUE), 3),
+               error_shared = round(stats::median(shares[2, ], na.rm = TRUE), 3))
+  }))
+}
+if (!is.null(kriging_error)) {
+  fwrite(kriging_error, file.path(output_folder, "kriging_error.csv"))
+}
+
 flood_table <- data.frame(rain = names_r,
                           floods = colSums(is.finite(ratio)),
                           missed_storms = as.integer(missed),
@@ -1703,7 +1903,8 @@ if (length(gauge_series) > 1) {
     stop("gauge_series names series not in rain_files: ", toString(unknown), call. = FALSE)
   }
   # The radar-based series are not weightings of the gauges, so they are left out here.
-  averages <- setdiff(names_r, c(gauge_series, "h19", "h19_bias", "multiquadric_h19"))
+  averages <- setdiff(names_r,
+                      c(gauge_series, "h19", "h19_bias", "multiquadric_h19", "ked_h19"))
   G <- as.matrix(as.data.frame(rains[gauge_series]))
   given <- weights[intersect(names(weights), averages)]
   for (n in names(given)) {
@@ -2119,7 +2320,8 @@ for (n in averages_ranked) {
   })
   if (length(chosen) == 3) break
 }
-radar_ranked <- intersect(averages_ranked, c("multiquadric_h19", "h19_bias", "h19"))
+radar_ranked <- intersect(averages_ranked,
+                          c("multiquadric_h19", "ked_h19", "h19_bias", "h19"))
 if (length(radar_ranked) && !any(radar_ranked %in% chosen)) {
   r <- radar_ranked[1]
   if (ranking$place_low[ranking$rain == r] <= ranking$place_high[1]) {
@@ -2266,6 +2468,17 @@ lines <- c(
         sprintf("- **idw**: every gauge, weighted by 1 / distance^2, on a %g m grid.",
                 grid_spacing_m)
       },
+      if (!is.null(built$kriging)) {
+        sprintf(paste("- **kriging**: block kriging of the catchment, with the variogram of",
+                      "relative rain fitted to the gauges (nugget %.2f, sill %.2f, range %.1f",
+                      "km; `variogram.png`)."),
+                rain_variogram$nugget,
+                rain_variogram$nugget + rain_variogram$partial_sill,
+                rain_variogram$range / 1000)
+      },
+      if (!is.null(built$ked_lta)) {
+        "- **ked_lta**: the same, with the long-term average grid as the drift."
+      },
       if (!is.null(built$h19_bias)) {
         paste("- **h19_bias**: H19 over the catchment, scaled day by day by the gauges' total",
               "over the radar's at the gauges (`radar_bias_factors.csv`).")
@@ -2276,6 +2489,11 @@ lines <- c(
               "the radar over the catchment and at every gauge.")
       } else if (!is.null(radar_folder) && step_hours != 0.25) {
         "- multiquadric_h19: not built (it needs 15-minute data)."
+      },
+      if (!is.null(built$ked_h19)) {
+        paste("- **ked_h19**: kriging of the gauges with each step's H19 as the drift, with",
+              "the kriging's variogram, on the radar's 1 km cells (`radar_ked.csv`). A step",
+              "needs the radar over the catchment and at every gauge.")
       },
       "",
       # The Thiessen weights given, against those from the geometry.
@@ -2330,6 +2548,22 @@ lines <- c(
       "",
       "Readings flagged Missing are gaps. Other flags (Suspect, Estimated, Unchecked) are kept",
       "and only counted here: quality control belongs upstream, in reach.validate.")
+  },
+
+  # The kriging averages' own error over the floods.
+  if (!is.null(kriging_error)) {
+    c("", "## The kriging error", "",
+      sprintf(paste("- **%s**: over %d floods, a storm's rain is typically %.0f%% to %.0f%%",
+                    "out, by kriging's own reckoning (steps' errors independent, or wholly",
+                    "shared)."),
+              kriging_error$average,
+              kriging_error$floods,
+              100 * kriging_error$error_independent,
+              100 * kriging_error$error_shared),
+      "",
+      paste("It says how well the gauges pin the catchment's rain down, from their spacing",
+            "and the variogram; set it beside the rain_error from the weights. It does not",
+            "include gauge error the gauges share, such as undercatch."))
   },
 
   # The warnings, series by series.
@@ -2699,6 +2933,13 @@ blocks <- c(
          if (!is.null(built$multiquadric)) {
            "multiquadric: a smooth surface through every gauge, averaged over the catchment."
          },
+         if (!is.null(built$kriging)) {
+           paste("kriging: block kriging of the catchment from a variogram fitted to the",
+                 "gauges, with each step's standard error.")
+         },
+         if (!is.null(built$ked_lta)) {
+           "ked_lta: kriging with the long-term average grid as the drift."
+         },
          if (!is.null(built$h19)) "h19: the radar over the catchment, as it is.",
          if (!is.null(built$h19_bias)) {
            paste("h19_bias: the radar scaled day by day by the gauges' total over the radar's",
@@ -2711,6 +2952,11 @@ blocks <- c(
          if (!is.null(built$multiquadric_h19)) {
            paste("multiquadric_h19: the surface through the gauges, with H19's pattern between",
                  "them (conditional merging).")
+         },
+         if (!is.null(built$ked_h19)) {
+           paste("ked_h19: kriging of the gauges with each step's radar as the drift: the",
+                 "gauges set the level, the radar the pattern between them, with each step's",
+                 "standard error.")
          })),
        report_text("Each is renormalised over the gauges reporting at each step: a missing",
                    "gauge's weight is shared among the rest."),
@@ -2738,6 +2984,24 @@ blocks <- c(
          report_table(weights_wide, caption = "Weights by gauge, and what they mean"))
   },
   plot_blocks("effective_gauges_over_time.png", "The effective number of gauges, day by day"),
+  if (exists("rain_variogram")) {
+    c(list(report_heading("Kriging: the variogram and the error", 3),
+           report_text(sprintf(paste("The variogram of relative rain fitted to the gauges:",
+                                     "nugget %.2f, sill %.2f, range %.1f km. Kriging weights",
+                                     "the gauges from it, and says how well they pin the",
+                                     "catchment's rain down at every step."),
+                               rain_variogram$nugget,
+                               rain_variogram$nugget + rain_variogram$partial_sill,
+                               rain_variogram$range / 1000))),
+      plot_blocks("variogram.png", "The variogram of the gauges' rain"),
+      if (!is.null(kriging_error)) {
+        list(report_text("A storm's rain error by kriging's own reckoning, as a share of the",
+                         "storm's rain, typical over the floods: with the steps' errors",
+                         "independent (lower) or wholly shared through the storm (upper). It",
+                         "leaves out error the gauges share, such as undercatch."),
+             report_table(kriging_error, caption = "The kriging error over the floods"))
+      })
+  },
 
   # The long-term average.
   if (!is.null(corrections)) {

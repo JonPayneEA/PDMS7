@@ -182,7 +182,7 @@ test_that("the rain comparison parses, stops until the area is set, and names it
   expect_true(any(grepl("^area_km2 <- NA ", code)))
   # Every HOW TO READ note names a plot the script writes.
   notes <- sub("^\\s*# HOW TO READ ", "", grep("^\\s*# HOW TO READ ", code, value = TRUE))
-  expect_length(notes, 10)
+  expect_length(notes, 11)
   written <- code[!grepl("^\\s*#", code)]
   for (name in notes) {
     expect_true(any(grepl(sprintf('"%s"', name), written, fixed = TRUE)), info = name)
@@ -256,7 +256,8 @@ test_that("the rain comparison builds the averages chosen in rain_methods", {
   expect_length(start, 1)
   default <- eval(parse(text = paste(code[start:(start + 1)], collapse = "\n")))
   expect_identical(default, c("thiessen", "equal", "equal_all", "idw", "multiquadric",
-                              "multiquadric_lta", "h19", "h19_bias", "multiquadric_h19"))
+                              "multiquadric_lta", "kriging", "ked_lta", "h19", "h19_bias",
+                              "multiquadric_h19", "ked_h19"))
   # A name the script cannot build is refused, and an average whose inputs are missing is
   # listed as not built, with the reason.
   expect_true(any(grepl("rain_methods names averages the script cannot build", code,
@@ -288,4 +289,6 @@ test_that("the rain comparison says how sure its order is and what to calibrate 
   expect_true(any(grepl("near_copy <- function(a, b)", code, fixed = TRUE)))
   # The conditional merge is kept with a key of the gauges it came from.
   expect_true(any(grepl("radar_merge_key.txt", code, fixed = TRUE)))
+  # Kriging with the radar as the drift is kept the same way, with the variogram in its key.
+  expect_true(any(grepl("radar_ked_key.txt", code, fixed = TRUE)))
 })

@@ -1,3 +1,25 @@
+# pdmS7 0.48.0
+
+- **Block kriging.** `merge_rainfall()` takes `method = "kriging"` (ordinary block kriging of
+  the catchment) and `method = "ked"` (kriging with an external drift, such as a long-term
+  average grid, given as `drift` on the grid and, optionally, `drift_at_gauges`, or one that
+  changes at each step, such as the radar, given as `radar` is). Each step's
+  average comes with its standard error, `se`, mm per step. The new `rainfall_variogram()`
+  fits the exponential variogram they use, once from many wet steps, of rain relative to each
+  step's mean (five gauges cannot support a variogram storm by storm).
+- **Faster merging.** Every method but conditional merging weights the gauges linearly, so
+  `merge_rainfall()` and `rainfall_cross_validation()` now work the weights out once for each
+  set of gauges reporting and do the steps together. On 20,000 steps and 256 cells the
+  multiquadric took 0.2 s against 2.4 s step by step; choosing its `c` took 0.13 s against
+  4.9 s. The results are the same, to 1e-14.
+- **`compare_rain.R`:**
+  - builds `kriging`, `ked_lta` (with the long-term average as the drift) and `ked_h19`
+    (with each step's radar as the drift, from `radar_cells.rds`, kept in `radar_ked.csv`
+    with a key of the gauges' rain, their places and the variogram);
+  - draws the fitted variogram (`variogram.png`);
+  - reports each kriging average's own error over the floods, as a share of a storm's rain,
+    between the steps' errors independent and wholly shared (`kriging_error.csv`).
+
 # pdmS7 0.47.0
 
 - **Choose the averages.** `compare_rain.R`'s new `rain_methods` setting lists the catchment
