@@ -335,6 +335,12 @@ reference:
   - h19_processed
   - read_lta_grid
   - lta_at
+- title: Reports from scripts
+  desc: Blocks for a self-contained HTML report, and the HOW TO READ notes of a script read back as text.
+  contents:
+  - report_blocks
+  - write_report
+  - read_plot_notes
   - read_boundary
   - distance_to_boundary
 - title: Standard visuals

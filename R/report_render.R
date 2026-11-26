@@ -4,7 +4,8 @@
 # Flode Module: standalone; target reach.hydro
 # Author:       pdmS7 contributors
 # Created:      2026-11-01
-# Modified:     2026-11-01 - Add the calibration report
+# Modified:     2026-11-26 - images already on disk, embedded as they are
+#               2026-11-01 - Add the calibration report
 # Tier:         1
 # Inputs:       A list of report blocks
 # Outputs:      HTML with embedded PNG figures; Markdown with PNG files
@@ -147,14 +148,17 @@ pre { background: var(--code); padding: 12px; overflow-x: auto; font-size: 0.85e
     alert = sprintf("<div class=\"alert %s\">%s</div>", if (block$ok) "ok" else "bad",
                     .html_escape(block$text)),
     table = .html_table(block),
-    figure = {
-      file <- file.path(figure_dir, paste0(block$name, ".png"))
-      data <- .base64(readBin(file, "raw", file.info(file)$size))
-      caption <- .html_escape(block$caption)
-      paste0("<figure><img alt=\"", caption, "\" src=\"data:image/png;base64,", data,
-             "\"><figcaption>", caption, "</figcaption></figure>")
-    }
+    figure = .html_figure(file.path(figure_dir, paste0(block$name, ".png")), block$caption),
+    image = .html_figure(block$file, block$caption)
   )
+}
+
+# A PNG embedded in the page, with its caption.
+.html_figure <- function(file, caption) {
+  data <- .base64(readBin(file, "raw", file.info(file)$size))
+  caption <- .html_escape(caption)
+  paste0("<figure><img alt=\"", caption, "\" src=\"data:image/png;base64,", data,
+         "\"><figcaption>", caption, "</figcaption></figure>")
 }
 
 # ---- Markdown ----------------------------------------------------------------------------
@@ -180,7 +184,8 @@ pre { background: var(--code); padding: 12px; overflow-x: auto; font-size: 0.85e
     code = paste0("```yaml\n", block$text, "\n```"),
     alert = paste0("> **", block$text, "**"),
     table = .md_table(block),
-    figure = sprintf("![%s](figures/%s.png)\n\n*%s*", block$caption, block$name, block$caption)
+    figure = sprintf("![%s](figures/%s.png)\n\n*%s*", block$caption, block$name, block$caption),
+    image = sprintf("![%s](%s)\n\n*%s*", block$caption, basename(block$file), block$caption)
   )
 }
 
@@ -190,8 +195,9 @@ pre { background: var(--code); padding: 12px; overflow-x: auto; font-size: 0.85e
 # from the figures folder). Returns the HTML path.
 .render_report <- function(blocks, output, title) {
   figure_dir <- file.path(output, "figures")
-  dir.create(figure_dir, recursive = TRUE, showWarnings = FALSE)
-  for (b in Filter(function(x) x$kind == "figure", blocks)) {
+  figures <- Filter(function(x) x$kind == "figure", blocks)
+  if (length(figures)) dir.create(figure_dir, recursive = TRUE, showWarnings = FALSE)
+  for (b in figures) {
     .draw_png(file.path(figure_dir, paste0(b$name, ".png")), b$draw, b$width, b$height)
   }
   html <- c(

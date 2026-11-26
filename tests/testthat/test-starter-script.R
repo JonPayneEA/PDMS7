@@ -182,7 +182,7 @@ test_that("the rain comparison parses, stops until the area is set, and names it
   expect_true(any(grepl("^area_km2 <- NA ", code)))
   # Every HOW TO READ note names a plot the script writes.
   notes <- sub("^\\s*# HOW TO READ ", "", grep("^\\s*# HOW TO READ ", code, value = TRUE))
-  expect_length(notes, 8)
+  expect_length(notes, 9)
   written <- code[!grepl("^\\s*#", code)]
   for (name in notes) {
     expect_true(any(grepl(sprintf('"%s"', name), written, fixed = TRUE)), info = name)
@@ -240,4 +240,11 @@ test_that("the gauges can be corrected to the long-term average over a long reco
   expect_true(any(grepl("^correction_from <- ", code)))
   expect_true(any(grepl("^correction_to <- ", code)))
   expect_true(any(grepl("gauge_downloads_record.csv", code, fixed = TRUE)))
+})
+
+test_that("the rain comparison is cut to the stretch every series covers", {
+  code <- readLines(system.file("scripts", "compare_rain.R", package = "pdmS7"))
+  # The latest first value and the earliest last one, across every series and the flow.
+  expect_true(any(grepl("keep <- seq(max(spans[1, ]), min(spans[2, ]))", code, fixed = TRUE)))
+  expect_true(any(grepl("the stretch every series covers", code, fixed = TRUE)))
 })
