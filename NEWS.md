@@ -4,6 +4,24 @@
   averages to build; delete any you do not want. A name the script cannot build is refused.
   An average asked for whose inputs are missing (a boundary, the long-term average grid, the
   radar, 15-minute data) is skipped, and the summary and the report list it with the reason.
+- **Fix: a kept radar extract could hold a stale conditional merge.** `multiquadric_h19` was
+  worked out as the radar was read and kept in `radar_extract.csv`, reused whenever the H19
+  files were the same. A change to the gauges (a correction, a different gauge, another
+  period) left it built from the old gauges' rain. The extract now keeps the radar in the
+  catchment's cells and the gauges' cells (`radar_cells.rds`). The merge is kept with a key of
+  the gauges' rain, places and the multiquadric's c (`radar_merge_key.txt`), and is worked out
+  again from the cells, without reading the files, when the key changes.
+- **How sure the order is.** The floods are drawn again at random 200 times and the flood
+  measures scored on each draw; the measures over the whole record are kept. Each series
+  gets the range of places it took in 90% of the draws (`place_low`, `place_high` in
+  `rain_ranking.csv`; "places" in the summary and the report). The summary names the series
+  that cannot be told apart from the first.
+- **Recommended for PDM calibration.** A short list in the summary, the report and
+  `recommended_for_calibration.csv`. It holds up to three catchment averages in the ranking's
+  order, each not a near-copy of one above it (correlated above 0.995 step by step, with totals
+  within 2%), and the best radar-based one when its range of places reaches the first's. Each
+  comes with its file, its rain_error (for a radar-based series, the best gauge average's to
+  start from), and why it is there.
 - **Calendar or water years.** `compare_rain.R`'s new `year_start_month` sets the years its
   water balance and yearly plots are counted in. It is 1 (calendar years, as H19 is stored) by
   default, or 10 for water years. The plots' titles say which.

@@ -277,3 +277,15 @@ test_that("the rain comparison needs the pdmS7 it was written for", {
   # The version it asks for is never newer than the package it ships in.
   expect_true(utils::packageVersion("pdmS7") >= need)
 })
+
+test_that("the rain comparison says how sure its order is and what to calibrate on", {
+  code <- readLines(system.file("scripts", "compare_rain.R", package = "pdmS7"))
+  # The floods drawn again 200 times, the places taken in 90% of the draws.
+  expect_true(any(grepl("^draws <- 200$", code)))
+  expect_true(any(grepl("place_low", code, fixed = TRUE)))
+  # A list for calibration, written out, with near-copies left off.
+  expect_true(any(grepl("recommended_for_calibration.csv", code, fixed = TRUE)))
+  expect_true(any(grepl("near_copy <- function(a, b)", code, fixed = TRUE)))
+  # The conditional merge is kept with a key of the gauges it came from.
+  expect_true(any(grepl("radar_merge_key.txt", code, fixed = TRUE)))
+})
