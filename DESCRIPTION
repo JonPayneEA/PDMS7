@@ -1,7 +1,7 @@
 Package: pdmS7
 Type: Package
 Title: Configurable Probability Distributed Rainfall Runoff Model
-Version: 0.46.0
+Version: 0.46.1
 Authors@R: person("PDM", "Contributors", role = c("aut", "cre"), email =
         "pdm@example.org")
 Description: An independent, configurable implementation of the Probability Distributed
@@ -30,7 +30,7 @@ Collate: 'utils.R' 'distributions.R' 'distributions_part3.R' 'distributions_part
         'sim_pdm.R' 'read_pdm_config.R' 'pack_model.R' 'pack_step.R' 'sim_pack.R'
         'calibration_metrics.R' 'calibrate_multi.R' 'pareto.R' 'sensitivity_global.R' 'forecast_compare.R' 'stress_tests.R' 'bayes.R' 'ensemble_scores.R' 'cpp11.R' 'engine.R' 'initial_flow.R'
         'scorecard.R' 'thresholds.R' 'structures.R' 'project_log.R' 'project_data.R' 'project_entries.R'
-        'project_read.R' 'report_render.R' 'project_report.R' 'run_log.R'
+        'project_read.R' 'report_render.R' 'report_blocks.R' 'project_report.R' 'run_log.R'
         'app.R' 'app_server.R' 'app_pareto.R' 'app_events.R' 'compare_structures.R' 'batch.R' 'response_time.R' 'hindcast.R'
         'coarse.R' 'staged.R' 'extrapolation.R' 'synthetic_rain.R' 'synthetic_catchment.R' 'synthetic_basins.R' 'events.R' 'event_objective.R' 'event_screen.R' 'event_states.R' 'recession.R' 'calibration_checks.R' 'workbench.R' 'recommend_structure.R' 'rainfall_merge.R' 'boundary.R' 'lta_grid.R' 'h19.R' 'zzz.R'
         'visuals.R' 'visuals_series.R' 'prepare.R' 'calibrate_project.R' 'visuals_calibration.R' 'water_balance.R'
