@@ -3967,12 +3967,17 @@ blocks <- c(
                            step_text)),
        report_table(gauge_table, caption = "The gauges"),
        if (!is.null(gauge_table$km_outside) && all(gauge_table$km_outside > 0)) {
-         report_alert(sprintf(paste("Every gauge lies outside the catchment, %.1f to %.1f km",
-                                    "beyond its boundary: each average infers the catchment's",
-                                    "rain from its edges. Storms that fall inside and miss the",
-                                    "edges are what a radar-based series can catch."),
-                              min(gauge_table$km_outside), max(gauge_table$km_outside)),
-                      FALSE)
+         report_alert(paste(
+           sprintf(paste("Every gauge lies outside the catchment, %.1f to %.1f km beyond its",
+                         "boundary: each average infers the catchment's rain from its edges,",
+                         "and storms that fall inside and miss the edges are missed."),
+                   min(gauge_table$km_outside), max(gauge_table$km_outside)),
+           if (!is.null(h19_series)) {
+             "The radar-based series in this run see between the gauges: compare their events missed."
+           } else {
+             "Radar, where it is available, sees between the gauges: a run with it would test this."
+           }),
+           FALSE)
        }),
   plot_blocks("gauge_map.png", "The catchment and the gauges in use"),
   plot_blocks("nearby_gauges.png", "The gauges around the catchment, from the search"),
