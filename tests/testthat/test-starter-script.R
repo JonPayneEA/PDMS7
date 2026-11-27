@@ -180,10 +180,11 @@ test_that("the rain comparison parses, stops until the area is set, and names it
   expect_no_error(parse(text = code))
   # The area is left blank, so the script cannot run on a wrong default.
   expect_true(any(grepl("^area_km2 <- NA ", code)))
-  # Every HOW TO READ note names a plot the script writes: 11, and four for where the balance
-  # fails (balance_years, flood_ratio_vs_rain, record_curves and candidate_band).
+  # Every HOW TO READ note names a plot the script writes: 11, four for where the balance
+  # fails (balance_years, flood_ratio_vs_rain, record_curves and candidate_band), and the
+  # largest events' windows (flood_windows).
   notes <- sub("^\\s*# HOW TO READ ", "", grep("^\\s*# HOW TO READ ", code, value = TRUE))
-  expect_length(notes, 15)
+  expect_length(notes, 16)
   written <- code[!grepl("^\\s*#", code)]
   for (name in notes) {
     expect_true(any(grepl(sprintf('"%s"', name), written, fixed = TRUE)), info = name)
@@ -320,6 +321,9 @@ test_that("the rain comparison says how sure its order is and what to calibrate 
   # given, sampling where not, never assumed; the bootstrap where reach.rate is older.
   expect_true(any(grepl("^gauging_uncertainty <- NULL", code)))
   expect_true(any(grepl("reach.rate::rating_uncertainty(candidate,", code, fixed = TRUE)))
+  # Radar by season: why the raw radar sits apart from the gauges.
+  expect_true(any(grepl("radar_season <- radar_by_season(season_pairs,", code, fixed = TRUE)))
+  expect_true(any(grepl("radar_by_season.csv", code, fixed = TRUE)))
   expect_true(any(grepl('exists("rating_uncertainty", envir = asNamespace("reach.rate")', code,
                         fixed = TRUE)))
 })

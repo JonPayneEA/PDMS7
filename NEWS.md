@@ -1,3 +1,17 @@
+# pdmS7 0.52.0
+
+- **Radar by season.** The new `radar_by_season()` says why raw radar rain sits apart from the
+  gauges, from daily pairs of radar and gauge rain: the radar under-reading winter rain (its
+  share falls in winter: beam height, the bright band), the gauges under-catching it (its
+  share rises in winter: wind), a level offset alike all year, or missing data (over a tenth of
+  the steps). Winter is October to March. The events' rain on the radar against a gauge
+  average, by season, is set beside it. `compare_rain.R` runs it on the radar over each gauge
+  where the daily files were read, otherwise on the catchment against the best-ranked gauge
+  average, and reports the verdict with `radar_by_season.csv` and `radar_by_month.csv`.
+- **Fix: `balance_diagnosis()`'s help named an argument and a result that do not exist.** The
+  renaming of floods to events reached the help (`events`) but not the code (`floods`); the
+  help says `floods` again, in the new words.
+
 # pdmS7 0.51.2
 
 - **`compare_rain.R`: events, not floods.** The report, its tables and plots call the

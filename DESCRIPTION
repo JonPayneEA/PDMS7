@@ -1,7 +1,7 @@
 Package: pdmS7
 Type: Package
 Title: Configurable Probability Distributed Rainfall Runoff Model
-Version: 0.51.2
+Version: 0.52.0
 Authors@R: person("PDM", "Contributors", role = c("aut", "cre"), email =
         "pdm@example.org")
 Description: An independent, configurable implementation of the Probability Distributed
@@ -33,7 +33,7 @@ Collate: 'utils.R' 'distributions.R' 'distributions_part3.R' 'distributions_part
         'project_read.R' 'report_render.R' 'report_blocks.R' 'project_report.R' 'run_log.R'
         'app.R' 'app_server.R' 'app_pareto.R' 'app_events.R' 'compare_structures.R' 'batch.R' 'response_time.R' 'hindcast.R'
         'coarse.R' 'staged.R' 'extrapolation.R' 'synthetic_rain.R' 'synthetic_catchment.R' 'synthetic_basins.R' 'events.R' 'event_objective.R' 'event_screen.R' 'event_states.R' 'recession.R' 'calibration_checks.R' 'workbench.R' 'recommend_structure.R' 'rainfall_merge.R' 'rainfall_kriging.R' 'boundary.R' 'lta_grid.R' 'h19.R' 'zzz.R'
-        'visuals.R' 'visuals_series.R' 'prepare.R' 'calibrate_project.R' 'visuals_calibration.R' 'water_balance.R' 'balance_diagnosis.R' 'rating_follow_up.R'
+        'visuals.R' 'visuals_series.R' 'prepare.R' 'calibrate_project.R' 'visuals_calibration.R' 'water_balance.R' 'balance_diagnosis.R' 'rating_follow_up.R' 'radar_by_season.R'
         'progress.R' 'flow_markers.R' 'pdm_inp.R' 'compare_calibrations.R' 'multizone.R' 'gauge_response.R' 'report_decisions.R'
         'well_level.R' 'camels.R' 'site_settings.R'
 Config/roxygen2/version: 8.1.0

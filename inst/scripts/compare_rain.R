@@ -9,7 +9,8 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-24
 # Tier:         1
-# Modified:     2026-11-27 - events, not floods; events missed measured against the median
+# Modified:     2026-11-27 - radar by season: why the raw radar sits apart from the gauges
+#               2026-11-27 - events, not floods; events missed measured against the median
 #                            series; event windows reported and plotted; plots reworked
 #               2026-11-27 - the candidate's band source by source, from
 #               reach.rate::rating_uncertainty(), with shared gauging error and structure
@@ -36,7 +37,7 @@
 # Outputs:      A folder: summary.md, rain_ranking.csv, weights_and_error.csv, plots each with a
 #               note on how to read it, and catchment_rain/ with each average built, as CSV
 #               ready for calibrate_site.R
-# Dependencies: pdmS7 (0.51.0 or later); sf for a shapefile and the search; reach.io
+# Dependencies: pdmS7 (0.52.0 or later); sf for a shapefile and the search; reach.io
 #               to find and download the gauges; arrow (or nanoparquet) for the processed
 #               H19 extracts, ncdf4 for the daily H19 files; reach.rate to check the flow
 #               record from stage, gaugings and ratings
@@ -99,8 +100,8 @@ library(data.table)
 
 # The script is written for this pdmS7 or later: an older one lacks functions it uses, and
 # would fail part way through.
-if (utils::packageVersion("pdmS7") < "0.51.0") {
-  stop("compare_rain.R needs pdmS7 0.51.0 or later; this is ",
+if (utils::packageVersion("pdmS7") < "0.52.0") {
+  stop("compare_rain.R needs pdmS7 0.52.0 or later; this is ",
        as.character(utils::packageVersion("pdmS7")),
        ". Update it with remotes::install_github(\"JonPayneEA/PDMS7\"), then restart R.",
        call. = FALSE)
@@ -2723,6 +2724,49 @@ fallback_error <- if (weights_done) {
 if (!length(fallback_error)) fallback_error <- NA_real_
 fwrite(recommended, file.path(output_folder, "recommended_for_calibration.csv"))
 
+# ---- Radar by season ------------------------------------------------------------------------
+
+# Why the raw radar sits apart from the gauges, if it does: the radar under-reading winter rain
+# (beam height, the bright band), the gauges under-catching it (wind), a level offset all year,
+# or steps missing. Judged on the radar over each gauge against the gauge where the daily files
+# were read, otherwise on the catchment, against the best-ranked gauge average; with the events'
+# rain by season beside it.
+radar_season <- NULL
+radar_names <- c("h19", "h19_bias", "multiquadric_h19", "ked_h19")
+season_reference <- setdiff(averages_ranked, radar_names)[1]
+if ("h19" %in% names_r && !is.na(season_reference)) {
+  say("Radar by season")
+  steps_a_day <- 24 / step_hours
+  day_of <- as.Date(grid$time)
+  daily_total <- function(v) {
+    total <- tapply(v, day_of, function(x) if (sum(!is.na(x)) == steps_a_day) sum(x) else NA)
+    stats::setNames(as.numeric(total), names(total))
+  }
+  season_pairs <- if (radar_done) {
+    pairs_rg[, c("month", "gauge_mm", "radar_mm")]
+  } else {
+    g_day <- daily_total(rains[[season_reference]])
+    r_day <- daily_total(rains[["h19"]])
+    both <- is.finite(g_day) & is.finite(r_day) & g_day >= 1 & r_day >= 1
+    data.frame(month = as.integer(format(as.Date(names(g_day)[both]), "%m")),
+               gauge_mm = g_day[both],
+               radar_mm = r_day[both])
+  }
+  peak_month <- as.integer(format(grid$time[floods$peak_row], "%m", tz = "UTC"))
+  season_events <- data.frame(season = ifelse(peak_month %in% 4:9, "summer", "winter"),
+                              radar_mm = event_rain[, match("h19", names_r)],
+                              reference_mm = event_rain[, match(season_reference, names_r)])
+  # The radar's missing steps, where the reference has a value.
+  has_reference <- is.finite(rains[[season_reference]])
+  radar_missing <- mean(!is.finite(rains[["h19"]][has_reference]))
+  radar_season <- radar_by_season(season_pairs,
+                                  events = season_events,
+                                  missing_share = radar_missing)
+  fwrite(radar_season$seasons, file.path(output_folder, "radar_by_season.csv"))
+  fwrite(radar_season$monthly, file.path(output_folder, "radar_by_month.csv"))
+  say("  radar: %s", radar_season$verdict)
+}
+
 # ---- 8. Where the balance fails ------------------------------------------------------------
 
 say("Where the balance fails")
@@ -3759,6 +3803,18 @@ lines <- c(
           "look alike in the events, and a rating reading low at every flow looks like a slow",
           "loss. Gaugings, or a second flow gauge, separate them.")),
 
+  # The radar by season.
+  if (!is.null(radar_season)) {
+    c("", "## Radar by season", "",
+      sprintf("**Radar: %s.** %s", radar_season$verdict, radar_season$why),
+      "",
+      sprintf("- %s: %d days, radar %.2f of the gauges; %d events, %.2f.",
+              radar_season$seasons$season, radar_season$seasons$days,
+              radar_season$seasons$ratio, radar_season$seasons$events,
+              radar_season$seasons$event_ratio),
+      "", "Tables: `radar_by_season.csv`, `radar_by_month.csv`.")
+  },
+
   # What to do next, and the files written.
   "", "## What next", "",
   "- The ranking is a guide. A series that ranks well but carries a warning may still be the",
@@ -4193,6 +4249,19 @@ blocks <- c(
                        "clearly above the summer one points to the gauge losing rain to wind."),
            report_table(radar_table, caption = "Radar against each gauge")),
       plot_blocks("radar_vs_gauge_by_month.png", "Radar against each gauge, month by month"))
+  },
+  if (!is.null(radar_season)) {
+    list(report_heading("Radar by season", 3),
+         report_text(sprintf(paste("Why the raw radar sits apart from the gauges, if it does:",
+                                   "its daily totals against %s, winter (October to March)",
+                                   "against summer, with the events' rain beside them, and the",
+                                   "share of steps it is missing (%.1f%%)."),
+                             if (radar_done) "each gauge's" else season_reference,
+                             100 * radar_season$missing_share)),
+         report_alert(sprintf("Radar: %s. %s", radar_season$verdict, radar_season$why),
+                      radar_season$verdict == "no clear fault"),
+         report_table(radar_season$seasons,
+                      caption = "Radar over gauges, median of daily ratios and of events' ratios"))
   },
 
   # Where the balance fails.
