@@ -33,7 +33,7 @@ balance_diagnosis(
 
 \item{area_km2}{Catchment area, km2.}
 
-\item{floods}{The floods, from \code{\link[=find_events]{find_events()}} with \code{area_km2} (and, usually,
+\item{floods}{The events, from \code{\link[=find_events]{find_events()}} with \code{area_km2} (and, usually,
 \code{\link[=screen_events]{screen_events()}}): it needs \code{rain_start}, \code{rain_end}, \code{peak_row}, \code{peak_flow} and
 \code{quickflow_mm}.}
 
@@ -50,9 +50,9 @@ or \code{NULL}.}
 \item{top_flow}{The flow at the top of the rating, m3/s. By default it is read from the
 record check: its latest curve at the top stage given to it.}
 
-\item{high_flow_excess}{How far, as a share, the floods above the top must sit from the
-relation of the floods below (their median) to count against the rating. With at least
-three floods above the top and eight below.}
+\item{high_flow_excess}{How far, as a share, the events above the top must sit from the
+relation of the events below (their median) to count against the rating. With at least
+three events above the top and eight below.}
 
 \item{omega}{The band of Fu's parameter \code{w} the catchment may lie in: a broad band about the
 usual 2.6. Narrow it from neighbouring catchments where their balances are known.}
@@ -78,11 +78,11 @@ flow Fu's curve allows, the gap outside it and its kind (\code{"deficit"}, \code
 flow, and the gap left once each and both are taken off.}
 \item{years}{The reference series' years, from \code{\link[=water_balance]{water_balance()}}, with the gap.}
 \item{series}{Each rain series' mean year over the steps every series covers.}
-\item{floods}{Each flood's peak, rain, quick flow, runoff ratio, season and whether it
+\item{floods}{Each event's peak, rain, quick flow, runoff ratio, season and whether it
 peaked above the top of the rating.}
-\item{flood_summary}{The floods' rank correlation with peak (a description, not
+\item{flood_summary}{The events' rank correlation with peak (a description, not
 evidence), the share with more quick flow than rain, the summer and winter medians,
-and how far the floods above the top sit from the relation of those below.}
+and how far the events above the top sit from the relation of those below.}
 \item{change}{The lasting change of runoff ratio from \code{\link[=water_balance]{water_balance()}}.}
 \item{record}{What the record check found, where given.}
 }
@@ -95,15 +95,15 @@ A runoff deficit or excess has four usual causes, and each leaves a different ma
 \itemize{
 \item \strong{Rain.} The gap is set against how far the rain could be out: the spread between the
 rain series given, and, for rain too low, gauge under-catch.
-\item \strong{Rating.} A rating is weakest above its top, where it is extrapolated. Floods peaking
-there are set against the relation of runoff ratio to rain fitted to the floods below
+\item \strong{Rating.} A rating is weakest above its top, where it is extrapolated. Events peaking
+there are set against the relation of runoff ratio to rain fitted to the events below
 it: a rating reading high puts them above that relation, and bypass or a rating reading
 low, below. With a flow record check, revisions, flow off the curve, stage rising in dry
 weather and the flow a stage error makes are read too. Runoff ratios rising with peak
 size alone is not counted: bigger storms fall on wetter ground, so they rise anyway.
 \item \strong{A slow loss or gain.} Groundwater, abstraction, effluent and a wrong catchment area
-drain or feed the slow stores: over a few days they hardly touch a flood, over a year they
-pile up. A gap left after the rain's and the flow's bounds, with nothing in the floods
+drain or feed the slow stores: over a few days they hardly touch an event, over a year they
+pile up. A gap left after the rain's and the flow's bounds, with nothing in the events
 pointing elsewhere, points here.
 \item \strong{A change over time.} A lasting change of runoff ratio from one year (a new rating, a
 changed channel, a new abstraction), dated, and matched to a rating revision where the
@@ -120,7 +120,7 @@ there. The rain's bounds are applied by working the range out again at the rain 
 each bound, the flow's by moving the flow.
 
 No check proves a cause. Gauges under-reading and a rating over-reading at peaks look alike
-in the floods, and a rating reading low at every flow looks like a slow loss; only gaugings,
+in the events, and a rating reading low at every flow looks like a slow loss; only gaugings,
 the record check's stage error or a second flow gauge separate them.
 }
 \examples{
@@ -128,9 +128,9 @@ rain <- synthetic_rain("2019-10-01", years = 4, dt = 1, seed = 4)
 forcing <- data.frame(time = rain$time, rain = rain$rain, pet = rain$pet)
 config <- modifyList(pdm_presets("standard"), list(area_km2 = 20))
 flow <- run_pdm(pdm_from_config(config), forcing)$output$q_m3s
-floods <- find_events(rain$rain, flow, rain$time, dt = 1, area_km2 = 20)
+events <- find_events(rain$rain, flow, rain$time, dt = 1, area_km2 = 20)
 # The model's own flow from the same rain, so the balance closes and nothing is suspected.
-balance_diagnosis(rain$time, flow, list(gauges = rain$rain), rain$pet, 20, floods)
+balance_diagnosis(rain$time, flow, list(gauges = rain$rain), rain$pet, 20, events)
 # Most of the flow lost, as to an aquifer draining out of the catchment: a slow loss.
 less <- 0.4 * flow
 balance_diagnosis(rain$time, less, list(gauges = rain$rain), rain$pet, 20,

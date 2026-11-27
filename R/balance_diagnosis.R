@@ -55,7 +55,7 @@
 #' @param rain A named list (or data frame) of rain series, mm per step, each one value a step.
 #' @param pet Potential evaporation, mm per step.
 #' @param area_km2 Catchment area, km2.
-#' @param events The events, from [find_events()] with `area_km2` (and, usually,
+#' @param floods The events, from [find_events()] with `area_km2` (and, usually,
 #'   [screen_events()]): it needs `rain_start`, `rain_end`, `peak_row`, `peak_flow` and
 #'   `quickflow_mm`.
 #' @param reference The rain series the balance is worked out for: its name or position.
@@ -89,7 +89,7 @@
 #'       flow, and the gap left once each and both are taken off.}
 #'     \item{years}{The reference series' years, from [water_balance()], with the gap.}
 #'     \item{series}{Each rain series' mean year over the steps every series covers.}
-#'     \item{events}{Each event's peak, rain, quick flow, runoff ratio, season and whether it
+#'     \item{floods}{Each event's peak, rain, quick flow, runoff ratio, season and whether it
 #'       peaked above the top of the rating.}
 #'     \item{flood_summary}{The events' rank correlation with peak (a description, not
 #'       evidence), the share with more quick flow than rain, the summer and winter medians,
