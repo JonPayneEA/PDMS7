@@ -297,5 +297,10 @@ test_that("the rain comparison says how sure its order is and what to calibrate 
   expect_true(any(grepl("^stage_file <- NULL", code)))
   expect_true(any(grepl("balance_diagnosis(grid$time,", code, fixed = TRUE)))
   expect_true(any(grepl("reach.rate::check_flow_record(record,", code, fixed = TRUE)))
-  expect_true(any(grepl("\"stage_file was not given\"", code, fixed = TRUE)))
+  # The WISKI ID alone is enough for the stage, and the gaugings and ratings may be data frames.
+  expect_true(any(grepl('stage_file <- paste0("stage_", flow_station_wiski, ".csv")', code,
+                        fixed = TRUE)))
+  expect_true(any(grepl("read_or_take(gaugings_file,", code, fixed = TRUE)))
+  expect_true(any(grepl("read_or_take(ratings_file,", code, fixed = TRUE)))
+  expect_false(any(grepl("here(gaugings_file)", code, fixed = TRUE)))
 })

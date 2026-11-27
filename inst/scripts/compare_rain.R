@@ -9,7 +9,9 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-24
 # Tier:         1
-# Modified:     2026-11-27 - where the balance fails: rain, rating, a slow loss or gain, or a
+# Modified:     2026-11-27 - the stage from the flow station's WISKI ID alone; the gaugings
+#               and the ratings as data frames, or file names
+#               2026-11-27 - where the balance fails: rain, rating, a slow loss or gain, or a
 #               change over time, with the flow record checked from stage by reach.rate
 #               2026-11-26 - laid out one argument a line, with in-line comments
 #               2026-11-26 - multiquadric scaled by a long-term average grid; the check
@@ -218,14 +220,16 @@ other_rain_files <- c()
 # the rating and above bankfull, the flow a stage error makes, stage rising in dry weather).
 # With the gaugings and the operational ratings export too, the rating in force is tested
 # against the gaugings. Each input left NULL leaves its check out, and the report says so.
+# The gaugings and the ratings can each be a file name in data_folder or a data frame already
+# in R, as exported or as reach.rate reads it.
 stage_file <- NULL             # stage, m, in data_folder: time and value (and quality)
-flow_station_wiski <- NULL     # the flow station's WISKI ID: stage_file downloaded if missing
+flow_station_wiski <- NULL     # the flow station's WISKI ID: stage downloaded if no file
 top_stage_m <- NULL            # the rating's top: NULL takes the highest gauging, if given
 bankfull_stage_m <- NULL       # the stage above which water may bypass the section
 stage_uncertainty_m <- 0.005   # a systematic stage error to test, m
-gaugings_file <- NULL          # the station's gaugings, as reach.rate::read_gaugings() reads
+gaugings_file <- NULL          # the station's gaugings: a file name or a data frame
 gauging_station_id <- NULL     # the station's id in the gaugings file, if it holds others
-ratings_file <- NULL           # the operational ratings export (read_operational_ratings())
+ratings_file <- NULL           # the operational ratings export: a file name or a data frame
 rating_station_id <- NULL      # the station's id in the ratings export (its FFFSLocID)
 dry_hours <- 48                # a step is dry after this many hours of little rain...
 dry_rain_mm <- 0.5             # ...no more than this, on the rain series recommended first
@@ -2393,8 +2397,19 @@ spread_series <- unique(c(reference_rain, intersect(names_r, names(built))))
 # downloaded there with reach.io when missing and flow_station_wiski is set.
 record_check <- NULL
 gaugings_vs_rating <- NULL
+# With only the WISKI ID, the stage is kept as stage_<id>.csv in data_folder: downloaded the
+# first time, read from there after.
+if (is.null(stage_file) && !is.null(flow_station_wiski)) {
+  stage_file <- paste0("stage_", flow_station_wiski, ".csv")
+}
+# The gaugings and the ratings: a file name in data_folder, a data frame as exported, or one
+# reach.rate has already read (it has the columns reach.rate gives).
+read_or_take <- function(x, read, made_by_read) {
+  if (!is.data.frame(x)) return(read(here(x)))
+  if (all(made_by_read %in% names(x))) x else read(x)
+}
 record_skip <- if (is.null(stage_file)) {
-  "stage_file was not given"
+  "neither stage_file nor flow_station_wiski was given"
 } else if (step_hours != 0.25) {
   paste("it needs 15-minute data: flow averaged over a longer step is not the rating's flow at",
         "the step's mean stage")
@@ -2412,7 +2427,7 @@ if (is.null(record_skip)) {
     # The station's 15-minute level measure, the qualified one first; a year at a time, each
     # request after a pause, as the EA asks.
     Sys.sleep(1)
-    found <- as.data.frame(reach.io::find_stations(wiski_ids = flow_station_wiski))
+    found <- as.data.frame(reach.io::find_stations(wiski_ids = as.character(flow_station_wiski)))
     level <- found[found$parameter %in% "level" & found$period %in% "15min", ]
     level <- level[order(!grepl("qualified$", level$measure_notation)), ]
     if (!nrow(level)) {
@@ -2449,13 +2464,15 @@ if (is.null(record_skip)) {
   # The gaugings, and the rating's top from the highest of them unless top_stage_m is set.
   gaugings <- NULL
   if (!is.null(gaugings_file)) {
-    gaugings <- reach.rate::read_gaugings(here(gaugings_file), quiet = TRUE)
+    gaugings <- read_or_take(gaugings_file,
+                             function(x) reach.rate::read_gaugings(x, quiet = TRUE),
+                             c("stage_m", "discharge_cms", "station_id"))
     if (!is.null(gauging_station_id)) {
       gaugings <- gaugings[gaugings$station_id %in% gauging_station_id, ]
     }
     gaugings <- gaugings[is.finite(gaugings$stage_m) & is.finite(gaugings$discharge_cms), ]
     if (!nrow(gaugings)) {
-      stop("No gaugings with a stage and a flow in ", gaugings_file, ".", call. = FALSE)
+      stop("No gaugings with a stage and a flow in gaugings_file.", call. = FALSE)
     }
   }
   top_stage <- if (!is.null(top_stage_m)) {
@@ -2467,15 +2484,17 @@ if (is.null(record_skip)) {
   # The station's ratings, and the gaugings against the one in force (the one starting last).
   ratings <- NULL
   if (!is.null(ratings_file)) {
-    limbs <- reach.rate::read_operational_ratings(here(ratings_file))
+    limbs <- read_or_take(ratings_file,
+                          reach.rate::read_operational_ratings,
+                          c("rating_key", "lower_level", "upper_level", "C", "a", "n"))
     if (!is.null(rating_station_id)) limbs <- limbs[limbs$station_id %in% rating_station_id, ]
     if (!nrow(limbs)) {
-      stop("No ratings for station ", rating_station_id, " in ", ratings_file, ".",
+      stop("No ratings for station ", rating_station_id, " in ratings_file.",
            call. = FALSE)
     }
     ratings <- reach.rate::operational_rating_tables(limbs)
     if (!length(ratings$tables)) {
-      stop("None of the station's ratings in ", ratings_file, " could be built.", call. = FALSE)
+      stop("None of the station's ratings in ratings_file could be built.", call. = FALSE)
     }
     if (!is.null(gaugings)) {
       starts <- tapply(as.numeric(limbs$start_date), limbs$rating_key, max, na.rm = TRUE)

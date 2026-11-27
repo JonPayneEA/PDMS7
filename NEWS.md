@@ -1,3 +1,13 @@
+# pdmS7 0.49.1
+
+- **`compare_rain.R`: the stage from the WISKI ID alone.** With `stage_file` left `NULL` and
+  `flow_station_wiski` set, the stage is now downloaded to `stage_<id>.csv` in `data_folder`
+  and read from there on later runs. Before, the record check was skipped unless `stage_file`
+  was also named.
+- **`compare_rain.R`: gaugings and ratings as data frames.** `gaugings_file` and
+  `ratings_file` take a file name in `data_folder`, a data frame as exported, or one
+  reach.rate has already read.
+
 # pdmS7 0.49.0
 
 - **Where the balance fails.** The new `balance_diagnosis()` ranks the usual causes of a
