@@ -68,3 +68,34 @@ test_that("too few days are not judged, and bad inputs are refused", {
   expect_error(radar_by_season(data.frame(a = 1)), "pairs needs")
   expect_error(radar_by_season(pairs_with(1, 1), events = data.frame(a = 1)), "events needs")
 })
+
+test_that("the monthly factors scale the radar to the gauges, smoothly through the year", {
+  # Radar 0.7 of the gauges in winter (October to March), 1 in summer. Twenty days a month and
+  # the same gauge totals in every month (each month's days run 1 to 7 mm alike), so a month
+  # whose neighbours share its season has factor 1 / 0.7 exactly; October, blended with
+  # September (summer), sits between: (G + 2G + G) / (R_sep + 2 R_oct + R_nov) with R = 0.7 G
+  # in winter and G in summer, (4 G) / (G + 1.4 G + 0.7 G) = 4 / 3.1.
+  month <- rep(1:12, each = 20)
+  gauge <- rep(1 + (0:19 %% 7), 12)
+  radar <- gauge * ifelse(month %in% c(10:12, 1:3), 0.7, 1)
+  f <- radar_season_factors(data.frame(month = month, gauge_mm = gauge, radar_mm = radar))
+  expect_equal(f$factor[f$month %in% c(11, 12, 1, 2)], rep(1 / 0.7, 4))
+  expect_equal(f$factor[f$month %in% c(5, 6, 7, 8)], rep(1, 4))
+  expect_equal(f$factor[f$month == 10], 4 / 3.1)
+  expect_true(all(f$basis == "month"))
+})
+
+test_that("a thin month takes its half-year's factor, and factors are held within the limits", {
+  month <- c(rep(1:12, each = 20), 1)
+  pairs <- data.frame(month = month, gauge_mm = 5, radar_mm = 2.5)
+  # Drop all but two of January's days: January falls back to the winter half-year's 2.
+  pairs <- pairs[!(pairs$month == 1 & seq_len(nrow(pairs)) > 2), ]
+  f <- radar_season_factors(pairs)
+  expect_identical(f$basis[f$month == 1], "half-year")
+  expect_equal(f$factor[f$month == 1], 2)
+  # A factor of 4 is held at the default top limit of 2.
+  f <- radar_season_factors(data.frame(month = rep(1:12, each = 20), gauge_mm = 4,
+                                       radar_mm = 1))
+  expect_equal(f$factor, rep(2, 12))
+  expect_error(radar_season_factors(data.frame(a = 1)), "pairs needs")
+})

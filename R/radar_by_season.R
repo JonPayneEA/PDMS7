@@ -141,7 +141,7 @@ radar_by_season <- function(pairs, events = NULL, missing_share = NA_real_, shif
     "radar under-reads in winter" = sprintf(paste(
       "The radar reads %s of the gauges in winter and %s in summer: in winter the beam passes",
       "over shallow rain, and the bright band distorts it. Use the radar for pattern, with its",
-      "level from the gauges (h19_bias, multiquadric_h19, ked_h19).%s"),
+      "level from the gauges (h19_season, h19_bias, multiquadric_h19, ked_h19).%s"),
       pct(w), pct(s), event_note),
     "gauges under-catch in winter" = sprintf(paste(
       "The radar reads %s of the gauges in winter and %s in summer: the gauges lose rain to",
@@ -167,4 +167,59 @@ print.pdm_radar_season <- function(x, ...) {
   cat(sprintf("Radar by season: %s\n  %s\n", x$verdict, x$why))
   print(x$seasons, row.names = FALSE)
   invisible(x)
+}
+
+#' Seasonal factors that scale radar rain to the gauges
+#'
+#' One factor a month, by which to multiply a radar series so its level matches the gauges'
+#' through the year: the gauges' total over the radar's, over days with at least 1 mm in both.
+#' Totals, not a median of daily ratios, because the factor scales volume. Each month's totals
+#' are blended with its neighbours' (weights 1, 2, 1, round the year), so the factor changes
+#' smoothly and has no step at a month's end. A month with fewer than `min_days` days takes its
+#' half-year's factor (winter October to March); every factor is held within `limits`.
+#'
+#' The factors are fixed, so they need no gauge in real time and no wait for a day's totals:
+#' a forecasting system multiplies the radar by the current month's factor. They are only as
+#' good as the radar product they were made from: derive them from the archive of the product
+#' the system will use, date them, and review them when the radar's processing changes.
+#'
+#' @param pairs A data frame of daily totals: `month` (1 to 12), `gauge_mm` and `radar_mm`,
+#'   one row per day (and gauge), with at least 1 mm in both.
+#' @param min_days The fewest days a month needs for its own factor.
+#' @param limits The lowest and highest factor allowed.
+#' @return A data frame, one row per month: `month`, `days`, `gauge_mm` and `radar_mm` (the
+#'   month's totals), `factor`, and `basis` (`"month"`, `"half-year"` or `"none"`, where not even
+#'   the half-year has the days, and the factor is 1).
+#' @examples
+#' month <- rep(1:12, each = 20)
+#' gauge <- rep(5, 240)
+#' # Radar reading 80% of the gauges all year: every factor is 1.25.
+#' radar_season_factors(data.frame(month = month, gauge_mm = gauge, radar_mm = 0.8 * gauge))
+#' @seealso [radar_by_season()]
+#' @export
+radar_season_factors <- function(pairs, min_days = 10, limits = c(0.5, 2)) {
+  .check(is.data.frame(pairs) && all(c("month", "gauge_mm", "radar_mm") %in% names(pairs)),
+         "pairs needs month, gauge_mm and radar_mm, one row per day")
+  .check(is.numeric(limits) && length(limits) == 2 && limits[1] > 0 && limits[1] < limits[2],
+         "limits must be the lowest and highest factor, the first above 0")
+  ok <- is.finite(pairs$gauge_mm) & is.finite(pairs$radar_mm) & pairs$gauge_mm > 0 &
+    pairs$radar_mm > 0 & pairs$month %in% 1:12
+  p <- pairs[ok, , drop = FALSE]
+  days <- vapply(1:12, function(m) sum(p$month == m), 0L)
+  g <- vapply(1:12, function(m) sum(p$gauge_mm[p$month == m]), 0)
+  r <- vapply(1:12, function(m) sum(p$radar_mm[p$month == m]), 0)
+  # Each month with its neighbours, weights 1, 2, 1, round the year.
+  around <- function(x) {
+    x[c(12, 1:11)] + 2 * x + x[c(2:12, 1)]
+  }
+  smooth_factor <- around(g) / around(r)
+  winter <- c(10:12, 1:3)
+  half <- function(ms) {
+    if (sum(days[ms]) >= min_days) sum(g[ms]) / sum(r[ms]) else NA_real_
+  }
+  half_factor <- ifelse(1:12 %in% winter, half(winter), half(setdiff(1:12, winter)))
+  basis <- ifelse(days >= min_days, "month", ifelse(is.finite(half_factor), "half-year", "none"))
+  factor <- ifelse(basis == "month", smooth_factor, ifelse(basis == "half-year", half_factor, 1))
+  data.frame(month = 1:12, days = days, gauge_mm = g, radar_mm = r,
+             factor = pmin(pmax(factor, limits[1]), limits[2]), basis = basis)
 }

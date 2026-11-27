@@ -256,10 +256,12 @@ test_that("the rain comparison builds the averages chosen in rain_methods", {
   # Every average is on the list by default, including the two new ones.
   start <- grep("^rain_methods <- c\\(", code)
   expect_length(start, 1)
-  default <- eval(parse(text = paste(code[start:(start + 1)], collapse = "\n")))
+  # The list runs to the first line ending in its closing bracket, however it is wrapped.
+  end <- start - 1 + grep("\\)\\s*$", code[start:length(code)])[1]
+  default <- eval(parse(text = paste(code[start:end], collapse = "\n")))
   expect_identical(default, c("thiessen", "equal", "equal_all", "idw", "multiquadric",
                               "multiquadric_lta", "kriging", "ked_lta", "h19", "h19_bias",
-                              "multiquadric_h19", "ked_h19"))
+                              "h19_season", "multiquadric_h19", "ked_h19"))
   # A name the script cannot build is refused, and an average whose inputs are missing is
   # listed as not built, with the reason.
   expect_true(any(grepl("rain_methods names averages the script cannot build", code,
@@ -324,6 +326,10 @@ test_that("the rain comparison says how sure its order is and what to calibrate 
   # Radar by season: why the raw radar sits apart from the gauges.
   expect_true(any(grepl("radar_season <- radar_by_season(season_pairs,", code, fixed = TRUE)))
   expect_true(any(grepl("radar_by_season.csv", code, fixed = TRUE)))
+  # h19_season: the radar scaled by fixed monthly factors, written for a forecasting system.
+  expect_true(any(grepl("season_factors <- radar_season_factors(factor_pairs)", code,
+                        fixed = TRUE)))
+  expect_true(any(grepl("radar_season_factors.csv", code, fixed = TRUE)))
   expect_true(any(grepl('exists("rating_uncertainty", envir = asNamespace("reach.rate")', code,
                         fixed = TRUE)))
 })

@@ -195,10 +195,13 @@ thiessen_weights <- c()        # such as c("254336TP" = 0.264, SS92F014 = 0.737)
 #   ked_lta           kriging with the long-term average as a drift (lta_rain_file)
 #   h19               the radar alone (radar_folder or radar_processed_folder)
 #   h19_bias          the radar scaled day by day to the gauges (radar_folder, positions)
+#   h19_season        the radar scaled to the gauges by a fixed factor for each month, ready
+#                     for a forecasting system (radar_season_factors.csv)
 #   multiquadric_h19  the gauges' surface with the radar's pattern (radar_folder, 15 minutes)
 #   ked_h19           kriging with each step's radar as the drift (radar_folder, 15 minutes)
 rain_methods <- c("thiessen", "equal", "equal_all", "idw", "multiquadric", "multiquadric_lta",
-                  "kriging", "ked_lta", "h19", "h19_bias", "multiquadric_h19", "ked_h19")
+                  "kriging", "ked_lta", "h19", "h19_bias", "h19_season", "multiquadric_h19",
+                  "ked_h19")
 
 # H19 radar (optional): the folder of daily H19 NetCDF files, with a folder for each year.
 # The files' layouts are checked first (the archive changed how it saved them part way
@@ -623,7 +626,8 @@ if (length(thiessen_weights) && !is.null(gauges$wiski_id)) {
 
 # The averages the script builds have these names, so no gauge or other series may take one.
 built_names <- c("thiessen", "equal", "equal_all", "idw", "multiquadric", "multiquadric_lta",
-                 "kriging", "ked_lta", "h19", "h19_bias", "multiquadric_h19", "ked_h19")
+                 "kriging", "ked_lta", "h19", "h19_bias", "h19_season", "multiquadric_h19",
+                 "ked_h19")
 unknown_methods <- setdiff(rain_methods, built_names)
 if (length(unknown_methods)) {
   stop("rain_methods names averages the script cannot build: ",
@@ -1352,6 +1356,51 @@ if ("h19_bias" %in% rain_methods && !is.null(h19_series) && !is.null(radar_at_ga
   built$h19_bias <- h19_series * as.numeric(factor_day[as.character(bias_day)])
 }
 
+# The radar scaled to the gauges by a fixed factor for each month: the gauges' total over the
+# radar's, on days with at least 1 mm in both, each month blended with its neighbours so the
+# factor changes smoothly. Fixed factors need no gauge in real time and no wait for a day's
+# totals, so a forecasting system can apply them as they stand. Made at the gauges where the
+# daily files were read (the radar over each gauge against the gauge), otherwise on the
+# catchment against a gauge average.
+season_factors <- NULL
+if ("h19_season" %in% rain_methods && !is.null(h19_series)) {
+  steps_a_day <- 24 / step_hours
+  day_of <- as.Date(grid$time)
+  daily_total <- function(v) {
+    total <- tapply(v, day_of, function(x) if (sum(!is.na(x)) == steps_a_day) sum(x) else NA)
+    stats::setNames(as.numeric(total), names(total))
+  }
+  day_pairs <- function(gauge_rain, radar_rain) {
+    g <- daily_total(gauge_rain)
+    r <- daily_total(radar_rain)
+    ok <- is.finite(g) & is.finite(r) & g >= 1 & r >= 1
+    data.frame(month = as.integer(format(as.Date(names(g)[ok]), "%m")),
+               gauge_mm = g[ok],
+               radar_mm = r[ok])
+  }
+  gauge_average <- intersect(c("multiquadric", "thiessen", "idw", "kriging", "equal"),
+                             names(built))[1]
+  factor_pairs <- if (!is.null(radar_at_gauges)) {
+    do.call(rbind, lapply(gauge_names, function(n) day_pairs(G[, n], radar_at_gauges[, n])))
+  } else if (!is.na(gauge_average)) {
+    day_pairs(built[[gauge_average]], h19_series)
+  }
+  if (!is.null(factor_pairs) && nrow(factor_pairs)) {
+    say("H19 scaled to the gauges month by month")
+    season_factors <- radar_season_factors(factor_pairs)
+    season_factors$made_from <- if (!is.null(radar_at_gauges)) {
+      "the radar over each gauge against the gauge"
+    } else {
+      sprintf("the catchment radar against %s", gauge_average)
+    }
+    season_factors$period_from <- format(min(grid$time), "%Y-%m-%d")
+    season_factors$period_to <- format(max(grid$time), "%Y-%m-%d")
+    fwrite(season_factors, file.path(output_folder, "radar_season_factors.csv"))
+    month_of <- as.integer(format(grid$time, "%m", tz = "UTC"))
+    built$h19_season <- h19_series * season_factors$factor[month_of]
+  }
+}
+
 # The radar averages asked for that could not be built, and why.
 radar_given <- !is.null(radar_folder) || !is.null(radar_processed_folder)
 if (is.null(h19_series)) {
@@ -1360,6 +1409,14 @@ if (is.null(h19_series)) {
                 "it needs the catchment boundary"
               } else {
                 "it needs radar_folder or radar_processed_folder"
+              })
+}
+if (is.null(built$h19_season)) {
+  skip_method("h19_season",
+              if (is.null(h19_series)) {
+                "it needs the radar over the catchment"
+              } else {
+                "it needs days with rain in both the radar and the gauges"
               })
 }
 if ((is.null(h19_series) || is.null(radar_at_gauges)) && is.null(built$h19_bias)) {
@@ -2231,7 +2288,8 @@ if (length(gauge_series) > 1) {
   }
   # The radar-based series are not weightings of the gauges, so they are left out here.
   averages <- setdiff(names_r,
-                      c(gauge_series, "h19", "h19_bias", "multiquadric_h19", "ked_h19"))
+                      c(gauge_series, "h19", "h19_bias", "h19_season", "multiquadric_h19",
+                        "ked_h19"))
   G <- as.matrix(as.data.frame(rains[gauge_series]))
   given <- weights[intersect(names(weights), averages)]
   for (n in names(given)) {
@@ -2668,7 +2726,7 @@ for (n in averages_ranked) {
   if (length(chosen) == 3) break
 }
 radar_ranked <- intersect(averages_ranked,
-                          c("multiquadric_h19", "ked_h19", "h19_bias", "h19"))
+                          c("multiquadric_h19", "ked_h19", "h19_bias", "h19_season", "h19"))
 if (length(radar_ranked) && !any(radar_ranked %in% chosen)) {
   r <- radar_ranked[1]
   if (ranking$place_low[ranking$rain == r] <= ranking$place_high[1]) {
@@ -2732,7 +2790,7 @@ fwrite(recommended, file.path(output_folder, "recommended_for_calibration.csv"))
 # were read, otherwise on the catchment, against the best-ranked gauge average; with the events'
 # rain by season beside it.
 radar_season <- NULL
-radar_names <- c("h19", "h19_bias", "multiquadric_h19", "ked_h19")
+radar_names <- c("h19", "h19_bias", "h19_season", "multiquadric_h19", "ked_h19")
 season_reference <- setdiff(averages_ranked, radar_names)[1]
 if ("h19" %in% names_r && !is.na(season_reference)) {
   say("Radar by season")
@@ -3812,6 +3870,14 @@ lines <- c(
               radar_season$seasons$season, radar_season$seasons$days,
               radar_season$seasons$ratio, radar_season$seasons$events,
               radar_season$seasons$event_ratio),
+      if (!is.null(season_factors)) {
+        c("", sprintf(paste("`h19_season` scales the radar by a fixed factor a month (%s),",
+                            "from %s: `radar_season_factors.csv`, ready for a forecasting",
+                            "system."),
+                      paste(sprintf("%s %.2f", month.abb, season_factors$factor),
+                            collapse = ", "),
+                      season_factors$made_from[1]))
+      },
       "", "Tables: `radar_by_season.csv`, `radar_by_month.csv`.")
   },
 
@@ -4262,6 +4328,19 @@ blocks <- c(
                       radar_season$verdict == "no clear fault"),
          report_table(radar_season$seasons,
                       caption = "Radar over gauges, median of daily ratios and of events' ratios"))
+  },
+  if (!is.null(season_factors)) {
+    list(report_text(sprintf(paste("h19_season scales the radar by a fixed factor for each",
+                                   "month, from %s, %s to %s: the gauges' total over the",
+                                   "radar's, each month blended with its neighbours. Fixed",
+                                   "factors need no gauge in real time, so a forecasting system",
+                                   "can apply them as they stand (radar_season_factors.csv).",
+                                   "They hold only for the radar product they were made from:",
+                                   "date them, and review them when its processing changes."),
+                             season_factors$made_from[1], season_factors$period_from[1],
+                             season_factors$period_to[1])),
+         report_table(season_factors[, c("month", "days", "factor", "basis")],
+                      caption = "The monthly factors for h19_season"))
   },
 
   # Where the balance fails.
