@@ -244,6 +244,7 @@ reference:
   - check_inputs
   - water_balance
   - balance_diagnosis
+  - rating_follow_up
   - preparation_notes
 - title: Calibration
   contents:

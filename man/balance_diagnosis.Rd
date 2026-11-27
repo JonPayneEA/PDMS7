@@ -65,9 +65,9 @@ A \code{pdm_balance_diagnosis} list:
 \item{suspects}{One row per suspect, ranked: \code{suspect}, \code{verdict} (\code{"likely"},
 \code{"possible"}, \code{"unlikely"} or \code{"not assessed"}) and \code{evidence}.}
 \item{gap}{The mean year's rain, flow and potential evaporation (mm), the range of
-flow Fu's curve allows, the gap outside it and its kind (\code{"deficit"}, \code{"excess"} or
-\code{"closes"}), the bounds from rain and flow, and the gap left once each and both are
-taken off.}
+flow Fu's curve allows, the gap outside it and its kind (\code{"deficit"}, \code{"excess"},
+\code{"closes"}, or \code{"not assessed"} without a complete year), the bounds from rain and
+flow, and the gap left once each and both are taken off.}
 \item{years}{The reference series' years, from \code{\link[=water_balance]{water_balance()}}, with the gap.}
 \item{series}{Each rain series' mean year over the steps every series covers.}
 \item{floods}{Each flood's peak, rain, quick flow, runoff ratio, season and whether it
@@ -95,8 +95,8 @@ weather and the flow a stage error makes are read too. Runoff ratios rising with
 size alone is not counted: bigger storms fall on wetter ground, so they rise anyway.
 \item \strong{A slow loss or gain.} Groundwater, abstraction, effluent and a wrong catchment area
 drain or feed the slow stores: over a few days they hardly touch a flood, over a year they
-pile up. A gap left after the rain's and the flow's bounds, with the floods balancing,
-points here.
+pile up. A gap left after the rain's and the flow's bounds, with nothing in the floods
+pointing elsewhere, points here.
 \item \strong{A change over time.} A lasting change of runoff ratio from one year (a new rating, a
 changed channel, a new abstraction), dated, and matched to a rating revision where the
 record check found one.
@@ -112,7 +112,8 @@ there. The rain's bounds are applied by working the range out again at the rain 
 each bound, the flow's by moving the flow.
 
 No check proves a cause. Gauges under-reading and a rating over-reading at peaks look alike
-in the floods, and only gaugings or a second flow gauge separate them.
+in the floods, and a rating reading low at every flow looks like a slow loss; only gaugings,
+the record check's stage error or a second flow gauge separate them.
 }
 \examples{
 rain <- synthetic_rain("2019-10-01", years = 4, dt = 1, seed = 4)
