@@ -1,7 +1,7 @@
 # pdmS7 0.51.2
 
 - **`compare_rain.R`: events, not floods.** The report, its tables and plots call the
-  rainfall-runoff events what they are; most are modest rises. Files renamed to match:
+  rainfall-runoff events events: a rise in flow is not necessarily a flood. Files renamed:
   `largest_events.csv`; new `missed_events.csv` and `missed_events_by_series.csv`.
 - **Events missed, measured properly.** A series misses an event when it records under
   `missed_share` (0.25) of the median series' rain, or less rain than the quick flow, after
