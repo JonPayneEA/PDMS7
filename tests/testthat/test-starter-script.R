@@ -316,4 +316,10 @@ test_that("the rain comparison says how sure its order is and what to calibrate 
   expect_true(any(grepl("^candidate_boot <- 500", code)))
   expect_true(any(grepl("rating_band = rating_band_share)", code, fixed = TRUE)))
   expect_true(any(grepl("band = band)", code, fixed = TRUE)))
+  # The band from reach.rate's rating_uncertainty(): combined where the shared gauging error is
+  # given, sampling where not, never assumed; the bootstrap where reach.rate is older.
+  expect_true(any(grepl("^gauging_uncertainty <- NULL", code)))
+  expect_true(any(grepl("reach.rate::rating_uncertainty(candidate,", code, fixed = TRUE)))
+  expect_true(any(grepl('exists("rating_uncertainty", envir = asNamespace("reach.rate")', code,
+                        fixed = TRUE)))
 })

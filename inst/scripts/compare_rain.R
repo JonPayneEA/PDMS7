@@ -9,7 +9,9 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-24
 # Tier:         1
-# Modified:     2026-11-27 - the candidate's bootstrap band: the refit test and a flow bound
+# Modified:     2026-11-27 - the candidate's band source by source, from
+#               reach.rate::rating_uncertainty(), with shared gauging error and structure
+#               2026-11-27 - the candidate's bootstrap band: the refit test and a flow bound
 #               2026-11-27 - a candidate rating fitted from the gaugings when they call for
 #               one, written up for review, and the balance on its flow
 #               2026-11-27 - whether the rating needs more work, flagged in the report
@@ -241,7 +243,14 @@ dry_rain_mm <- 0.5             # ...no more than this, on the rain series recomm
 # in place of the operational one without them). "auto" fits one when the report says the
 # gaugings call for it; "always" fits one whenever there are gaugings; "never" does not.
 candidate_rating <- "auto"
-candidate_boot <- 500          # bootstrap refits of the candidate, for its band; 0 for none
+candidate_boot <- 500          # draws for the candidate's band (100 or more); 0 for none
+# The candidate's band covers the gaugings' sampling and, with these, gauging error shared
+# between gaugings (a meter or method reading high or low for all of them), as
+# reach.rate::rating_uncertainty() reports it. NULL leaves the shared error not assessed: the
+# scripts never assume one. Random error in each gauging is already in the sampling: give only
+# the shared part.
+gauging_uncertainty <- NULL    # the shared gauging error, a fraction, such as 0.03
+gauging_group <- NULL          # a gaugings column whose values share an error, such as a method
 
 # ---- Read and line up the data ------------------------------------------------------------
 
@@ -2589,6 +2598,9 @@ candidate_gap <- NULL
 rating_band_share <- NULL
 band <- NULL
 band_curve <- NULL
+band_source <- NULL
+band_label <- NULL
+structure_range <- NULL
 candidate_compared <- NULL
 candidate_note <- NULL
 candidate_folder <- file.path(output_folder, "candidate_rating")
@@ -2610,6 +2622,9 @@ candidate_skip <- if (!want_candidate) {
 if (is.null(candidate_skip)) {
   say("  fitting a candidate rating from %d gaugings", nrow(gaugings))
   dir.create(candidate_folder, showWarnings = FALSE)
+  # reach.rate's rating_uncertainty() gives the band source by source; an older reach.rate
+  # has only the bootstrap.
+  has_e2 <- exists("rating_uncertainty", envir = asNamespace("reach.rate"), inherits = FALSE)
   in_force_table <- if (!is.null(in_force)) ratings$tables[[in_force]]
   breaks <- if (!is.null(in_force_table)) {
     b <- sort(in_force_table@table$lower_level)[-1]
@@ -2625,7 +2640,7 @@ if (is.null(candidate_skip)) {
       reach.rate::fit_rating(gaugings,
                              controls = if (length(breaks)) breaks,
                              breakpoint_origin = "existing_rating",
-                             n_boot = candidate_boot,
+                             n_boot = if (has_e2) 0L else candidate_boot,
                              seed = 1,
                              quiet = TRUE),
       error = function(e) {
@@ -2634,7 +2649,10 @@ if (is.null(candidate_skip)) {
                              sprintf(paste("The rating in force's breakpoints (%s m) could not",
                                            "be fitted (%s), so the candidate has one limb."),
                                      toString(round(breaks, 3)), conditionMessage(e)))
-        reach.rate::fit_rating(gaugings, n_boot = candidate_boot, seed = 1, quiet = TRUE)
+        reach.rate::fit_rating(gaugings,
+                               n_boot = if (has_e2) 0L else candidate_boot,
+                               seed = 1,
+                               quiet = TRUE)
       }),
     warning = note_warning)
   candidate_assessment <- reach.rate::assess_rating(candidate)
@@ -2685,13 +2703,12 @@ if (is.null(candidate_skip)) {
            file.path(candidate_folder, "balance_with_candidate.csv"))
   }
 
-  # The candidate's bootstrap band, at each stage the record reaches (or, without stage, every
-  # centimetre the gaugings span), with the steps at each. It covers the gaugings' sampling
-  # only, not gauging error or the choice of limbs, so it is a lower bound.
-  boot <- if (candidate_boot > 0) {
-    tryCatch(reach.rate::rating_bootstrap(candidate), error = function(e) NULL)
-  }
-  if (!is.null(boot) && nrow(boot)) {
+  # The candidate's band, at each stage the record reaches (or, without stage, every centimetre
+  # the gaugings span), with the steps at each: the combined band (sampling and the shared
+  # gauging error) where gauging_uncertainty is given, the sampling band where it is not.
+  # Neither has stage error in it, so it is a lower bound.
+  lims <- NULL
+  if (candidate_boot > 0) {
     quietly <- function(x) {
       withCallingHandlers(logger::with_log_threshold(x, threshold = logger::WARN),
                           warning = function(w) invokeRestart("muffleWarning"))
@@ -2705,17 +2722,85 @@ if (is.null(candidate_skip)) {
     steps_at <- table(h_all)
     hs <- as.numeric(names(steps_at))
     n_at <- as.numeric(steps_at)
-    iv <- quietly(reach.rate::apply_rating_interval(data.frame(stage = hs), boot))
+    if (has_e2) {
+      uncertainty <- withCallingHandlers(
+        tryCatch(
+          logger::with_log_threshold(
+            reach.rate::rating_uncertainty(candidate,
+                                           stage = hs,
+                                           n_draws = max(candidate_boot, 100),
+                                           gauging_uncertainty = gauging_uncertainty,
+                                           group_by = gauging_group,
+                                           seed = 1),
+            threshold = logger::WARN),
+          error = function(e) {
+            candidate_note <<- c(candidate_note,
+                                 paste("The candidate's band could not be made:",
+                                       conditionMessage(e)))
+            NULL
+          }),
+        warning = note_warning)
+      if (!is.null(uncertainty)) {
+        bands_all <- reach.rate::uncertainty_bands(uncertainty)
+        sources_done <- as.data.frame(uncertainty@assessed)
+        fwrite(bands_all, file.path(candidate_folder, "candidate_uncertainty.csv"))
+        fwrite(sources_done, file.path(candidate_folder, "candidate_uncertainty_sources.csv"))
+        done <- function(src) isTRUE(sources_done$assessed[sources_done$source == src])
+        band_source <- if (done("combined")) "combined" else if (done("sampling")) "sampling"
+        for (src in c("gauging", "combined")) {
+          if (src %in% sources_done$source && !done(src)) {
+            candidate_note <- c(candidate_note,
+                                sprintf("The %s band: %s", src,
+                                        sources_done$reason[sources_done$source == src]))
+          }
+        }
+        if (!is.null(band_source)) {
+          bb <- bands_all[bands_all$source == band_source, ]
+          k <- match(hs, bb$stage_m)
+          lims <- data.frame(lower = bb$lower[k], median = bb$median[k], upper = bb$upper[k])
+        }
+        # Other reasonable structures, over the gauged range: a range, not an interval.
+        sr <- bands_all[bands_all$source == "structure" & bands_all$support == "observed", ]
+        if (nrow(sr)) {
+          structure_range <- c(min(sr$min / sr$rating_cms - 1), max(sr$max / sr$rating_cms - 1))
+        }
+      }
+    } else {
+      boot <- tryCatch(reach.rate::rating_bootstrap(candidate), error = function(e) NULL)
+      if (!is.null(boot) && nrow(boot)) {
+        iv <- quietly(reach.rate::apply_rating_interval(data.frame(stage = hs), boot))
+        lims <- data.frame(lower = iv$discharge_lower,
+                           median = iv$discharge_median,
+                           upper = iv$discharge_upper)
+        band_source <- "sampling (bootstrap)"
+        candidate_note <- c(candidate_note,
+                            paste("This reach.rate has no rating_uncertainty(): the band is the",
+                                  "bootstrap's, sampling only. Update reach.rate for the band",
+                                  "with shared gauging error and the structural range."))
+      }
+    }
+  }
+  shared_text <- if (is.null(gauging_uncertainty)) {
+    "the shared gauging error the gaugings state"
+  } else {
+    sprintf("a shared gauging error of %g%%", 100 * gauging_uncertainty)
+  }
+  band_label <- switch(if (is.null(band_source)) "none" else band_source,
+                       combined = paste("sampling and", shared_text),
+                       sampling = "sampling only: no shared gauging error given",
+                       "sampling (bootstrap)" = "sampling only, from the bootstrap",
+                       "none")
+  if (!is.null(lims)) {
     band_curve <- data.frame(stage_m = hs,
                              steps = n_at,
-                             lower_cms = iv$discharge_lower,
-                             median_cms = iv$discharge_median,
-                             upper_cms = iv$discharge_upper)
+                             lower_cms = lims$lower,
+                             median_cms = lims$median,
+                             upper_cms = lims$upper)
     # How far a year's flow could be out from the rating alone, as shares of the volume.
     if (!is.null(stage)) {
-      volume <- sum(n_at * iv$discharge_median)
-      rating_band_share <- c(min(sum(n_at * iv$discharge_lower) / volume - 1, 0),
-                             max(sum(n_at * iv$discharge_upper) / volume - 1, 0))
+      volume <- sum(n_at * lims$median, na.rm = TRUE)
+      rating_band_share <- c(min(sum(n_at * lims$lower, na.rm = TRUE) / volume - 1, 0),
+                             max(sum(n_at * lims$upper, na.rm = TRUE) / volume - 1, 0))
     }
     # The rating in force against the band, over the stages the gaugings cover, each stage
     # weighted by its steps times its flow: its share of the flow.
@@ -2726,8 +2811,8 @@ if (is.null(candidate_skip)) {
       band <- data.frame(stage_m = hs,
                          weight = n_at * band_curve$in_force_cms,
                          in_force_cms = band_curve$in_force_cms,
-                         lower_cms = iv$discharge_lower,
-                         upper_cms = iv$discharge_upper)[within_gauged, ]
+                         lower_cms = lims$lower,
+                         upper_cms = lims$upper)[within_gauged, ]
     }
     fwrite(band_curve, file.path(candidate_folder, "candidate_band.csv"))
   }
@@ -2789,8 +2874,8 @@ if (!is.null(band_curve)) png_of("candidate_band.png", function() {
   graphics::legend("bottomright",
                    bty = "n",
                    cex = 0.8,
-                   c("Candidate", "Its 95% band (sampling only)", "Rating in force", "Gaugings",
-                     "Highest gauging"),
+                   c("Candidate", sprintf("Its 95%% band (%s)", band_label), "Rating in force",
+                     "Gaugings", "Highest gauging"),
                    col = c("#1B6F80", grDevices::adjustcolor("#1B6F80", 0.25), "#B3261E",
                            "black", "grey40"),
                    lwd = c(2, 8, 1.5, NA, 1),
@@ -3701,12 +3786,19 @@ blocks <- c(
                       caption = "The balance on the archived flow and on the candidate's")
        },
        if (!is.null(rating_band_share)) {
-         report_text(sprintf(paste("Its 95%% bootstrap band, over the record's stage, puts a",
-                                   "year's flow within %+.1f%% to %+.1f%% of the candidate's:",
-                                   "the rating's sampling uncertainty, now part of the flow's",
-                                   "bound in the diagnosis above. Gauging error and the choice",
-                                   "of limbs would widen it."),
+         report_text(sprintf(paste("Its 95%% band, %s, over the record's stage, puts a year's",
+                                   "flow within %+.1f%% to %+.1f%% of the candidate's: now part",
+                                   "of the flow's bound in the diagnosis above. Stage error is",
+                                   "not in it."),
+                             band_label,
                              100 * rating_band_share[1], 100 * rating_band_share[2]))
+       },
+       if (!is.null(structure_range)) {
+         report_text(sprintf(paste("Other reasonable structures (the other objective, a limb",
+                                   "fewer, a breakpoint moved) put the curve %+.1f%% to %+.1f%%",
+                                   "from the candidate over the gauged range: a range, not an",
+                                   "interval (candidate_uncertainty.csv)."),
+                             100 * structure_range[1], 100 * structure_range[2]))
        },
        if (length(candidate_note)) report_list(candidate_note),
        if (is.null(candidate) && follow_up$verdict == "fit a candidate rating") {
