@@ -303,4 +303,7 @@ test_that("the rain comparison says how sure its order is and what to calibrate 
   expect_true(any(grepl("read_or_take(gaugings_file,", code, fixed = TRUE)))
   expect_true(any(grepl("read_or_take(ratings_file,", code, fixed = TRUE)))
   expect_false(any(grepl("here(gaugings_file)", code, fixed = TRUE)))
+  # Whether the rating needs more work, at the head of the section.
+  expect_true(any(grepl("follow_up <- rating_follow_up(diagnosis,", code, fixed = TRUE)))
+  expect_true(any(grepl("rating_follow_up.csv", code, fixed = TRUE)))
 })

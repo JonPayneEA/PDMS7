@@ -1,3 +1,21 @@
+# pdmS7 0.50.0
+
+- **Whether the rating needs more work.** The new `rating_follow_up()` reads a balance
+  diagnosis, the flow record check and the gaugings against the rating in force, and gives one
+  verdict with the findings behind it, each marked act, ask, note or fine:
+  - **fit a candidate rating** when a limb's gaugings sit off the rating in force (median
+    beyond 5%, or under four in five within 10%) and there are ten or more to fit from;
+  - **get high-flow gaugings** when an off limb has too few, or over 5% of the flow comes from
+    above the top of the rating;
+  - **ask the hydrometry team** when the record was made with a rating not in the export, when
+    stage rose in dry summer weather, or when the balance suspects the rating and no gaugings
+    were given;
+  - **no rating work needed** otherwise.
+  Revisions and peaks above bankfull are listed as notes. Every threshold is an argument.
+- **`compare_rain.R`** shows the verdict at the head of "Where the balance fails", flagged
+  red when work is needed, with the findings table and, for a candidate rating, the two
+  reach.rate calls to make one; writes `rating_follow_up.csv`; and needs pdmS7 0.50.0.
+
 # pdmS7 0.49.1
 
 - **`compare_rain.R`: the stage from the WISKI ID alone.** With `stage_file` left `NULL` and

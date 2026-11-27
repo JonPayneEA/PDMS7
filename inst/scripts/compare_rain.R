@@ -9,7 +9,8 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-24
 # Tier:         1
-# Modified:     2026-11-27 - the stage from the flow station's WISKI ID alone; the gaugings
+# Modified:     2026-11-27 - whether the rating needs more work, flagged in the report
+#               2026-11-27 - the stage from the flow station's WISKI ID alone; the gaugings
 #               and the ratings as data frames, or file names
 #               2026-11-27 - where the balance fails: rain, rating, a slow loss or gain, or a
 #               change over time, with the flow record checked from stage by reach.rate
@@ -28,7 +29,7 @@
 # Outputs:      A folder: summary.md, rain_ranking.csv, weights_and_error.csv, plots each with a
 #               note on how to read it, and catchment_rain/ with each average built, as CSV
 #               ready for calibrate_site.R
-# Dependencies: pdmS7 (0.49.0 or later); sf for a shapefile and the search; reach.io
+# Dependencies: pdmS7 (0.50.0 or later); sf for a shapefile and the search; reach.io
 #               to find and download the gauges; arrow (or nanoparquet) for the processed
 #               H19 extracts, ncdf4 for the daily H19 files; reach.rate to check the flow
 #               record from stage, gaugings and ratings
@@ -91,8 +92,8 @@ library(data.table)
 
 # The script is written for this pdmS7 or later: an older one lacks functions it uses, and
 # would fail part way through.
-if (utils::packageVersion("pdmS7") < "0.49.0") {
-  stop("compare_rain.R needs pdmS7 0.49.0 or later; this is ",
+if (utils::packageVersion("pdmS7") < "0.50.0") {
+  stop("compare_rain.R needs pdmS7 0.50.0 or later; this is ",
        as.character(utils::packageVersion("pdmS7")),
        ". Update it with remotes::install_github(\"JonPayneEA/PDMS7\"), then restart R.",
        call. = FALSE)
@@ -2561,6 +2562,14 @@ fwrite(diagnosis$suspects, file.path(output_folder, "balance_diagnosis.csv"))
 fwrite(diagnosis$gap, file.path(output_folder, "balance_gap.csv"))
 fwrite(diagnosis$floods, file.path(output_folder, "balance_floods.csv"))
 
+# Whether the rating needs more work, and which: a candidate rating from the gaugings, more
+# gaugings, a question for the hydrometry team, or nothing.
+follow_up <- rating_follow_up(diagnosis,
+                              record_check = record_check,
+                              gaugings = gaugings_vs_rating)
+fwrite(follow_up$findings, file.path(output_folder, "rating_follow_up.csv"))
+say("  rating: %s", follow_up$verdict)
+
 # HOW TO READ balance_years.png
 # Each year's flow (points) against the range Fu's curve allows for that year's rain and
 # potential evaporation (bars), on the series recommended first. Below the bar, more water
@@ -3014,6 +3023,18 @@ lines <- c(
     sprintf("- **%s** (%s): %s.", diagnosis$suspects$verdict, diagnosis$suspects$suspect,
             diagnosis$suspects$evidence),
     "",
+    sprintf("**Rating: %s.** %s", follow_up$verdict, follow_up$why),
+    "",
+    sprintf("- [%s] %s: %s; %s.", follow_up$findings$status, follow_up$findings$check,
+            follow_up$findings$finding, follow_up$findings$action),
+    if (follow_up$verdict == "fit a candidate rating") {
+      c("",
+        paste("To fit one: `fit <- reach.rate::fit_rating(gaugings)`, then",
+              "`reach.rate::rating_report(fit, reach.rate::assess_rating(fit))` for the",
+              "hydrometry team. Put it in `ratings_file` and run again to see whether the",
+              "balance closes."))
+    },
+    "",
     if (is.null(record_check)) {
       sprintf("The flow record was not checked: %s.", record_skip)
     } else {
@@ -3413,6 +3434,18 @@ blocks <- c(
                                  "judged; the rating's evidence still was.")),
                     diagnosis$gap$kind == "closes"),
        report_table(diagnosis$suspects, caption = "The suspects, most likely first"),
+       report_alert(sprintf("Rating: %s. %s", follow_up$verdict, follow_up$why),
+                    !follow_up$action_needed),
+       report_table(follow_up$findings[, c("status", "check", "finding", "action")],
+                    caption = "Whether the rating needs more work: act, ask, note or fine"),
+       if (follow_up$verdict == "fit a candidate rating") {
+         report_text("To fit one from the gaugings and write it up for the hydrometry team:",
+                     "fit <- reach.rate::fit_rating(gaugings), then",
+                     "reach.rate::rating_report(fit, reach.rate::assess_rating(fit)). A water",
+                     "balance alone should not change an operational rating: the candidate is",
+                     "evidence for the team who own it. Put it in ratings_file and run again to",
+                     "see whether the balance closes.")
+       },
        report_text("Each suspect leaves its own mark. The rain is set against the spread",
                    "between the catchment averages and gauge under-catch; the rating against",
                    "the floods above its top and, with stage, the record checked with",
