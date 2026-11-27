@@ -117,7 +117,8 @@ pre { background: var(--code); padding: 12px; overflow-x: auto; font-size: 0.85e
 .ok { background: var(--okbg); color: var(--ok); }
 .bad { background: var(--badbg); color: var(--bad); }
 @media print { body { max-width: none; } h2 { break-after: avoid; }
-  figure { break-inside: avoid; } }
+  figure { break-inside: avoid; }
+  figure img { max-height: 170mm; width: auto; max-width: 100%; } }
 "
 
 .html_table <- function(block) {
