@@ -1,3 +1,14 @@
+# pdmS7 0.51.1
+
+- **`compare_rain.R`: the candidate's band source by source.** With a reach.rate that has
+  `rating_uncertainty()`, the candidate's band is its combined band, the gaugings' sampling
+  and a gauging error shared between gaugings (`gauging_uncertainty`, and `gauging_group` for
+  groups such as methods that share an error), where the shared error is given, and the
+  sampling band where it is not, never assumed. The report says which, and gives the
+  structural range (the other objective, a limb fewer, a breakpoint moved) as a range, not an
+  interval. `candidate_uncertainty.csv` and `candidate_uncertainty_sources.csv` hold every
+  source. An older reach.rate falls back to the bootstrap band, with a note to update it.
+
 # pdmS7 0.51.0
 
 - **The candidate rating's bootstrap band.** `compare_rain.R` fits the candidate with
