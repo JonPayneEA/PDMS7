@@ -3,14 +3,14 @@
 # Description:  Where a water balance fails: rain, rating, a slow loss or
 #               gain (groundwater, abstraction, the catchment's area), or a
 #               change over time. Sets the gap against the rain's spread and
-#               the flow's stage error, the floods against the years, and
+#               the flow's stage error, the events against the years, and
 #               reads a flow record check where one is given, then ranks the
 #               suspects with the evidence for each
 # Flode Module: standalone; target reach.hydro
 # Author:       pdmS7 contributors
 # Created:      2026-11-27
 # Tier:         1
-# Inputs:       Time, flow, rain series, potential evaporation, the floods,
+# Inputs:       Time, flow, rain series, potential evaporation, the events,
 #               optionally reach.rate::check_flow_record() output
 # Outputs:      A pdm_balance_diagnosis list
 # Dependencies: stats
@@ -23,15 +23,15 @@
 #'
 #' - **Rain.** The gap is set against how far the rain could be out: the spread between the
 #'   rain series given, and, for rain too low, gauge under-catch.
-#' - **Rating.** A rating is weakest above its top, where it is extrapolated. Floods peaking
-#'   there are set against the relation of runoff ratio to rain fitted to the floods below
+#' - **Rating.** A rating is weakest above its top, where it is extrapolated. Events peaking
+#'   there are set against the relation of runoff ratio to rain fitted to the events below
 #'   it: a rating reading high puts them above that relation, and bypass or a rating reading
 #'   low, below. With a flow record check, revisions, flow off the curve, stage rising in dry
 #'   weather and the flow a stage error makes are read too. Runoff ratios rising with peak
 #'   size alone is not counted: bigger storms fall on wetter ground, so they rise anyway.
 #' - **A slow loss or gain.** Groundwater, abstraction, effluent and a wrong catchment area
-#'   drain or feed the slow stores: over a few days they hardly touch a flood, over a year they
-#'   pile up. A gap left after the rain's and the flow's bounds, with nothing in the floods
+#'   drain or feed the slow stores: over a few days they hardly touch an event, over a year they
+#'   pile up. A gap left after the rain's and the flow's bounds, with nothing in the events
 #'   pointing elsewhere, points here.
 #' - **A change over time.** A lasting change of runoff ratio from one year (a new rating, a
 #'   changed channel, a new abstraction), dated, and matched to a rating revision where the
@@ -47,7 +47,7 @@
 #' each bound, the flow's by moving the flow.
 #'
 #' No check proves a cause. Gauges under-reading and a rating over-reading at peaks look alike
-#' in the floods, and a rating reading low at every flow looks like a slow loss; only gaugings,
+#' in the events, and a rating reading low at every flow looks like a slow loss; only gaugings,
 #' the record check's stage error or a second flow gauge separate them.
 #'
 #' @param time POSIXct, the start of each step.
@@ -55,7 +55,7 @@
 #' @param rain A named list (or data frame) of rain series, mm per step, each one value a step.
 #' @param pet Potential evaporation, mm per step.
 #' @param area_km2 Catchment area, km2.
-#' @param floods The floods, from [find_events()] with `area_km2` (and, usually,
+#' @param events The events, from [find_events()] with `area_km2` (and, usually,
 #'   [screen_events()]): it needs `rain_start`, `rain_end`, `peak_row`, `peak_flow` and
 #'   `quickflow_mm`.
 #' @param reference The rain series the balance is worked out for: its name or position.
@@ -66,9 +66,9 @@
 #'   or `NULL`.
 #' @param top_flow The flow at the top of the rating, m3/s. By default it is read from the
 #'   record check: its latest curve at the top stage given to it.
-#' @param high_flow_excess How far, as a share, the floods above the top must sit from the
-#'   relation of the floods below (their median) to count against the rating. With at least
-#'   three floods above the top and eight below.
+#' @param high_flow_excess How far, as a share, the events above the top must sit from the
+#'   relation of the events below (their median) to count against the rating. With at least
+#'   three events above the top and eight below.
 #' @param rating_band Optional: how far the year's flow could be out from the rating's own
 #'   uncertainty, as shares of the flow volume, `c(lower, upper)` (such as `c(-0.04, 0.05)`):
 #'   the flow from the lower and upper edges of a rating's bootstrap band, over the record's
@@ -89,11 +89,11 @@
 #'       flow, and the gap left once each and both are taken off.}
 #'     \item{years}{The reference series' years, from [water_balance()], with the gap.}
 #'     \item{series}{Each rain series' mean year over the steps every series covers.}
-#'     \item{floods}{Each flood's peak, rain, quick flow, runoff ratio, season and whether it
+#'     \item{events}{Each event's peak, rain, quick flow, runoff ratio, season and whether it
 #'       peaked above the top of the rating.}
-#'     \item{flood_summary}{The floods' rank correlation with peak (a description, not
+#'     \item{flood_summary}{The events' rank correlation with peak (a description, not
 #'       evidence), the share with more quick flow than rain, the summer and winter medians,
-#'       and how far the floods above the top sit from the relation of those below.}
+#'       and how far the events above the top sit from the relation of those below.}
 #'     \item{change}{The lasting change of runoff ratio from [water_balance()].}
 #'     \item{record}{What the record check found, where given.}
 #'   }
@@ -102,9 +102,9 @@
 #' forcing <- data.frame(time = rain$time, rain = rain$rain, pet = rain$pet)
 #' config <- modifyList(pdm_presets("standard"), list(area_km2 = 20))
 #' flow <- run_pdm(pdm_from_config(config), forcing)$output$q_m3s
-#' floods <- find_events(rain$rain, flow, rain$time, dt = 1, area_km2 = 20)
+#' events <- find_events(rain$rain, flow, rain$time, dt = 1, area_km2 = 20)
 #' # The model's own flow from the same rain, so the balance closes and nothing is suspected.
-#' balance_diagnosis(rain$time, flow, list(gauges = rain$rain), rain$pet, 20, floods)
+#' balance_diagnosis(rain$time, flow, list(gauges = rain$rain), rain$pet, 20, events)
 #' # Most of the flow lost, as to an aquifer draining out of the catchment: a slow loss.
 #' less <- 0.4 * flow
 #' balance_diagnosis(rain$time, less, list(gauges = rain$rain), rain$pet, 20,
@@ -128,7 +128,7 @@ balance_diagnosis <- function(time, flow, rain, pet, area_km2, floods, reference
   .check(is.data.frame(floods) &&
            all(c("rain_start", "rain_end", "peak_row", "peak_flow", "quickflow_mm") %in%
                  names(floods)),
-         paste("floods must come from find_events() with area_km2: it needs rain_start,",
+         paste("events must come from find_events() with area_km2: it needs rain_start,",
                "rain_end, peak_row, peak_flow and quickflow_mm"))
   ref <- if (is.character(reference)) match(reference, names(rain)) else as.integer(reference)
   .check(length(ref) == 1 && !is.na(ref) && ref >= 1 && ref <= length(rain),
@@ -226,7 +226,7 @@ balance_diagnosis <- function(time, flow, rain, pet, area_km2, floods, reference
                     left_after_bounds_mm = gap_at(rain_bound, flow_bound),
                     years = nrow(whole))
 
-  # The floods: each one's runoff ratio on the reference series, its peak and season, and
+  # The events: each one's runoff ratio on the reference series, its peak and season, and
   # whether it peaked above the top of the rating.
   if (is.null(top_flow)) top_flow <- rec$top_flow
   .check(is.null(top_flow) || is.na(top_flow) || .scalar(top_flow, 0, strict = TRUE),
@@ -334,7 +334,7 @@ balance_diagnosis <- function(time, flow, rain, pet, area_km2, floods, reference
     v <- fl$runoff_ratio[ok & fl$season == s]
     if (length(v)) stats::median(v) else NA_real_
   }
-  # The floods above the top of the rating against the floods below: log runoff ratio on log
+  # The events above the top of the rating against the events below: log runoff ratio on log
   # rain, fitted to those below, and the median of the residuals of those above, as a share.
   above <- ok & fl$above_top %in% TRUE & fl$runoff_ratio > 0
   below <- ok & fl$above_top %in% FALSE & fl$runoff_ratio > 0 & fl$rain_mm > 0
@@ -389,7 +389,7 @@ balance_diagnosis <- function(time, flow, rain, pet, area_km2, floods, reference
               })
     },
     if (storms_missed) {
-      sprintf("%.0f%% of floods had more quick flow than rain: storms missed or under-caught",
+      sprintf("%.0f%% of events had more quick flow than rain: events missed or under-caught",
               100 * fs$share_above_one)
     })
 
@@ -401,8 +401,8 @@ balance_diagnosis <- function(time, flow, rain, pet, area_km2, floods, reference
   }
   rating_ev <- c(
     if (rating_high) {
-      sprintf(paste("the %d floods peaking above the top of the rating have %.0f%% %s runoff",
-                    "than the floods below it give for their rain: %s"),
+      sprintf(paste("the %d events peaking above the top of the rating have %.0f%% %s runoff",
+                    "than the events below it give for their rain: %s"),
               fs$floods_above_top, 100 * abs(fs$above_top_excess),
               if (fs$above_top_excess > 0) "more" else "less",
               if (fs$above_top_excess > 0) {
@@ -443,7 +443,7 @@ balance_diagnosis <- function(time, flow, rain, pet, area_km2, floods, reference
                                       if (length(sources) == 1) "s" else "",
                                       mm(flow_bound)))
   }
-  # The floods above the top apart from those below, or a stage error that could close the
+  # The events above the top apart from those below, or a stage error that could close the
   # gap on its own.
   strong_rating <- rating_high ||
     (isTRUE(is.finite(flow_bound)) && open_gap && gap$gap_after_flow_mm <= 0)
@@ -455,11 +455,11 @@ balance_diagnosis <- function(time, flow, rain, pet, area_km2, floods, reference
   rating_ev <- c(rating_ev, winter_note)
   if (length(rating_ev) == length(winter_note)) {
     top_note <- if (is.null(top_flow) || is.na(top_flow)) {
-      "the top of the rating was not given, so the highest floods were not tested"
+      "the top of the rating was not given, so the highest events were not tested"
     } else if (is.na(fs$above_top_excess)) {
-      "too few floods above the top of the rating to test them"
+      "too few events above the top of the rating to test them"
     } else {
-      "the floods above the top of the rating follow those below"
+      "the events above the top of the rating follow those below"
     }
     rating_ev <- c(paste0(top_note, if (checked) {
       "; the record check found nothing against it"
@@ -491,7 +491,7 @@ balance_diagnosis <- function(time, flow, rain, pet, area_km2, floods, reference
     c(sprintf("%s left once the rain's%s bounds are taken off", mm(gap$left_after_bounds_mm),
               if (isTRUE(is.finite(flow_bound))) " and the flow's" else ""),
       if (!rating_high && !storms_missed && fs$floods >= 8) {
-        sprintf(paste("nothing in the floods points elsewhere (median runoff ratio %.2f, few",
+        sprintf(paste("nothing in the events points elsewhere (median runoff ratio %.2f, few",
                       "above 1)"),
                 fs$median_ratio)
       },

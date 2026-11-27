@@ -1,3 +1,32 @@
+# pdmS7 0.51.2
+
+- **`compare_rain.R`: events, not floods.** The report, its tables and plots call the
+  rainfall-runoff events what they are; most are modest rises. Files renamed to match:
+  `largest_events.csv`; new `missed_events.csv` and `missed_events_by_series.csv`.
+- **Events missed, measured properly.** A series misses an event when it records under
+  `missed_share` (0.25) of the median series' rain, or less rain than the quick flow, after
+  each series is scaled to the median total, so reading high no longer buys fewer misses.
+  Events the median series gives under `missed_min_mm` (2 mm) are not scored. The old rule
+  (under 0.5 mm, or a ratio above 1) counted mostly events whose window opened after the
+  rain. A 90% range over 200 draws, the unscaled count, and the events most series missed are
+  reported; the average that missed fewest joins the recommendations when none above did.
+- **The event windows in view.** The DMCA-ESR response time and the windows' lengths are
+  reported, with a warning when the response time far exceeds the quick-response lag;
+  `event_max_response_h` and `event_independent` set the search. A new plot shows the
+  largest events' windows, baseflow line and quick flow.
+- **Plots reworked.** Rain by year as departures from the median, with year-only swings
+  flagged and warned; runoff ratio season by season as a median and range; double-mass as
+  departures through time; the quick response with the gaps between series near the peak;
+  event ratio boxes reaching 1, with counts; the largest events with averages in colour and
+  the rain window's end; lines named at their ends instead of legends over them; the
+  variogram with its extrapolation stated; radar against gauges sized by days; the candidate
+  rating on a log flow axis beside the gaugings' residuals by date; Fu's range on a useful
+  axis; the record's curve left out when it holds one period and nothing off it. Figures no
+  longer split across printed pages.
+- **New warnings.** Every gauge outside the catchment; the largest events that fell while a
+  gauge was missing; a candidate that widens the balance's deficit; a highest stage in no
+  event, as from a spike.
+
 # pdmS7 0.51.1
 
 - **`compare_rain.R`: the candidate's band source by source.** With a reach.rate that has

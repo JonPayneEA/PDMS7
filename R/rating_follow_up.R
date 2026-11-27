@@ -33,7 +33,7 @@
 #' - **No rating work** when nothing above holds and the diagnosis does not suspect the rating.
 #'
 #' Revisions of the applied rating and peaks above bankfull are listed as notes: the first to
-#' check against the rating history, the second to treat those floods with care, since a
+#' check against the rating history, the second to treat those events with care, since a
 #' rating cannot correct flow that bypasses the section.
 #'
 #' A candidate rating is evidence for the team who own the rating, not a replacement: a water
@@ -64,8 +64,8 @@
 #' forcing <- data.frame(time = rain$time, rain = rain$rain, pet = rain$pet)
 #' config <- modifyList(pdm_presets("standard"), list(area_km2 = 20))
 #' flow <- run_pdm(pdm_from_config(config), forcing)$output$q_m3s
-#' floods <- find_events(rain$rain, flow, rain$time, dt = 1, area_km2 = 20)
-#' d <- balance_diagnosis(rain$time, flow, list(gauges = rain$rain), rain$pet, 20, floods)
+#' events <- find_events(rain$rain, flow, rain$time, dt = 1, area_km2 = 20)
+#' d <- balance_diagnosis(rain$time, flow, list(gauges = rain$rain), rain$pet, 20, events)
 #' # Gaugings 12% above the top limb of the rating in force, 15 of them: fit a candidate.
 #' limbs <- data.frame(limb = 1:2, lower_level = c(0, 1), upper_level = c(1, 3),
 #'                     n_gaugings = c(20, 15), gauged_max_stage = c(1, 2.6),
@@ -218,7 +218,7 @@ rating_follow_up <- function(diagnosis, record_check = NULL, gaugings = NULL, re
   }
   if (isTRUE(rec$bankfull_peaks > 0)) {
     add("peaks above bankfull", "note", sprintf("%d peak(s) above bankfull", rec$bankfull_peaks),
-        "treat those floods with care: a rating cannot correct flow that bypasses the section")
+        "treat those events with care: a rating cannot correct flow that bypasses the section")
   }
   if (length(rec$dry_rise_months)) {
     add("dry-weather rises in summer", "ask",
