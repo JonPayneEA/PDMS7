@@ -1,3 +1,36 @@
+# pdmS7 0.49.0
+
+- **Where the balance fails.** The new `balance_diagnosis()` ranks the usual causes of a
+  water balance that does not close (the rain, the rating, a slow loss or gain through
+  groundwater, abstraction or the catchment's area, and a change over time) with the evidence
+  for each:
+  - The gap is the flow outside the range Fu's curve allows for the rain and potential
+    evaporation, over a broad band of its parameter (1.5 to 3.5, as `omega`).
+  - The rain could be out by the spread between the rain series given, and, for rain too
+    low, gauge under-catch (`undercatch`, 5%). The flow could be out by the stage error, from
+    a flow record check. Each bound is applied by working Fu's range out again with the rain
+    or flow moved, so the verdict says whether each could close the gap alone.
+  - The rating is judged by the floods peaking above its top, set against the relation of
+    runoff ratio to rain fitted to the floods below. Runoff ratios rising with peak size alone
+    is not counted, since bigger storms fall on wetter ground.
+  - With the output of `reach.rate::check_flow_record()`, it also reads the rating's
+    revisions, flow off the curve, flow above the top and bankfull, and summer dry-weather
+    rises. A winter rise is noted, not counted, since on a permeable catchment groundwater
+    can lift the flow for days after rain.
+  - Without a complete year, the balance-based suspects are not assessed, and the rating's
+    evidence is still read.
+- **`compare_rain.R`:**
+  - adds section 8, "Where the balance fails", on the series recommended first, with
+    `balance_diagnosis.csv`, `balance_gap.csv`, `balance_floods.csv`, `balance_years.png`
+    and `flood_ratio_vs_rain.png`, in the summary and the report;
+  - with `stage_file` (downloaded with reach.io from `flow_station_wiski` when missing), checks
+    the flow record with reach.rate (`record_checks.csv`, `record_periods.csv`,
+    `record_revisions.csv`, `record_off_curve.csv`, `record_curves.png`);
+  - with `gaugings_file` and `ratings_file`, tests the rating in force against the gaugings
+    (`gaugings_vs_rating.csv`), and takes the rating's top from the highest gauging unless
+    `top_stage_m` is set;
+  - needs pdmS7 0.49.0.
+
 # pdmS7 0.48.0
 
 - **Block kriging.** `merge_rainfall()` takes `method = "kriging"` (ordinary block kriging of

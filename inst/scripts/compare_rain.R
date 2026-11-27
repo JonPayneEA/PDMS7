@@ -9,7 +9,9 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-24
 # Tier:         1
-# Modified:     2026-11-26 - laid out one argument a line, with in-line comments
+# Modified:     2026-11-27 - where the balance fails: rain, rating, a slow loss or gain, or a
+#               change over time, with the flow record checked from stage by reach.rate
+#               2026-11-26 - laid out one argument a line, with in-line comments
 #               2026-11-26 - multiquadric scaled by a long-term average grid; the check
 #               against it
 #               2026-11-25 - H19 from the team's processed yearly extracts, in seconds
@@ -24,9 +26,10 @@
 # Outputs:      A folder: summary.md, rain_ranking.csv, weights_and_error.csv, plots each with a
 #               note on how to read it, and catchment_rain/ with each average built, as CSV
 #               ready for calibrate_site.R
-# Dependencies: pdmS7 (0.48.0 or later); sf for a shapefile and the search; reach.io
+# Dependencies: pdmS7 (0.49.0 or later); sf for a shapefile and the search; reach.io
 #               to find and download the gauges; arrow (or nanoparquet) for the processed
-#               H19 extracts, ncdf4 for the daily H19 files
+#               H19 extracts, ncdf4 for the daily H19 files; reach.rate to check the flow
+#               record from stage, gaugings and ratings
 # ============================================================ #
 #
 # How to use it
@@ -86,8 +89,8 @@ library(data.table)
 
 # The script is written for this pdmS7 or later: an older one lacks functions it uses, and
 # would fail part way through.
-if (utils::packageVersion("pdmS7") < "0.48.0") {
-  stop("compare_rain.R needs pdmS7 0.48.0 or later; this is ",
+if (utils::packageVersion("pdmS7") < "0.49.0") {
+  stop("compare_rain.R needs pdmS7 0.49.0 or later; this is ",
        as.character(utils::packageVersion("pdmS7")),
        ". Update it with remotes::install_github(\"JonPayneEA/PDMS7\"), then restart R.",
        call. = FALSE)
@@ -208,6 +211,24 @@ radar_polygon_id <- NULL       # such as "02_10_Southern"
 # Other catchment rain series built elsewhere, to compare as well (optional), such as
 # other_rain_files <- c(multiquadric_ea = "rain_multiquadric.csv", radar = "rain_h19.csv")
 other_rain_files <- c()
+
+# Where the balance fails (optional): the rating's part of a water balance that does not close.
+# With 15-minute stage at the flow station, the reach.rate package reads the applied rating back
+# from the stage and flow and checks it (revisions, flow off the curve, flow above the top of
+# the rating and above bankfull, the flow a stage error makes, stage rising in dry weather).
+# With the gaugings and the operational ratings export too, the rating in force is tested
+# against the gaugings. Each input left NULL leaves its check out, and the report says so.
+stage_file <- NULL             # stage, m, in data_folder: time and value (and quality)
+flow_station_wiski <- NULL     # the flow station's WISKI ID: stage_file downloaded if missing
+top_stage_m <- NULL            # the rating's top: NULL takes the highest gauging, if given
+bankfull_stage_m <- NULL       # the stage above which water may bypass the section
+stage_uncertainty_m <- 0.005   # a systematic stage error to test, m
+gaugings_file <- NULL          # the station's gaugings, as reach.rate::read_gaugings() reads
+gauging_station_id <- NULL     # the station's id in the gaugings file, if it holds others
+ratings_file <- NULL           # the operational ratings export (read_operational_ratings())
+rating_station_id <- NULL      # the station's id in the ratings export (its FFFSLocID)
+dry_hours <- 48                # a step is dry after this many hours of little rain...
+dry_rain_mm <- 0.5             # ...no more than this, on the rain series recommended first
 
 # ---- Read and line up the data ------------------------------------------------------------
 
@@ -2357,6 +2378,236 @@ fallback_error <- if (weights_done) {
 if (!length(fallback_error)) fallback_error <- NA_real_
 fwrite(recommended, file.path(output_folder, "recommended_for_calibration.csv"))
 
+# ---- 8. Where the balance fails ------------------------------------------------------------
+
+say("Where the balance fails")
+# The plots of this section are drawn afresh, or not at all: none is left from an earlier run.
+unlink(file.path(output_folder, c("record_curves.png", "balance_years.png",
+                                  "flood_ratio_vs_rain.png")))
+# The balance is worked out for the series recommended first. The rain's spread is taken over
+# the catchment averages, not the single gauges, which differ from each other for good reason.
+reference_rain <- recommended$series[1]
+spread_series <- unique(c(reference_rain, intersect(names_r, names(built))))
+
+# The flow record checked with reach.rate, where stage is given: read from stage_file, or
+# downloaded there with reach.io when missing and flow_station_wiski is set.
+record_check <- NULL
+gaugings_vs_rating <- NULL
+record_skip <- if (is.null(stage_file)) {
+  "stage_file was not given"
+} else if (step_hours != 0.25) {
+  paste("it needs 15-minute data: flow averaged over a longer step is not the rating's flow at",
+        "the step's mean stage")
+} else if (!requireNamespace("reach.rate", quietly = TRUE)) {
+  "it needs the reach.rate package: remotes::install_github(\"JonPayneEA/reach.rate\")"
+}
+if (is.null(record_skip)) {
+  stage_path <- here(stage_file)
+  if (!file.exists(stage_path) && !is.null(flow_station_wiski)) {
+    if (!requireNamespace("reach.io", quietly = TRUE)) {
+      stop("Downloading the stage needs the reach.io package: ",
+           "remotes::install_github(\"JonPayneEA/reach.io\").",
+           call. = FALSE)
+    }
+    # The station's 15-minute level measure, the qualified one first; a year at a time, each
+    # request after a pause, as the EA asks.
+    Sys.sleep(1)
+    found <- as.data.frame(reach.io::find_stations(wiski_ids = flow_station_wiski))
+    level <- found[found$parameter %in% "level" & found$period %in% "15min", ]
+    level <- level[order(!grepl("qualified$", level$measure_notation)), ]
+    if (!nrow(level)) {
+      stop("No 15-minute level at WISKI ID ", flow_station_wiski, ".", call. = FALSE)
+    }
+    chunks <- reach.io::make_date_chunks(period_from, period_to)
+    say("  downloading stage at %s: %d year%s",
+        flow_station_wiski,
+        nrow(chunks),
+        if (nrow(chunks) == 1) "" else "s")
+    readings <- data.table::rbindlist(lapply(seq_len(nrow(chunks)), function(k) {
+      Sys.sleep(1)
+      reach.io::fetch_readings(level$measure_notation[1],
+                               chunks$chunk_from[k],
+                               chunks$chunk_to[k])
+    }), fill = TRUE)
+    if (!nrow(readings)) {
+      stop("No stage readings for ", flow_station_wiski, " in the dates asked.", call. = FALSE)
+    }
+    quality <- if ("quality" %in% names(readings)) readings$quality else NA_character_
+    value <- as.numeric(readings$value)
+    value[quality %in% "Missing"] <- NA
+    fwrite(data.table(time = format(readings$dateTime, "%Y-%m-%d %H:%M:%S", tz = "UTC"),
+                      value = value,
+                      quality = quality),
+           stage_path)
+  }
+  if (!file.exists(stage_path)) {
+    stop("Cannot find ", stage_path, ". Set flow_station_wiski to download it.", call. = FALSE)
+  }
+  stage_series <- read_hydro_series(stage_path)
+  stage <- stage_series$value[match(as.numeric(grid$time), as.numeric(stage_series$time))]
+
+  # The gaugings, and the rating's top from the highest of them unless top_stage_m is set.
+  gaugings <- NULL
+  if (!is.null(gaugings_file)) {
+    gaugings <- reach.rate::read_gaugings(here(gaugings_file), quiet = TRUE)
+    if (!is.null(gauging_station_id)) {
+      gaugings <- gaugings[gaugings$station_id %in% gauging_station_id, ]
+    }
+    gaugings <- gaugings[is.finite(gaugings$stage_m) & is.finite(gaugings$discharge_cms), ]
+    if (!nrow(gaugings)) {
+      stop("No gaugings with a stage and a flow in ", gaugings_file, ".", call. = FALSE)
+    }
+  }
+  top_stage <- if (!is.null(top_stage_m)) {
+    top_stage_m
+  } else if (!is.null(gaugings)) {
+    max(gaugings$stage_m)
+  }
+
+  # The station's ratings, and the gaugings against the one in force (the one starting last).
+  ratings <- NULL
+  if (!is.null(ratings_file)) {
+    limbs <- reach.rate::read_operational_ratings(here(ratings_file))
+    if (!is.null(rating_station_id)) limbs <- limbs[limbs$station_id %in% rating_station_id, ]
+    if (!nrow(limbs)) {
+      stop("No ratings for station ", rating_station_id, " in ", ratings_file, ".",
+           call. = FALSE)
+    }
+    ratings <- reach.rate::operational_rating_tables(limbs)
+    if (!length(ratings$tables)) {
+      stop("None of the station's ratings in ", ratings_file, " could be built.", call. = FALSE)
+    }
+    if (!is.null(gaugings)) {
+      starts <- tapply(as.numeric(limbs$start_date), limbs$rating_key, max, na.rm = TRUE)
+      in_force <- intersect(names(sort(starts, decreasing = TRUE)), names(ratings$tables))[1]
+      compared <- reach.rate::compare_gaugings_to_rating(ratings$tables[[in_force]], gaugings)
+      gaugings_vs_rating <- as.data.frame(compared$limbs)
+      gaugings_vs_rating$rating <- in_force
+      fwrite(compared$gaugings[, c("observation_time", "stage_m", "discharge_cms",
+                                   "discharge_predicted_cms", "residual_pct", "within_tol")],
+             file.path(output_folder, "gaugings_vs_rating.csv"))
+    }
+  }
+
+  # Dry steps: no more than dry_rain_mm over the last dry_hours of the reference rain.
+  window <- max(1L, round(dry_hours / step_hours))
+  rain_sum <- stats::filter(rains[[reference_rain]], rep(1, window), sides = 1)
+  dry <- !is.na(rain_sum) & as.numeric(rain_sum) <= dry_rain_mm
+
+  record <- data.frame(time = grid$time,
+                       stage_m = stage,
+                       discharge_cms = ifelse(is.finite(flow) & flow >= 0, flow, NA_real_))
+  record_check <- tryCatch(
+    reach.rate::check_flow_record(record,
+                                  top_stage_m = top_stage,
+                                  bankfull_stage_m = bankfull_stage_m,
+                                  stage_uncertainty_m = stage_uncertainty_m,
+                                  dry = dry,
+                                  ratings = ratings),
+    error = function(e) {
+      record_skip <<- conditionMessage(e)
+      NULL
+    })
+  if (!is.null(record_check)) {
+    checks <- as.data.frame(reach.rate::assessment_checks(record_check$assessment))
+    fwrite(checks[, c("check_id", "status", "message")],
+           file.path(output_folder, "record_checks.csv"))
+    fwrite(record_check$periods, file.path(output_folder, "record_periods.csv"))
+    fwrite(record_check$revisions, file.path(output_folder, "record_revisions.csv"))
+    fwrite(record_check$off_curve, file.path(output_folder, "record_off_curve.csv"))
+
+    # HOW TO READ record_curves.png
+    # The rating read back from the record: every pair of stage and archived flow, coloured by
+    # period, with each period's curve. A new period starts where the applied rating changed.
+    # Red points are flow off the curve: not made from the stage at the time. Dashed lines
+    # mark the top of the rating and bankfull, where given.
+    # Good: one tight curve, or a few, each with its date in record_revisions.csv, and few red
+    #   points.
+    # Worry if: a period nobody can date to a rating revision, red points in runs (infilled
+    #   or edited flow), or much of the flow above the top of the rating.
+    png_of("record_curves.png", function() print(ggplot2::autoplot(record_check)))
+  }
+}
+
+diagnosis <- balance_diagnosis(grid$time,
+                               flow,
+                               rains[spread_series],
+                               pe,
+                               area_km2,
+                               floods,
+                               reference = reference_rain,
+                               water_year_start = year_start_month,
+                               record_check = record_check)
+fwrite(diagnosis$suspects, file.path(output_folder, "balance_diagnosis.csv"))
+fwrite(diagnosis$gap, file.path(output_folder, "balance_gap.csv"))
+fwrite(diagnosis$floods, file.path(output_folder, "balance_floods.csv"))
+
+# HOW TO READ balance_years.png
+# Each year's flow (points) against the range Fu's curve allows for that year's rain and
+# potential evaporation (bars), on the series recommended first. Below the bar, more water
+# left than even a thirsty catchment evaporates; above it, more came than the rain explains.
+# Good: points inside their bars.
+# Worry if: every year below its bar (a slow loss: groundwater out, abstraction, or an area
+#   too large), every year above (a slow gain), or the points stepping from one level to
+#   another (a change: a new rating, a changed channel, a new abstraction).
+# Drawn only with a complete year.
+if (diagnosis$gap$kind != "not assessed") png_of("balance_years.png", function() {
+  y <- diagnosis$years[diagnosis$years$complete >= 0.9, ]
+  graphics::par(mar = c(4, 4.5, 2, 1))
+  k <- seq_len(nrow(y))
+  graphics::plot(k,
+                 y$flow_mm,
+                 ylim = range(0, y$flow_mm, y$flow_high_mm, na.rm = TRUE),
+                 xaxt = "n",
+                 pch = 19,
+                 col = "#1B6F80",
+                 xlab = "",
+                 ylab = "Flow, mm",
+                 main = sprintf("Flow each %s against the range Fu's curve allows (%s)",
+                                year_word, reference_rain))
+  graphics::segments(k, y$flow_low_mm, k, y$flow_high_mm, lwd = 8, col = "grey80")
+  graphics::points(k, y$flow_mm, pch = 19, col = "#1B6F80")
+  graphics::axis(1, at = k, labels = y$period)
+})
+
+# HOW TO READ flood_ratio_vs_rain.png
+# Each flood's runoff ratio against its rain, both on log scales, on the series recommended
+# first. Floods peaking above the top of the rating are filled red; the line is the relation
+# fitted to the floods below it.
+# Good: the red points on the line's run, among the rest.
+# Worry if: the red points sit well above the line (the rating reads high at the top) or well
+#   below it (bypass, or the rating reads low at the top). Bigger storms giving higher ratios
+#   is normal: they fall on wetter ground.
+png_of("flood_ratio_vs_rain.png", function() {
+  f <- diagnosis$floods[is.finite(diagnosis$floods$runoff_ratio) &
+                          diagnosis$floods$runoff_ratio > 0 & diagnosis$floods$rain_mm > 0, ]
+  if (!nrow(f)) return(invisible())
+  above <- f$above_top %in% TRUE
+  graphics::par(mar = c(4.5, 4.5, 2, 1))
+  graphics::plot(f$rain_mm,
+                 f$runoff_ratio,
+                 log = "xy",
+                 pch = ifelse(above, 19, 1),
+                 col = ifelse(above, "#B3261E", "#1B6F80"),
+                 xlab = "Flood rain, mm",
+                 ylab = "Runoff ratio (quick flow / rain)",
+                 main = sprintf("Flood runoff ratios against rain (%s)", reference_rain))
+  below <- !above
+  if (sum(below) >= 3) {
+    fit <- stats::lm(log(runoff_ratio) ~ log(rain_mm), data = f[below, ])
+    r <- exp(seq(log(min(f$rain_mm)), log(max(f$rain_mm)), length.out = 50))
+    graphics::lines(r, exp(stats::predict(fit, newdata = data.frame(rain_mm = r))),
+                    col = "grey40")
+  }
+  graphics::legend("topleft",
+                   bty = "n",
+                   cex = 0.8,
+                   c("Peak below the top of the rating", "Peak above it", "Fitted to those below"),
+                   pch = c(1, 19, NA),
+                   lty = c(NA, NA, 1),
+                   col = c("#1B6F80", "#B3261E", "grey40"))
+})
+
 # ---- The summary ---------------------------------------------------------------------------
 
 # summary.md, built a section at a time; a section left out is NULL, which c() drops.
@@ -2721,6 +2972,49 @@ lines <- c(
               years))
   },
 
+  # Where the balance fails.
+  c("", "## Where the balance fails", "",
+    if (diagnosis$gap$kind == "not assessed") {
+      paste("No complete year was compared, so the water balance was not judged: over part of",
+            "a year, water going into or out of storage looks like a loss or a gain.")
+    } else {
+      sprintf(paste("On %s, a mean year of %.0f mm of rain, %.0f of flow and %.0f of potential",
+                    "evaporation; Fu's curve allows flow of %.0f to %.0f mm: %s."),
+              reference_rain,
+              diagnosis$gap$rain_mm,
+              diagnosis$gap$flow_mm,
+              diagnosis$gap$pet_mm,
+              diagnosis$gap$flow_range_low_mm,
+              diagnosis$gap$flow_range_high_mm,
+              switch(diagnosis$gap$kind,
+                     deficit = sprintf("%.0f mm short", diagnosis$gap$gap_mm),
+                     excess = sprintf("%.0f mm over", diagnosis$gap$gap_mm),
+                     closes = "inside it"))
+    },
+    "",
+    sprintf("- **%s** (%s): %s.", diagnosis$suspects$verdict, diagnosis$suspects$suspect,
+            diagnosis$suspects$evidence),
+    "",
+    if (is.null(record_check)) {
+      sprintf("The flow record was not checked: %s.", record_skip)
+    } else {
+      sprintf(paste("The flow record was checked with reach.rate: %d period(s), %d",
+                    "revision(s); see `record_checks.csv`."),
+              nrow(record_check$periods),
+              nrow(record_check$revisions))
+    },
+    if (!is.null(gaugings_vs_rating)) {
+      sprintf("Gaugings against the rating in force (%s): %d gaugings, %.0f%% within 10%%.",
+              gaugings_vs_rating$rating[1],
+              sum(gaugings_vs_rating$n_gaugings),
+              100 * stats::weighted.mean(gaugings_vs_rating$share_within_tol,
+                                         gaugings_vs_rating$n_gaugings, na.rm = TRUE))
+    },
+    "",
+    paste("No check proves a cause: gauges under-reading and a rating reading high at peaks",
+          "look alike in the floods, and a rating reading low at every flow looks like a slow",
+          "loss. Gaugings, or a second flow gauge, separate them.")),
+
   # What to do next, and the files written.
   "", "## What next", "",
   "- The ranking is a guide. A series that ranks well but carries a warning may still be the",
@@ -3074,6 +3368,55 @@ blocks <- c(
                        "clearly above the summer one points to the gauge losing rain to wind."),
            report_table(radar_table, caption = "Radar against each gauge")),
       plot_blocks("radar_vs_gauge_by_month.png", "Radar against each gauge, month by month"))
+  },
+
+  # Where the balance fails.
+  list(report_heading("Where the balance fails"),
+       if (diagnosis$gap$kind != "not assessed") {
+         report_text(sprintf(paste("Is the gap in the water balance the rain, the rating, or",
+                                   "the catchment? On %s, a mean year of %.0f mm of rain, %.0f",
+                                   "of flow and %.0f of potential evaporation; Fu's curve",
+                                   "allows flow of %.0f to %.0f mm."),
+                             reference_rain,
+                             diagnosis$gap$rain_mm,
+                             diagnosis$gap$flow_mm,
+                             diagnosis$gap$pet_mm,
+                             diagnosis$gap$flow_range_low_mm,
+                             diagnosis$gap$flow_range_high_mm))
+       },
+       report_alert(switch(diagnosis$gap$kind,
+                           deficit = sprintf("The flow is %.0f mm a year short of the range.",
+                                             diagnosis$gap$gap_mm),
+                           excess = sprintf("The flow is %.0f mm a year over the range.",
+                                            diagnosis$gap$gap_mm),
+                           closes = "The flow is inside the range: the balance closes.",
+                           paste("No complete year was compared, so the balance was not",
+                                 "judged; the rating's evidence still was.")),
+                    diagnosis$gap$kind == "closes"),
+       report_table(diagnosis$suspects, caption = "The suspects, most likely first"),
+       report_text("Each suspect leaves its own mark. The rain is set against the spread",
+                   "between the catchment averages and gauge under-catch; the rating against",
+                   "the floods above its top and, with stage, the record checked with",
+                   "reach.rate; a slow loss or gain is what is left; a change over time is",
+                   "dated. No check proves a cause: gauges under-reading and a rating reading",
+                   "high at peaks look alike in the floods, and a rating reading low at every",
+                   "flow looks like a slow loss.")),
+  plot_blocks("balance_years.png", paste("Flow each", year_word, "against Fu's range")),
+  plot_blocks("flood_ratio_vs_rain.png", "Flood runoff ratios against rain"),
+  if (!is.null(record_check)) {
+    c(list(report_heading("The flow record", 3),
+           report_table(as.data.frame(reach.rate::assessment_checks(
+             record_check$assessment))[, c("check_id", "status", "message")],
+             caption = "The flow record checked with reach.rate")),
+      plot_blocks("record_curves.png", "The rating read back from the record"))
+  } else {
+    list(report_alert(sprintf("The flow record was not checked: %s.", record_skip), FALSE))
+  },
+  if (!is.null(gaugings_vs_rating)) {
+    list(report_table(gaugings_vs_rating[, c("rating", "limb", "lower_level", "upper_level",
+                                             "n_gaugings", "median_residual_pct",
+                                             "share_within_tol")],
+                      caption = "Gaugings against the rating in force, limb by limb"))
   },
 
   # What next.

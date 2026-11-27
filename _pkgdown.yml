@@ -243,6 +243,7 @@ reference:
   - zero_negatives
   - check_inputs
   - water_balance
+  - balance_diagnosis
   - preparation_notes
 - title: Calibration
   contents:
