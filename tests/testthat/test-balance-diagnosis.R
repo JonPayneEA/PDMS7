@@ -211,3 +211,24 @@ test_that("a dry-weather rise counts against the rating in summer, not in winter
   expect_identical(rating$verdict, "possible")
   expect_match(rating$evidence, "dry summer weather in 2021-07")
 })
+
+test_that("the rating's own band is a flow bound, combined with the stage error", {
+  # Flow 2.3 mm a day (840 a year), below Fu's least (926). No stage error, but the rating's
+  # band says the flow could be 15% higher: 1.15 x 840 = 966 clears 926, so the rating alone
+  # could close the gap.
+  d <- balance_diagnosis(days, as_flow(2.3), list(ref = rain), pet, 100, make_floods(),
+                         water_year_start = 1, rating_band = c(-0.05, 0.15))
+  expect_equal(d$gap$flow_could_be_low_mm, 0.15 * d$gap$flow_mm)
+  expect_equal(d$gap$rating_could_be_low_mm, 0.15 * d$gap$flow_mm)
+  expect_equal(d$gap$gap_after_flow_mm, 0)
+  expect_identical(d$suspects$verdict[d$suspects$suspect == "rating"], "likely")
+  expect_match(d$suspects$evidence[d$suspects$suspect == "rating"], "sampling uncertainty")
+  # With a stage error of 10% as well, the two independent: sqrt(0.1^2 + 0.1^2) of the flow.
+  both <- balance_diagnosis(days, as_flow(2.3), list(ref = rain), pet, 100, make_floods(),
+                            water_year_start = 1, rating_band = c(-0.1, 0.1),
+                            record_check = record_stub(raised = 0.1, lowered = -0.1))
+  expect_equal(both$gap$flow_could_be_low_mm, sqrt(0.02) * both$gap$flow_mm)
+  expect_equal(both$gap$flow_could_be_high_mm, sqrt(0.02) * both$gap$flow_mm)
+  expect_error(balance_diagnosis(days, as_flow(2.3), list(ref = rain), pet, 100, make_floods(),
+                                 rating_band = c(0.1, 0.2)), "rating_band")
+})

@@ -99,3 +99,31 @@ test_that("a question for the team is named in the verdict, not left to the tabl
   expect_identical(f$verdict, "get high-flow gaugings")
   expect_match(f$why, "Ask the hydrometry team too: record against the known ratings")
 })
+
+test_that("the candidate's band decides the refit in place of the rule of thumb", {
+  # The rule of thumb flags the top limb (12% off, 15 gaugings), but the rating in force lies
+  # inside the band everywhere: the gaugings cannot tell the two apart, so no refit, and the
+  # limb is only noted.
+  stages <- seq(0.3, 1.2, by = 0.1)
+  inside <- data.frame(stage_m = stages, weight = 1, in_force_cms = 5,
+                       lower_cms = 4.5, upper_cms = 5.5)
+  f <- rating_follow_up(closes, gaugings = limbs(c(1, 12), c(0.95, 0.4), c(20, 15)),
+                        band = inside)
+  expect_false(f$verdict == "fit a candidate rating")
+  expect_identical(f$findings$status[f$findings$check == "gaugings against the rating"][2],
+                   "note")
+  band_row <- f$findings[f$findings$check == "rating in force against the candidate's band", ]
+  expect_identical(band_row$status, "fine")
+  expect_match(band_row$finding, "for 0% of the flow")
+  # Outside the band at the top six of ten stages, each weighted alike: 60% of the flow, over
+  # the 10% allowed, so a refit is called for even with the limbs on the rule of thumb.
+  outside <- inside
+  outside$upper_cms[5:10] <- 4.9
+  f <- rating_follow_up(closes, gaugings = limbs(c(1, -2), c(0.95, 0.9), c(20, 15)),
+                        band = outside)
+  expect_identical(f$verdict, "fit a candidate rating")
+  expect_match(f$findings$finding[f$findings$check ==
+                                    "rating in force against the candidate's band"],
+               "for 60% of the flow")
+  expect_error(rating_follow_up(closes, band = data.frame(a = 1)), "band needs")
+})

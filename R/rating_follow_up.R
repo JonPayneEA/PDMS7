@@ -20,7 +20,12 @@
 #'
 #' - **Fit a candidate rating** when a limb's gaugings sit consistently off the rating in force
 #'   (median residual beyond `residual_pct`, or under `within_share` of them within 10%) and
-#'   there are at least `min_gaugings` over it to fit from.
+#'   there are at least `min_gaugings` over it to fit from. With a bootstrap `band` from a
+#'   candidate fitted to the gaugings, the band decides instead: a refit is called for when the
+#'   rating in force lies outside it for more than `band_share` of the flow the gaugings cover,
+#'   and a limb flagged by the rule of thumb alone is only noted. The band covers the
+#'   gaugings' sampling only (not gauging error or the choice of limbs), so it is narrow: a
+#'   rating outside it is clearly off, one inside it cannot be told apart by these gaugings.
 #' - **Get high-flow gaugings** when a limb is off but too thinly gauged to refit, or when much
 #'   of the flow (over `above_top_share`) comes from above the highest gauging.
 #' - **Ask the hydrometry team** when the record was made with a rating not in the export, or
@@ -43,6 +48,12 @@
 #' @param min_gaugings The fewest gaugings over a limb to fit it from.
 #' @param above_top_share The share of flow volume above the top of the rating above which the
 #'   top needs testing.
+#' @param band Optional: a candidate rating's bootstrap band set against the rating in force,
+#'   a data frame with `stage_m`, `weight` (each stage's share of the flow, such as its steps
+#'   times its flow), `in_force_cms`, `lower_cms` and `upper_cms`, over the stages the gaugings
+#'   cover.
+#' @param band_share The share of the weighted flow over which the rating in force may lie
+#'   outside the band before a refit is called for.
 #' @return A `pdm_rating_follow_up` list: `verdict` (one of `"fit a candidate rating"`,
 #'   `"get high-flow gaugings"`, `"ask the hydrometry team"`, `"no rating work needed"`),
 #'   `action_needed` (`TRUE` unless the verdict is the last), `why` (one sentence) and
@@ -63,7 +74,8 @@
 #' @seealso [balance_diagnosis()]
 #' @export
 rating_follow_up <- function(diagnosis, record_check = NULL, gaugings = NULL, residual_pct = 5,
-                             within_share = 0.8, min_gaugings = 10, above_top_share = 0.05) {
+                             within_share = 0.8, min_gaugings = 10, above_top_share = 0.05,
+                             band = NULL, band_share = 0.1) {
   .check(inherits(diagnosis, "pdm_balance_diagnosis"),
          "diagnosis must be the output of balance_diagnosis()")
   .check(is.null(gaugings) ||
@@ -71,6 +83,11 @@ rating_follow_up <- function(diagnosis, record_check = NULL, gaugings = NULL, re
               all(c("n_gaugings", "median_residual_pct", "share_within_tol") %in% names(gaugings))),
          paste("gaugings must be the limbs table of compare_gaugings_to_rating(): it needs",
                "n_gaugings, median_residual_pct and share_within_tol"))
+  .check(is.null(band) ||
+           (is.data.frame(band) && nrow(band) > 0 &&
+              all(c("stage_m", "weight", "in_force_cms", "lower_cms", "upper_cms") %in%
+                    names(band))),
+         "band needs stage_m, weight, in_force_cms, lower_cms and upper_cms")
   rec <- diagnosis$record
   rating_verdict <- diagnosis$suspects$verdict[diagnosis$suspects$suspect == "rating"]
   rows <- list()
@@ -126,6 +143,34 @@ rating_follow_up <- function(diagnosis, record_check = NULL, gaugings = NULL, re
       add("gaugings against the rating", "not assessed", "no gauging falls on any limb",
           "check the gaugings are for this station")
     }
+  }
+
+  # The candidate's bootstrap band, where given, decides whether to refit in place of the rule
+  # of thumb: a limb flagged by the rule alone is noted.
+  if (!is.null(band)) {
+    outside <- band$in_force_cms < band$lower_cms | band$in_force_cms > band$upper_cms
+    outside[is.na(outside)] <- FALSE
+    share <- sum(band$weight[outside]) / sum(band$weight)
+    off_band <- share > band_share
+    if (!off_band && off_fit) {
+      for (k in seq_along(rows)) {
+        r <- rows[[k]]
+        if (r$check == "gaugings against the rating" && r$status == "act" &&
+              grepl("^fit a candidate", r$action)) {
+          rows[[k]]$status <- "note"
+          rows[[k]]$action <- "the band says these gaugings cannot tell the two ratings apart"
+        }
+      }
+    }
+    off_fit <- off_band
+    add("rating in force against the candidate's band", if (off_band) "act" else "fine",
+        sprintf(paste("the rating in force lies outside the 95%% band of a rating fitted to",
+                      "the gaugings for %.0f%% of the flow they cover"), 100 * share),
+        if (off_band) {
+          "the gaugings say the rating in force is off: send the candidate to the hydrometry team"
+        } else {
+          "none: the gaugings cannot tell the rating in force from one fitted to them"
+        })
   }
 
   # The top of the rating.

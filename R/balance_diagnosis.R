@@ -69,6 +69,12 @@
 #' @param high_flow_excess How far, as a share, the floods above the top must sit from the
 #'   relation of the floods below (their median) to count against the rating. With at least
 #'   three floods above the top and eight below.
+#' @param rating_band Optional: how far the year's flow could be out from the rating's own
+#'   uncertainty, as shares of the flow volume, `c(lower, upper)` (such as `c(-0.04, 0.05)`):
+#'   the flow from the lower and upper edges of a rating's bootstrap band, over the record's
+#'   stage, against its median. It covers the gaugings' sampling only. It is combined with the
+#'   stage error from `record_check`, the two taken as independent (the square root of the sum
+#'   of their squares).
 #' @param omega The band of Fu's parameter `w` the catchment may lie in: a broad band about the
 #'   usual 2.6. Narrow it from neighbouring catchments where their balances are known.
 #' @param min_complete Share of a year's steps that must have flow and the reference rain for
@@ -108,7 +114,7 @@
 balance_diagnosis <- function(time, flow, rain, pet, area_km2, floods, reference = 1L,
                               water_year_start = 10, undercatch = 0.05, record_check = NULL,
                               top_flow = NULL, high_flow_excess = 0.2, omega = c(1.5, 3.5),
-                              min_complete = 0.9) {
+                              min_complete = 0.9, rating_band = NULL) {
   .check(inherits(time, "POSIXct"), "time must be POSIXct")
   n <- length(time)
   .check(is.numeric(flow) && length(flow) == n, "flow must be numeric, one value a step")
@@ -182,8 +188,20 @@ balance_diagnosis <- function(time, flow, rain, pet, area_km2, floods, reference
 
   # The flow's bounds, from the record check's stage error over the whole record.
   rec <- .diagnosis_record(record_check)
-  flow_low <- if (is.na(rec$share_raised)) NA_real_ else rec$share_raised * Q
-  flow_high <- if (is.na(rec$share_lowered)) NA_real_ else -rec$share_lowered * Q
+  .check(is.null(rating_band) ||
+           (is.numeric(rating_band) && length(rating_band) == 2 && all(is.finite(rating_band)) &&
+              rating_band[1] <= 0 && rating_band[2] >= 0),
+         "rating_band must be two shares of the flow, c(lower, upper), the first 0 or below")
+  # The flow could be too low (truth above it) by the stage error raised and the rating's upper
+  # edge, too high by the stage error lowered and its lower edge; the two sources independent.
+  combine <- function(a, b) {
+    if (is.na(a) && is.na(b)) NA_real_ else sqrt(sum(c(a, b)^2, na.rm = TRUE))
+  }
+  rating_up <- if (is.null(rating_band)) NA_real_ else rating_band[2]
+  rating_down <- if (is.null(rating_band)) NA_real_ else -rating_band[1]
+  flow_low <- combine(rec$share_raised, rating_up) * Q
+  flow_high <- combine(-rec$share_lowered, rating_down) * Q
+  rec$rating_band <- rating_band
   zero_na <- function(x) if (is.na(x)) 0 else x
   # The gap outside the range, and what is left of it with the rain moved by its bound, the
   # flow moved by its own, and both.
@@ -201,6 +219,8 @@ balance_diagnosis <- function(time, flow, rain, pet, area_km2, floods, reference
                     kind = kind, gap_mm = gap_at(0, 0),
                     rain_could_be_high_mm = rain_high, rain_could_be_low_mm = rain_low,
                     flow_could_be_low_mm = flow_low, flow_could_be_high_mm = flow_high,
+                    rating_could_be_low_mm = rating_up * Q,
+                    rating_could_be_high_mm = rating_down * Q,
                     gap_after_rain_mm = gap_at(rain_bound, 0),
                     gap_after_flow_mm = gap_at(0, flow_bound),
                     left_after_bounds_mm = gap_at(rain_bound, flow_bound),
@@ -414,8 +434,14 @@ balance_diagnosis <- function(time, flow, rain, pet, area_km2, floods, reference
   flow_bound <- switch(gap$kind, deficit = gap$flow_could_be_low_mm,
                        excess = gap$flow_could_be_high_mm, NA_real_)
   if (isTRUE(is.finite(flow_bound)) && open_gap) {
-    rating_ev <- c(rating_ev, sprintf("a stage error of %.3f m moves the flow by %s",
-                                      rec$stage_uncertainty_m, mm(flow_bound)))
+    sources <- c(if (!is.na(rec$stage_uncertainty_m)) {
+                   sprintf("a stage error of %.3f m", rec$stage_uncertainty_m)
+                 },
+                 if (!is.null(rec$rating_band)) "the rating's sampling uncertainty")
+    rating_ev <- c(rating_ev, sprintf("%s move%s the flow by up to %s",
+                                      paste(sources, collapse = " and "),
+                                      if (length(sources) == 1) "s" else "",
+                                      mm(flow_bound)))
   }
   # The floods above the top apart from those below, or a stage error that could close the
   # gap on its own.
@@ -469,7 +495,9 @@ balance_diagnosis <- function(time, flow, rain, pet, area_km2, floods, reference
                       "above 1)"),
                 fs$median_ratio)
       },
-      if (!isTRUE(is.finite(flow_bound))) "the flow's own error was not assessed (no record check)")
+      if (!isTRUE(is.finite(flow_bound))) {
+        "the flow's own error was not assessed (no record check or rating band)"
+      })
   }
 
   # A change over time.

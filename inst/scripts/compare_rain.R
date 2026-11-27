@@ -9,7 +9,8 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-24
 # Tier:         1
-# Modified:     2026-11-27 - a candidate rating fitted from the gaugings when they call for
+# Modified:     2026-11-27 - the candidate's bootstrap band: the refit test and a flow bound
+#               2026-11-27 - a candidate rating fitted from the gaugings when they call for
 #               one, written up for review, and the balance on its flow
 #               2026-11-27 - whether the rating needs more work, flagged in the report
 #               2026-11-27 - the stage from the flow station's WISKI ID alone; the gaugings
@@ -31,7 +32,7 @@
 # Outputs:      A folder: summary.md, rain_ranking.csv, weights_and_error.csv, plots each with a
 #               note on how to read it, and catchment_rain/ with each average built, as CSV
 #               ready for calibrate_site.R
-# Dependencies: pdmS7 (0.50.0 or later); sf for a shapefile and the search; reach.io
+# Dependencies: pdmS7 (0.51.0 or later); sf for a shapefile and the search; reach.io
 #               to find and download the gauges; arrow (or nanoparquet) for the processed
 #               H19 extracts, ncdf4 for the daily H19 files; reach.rate to check the flow
 #               record from stage, gaugings and ratings
@@ -94,8 +95,8 @@ library(data.table)
 
 # The script is written for this pdmS7 or later: an older one lacks functions it uses, and
 # would fail part way through.
-if (utils::packageVersion("pdmS7") < "0.50.0") {
-  stop("compare_rain.R needs pdmS7 0.50.0 or later; this is ",
+if (utils::packageVersion("pdmS7") < "0.51.0") {
+  stop("compare_rain.R needs pdmS7 0.51.0 or later; this is ",
        as.character(utils::packageVersion("pdmS7")),
        ". Update it with remotes::install_github(\"JonPayneEA/PDMS7\"), then restart R.",
        call. = FALSE)
@@ -240,6 +241,7 @@ dry_rain_mm <- 0.5             # ...no more than this, on the rain series recomm
 # in place of the operational one without them). "auto" fits one when the report says the
 # gaugings call for it; "always" fits one whenever there are gaugings; "never" does not.
 candidate_rating <- "auto"
+candidate_boot <- 500          # bootstrap refits of the candidate, for its band; 0 for none
 
 # ---- Read and line up the data ------------------------------------------------------------
 
@@ -2394,7 +2396,7 @@ fwrite(recommended, file.path(output_folder, "recommended_for_calibration.csv"))
 say("Where the balance fails")
 # The plots of this section are drawn afresh, or not at all: none is left from an earlier run.
 unlink(file.path(output_folder, c("record_curves.png", "balance_years.png",
-                                  "flood_ratio_vs_rain.png")))
+                                  "flood_ratio_vs_rain.png", "candidate_band.png")))
 # The balance is worked out for the series recommended first. The rain's spread is taken over
 # the catchment averages, not the single gauges, which differ from each other for good reason.
 reference_rain <- recommended$series[1]
@@ -2584,6 +2586,9 @@ say("  rating: %s", follow_up$verdict)
 # flow it gives. It is evidence for the team who own the rating, not a replacement.
 candidate <- NULL
 candidate_gap <- NULL
+rating_band_share <- NULL
+band <- NULL
+band_curve <- NULL
 candidate_compared <- NULL
 candidate_note <- NULL
 candidate_folder <- file.path(output_folder, "candidate_rating")
@@ -2610,18 +2615,28 @@ if (is.null(candidate_skip)) {
     b <- sort(in_force_table@table$lower_level)[-1]
     b[b > min(gaugings$stage_m) & b < max(gaugings$stage_m)]
   }
-  candidate <- tryCatch(
-    reach.rate::fit_rating(gaugings,
-                           controls = if (length(breaks)) breaks,
-                           breakpoint_origin = "existing_rating",
-                           quiet = TRUE),
-    error = function(e) {
-      # Too few gaugings on some limb: one limb over them all, said so in the report.
-      candidate_note <<- sprintf(paste("The rating in force's breakpoints (%s m) could not be",
-                                       "fitted (%s), so the candidate has one limb."),
-                                 toString(round(breaks, 3)), conditionMessage(e))
-      reach.rate::fit_rating(gaugings, quiet = TRUE)
-    })
+  # The fit's own warnings (a limb's bootstrap draws that failed, say) go to the report.
+  note_warning <- function(w) {
+    candidate_note <<- c(candidate_note, sub("\\s+$", "", conditionMessage(w)))
+    invokeRestart("muffleWarning")
+  }
+  candidate <- withCallingHandlers(
+    tryCatch(
+      reach.rate::fit_rating(gaugings,
+                             controls = if (length(breaks)) breaks,
+                             breakpoint_origin = "existing_rating",
+                             n_boot = candidate_boot,
+                             seed = 1,
+                             quiet = TRUE),
+      error = function(e) {
+        # Too few gaugings on some limb: one limb over them all, said so in the report.
+        candidate_note <<- c(candidate_note,
+                             sprintf(paste("The rating in force's breakpoints (%s m) could not",
+                                           "be fitted (%s), so the candidate has one limb."),
+                                     toString(round(breaks, 3)), conditionMessage(e)))
+        reach.rate::fit_rating(gaugings, n_boot = candidate_boot, seed = 1, quiet = TRUE)
+      }),
+    warning = note_warning)
   candidate_assessment <- reach.rate::assess_rating(candidate)
   reach.rate::export_rating(candidate,
                             candidate_assessment,
@@ -2669,7 +2684,119 @@ if (is.null(candidate_skip)) {
                  cbind(flow = "candidate rating", candidate_gap)),
            file.path(candidate_folder, "balance_with_candidate.csv"))
   }
+
+  # The candidate's bootstrap band, at each stage the record reaches (or, without stage, every
+  # centimetre the gaugings span), with the steps at each. It covers the gaugings' sampling
+  # only, not gauging error or the choice of limbs, so it is a lower bound.
+  boot <- if (candidate_boot > 0) {
+    tryCatch(reach.rate::rating_bootstrap(candidate), error = function(e) NULL)
+  }
+  if (!is.null(boot) && nrow(boot)) {
+    quietly <- function(x) {
+      withCallingHandlers(logger::with_log_threshold(x, threshold = logger::WARN),
+                          warning = function(w) invokeRestart("muffleWarning"))
+    }
+    gauged <- range(gaugings$stage_m)
+    h_all <- if (!is.null(stage)) {
+      round(stage[is.finite(stage)], 3)
+    } else {
+      seq(gauged[1], gauged[2], by = 0.01)
+    }
+    steps_at <- table(h_all)
+    hs <- as.numeric(names(steps_at))
+    n_at <- as.numeric(steps_at)
+    iv <- quietly(reach.rate::apply_rating_interval(data.frame(stage = hs), boot))
+    band_curve <- data.frame(stage_m = hs,
+                             steps = n_at,
+                             lower_cms = iv$discharge_lower,
+                             median_cms = iv$discharge_median,
+                             upper_cms = iv$discharge_upper)
+    # How far a year's flow could be out from the rating alone, as shares of the volume.
+    if (!is.null(stage)) {
+      volume <- sum(n_at * iv$discharge_median)
+      rating_band_share <- c(min(sum(n_at * iv$discharge_lower) / volume - 1, 0),
+                             max(sum(n_at * iv$discharge_upper) / volume - 1, 0))
+    }
+    # The rating in force against the band, over the stages the gaugings cover, each stage
+    # weighted by its steps times its flow: its share of the flow.
+    if (!is.null(in_force_table)) {
+      band_curve$in_force_cms <- quietly(
+        reach.rate::apply_rating(in_force_table, data.frame(stage = hs))$discharge)
+      within_gauged <- hs >= gauged[1] & hs <= gauged[2]
+      band <- data.frame(stage_m = hs,
+                         weight = n_at * band_curve$in_force_cms,
+                         in_force_cms = band_curve$in_force_cms,
+                         lower_cms = iv$discharge_lower,
+                         upper_cms = iv$discharge_upper)[within_gauged, ]
+    }
+    fwrite(band_curve, file.path(candidate_folder, "candidate_band.csv"))
+  }
 }
+
+# With the band, the diagnosis and the follow-up again: the rating's own uncertainty joins the
+# flow's bound, and the band, not the rule of thumb, decides whether to refit.
+if (!is.null(rating_band_share) || !is.null(band)) {
+  if (!is.null(rating_band_share)) {
+    diagnosis <- balance_diagnosis(grid$time,
+                                   flow,
+                                   rains[spread_series],
+                                   pe,
+                                   area_km2,
+                                   floods,
+                                   reference = reference_rain,
+                                   water_year_start = year_start_month,
+                                   record_check = record_check,
+                                   rating_band = rating_band_share)
+    fwrite(diagnosis$suspects, file.path(output_folder, "balance_diagnosis.csv"))
+    fwrite(diagnosis$gap, file.path(output_folder, "balance_gap.csv"))
+  }
+  follow_up <- rating_follow_up(diagnosis,
+                                record_check = record_check,
+                                gaugings = gaugings_vs_rating,
+                                band = band)
+  fwrite(follow_up$findings, file.path(output_folder, "rating_follow_up.csv"))
+  say("  rating, with the candidate's band: %s", follow_up$verdict)
+}
+
+# HOW TO READ candidate_band.png
+# The candidate rating fitted to the gaugings (dark line), its 95% bootstrap band (shaded), the
+# rating in force (red, where given), and the gaugings (points), stage against flow. The band
+# covers only the gaugings' sampling: gauging error and the choice of limbs would widen it.
+# Above the highest gauging (dashed) the band is extrapolated and widens.
+# Good: the rating in force inside the band wherever the gaugings are.
+# Worry if: the red line leaves the band where most of the flow passes (the gaugings say the
+#   rating in force is off there), or the band balloons above the gaugings where the floods
+#   are (the top of the rating needs gaugings, not a refit).
+if (!is.null(band_curve)) png_of("candidate_band.png", function() {
+  b <- band_curve[order(band_curve$stage_m), ]
+  graphics::par(mar = c(4.5, 4.5, 2, 1))
+  graphics::plot(range(0, b$upper_cms, b$in_force_cms, gaugings$discharge_cms, na.rm = TRUE),
+                 range(b$stage_m, gaugings$stage_m),
+                 type = "n",
+                 xlab = "Flow, m3/s",
+                 ylab = "Stage, m",
+                 main = "The candidate rating, its band, and the rating in force")
+  graphics::polygon(c(b$lower_cms, rev(b$upper_cms)),
+                    c(b$stage_m, rev(b$stage_m)),
+                    col = grDevices::adjustcolor("#1B6F80", 0.25),
+                    border = NA)
+  graphics::lines(b$median_cms, b$stage_m, col = "#1B6F80", lwd = 2)
+  if (!is.null(b$in_force_cms)) {
+    graphics::lines(b$in_force_cms, b$stage_m, col = "#B3261E", lwd = 1.5)
+  }
+  graphics::points(gaugings$discharge_cms, gaugings$stage_m, pch = 19, cex = 0.7)
+  graphics::abline(h = max(gaugings$stage_m), lty = 2, col = "grey40")
+  graphics::legend("bottomright",
+                   bty = "n",
+                   cex = 0.8,
+                   c("Candidate", "Its 95% band (sampling only)", "Rating in force", "Gaugings",
+                     "Highest gauging"),
+                   col = c("#1B6F80", grDevices::adjustcolor("#1B6F80", 0.25), "#B3261E",
+                           "black", "grey40"),
+                   lwd = c(2, 8, 1.5, NA, 1),
+                   lty = c(1, 1, 1, NA, 2),
+                   pch = c(NA, NA, NA, 19, NA))
+})
 
 # HOW TO READ balance_years.png
 # Each year's flow (points) against the range Fu's curve allows for that year's rain and
@@ -3573,6 +3700,14 @@ blocks <- c(
                                   "flow_range_high_mm", "kind", "gap_mm")],
                       caption = "The balance on the archived flow and on the candidate's")
        },
+       if (!is.null(rating_band_share)) {
+         report_text(sprintf(paste("Its 95%% bootstrap band, over the record's stage, puts a",
+                                   "year's flow within %+.1f%% to %+.1f%% of the candidate's:",
+                                   "the rating's sampling uncertainty, now part of the flow's",
+                                   "bound in the diagnosis above. Gauging error and the choice",
+                                   "of limbs would widen it."),
+                             100 * rating_band_share[1], 100 * rating_band_share[2]))
+       },
        if (length(candidate_note)) report_list(candidate_note),
        if (is.null(candidate) && follow_up$verdict == "fit a candidate rating") {
          report_alert(sprintf("No candidate rating was fitted: %s.", candidate_skip), FALSE)
@@ -3584,6 +3719,7 @@ blocks <- c(
                    "dated. No check proves a cause: gauges under-reading and a rating reading",
                    "high at peaks look alike in the floods, and a rating reading low at every",
                    "flow looks like a slow loss.")),
+  plot_blocks("candidate_band.png", "The candidate rating, its band, and the rating in force"),
   plot_blocks("balance_years.png", paste("Flow each", year_word, "against Fu's range")),
   plot_blocks("flood_ratio_vs_rain.png", "Flood runoff ratios against rain"),
   if (!is.null(record_check)) {

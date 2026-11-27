@@ -1,3 +1,19 @@
+# pdmS7 0.51.0
+
+- **The candidate rating's bootstrap band.** `compare_rain.R` fits the candidate with
+  `candidate_boot` bootstrap refits (500 by default; about a second) and uses the band twice:
+  - **`rating_follow_up(band = )`**: the band, not the rule of thumb, decides whether to refit.
+    A refit is called for when the rating in force lies outside the band for over a tenth
+    (`band_share`) of the flow the gaugings cover; a limb flagged by the 5% rule alone is only
+    noted.
+  - **`balance_diagnosis(rating_band = )`**: the band's range of a year's flow, over the
+    record's stage, joins the stage error as the flow's bound, the two taken as independent.
+    The diagnosis can then say whether the rating's own uncertainty could close the gap.
+  - **`candidate_band.png`** draws the candidate, its band, the rating in force and the
+    gaugings; `candidate_band.csv` holds the band at each stage.
+  The band covers the gaugings' sampling only, not gauging error or the choice of limbs, so it
+  is a lower bound: a rating outside it is clearly off. `compare_rain.R` needs pdmS7 0.51.0.
+
 # pdmS7 0.50.1
 
 - **`compare_rain.R` fits the candidate rating itself.** When the rating follow-up says to fit

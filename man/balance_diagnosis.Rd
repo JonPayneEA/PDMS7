@@ -18,7 +18,8 @@ balance_diagnosis(
   top_flow = NULL,
   high_flow_excess = 0.2,
   omega = c(1.5, 3.5),
-  min_complete = 0.9
+  min_complete = 0.9,
+  rating_band = NULL
 )
 }
 \arguments{
@@ -58,6 +59,13 @@ usual 2.6. Narrow it from neighbouring catchments where their balances are known
 
 \item{min_complete}{Share of a year's steps that must have flow and the reference rain for
 the year to count.}
+
+\item{rating_band}{Optional: how far the year's flow could be out from the rating's own
+uncertainty, as shares of the flow volume, \code{c(lower, upper)} (such as \code{c(-0.04, 0.05)}):
+the flow from the lower and upper edges of a rating's bootstrap band, over the record's
+stage, against its median. It covers the gaugings' sampling only. It is combined with the
+stage error from \code{record_check}, the two taken as independent (the square root of the sum
+of their squares).}
 }
 \value{
 A \code{pdm_balance_diagnosis} list:
