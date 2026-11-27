@@ -306,4 +306,10 @@ test_that("the rain comparison says how sure its order is and what to calibrate 
   # Whether the rating needs more work, at the head of the section.
   expect_true(any(grepl("follow_up <- rating_follow_up(diagnosis,", code, fixed = TRUE)))
   expect_true(any(grepl("rating_follow_up.csv", code, fixed = TRUE)))
+  # The candidate rating: fitted in the script when the gaugings call for it, at the in-force
+  # breakpoints, written up for review, and the balance worked out on its flow.
+  expect_true(any(grepl('^candidate_rating <- "auto"', code)))
+  expect_true(any(grepl('breakpoint_origin = "existing_rating"', code, fixed = TRUE)))
+  expect_true(any(grepl("reach.rate::rating_report(candidate,", code, fixed = TRUE)))
+  expect_true(any(grepl("balance_with_candidate.csv", code, fixed = TRUE)))
 })

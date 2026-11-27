@@ -9,7 +9,9 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-24
 # Tier:         1
-# Modified:     2026-11-27 - whether the rating needs more work, flagged in the report
+# Modified:     2026-11-27 - a candidate rating fitted from the gaugings when they call for
+#               one, written up for review, and the balance on its flow
+#               2026-11-27 - whether the rating needs more work, flagged in the report
 #               2026-11-27 - the stage from the flow station's WISKI ID alone; the gaugings
 #               and the ratings as data frames, or file names
 #               2026-11-27 - where the balance fails: rain, rating, a slow loss or gain, or a
@@ -234,6 +236,10 @@ ratings_file <- NULL           # the operational ratings export: a file name or 
 rating_station_id <- NULL      # the station's id in the ratings export (its FFFSLocID)
 dry_hours <- 48                # a step is dry after this many hours of little rain...
 dry_rain_mm <- 0.5             # ...no more than this, on the rain series recommended first
+# A candidate rating fitted from the gaugings, for the hydrometry team to review (never to use
+# in place of the operational one without them). "auto" fits one when the report says the
+# gaugings call for it; "always" fits one whenever there are gaugings; "never" does not.
+candidate_rating <- "auto"
 
 # ---- Read and line up the data ------------------------------------------------------------
 
@@ -2398,6 +2404,10 @@ spread_series <- unique(c(reference_rain, intersect(names_r, names(built))))
 # downloaded there with reach.io when missing and flow_station_wiski is set.
 record_check <- NULL
 gaugings_vs_rating <- NULL
+stage <- NULL
+gaugings <- NULL
+ratings <- NULL
+in_force <- NULL
 # With only the WISKI ID, the stage is kept as stage_<id>.csv in data_folder: downloaded the
 # first time, read from there after.
 if (is.null(stage_file) && !is.null(flow_station_wiski)) {
@@ -2463,7 +2473,6 @@ if (is.null(record_skip)) {
   stage <- stage_series$value[match(as.numeric(grid$time), as.numeric(stage_series$time))]
 
   # The gaugings, and the rating's top from the highest of them unless top_stage_m is set.
-  gaugings <- NULL
   if (!is.null(gaugings_file)) {
     gaugings <- read_or_take(gaugings_file,
                              function(x) reach.rate::read_gaugings(x, quiet = TRUE),
@@ -2483,7 +2492,6 @@ if (is.null(record_skip)) {
   }
 
   # The station's ratings, and the gaugings against the one in force (the one starting last).
-  ratings <- NULL
   if (!is.null(ratings_file)) {
     limbs <- read_or_take(ratings_file,
                           reach.rate::read_operational_ratings,
@@ -2569,6 +2577,99 @@ follow_up <- rating_follow_up(diagnosis,
                               gaugings = gaugings_vs_rating)
 fwrite(follow_up$findings, file.path(output_folder, "rating_follow_up.csv"))
 say("  rating: %s", follow_up$verdict)
+
+# The candidate rating: fitted from the gaugings at the breakpoints of the rating in force (as
+# many as the gaugings span), so the two compare limb by limb; assessed, exported and written
+# up for review in candidate_rating/; and, with stage, the balance worked out again on the
+# flow it gives. It is evidence for the team who own the rating, not a replacement.
+candidate <- NULL
+candidate_gap <- NULL
+candidate_compared <- NULL
+candidate_note <- NULL
+candidate_folder <- file.path(output_folder, "candidate_rating")
+want_candidate <- switch(candidate_rating,
+                         auto = follow_up$verdict == "fit a candidate rating",
+                         always = TRUE,
+                         never = FALSE,
+                         stop("candidate_rating must be \"auto\", \"always\" or \"never\".",
+                              call. = FALSE))
+candidate_skip <- if (!want_candidate) {
+  if (candidate_rating == "never") {
+    "candidate_rating is \"never\""
+  } else {
+    "the gaugings do not call for one"
+  }
+} else if (is.null(gaugings)) {
+  "it needs gaugings_file, and stage (stage_file or flow_station_wiski) for the check that reads it"
+}
+if (is.null(candidate_skip)) {
+  say("  fitting a candidate rating from %d gaugings", nrow(gaugings))
+  dir.create(candidate_folder, showWarnings = FALSE)
+  in_force_table <- if (!is.null(in_force)) ratings$tables[[in_force]]
+  breaks <- if (!is.null(in_force_table)) {
+    b <- sort(in_force_table@table$lower_level)[-1]
+    b[b > min(gaugings$stage_m) & b < max(gaugings$stage_m)]
+  }
+  candidate <- tryCatch(
+    reach.rate::fit_rating(gaugings,
+                           controls = if (length(breaks)) breaks,
+                           breakpoint_origin = "existing_rating",
+                           quiet = TRUE),
+    error = function(e) {
+      # Too few gaugings on some limb: one limb over them all, said so in the report.
+      candidate_note <<- sprintf(paste("The rating in force's breakpoints (%s m) could not be",
+                                       "fitted (%s), so the candidate has one limb."),
+                                 toString(round(breaks, 3)), conditionMessage(e))
+      reach.rate::fit_rating(gaugings, quiet = TRUE)
+    })
+  candidate_assessment <- reach.rate::assess_rating(candidate)
+  reach.rate::export_rating(candidate,
+                            candidate_assessment,
+                            file.path(candidate_folder, "export"),
+                            overwrite = TRUE)
+  # The review page needs rmarkdown, knitr and pandoc; without them the export still stands.
+  if (requireNamespace("rmarkdown", quietly = TRUE) &&
+        requireNamespace("knitr", quietly = TRUE) && rmarkdown::pandoc_available()) {
+    reach.rate::rating_report(candidate,
+                              candidate_assessment,
+                              path = file.path(candidate_folder, "rating_report.html"),
+                              title = "Candidate rating from the gaugings",
+                              overwrite = TRUE)
+  } else {
+    candidate_note <- c(candidate_note,
+                        paste("The review page needs rmarkdown, knitr and pandoc; install",
+                              "them to have rating_report.html written."))
+  }
+  if (!is.null(in_force_table)) {
+    candidate_compared <- reach.rate::compare_ratings(in_force_table, candidate)
+    fwrite(candidate_compared$discharge, file.path(candidate_folder, "candidate_vs_in_force.csv"))
+  }
+  # The balance again, on the flow the candidate gives from the stage.
+  if (!is.null(stage)) {
+    has_stage <- is.finite(stage)
+    candidate_flow <- rep(NA_real_, length(stage))
+    # Stages beyond the gaugings are extrapolated: said in the report, not left as a warning.
+    candidate_flow[has_stage] <- withCallingHandlers(
+      logger::with_log_threshold(
+        reach.rate::apply_rating(candidate, data.frame(stage = stage[has_stage]))$discharge,
+        threshold = logger::WARN),
+      warning = function(w) {
+        candidate_note <<- c(candidate_note, sub("\\s+$", "", conditionMessage(w)))
+        invokeRestart("muffleWarning")
+      })
+    candidate_gap <- balance_diagnosis(grid$time,
+                                       candidate_flow,
+                                       rains[spread_series],
+                                       pe,
+                                       area_km2,
+                                       floods,
+                                       reference = reference_rain,
+                                       water_year_start = year_start_month)$gap
+    fwrite(rbind(cbind(flow = "archived", diagnosis$gap),
+                 cbind(flow = "candidate rating", candidate_gap)),
+           file.path(candidate_folder, "balance_with_candidate.csv"))
+  }
+}
 
 # HOW TO READ balance_years.png
 # Each year's flow (points) against the range Fu's curve allows for that year's rain and
@@ -3027,12 +3128,20 @@ lines <- c(
     "",
     sprintf("- [%s] %s: %s; %s.", follow_up$findings$status, follow_up$findings$check,
             follow_up$findings$finding, follow_up$findings$action),
-    if (follow_up$verdict == "fit a candidate rating") {
+    if (!is.null(candidate)) {
       c("",
-        paste("To fit one: `fit <- reach.rate::fit_rating(gaugings)`, then",
-              "`reach.rate::rating_report(fit, reach.rate::assess_rating(fit))` for the",
-              "hydrometry team. Put it in `ratings_file` and run again to see whether the",
-              "balance closes."))
+        paste("A candidate rating was fitted from the gaugings, for the hydrometry team to",
+              "review: `candidate_rating/` holds `rating_report.html`, the export, and",
+              "`candidate_vs_in_force.csv`."),
+        if (!is.null(candidate_gap)) {
+          sprintf(paste("On the flow it gives, the balance is %s (gap %.0f mm a year),",
+                        "against %s (gap %.0f mm) on the archived flow."),
+                  candidate_gap$kind, candidate_gap$gap_mm, diagnosis$gap$kind,
+                  diagnosis$gap$gap_mm)
+        },
+        candidate_note)
+    } else if (follow_up$verdict == "fit a candidate rating") {
+      c("", sprintf("No candidate rating was fitted: %s.", candidate_skip))
     },
     "",
     if (is.null(record_check)) {
@@ -3438,13 +3547,35 @@ blocks <- c(
                     !follow_up$action_needed),
        report_table(follow_up$findings[, c("status", "check", "finding", "action")],
                     caption = "Whether the rating needs more work: act, ask, note or fine"),
-       if (follow_up$verdict == "fit a candidate rating") {
-         report_text("To fit one from the gaugings and write it up for the hydrometry team:",
-                     "fit <- reach.rate::fit_rating(gaugings), then",
-                     "reach.rate::rating_report(fit, reach.rate::assess_rating(fit)). A water",
-                     "balance alone should not change an operational rating: the candidate is",
-                     "evidence for the team who own it. Put it in ratings_file and run again to",
-                     "see whether the balance closes.")
+       if (!is.null(candidate)) {
+         report_heading("A candidate rating from the gaugings", 3)
+       },
+       if (!is.null(candidate)) {
+         report_text(sprintf(paste("Fitted from %d gaugings%s, for the hydrometry team to",
+                                   "review: candidate_rating/rating_report.html is the review",
+                                   "page, candidate_rating/export/ the rating itself, and",
+                                   "candidate_vs_in_force.csv the two set side by side. A",
+                                   "water balance alone should not change an operational",
+                                   "rating: this is evidence for the team who own it."),
+                             nrow(gaugings),
+                             if (!is.null(in_force)) {
+                               sprintf(paste(" with the breakpoints of the rating in force",
+                                             "(%s) that the gaugings span"),
+                                       in_force)
+                             } else {
+                               ""
+                             }))
+       },
+       if (!is.null(candidate_gap)) {
+         report_table(rbind(cbind(flow = "archived", diagnosis$gap),
+                            cbind(flow = "candidate rating", candidate_gap))[
+                              , c("flow", "rain_mm", "flow_mm", "flow_range_low_mm",
+                                  "flow_range_high_mm", "kind", "gap_mm")],
+                      caption = "The balance on the archived flow and on the candidate's")
+       },
+       if (length(candidate_note)) report_list(candidate_note),
+       if (is.null(candidate) && follow_up$verdict == "fit a candidate rating") {
+         report_alert(sprintf("No candidate rating was fitted: %s.", candidate_skip), FALSE)
        },
        report_text("Each suspect leaves its own mark. The rain is set against the spread",
                    "between the catchment averages and gauge under-catch; the rating against",

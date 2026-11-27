@@ -1,3 +1,15 @@
+# pdmS7 0.50.1
+
+- **`compare_rain.R` fits the candidate rating itself.** When the rating follow-up says to fit
+  one (`candidate_rating <- "auto"`, or `"always"`), the script fits it from the gaugings with
+  the rating in force's breakpoints that the gaugings span, so the two compare limb by limb,
+  falling back to one limb if those cannot be fitted. It is assessed, exported and written up
+  for review in `rain_comparison/candidate_rating/` (`rating_report.html`, `export/`,
+  `candidate_vs_in_force.csv`), and, with stage, the balance is worked out again on the flow
+  it gives (`balance_with_candidate.csv`, and a table in the report). Stages beyond its
+  gaugings are noted in the report as extrapolated. The review page needs rmarkdown, knitr
+  and pandoc; without them the rest is still written.
+
 # pdmS7 0.50.0
 
 - **Whether the rating needs more work.** The new `rating_follow_up()` reads a balance
