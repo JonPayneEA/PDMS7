@@ -180,9 +180,10 @@ test_that("the rain comparison parses, stops until the area is set, and names it
   expect_no_error(parse(text = code))
   # The area is left blank, so the script cannot run on a wrong default.
   expect_true(any(grepl("^area_km2 <- NA ", code)))
-  # Every HOW TO READ note names a plot the script writes.
+  # Every HOW TO READ note names a plot the script writes: 11, and three for where the balance
+  # fails (balance_years, flood_ratio_vs_rain and record_curves).
   notes <- sub("^\\s*# HOW TO READ ", "", grep("^\\s*# HOW TO READ ", code, value = TRUE))
-  expect_length(notes, 11)
+  expect_length(notes, 14)
   written <- code[!grepl("^\\s*#", code)]
   for (name in notes) {
     expect_true(any(grepl(sprintf('"%s"', name), written, fixed = TRUE)), info = name)
@@ -291,4 +292,10 @@ test_that("the rain comparison says how sure its order is and what to calibrate 
   expect_true(any(grepl("radar_merge_key.txt", code, fixed = TRUE)))
   # Kriging with the radar as the drift is kept the same way, with the variogram in its key.
   expect_true(any(grepl("radar_ked_key.txt", code, fixed = TRUE)))
+  # Where the balance fails: the diagnosis on the series recommended first, and the flow
+  # record checked with reach.rate only when stage is given.
+  expect_true(any(grepl("^stage_file <- NULL", code)))
+  expect_true(any(grepl("balance_diagnosis(grid$time,", code, fixed = TRUE)))
+  expect_true(any(grepl("reach.rate::check_flow_record(record,", code, fixed = TRUE)))
+  expect_true(any(grepl("\"stage_file was not given\"", code, fixed = TRUE)))
 })
