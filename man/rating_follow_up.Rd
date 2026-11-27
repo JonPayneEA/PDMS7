@@ -11,7 +11,9 @@ rating_follow_up(
   residual_pct = 5,
   within_share = 0.8,
   min_gaugings = 10,
-  above_top_share = 0.05
+  above_top_share = 0.05,
+  band = NULL,
+  band_share = 0.1
 )
 }
 \arguments{
@@ -29,6 +31,14 @@ is beyond \code{residual_pct} per cent, or fewer than \code{within_share} of the
 
 \item{above_top_share}{The share of flow volume above the top of the rating above which the
 top needs testing.}
+
+\item{band}{Optional: a candidate rating's bootstrap band set against the rating in force,
+a data frame with \code{stage_m}, \code{weight} (each stage's share of the flow, such as its steps
+times its flow), \code{in_force_cms}, \code{lower_cms} and \code{upper_cms}, over the stages the gaugings
+cover.}
+
+\item{band_share}{The share of the weighted flow over which the rating in force may lie
+outside the band before a refit is called for.}
 }
 \value{
 A \code{pdm_rating_follow_up} list: \code{verdict} (one of \code{"fit a candidate rating"},
@@ -45,7 +55,12 @@ whether the rating calls for more work, and which:
 \itemize{
 \item \strong{Fit a candidate rating} when a limb's gaugings sit consistently off the rating in force
 (median residual beyond \code{residual_pct}, or under \code{within_share} of them within 10\%) and
-there are at least \code{min_gaugings} over it to fit from.
+there are at least \code{min_gaugings} over it to fit from. With a bootstrap \code{band} from a
+candidate fitted to the gaugings, the band decides instead: a refit is called for when the
+rating in force lies outside it for more than \code{band_share} of the flow the gaugings cover,
+and a limb flagged by the rule of thumb alone is only noted. The band covers the
+gaugings' sampling only (not gauging error or the choice of limbs), so it is narrow: a
+rating outside it is clearly off, one inside it cannot be told apart by these gaugings.
 \item \strong{Get high-flow gaugings} when a limb is off but too thinly gauged to refit, or when much
 of the flow (over \code{above_top_share}) comes from above the highest gauging.
 \item \strong{Ask the hydrometry team} when the record was made with a rating not in the export, or

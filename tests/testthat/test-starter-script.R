@@ -180,10 +180,10 @@ test_that("the rain comparison parses, stops until the area is set, and names it
   expect_no_error(parse(text = code))
   # The area is left blank, so the script cannot run on a wrong default.
   expect_true(any(grepl("^area_km2 <- NA ", code)))
-  # Every HOW TO READ note names a plot the script writes: 11, and three for where the balance
-  # fails (balance_years, flood_ratio_vs_rain and record_curves).
+  # Every HOW TO READ note names a plot the script writes: 11, and four for where the balance
+  # fails (balance_years, flood_ratio_vs_rain, record_curves and candidate_band).
   notes <- sub("^\\s*# HOW TO READ ", "", grep("^\\s*# HOW TO READ ", code, value = TRUE))
-  expect_length(notes, 14)
+  expect_length(notes, 15)
   written <- code[!grepl("^\\s*#", code)]
   for (name in notes) {
     expect_true(any(grepl(sprintf('"%s"', name), written, fixed = TRUE)), info = name)
@@ -312,4 +312,8 @@ test_that("the rain comparison says how sure its order is and what to calibrate 
   expect_true(any(grepl('breakpoint_origin = "existing_rating"', code, fixed = TRUE)))
   expect_true(any(grepl("reach.rate::rating_report(candidate,", code, fixed = TRUE)))
   expect_true(any(grepl("balance_with_candidate.csv", code, fixed = TRUE)))
+  # Its bootstrap band: the flow bound in the diagnosis, and the refit test in the follow-up.
+  expect_true(any(grepl("^candidate_boot <- 500", code)))
+  expect_true(any(grepl("rating_band = rating_band_share)", code, fixed = TRUE)))
+  expect_true(any(grepl("band = band)", code, fixed = TRUE)))
 })
