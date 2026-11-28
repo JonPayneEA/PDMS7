@@ -1,3 +1,18 @@
+# pdmS7 0.53.0
+
+- **`compare_rain.R` reads its settings from a YAML file.** The script is no longer edited:
+  its settings live in `rain.yml` (the template is `system.file("examples", "rain.yml",
+  package = "pdmS7")`), read and checked by the new `read_rain_settings()`. Each key is the
+  name the script already used, grouped for reading (catchment, files, period, rain gauges,
+  averages, radar, rating, candidate rating, events); a key may sit in any group or at the top
+  level, and a misspelt one is refused by name, never ignored. Every problem in the file is
+  reported at once. Folders are taken from the settings file's folder. The script uses a
+  `rain_settings` object already in the session, else `settings_file`, else `rain.yml` in the
+  working directory; if the file has changed since `rain_settings` was read, it is read again,
+  with a message. The rest of the script is unchanged: on the synthetic test catchment its 45
+  output files are byte for byte those of 0.52.0. YAML 1.1 reads a bare `y` or `n` as true or
+  false, which would lose a gauge's `y` position: the reader keeps them as text.
+
 # pdmS7 0.52.0
 
 - **Radar by season.** The new `radar_by_season()` says why raw radar rain sits apart from the
