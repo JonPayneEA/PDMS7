@@ -115,3 +115,20 @@ rain_comparison: null            # e.g. ../rain_comparison
 #   hydrodynamic_own    the flow goes into a hydrodynamic model with its own hydraulics, which
 #                       needs the flow right in its own terms, peaks included
 forecast_use: stage
+
+# How calibration scores the peaks, where the rating is least sure. auto: no tolerance for stage
+# and hydrodynamic_rated, as the rating's error cancels downstream; for hydrodynamic_own, half
+# the rating's 95% band (about one standard error), so a simulated peak within it counts as a
+# perfect fit. 0 for none, or a multiple of the band (0.5, 1, 2) to see how much the peaks
+# drive the calibration. The band comes from the rain comparison and needs its gaugings. The
+# factor, the band's source and the reason are recorded with every run.
+peak_tolerance: auto
+peak_tolerance_cap: 0.5          # the most the tolerance may be, as a share of the flow
+
+# Flow known to be wrong, left out of calibration's scores (never a flow for being high). The
+# rain comparison's periods (events its first series missed, flow off the applied rating) are
+# left out already. Add quality codes to leave out, from the flow file's quality column, and
+# periods of your own.
+mask_quality: []                 # e.g. [Suspect, Estimated]
+mask_periods: []                 # e.g. [{from: "2015-12-05 06:00", to: "2015-12-07 18:00",
+                                 #        reason: "gauge drowned out"}]

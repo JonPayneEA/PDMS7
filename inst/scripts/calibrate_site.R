@@ -8,7 +8,9 @@
 # Flode Module: standalone; target reach.hydro
 # Author:       pdmS7 contributors
 # Created:      2026-11-24
-# Modified:     2026-11-28 - the rain from the rain comparison's calibration_inputs.yml,
+# Modified:     2026-11-28 - the calibration mask and the peak tolerance, registered with
+#               the data and recorded in the summary
+#               2026-11-28 - the rain from the rain comparison's calibration_inputs.yml,
 #               with its warnings; forecast_use recorded
 #               2026-11-24 - First version; warnings, lead time, annual maxima, seasons,
 #               recessions, gauge response, regional context, storm-by-storm rain errors and
@@ -18,7 +20,7 @@
 # Outputs:      An output folder: summary.md, then 1_data, 2_water_balance, 3_events,
 #               4_calibration (the calibration project and its report), 5_diagnostics and
 #               6_input_uncertainty, each with plots (PNG) and tables (CSV)
-# Dependencies: pdmS7 (0.55.0 or later); data.table; yaml
+# Dependencies: pdmS7 (0.58.0 or later); data.table; yaml
 # ============================================================ #
 #
 # How to run it
@@ -68,7 +70,7 @@ suppressPackageStartupMessages({
   library(pdmS7)
   library(data.table)
 })
-stopifnot(utils::packageVersion("pdmS7") >= "0.55.0")
+stopifnot(utils::packageVersion("pdmS7") >= "0.58.0")
 `%||%` <- function(x, y) if (is.null(x)) y else x
 say <- function(...) cat(sprintf(...), "\n", sep = "")
 listed <- function(x) if (length(x)) paste(x, collapse = ", ") else "none"
@@ -540,7 +542,51 @@ if (dir.exists(project)) {
       project)
   say("   settings for a fresh calibration.")
 }
+# What calibration leaves out, and how it scores the peaks (calibration-mask-design.md): the
+# flows known to be wrong, never the high ones; and, where the forecasts need true flow, the
+# rating's band. Both are registered with the data, so every search in the project scores alike
+# and the calibration log records them.
+mask_periods <- rbind(s$mask_periods, s$calibration_inputs$mask)
+flow_quality <- attr(raw$flow, "quality")
+if (length(s$mask_quality) && is.null(flow_quality)) {
+  stop("mask_quality needs a quality column in the flow file, and ", basename(s$flow),
+       " has none.", call. = FALSE)
+}
+in_calibration <- grid$time >= as.POSIXct(calibration[1], tz = "UTC") &
+  grid$time <= as.POSIXct(calibration[2], tz = "UTC")
+cal_mask <- calibration_mask(grid$time, periods = mask_periods,
+                             quality = if (!is.null(flow_quality)) {
+                               flow_quality[match(grid$time, raw$flow$time)]
+                             },
+                             mask_quality = s$mask_quality, within = in_calibration)
+peak_tolerance <- if (s$peak_tolerance_factor > 0) {
+  list(band = s[["rating_band"]], factor = s$peak_tolerance_factor, cap = s$peak_tolerance_cap,
+       source = s$rating_band_source, reason = s$peak_tolerance_reason)
+}
+fwrite(data.frame(cal_mask$masked), file.path(d4, "calibration_mask.csv"))
+say("   Left out of the scores: %.1f%% of the calibration window%s", 100 * cal_mask$share,
+    if (nrow(cal_mask$masked)) paste0(" (", paste(cal_mask$masked$reason, collapse = "; "), ")")
+    else "")
+say("   Peaks: %s", s$peak_tolerance_reason)
+note("## What calibration left out, and how it scored the peaks", "",
+     sprintf(paste("Left out of the scores: %.1f%% of the calibration window, flows known to",
+                   "be wrong; never a flow for being high (`4_calibration/calibration_mask.csv`)."),
+             100 * cal_mask$share),
+     if (nrow(cal_mask$masked)) {
+       sprintf("- %s: %d steps (%.1f%%).", cal_mask$masked$reason, cal_mask$masked$steps,
+               100 * cal_mask$masked$share)
+     },
+     "",
+     sprintf("Peaks: %s.%s", s$peak_tolerance_reason,
+             if (!is.null(peak_tolerance)) {
+               sprintf(" The band is %s, capped at %.0f%% of the flow.",
+                       s$rating_band_source, 100 * s$peak_tolerance_cap)
+             } else {
+               ""
+             }),
+     "")
 calibrate_project(project, forcing, flow, area, calibration, validation, structure = start,
+                  mask = cal_mask, peak_tolerance = peak_tolerance,
                   stages = stages, recommend = plan$recommend, overrides = overrides,
                   starts = plan$starts, seed = 1L, control = list(maxit = plan$budget),
                   method = "dds", catchment = site$name, gauge = as.character(site$gauge %||% ""),
@@ -774,6 +820,20 @@ levels <- if (stand_in) {
   stats::setNames(s$thresholds$value, s$thresholds$name)
 }
 val_rows <- which(in_val)
+# Validation raw and with the mask: the raw score is the one to compare between calibrations;
+# the gap between them is how much of the shortfall lies in flows the model was not meant to fit.
+nse_on <- function(rows) {
+  o <- flow[rows]
+  m <- simulated[rows]
+  ok <- is.finite(o) & is.finite(m)
+  1 - sum((m[ok] - o[ok])^2) / sum((o[ok] - mean(o[ok]))^2)
+}
+kept_val <- which(in_val & cal_mask$keep)
+if (length(kept_val) < length(val_rows)) {
+  note(sprintf(paste("- Validation NSE on the model's plain run: %.2f raw, %.2f with the %d",
+                     "masked steps left out. Compare calibrations on the raw score."),
+               nse_on(val_rows), nse_on(kept_val), length(val_rows) - length(kept_val)), "")
+}
 threshold_scores <- pdm_threshold_scores(simulated[val_rows], flow[val_rows], levels,
                                          dt_hours = dt)
 fwrite(threshold_scores, file.path(d5, "thresholds_validation.csv"))

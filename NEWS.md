@@ -1,3 +1,31 @@
+# pdmS7 0.58.0
+
+- **The calibration mask and the peak tolerance** (calibration-mask-design.md). Calibration now
+  leaves out flow known to be wrong, keeps the uncertain peaks, and allows for the rating's error
+  at the peaks only where the forecast's use needs true flow.
+  - `calibration_mask()` leaves out periods given or found by the checks (an event the
+    calibration rain missed, flow off the applied rating) and, if asked, quality codes. It never
+    leaves a flow out for being high. The model still runs through every step, and events are
+    still found on the whole record. An event whose peak is masked is dropped whole. It warns
+    when more than a quarter of the calibration window is masked.
+  - `peak_band()` and `tolerate()`: a dead band at the rating's band, so a simulated flow inside
+    it scores as a perfect fit and one outside it as out by its distance from the band. It is
+    applied to the simulation before scoring, so every objective works with it unchanged.
+  - `calibrate_pdm()` and `calibrate_staged()` gain `mask` and `band`. `register_data()` gains
+    `mask` and `peak_tolerance`, so every search in a project scores by them, coarse stages and
+    the structure comparison included. The calibration log records both, and each automatic
+    calibration records what its score left out. A Pareto calibration refuses them for now.
+  - `site.yml`: `peak_tolerance` (`auto`, 0, or a factor), `peak_tolerance_cap`,
+    `mask_quality` and `mask_periods`. `auto` is no tolerance for `stage` and
+    `hydrodynamic_rated`, where the rating's error cancels downstream, and half the band (about
+    one standard error) for `hydrodynamic_own`. A tolerance with no band to hand is refused,
+    never assumed. The factor and the reason for it are recorded with every run.
+  - `compare_rain.R` writes the mask periods and the band, from the candidate rating's band
+    from the gaugings, into `calibration_inputs.yml`. `calibrate_site.R` registers them, reports
+    them at the head of its summary, and scores validation both raw and masked.
+  - `read_hydro_series()` keeps a quality column, when the file has one, as the attribute
+    `quality`.
+
 # pdmS7 0.57.0
 
 - **`compare_rain.R`: one report, and the summary is part of it.** `summary.md` used to be

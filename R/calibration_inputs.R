@@ -30,6 +30,12 @@
 #'   `NA` where none was worked out.
 #' @param warnings What a calibration on these series should know, one sentence each.
 #' @param made_by What wrote the file, recorded in it.
+#' @param mask `NULL`, or periods a calibration on these series should leave out: a data frame
+#'   of `from`, `to` (times, `to` inclusive) and `reason`, such as the events the first series
+#'   missed and the flow off the applied rating.
+#' @param rating_band `NULL`, or the rating's band for the peak tolerance: a data frame of `q`
+#'   (m3/s), `lower` (a share, 0 or below) and `upper` (0 or above).
+#' @param rating_band_source Where the band came from, recorded beside it.
 #' @return `path`, invisibly.
 #' @export
 #' @examples
@@ -39,7 +45,8 @@
 #'                          rain_error = 0.12)
 #' cat(readLines(f), sep = "\n")
 write_calibration_inputs <- function(path, rain, period, step_hours, rain_error = NA_real_,
-                                     warnings = character(0), made_by = "pdmS7") {
+                                     warnings = character(0), made_by = "pdmS7", mask = NULL,
+                                     rating_band = NULL, rating_band_source = NULL) {
   .check(is.character(path) && length(path) == 1 && nzchar(path), "path must be one file")
   .check(is.character(rain) && length(rain) >= 1 && !is.null(names(rain)) &&
            all(nzchar(names(rain))) && !anyNA(rain) && !anyDuplicated(names(rain)),
@@ -51,6 +58,14 @@ write_calibration_inputs <- function(path, rain, period, step_hours, rain_error 
   .check(length(rain_error) == 1 && (is.na(rain_error) || .scalar(rain_error, 0, 1)),
          "rain_error must be a fraction between 0 and 1, or NA")
   .check(is.character(warnings), "warnings must be text")
+  .check(is.null(mask) || (is.data.frame(mask) && all(c("from", "to", "reason") %in% names(mask))),
+         "mask must be a data frame of from, to and reason")
+  .check(is.null(rating_band) ||
+           (is.data.frame(rating_band) && all(c("q", "lower", "upper") %in% names(rating_band))),
+         "rating_band must be a data frame of q, lower and upper")
+  stamp <- function(x) {
+    if (inherits(x, "POSIXct")) format(x, "%Y-%m-%d %H:%M", tz = "UTC") else as.character(x)
+  }
   out <- list(
     made_by = as.character(made_by),
     made_on = format(Sys.Date()),
@@ -59,6 +74,18 @@ write_calibration_inputs <- function(path, rain, period, step_hours, rain_error 
     rain = as.list(rain),
     rain_error = if (is.na(rain_error)) NULL else rain_error,
     warnings = as.list(unname(warnings)))
+  if (!is.null(mask) && nrow(mask)) {
+    out$mask <- lapply(seq_len(nrow(mask)), function(i) {
+      list(from = stamp(mask$from[i]), to = stamp(mask$to[i]),
+           reason = as.character(mask$reason[i]))
+    })
+  }
+  if (!is.null(rating_band) && nrow(rating_band)) {
+    out$rating_band <- list(source = as.character(rating_band_source %||% "not recorded"),
+                            q = as.numeric(rating_band$q),
+                            lower = as.numeric(rating_band$lower),
+                            upper = as.numeric(rating_band$upper))
+  }
   header <- c(
     "# The rain comparison's hand-off to calibration, written by compare_rain.R.",
     "# Name its folder in a site's site.yml (rain_comparison: ...) and calibrate_site.R takes",
@@ -82,7 +109,9 @@ write_calibration_inputs <- function(path, rain, period, step_hours, rain_error 
 #' @param x The file, or the folder it is in (the comparison's output folder).
 #' @return A `pdm_calibration_inputs` list: `file`, `made_by`, `made_on`, `period`,
 #'   `step_hours`, `rain` (a named list of absolute paths, the first to calibrate on),
-#'   `rain_error` (`NA` if none) and `warnings` (text, possibly empty).
+#'   `rain_error` (`NA` if none), `warnings` (text, possibly empty), `mask` (a data frame of
+#'   `from`, `to` and `reason`, or `NULL`), `rating_band` (a data frame of `q`, `lower` and
+#'   `upper`, or `NULL`) and `rating_band_source`.
 #' @export
 #' @examples
 #' folder <- file.path(tempdir(), "rain_comparison")
@@ -120,7 +149,18 @@ read_calibration_inputs <- function(x) {
                  step_hours = step,
                  rain = rain,
                  rain_error = if (is.numeric(raw$rain_error)) raw$rain_error else NA_real_,
-                 warnings = as.character(unlist(raw$warnings))),
+                 warnings = as.character(unlist(raw$warnings)),
+                 mask = if (length(raw$mask)) {
+                   data.frame(from = vapply(raw$mask, function(m) as.character(m$from), ""),
+                              to = vapply(raw$mask, function(m) as.character(m$to), ""),
+                              reason = vapply(raw$mask, function(m) as.character(m$reason), ""))
+                 },
+                 rating_band = if (length(raw$rating_band$q)) {
+                   data.frame(q = as.numeric(unlist(raw$rating_band$q)),
+                              lower = as.numeric(unlist(raw$rating_band$lower)),
+                              upper = as.numeric(unlist(raw$rating_band$upper)))
+                 },
+                 rating_band_source = as.character(raw$rating_band$source %||% "")),
             class = "pdm_calibration_inputs")
 }
 
@@ -134,6 +174,11 @@ print.pdm_calibration_inputs <- function(x, ...) {
                 if (i == 1) " (calibrates)" else ""))
   }
   if (is.finite(x$rain_error)) cat("  Rain error: ", x$rain_error, "\n", sep = "")
+  if (!is.null(x$mask)) cat("  Mask: ", nrow(x$mask), " periods to leave out\n", sep = "")
+  if (!is.null(x$rating_band)) {
+    cat("  Rating band: ", nrow(x$rating_band), " flows, from ", x$rating_band_source, "\n",
+        sep = "")
+  }
   if (length(x$warnings)) {
     cat("  Warnings:\n")
     cat(paste0("    - ", x$warnings), sep = "\n")

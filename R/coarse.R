@@ -54,3 +54,17 @@
   list(config = config, forcing = c2$forcing, observed = c2$observed,
        warmup = as.integer(ceiling(warmup / factor)), factor = factor)
 }
+
+# The mask and the peak band on the coarse step: a coarse step is scored only if every fine step
+# in it is, and its band is the mean of theirs. The record is cut to whole coarse steps, as
+# .coarsen() cuts it.
+.coarse_mask <- function(mask, factor, n) {
+  if (is.null(mask) || factor == 1L) return(mask)
+  apply(matrix(mask[seq_len(n * factor)], nrow = factor), 2, all)
+}
+.coarse_band <- function(band, factor, n) {
+  if (is.null(band) || factor == 1L) return(band)
+  rows <- seq_len(n * factor)
+  data.frame(lower = colMeans(matrix(band$lower[rows], nrow = factor)),
+             upper = colMeans(matrix(band$upper[rows], nrow = factor)))
+}

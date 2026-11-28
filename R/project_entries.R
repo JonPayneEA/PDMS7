@@ -93,6 +93,14 @@
 #'   so every catchment gets threshold scores and an event floor to fit to. QMED needs times
 #'   in `forcing` and two complete water years, and is left out otherwise, as is any marker
 #'   that cannot be worked out. `NULL` registers none.
+#' @param mask `NULL`, or a [calibration_mask()] over the forcing's rows: flows known to be
+#'   wrong, left out of every search's score in the project. Stored as runs of rows with their
+#'   reasons, so the log shows what was left out and why.
+#' @param peak_tolerance `NULL`, or a list of `band` (the rating's band: `q`, `lower`,
+#'   `upper`, as [peak_band()] takes it), `factor`, `cap`, and, for the record, `source` (where
+#'   the band came from) and `reason` (why this tolerance). Every search then scores a
+#'   simulated flow inside the band as a perfect fit. Leave it `NULL` when the forecasts go
+#'   back through the same rating.
 #' @param rating Rating table for level thresholds: a CSV path or data frame with `stage_m`
 #'   and `q_m3s`. Levels outside it are refused, not extrapolated. Stored like the data.
 #' @param event_tolerance_h,event_gap_h,event_min_duration_h Event matching settings in
@@ -260,7 +268,8 @@ register_data <- function(project, forcing, observed, calibration, validation = 
                           copy = TRUE, reasoning = "", thresholds = NULL, rating = NULL,
                           event_tolerance_h = 6, event_gap_h = 24, event_min_duration_h = 0,
                           test = NULL, highest_gauged_m3s = NULL, wettest_years = 2,
-                          tie_tolerance = 0.02, markers = c("QMED", "Q1", "Q5")) {
+                          tie_tolerance = 0.02, markers = c("QMED", "Q1", "Q5"), mask = NULL,
+                          peak_tolerance = NULL) {
   author <- .identity("custodian")
   path <- .project_path(project)
   forcing_data <- .as_forcing(forcing)
@@ -282,6 +291,17 @@ register_data <- function(project, forcing, observed, calibration, validation = 
          "wettest_years must be a whole number, 0 or more")
   .check(.scalar(tie_tolerance, 0), "tie_tolerance must be a nonnegative number")
   if (!is.null(highest_gauged_m3s)) highest_gauged_m3s <- as.numeric(highest_gauged_m3s)
+  # The calibration mask and the peak tolerance (calibration-mask-design.md), fixed here with the
+  # rest of the scorecard, so every search in the project scores alike and the log records how.
+  .check(is.null(mask) || (inherits(mask, "pdm_calibration_mask") &&
+                             length(mask$keep) == nrow(forcing_data)),
+         "mask must come from calibration_mask(), one value for each row of the forcing")
+  if (!is.null(peak_tolerance)) {
+    .check(is.list(peak_tolerance) && is.data.frame(peak_tolerance$band) &&
+             .scalar(peak_tolerance$factor, 0) && .scalar(peak_tolerance$cap, 0, 1),
+           "peak_tolerance must be a list of band (q, lower, upper), factor and cap")
+    peak_band(observed_data, peak_tolerance$band, peak_tolerance$factor, peak_tolerance$cap)
+  }
   # Windows may be given as rows or times; they must not overlap, and each needs observed flow.
   cal <- .resolve_window(calibration, forcing_data, "calibration")
   val <- .resolve_window(validation, forcing_data, "validation")
@@ -332,7 +352,14 @@ register_data <- function(project, forcing, observed, calibration, validation = 
         events = list(tolerance_h = event_tolerance_h, gap_h = event_gap_h,
                       min_duration_h = event_min_duration_h),
         wettest = wettest, highest_gauged_m3s = highest_gauged_m3s,
-        tie_tolerance = tie_tolerance
+        tie_tolerance = tie_tolerance,
+        mask = if (!is.null(mask)) as.list(.mask_runs(mask)),
+        peak_tolerance = if (!is.null(peak_tolerance)) {
+          list(band = as.list(peak_tolerance$band[, c("q", "lower", "upper")]),
+               factor = peak_tolerance$factor, cap = peak_tolerance$cap,
+               source = as.character(peak_tolerance$source %||% "not recorded"),
+               reason = as.character(peak_tolerance$reason %||% "not recorded"))
+        }
       ),
       rating_check = .rating_check(highest_gauged_m3s, observed_data,
                                    list(calibration = cal, validation = val, test = tst,
@@ -444,8 +471,12 @@ log_auto_calibration <- function(project, parent, lower, upper,
   archive <- if (length(.held_years(card))) {
     function(sim) .headline_score(sim[rows], held_obs[rows], card, cz$config$dt %||% dt)
   }
+  # The registered mask and peak band, on the search's own step.
+  sc <- .card_scoring(card, data$observed, last)
   fit <- calibrate_pdm(
     cz$config, cz$forcing, cz$observed,
+    mask = .coarse_mask(sc$mask, cz$factor, length(cz$observed)),
+    band = .coarse_band(sc$band, cz$factor, length(cz$observed)),
     lower = lower, upper = upper, warmup = cz$warmup,
     objective = objective, log_offset = card$log_offset, control = control,
     soil_fraction = card$soil_fraction, start = card$start %||% "soil",
@@ -481,7 +512,7 @@ log_auto_calibration <- function(project, parent, lower, upper,
          starts = as.integer(starts), seed = seed,
          control = control, start_results = as.list(fit$start_results),
          configuration = fit$config, scores = run$scores, output_md5 = run$output_md5,
-         equally_good = good, reasoning = reasoning)
+         equally_good = good, scoring = fit$scoring, reasoning = reasoning)
   })
   logger::log_info("Calibration {entry$id}: {.headline_text(registration, run$scores)}")
   invisible(entry)

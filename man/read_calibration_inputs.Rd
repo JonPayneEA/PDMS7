@@ -12,7 +12,9 @@ read_calibration_inputs(x)
 \value{
 A \code{pdm_calibration_inputs} list: \code{file}, \code{made_by}, \code{made_on}, \code{period},
 \code{step_hours}, \code{rain} (a named list of absolute paths, the first to calibrate on),
-\code{rain_error} (\code{NA} if none) and \code{warnings} (text, possibly empty).
+\code{rain_error} (\code{NA} if none), \code{warnings} (text, possibly empty), \code{mask} (a data frame of
+\code{from}, \code{to} and \code{reason}, or \code{NULL}), \code{rating_band} (a data frame of \code{q}, \code{lower} and
+\code{upper}, or \code{NULL}) and \code{rating_band_source}.
 }
 \description{
 Reads \code{calibration_inputs.yml}, as \code{\link[=write_calibration_inputs]{write_calibration_inputs()}} writes it, and checks that

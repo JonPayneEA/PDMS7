@@ -101,7 +101,11 @@ read_site_settings <- function(x) {
     regional_results = pick("regional_results"),
     bayes_generations = pick("bayes_generations"),
     rain_comparison = pick("rain_comparison"),
-    forecast_use = pick("forecast_use"))
+    forecast_use = pick("forecast_use"),
+    peak_tolerance = pick("peak_tolerance"),
+    peak_tolerance_cap = pick("peak_tolerance_cap"),
+    mask_quality = pick("mask_quality"),
+    mask_periods = pick("mask_periods"))
   path <- normalizePath(x)
   .check_site_settings(flat, path, dirname(path))
 }
@@ -188,6 +192,64 @@ read_site_settings <- function(x) {
       !s$forecast_use %in% c("stage", "hydrodynamic_rated", "hydrodynamic_own")) {
     fail("forecast_use must be stage, hydrodynamic_rated or hydrodynamic_own.")
   }
+  # The peak tolerance (calibration-mask-design.md), with the reason for it recorded, as every
+  # run catalogues how it scored the peaks.
+  pt <- or(s$peak_tolerance, "auto")
+  own <- identical(s$forecast_use, "hydrodynamic_own")
+  if (identical(pt, "auto")) {
+    s$peak_tolerance_factor <- if (own) 0.5 else 0
+    s$peak_tolerance_reason <- if (own) {
+      paste("auto, for forecast_use hydrodynamic_own: half the rating's 95% band, about one",
+            "standard error, so errors within the rating's own noise do not count")
+    } else {
+      sprintf(paste("auto, for forecast_use %s: none, as the rating's error cancels where the",
+                    "forecasts go back through the same rating"), s$forecast_use)
+    }
+  } else if (is.numeric(pt) && length(pt) == 1 && is.finite(pt) && pt >= 0) {
+    s$peak_tolerance_factor <- as.numeric(pt)
+    s$peak_tolerance_reason <- sprintf("given in the settings: %g times the rating's band", pt)
+  } else {
+    fail("peak_tolerance must be auto, 0, or a multiple of the rating's band such as 0.5.")
+    s$peak_tolerance_factor <- 0
+  }
+  s$peak_tolerance_cap <- suppressWarnings(as.numeric(or(s$peak_tolerance_cap, 0.5)))
+  if (length(s$peak_tolerance_cap) != 1 || !is.finite(s$peak_tolerance_cap) ||
+      s$peak_tolerance_cap < 0 || s$peak_tolerance_cap > 1) {
+    fail("peak_tolerance_cap must be a share between 0 and 1, such as 0.5.")
+  }
+  # Set with [<- and read with [[ ]]: `$` would partial-match rating_band to
+  # rating_band_source once rating_band were NULL.
+  s["rating_band"] <- list(if (!is.null(inputs)) inputs$rating_band)
+  s["rating_band_source"] <- list(if (!is.null(inputs)) inputs$rating_band_source)
+  if (s$peak_tolerance_factor > 0 && is.null(s[["rating_band"]])) {
+    fail("peak_tolerance needs the rating's band, from the rain comparison (rain_comparison:, ",
+         "run with gaugings), and there is none: set peak_tolerance: 0, or give the gaugings.")
+  }
+  # The mask: periods given by hand, quality codes if asked, and the rain comparison's periods.
+  s$mask_quality <- as.character(unlist(s$mask_quality))
+  periods <- s$mask_periods
+  if (length(periods) && !is.data.frame(periods)) {
+    ok <- is.list(periods) && all(vapply(periods, function(p) {
+      is.list(p) && !is.null(p$from) && !is.null(p$to)
+    }, logical(1)))
+    if (!ok) {
+      fail("mask_periods must be a list of {from: ..., to: ..., reason: ...}.")
+      periods <- NULL
+    } else {
+      periods <- data.frame(
+        from = vapply(periods, function(p) as.character(p$from), ""),
+        to = vapply(periods, function(p) as.character(p$to), ""),
+        reason = vapply(periods, function(p) as.character(p$reason %||% "given by hand"), ""))
+    }
+  }
+  if (is.data.frame(periods) && nrow(periods)) {
+    bad <- is.na(as.POSIXct(periods$from, tz = "UTC", optional = TRUE)) |
+      is.na(as.POSIXct(periods$to, tz = "UTC", optional = TRUE))
+    if (any(bad)) {
+      fail("mask_periods: each from and to must be a date-time, such as \"2015-12-05 06:00\".")
+    }
+  }
+  s$mask_periods <- if (is.data.frame(periods) && nrow(periods)) periods
   rain <- s$rain
   if (!is.null(rain) && !is.list(rain)) rain <- list(rain = rain)
   if (!length(rain)) {
@@ -346,6 +408,17 @@ print.pdm_site_settings <- function(x, ...) {
                                  hydrodynamic_own = paste("into a hydrodynamic model with its",
                                                           "own hydraulics")),
       "\n", sep = "")
+  cat("  Peaks:        ", if (x$peak_tolerance_factor > 0) {
+    sprintf("errors within %g of the rating's band forgiven", x$peak_tolerance_factor)
+  } else {
+    "scored as they stand"
+  }, " (", x$peak_tolerance_reason, ")\n", sep = "")
+  masks <- c(if (length(x$mask_periods)) sprintf("%d periods given", nrow(x$mask_periods)),
+             if (length(x$calibration_inputs$mask)) {
+               sprintf("%d from the rain comparison", nrow(x$calibration_inputs$mask))
+             },
+             if (length(x$mask_quality)) paste("quality", paste(x$mask_quality, collapse = ", ")))
+  if (length(masks)) cat("  Left out:     ", paste(masks, collapse = "; "), "\n", sep = "")
   if (!is.null(x$regional_results)) {
     cat("  Regional:     ", x$regional_results, "\n", sep = "")
   }

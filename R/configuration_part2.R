@@ -34,6 +34,14 @@
 #' @param boxcox_lambda The Box-Cox power for `objective = "boxcox"`, 0 (log) to 1 (raw).
 #' @param weights For `objective = "boxcox"`: `NULL`, or one nonnegative weight for each
 #'   observed flow, such as [flow_weights()] gives from rating uncertainty.
+#' @param mask `NULL`, or `TRUE` or `FALSE` for each observed flow, from [calibration_mask()]:
+#'   the steps to score. The model runs through every step and events are found on the whole
+#'   record; masked steps are left out of every term of the objective, and an event whose peak
+#'   is masked is dropped from the events objective whole.
+#' @param band `NULL`, or each step's `lower` and `upper` shares from [peak_band()]: the peak
+#'   tolerance. A simulated flow inside the band scores as a perfect fit, and one outside it as
+#'   out by its distance from the band ([tolerate()]). Leave it `NULL` when the forecasts go
+#'   back through the same rating, as the rating's error then cancels.
 #' @param flow Series to score: q_m3s (interval mean) or q_end_m3s (endpoint flow).
 #' @param log_offset Positive offset added before logarithms in log-RMSE and log NSE, cubic
 #' metres per second.
@@ -123,7 +131,9 @@
 #' best (TRUE for the returned start), and one column per calibrated parameter holding the
 #' fitted value, which always lies within lower and upper. With `archive`, also `trials`, a
 #' data.table of every valid trial's `score` and parameter values, with the trials' positions
-#' in the unit search box as its `unit` attribute.
+#' in the unit search box as its `unit` attribute. With `mask` or `band`, also `scoring`:
+#' `masked_steps` (observed steps after the warm-up left out), `scored_steps`,
+#' `peak_tolerance` (whether a band was applied) and `band_widest` (the band's widest shares).
 #'
 #' @examples
 #' config <- pdm_presets('standard')
@@ -152,7 +162,7 @@ calibrate_pdm <- function(
   baseflow_fraction = 0.7, start_flow = NULL, archive = NULL, events = NULL,
   event_weights = c(nse = 1, peak = 0.5, timing = 0.5), event_share = 0.5,
   event_screen = list(), cores = getOption("pdmS7.cores", 1L), boxcox_lambda = 0.5,
-  weights = NULL
+  weights = NULL, mask = NULL, band = NULL
 ) {
   # Outline: check the arguments; map the parameters onto a unit box (log-scaled where asked);
   # build a loss function that runs the model and scores it; minimise that loss from each start;
@@ -169,14 +179,25 @@ calibrate_pdm <- function(
   initial <- vapply(names(lower), function(p) .path_get(config, p), numeric(1))
   .check(all(initial >= lower & initial <= upper), "Initial parameters outside bounds")
   box <- .search_box(lower, upper, log_scale)
-  # Rows that are scored: after the warm-up, and observed. Missing flow is simply left out.
+  # Rows that are scored: after the warm-up, observed, and kept by the mask. Missing flow is
+  # simply left out; masked flow is left out of the scores but not of the run or the events.
+  .check(is.null(mask) || (is.logical(mask) && length(mask) == length(observed) &&
+                             !anyNA(mask)),
+         "mask must be TRUE or FALSE for each observed flow, from calibration_mask()")
+  .check(is.null(band) || (is.data.frame(band) && nrow(band) == length(observed) &&
+                             all(c("lower", "upper") %in% names(band))),
+         "band must give lower and upper for each observed flow, from peak_band()")
   keep <- is.finite(observed) & seq_along(observed) > warmup
+  if (!is.null(mask)) keep <- keep & mask
   .check(sum(keep) >= 2, "At least two observed values after warmup are required")
   .check_weights(weights, observed, keep)
   scoring <- .objective_scorer(objective, observed, keep, warmup, log_offset, events,
                                forcing$rain, pdm_from_config(config), event_weights,
                                event_share, event_screen, forcing$time, boxcox_lambda,
-                               weights)
+                               weights, mask)
+  # The threshold term scores the masked flow as missing.
+  threshold_obs <- observed
+  if (!is.null(mask)) threshold_obs[!mask] <- NA
   # Every trial starts the same way. The start is built once for the configured model first, so
   # a start that cannot work (a first flow below qc, say) stops here with its own message rather
   # than failing every trial.
@@ -216,6 +237,8 @@ calibrate_pdm <- function(
         mod <- pdm_from_config(build(box$to_value(z)))
         # A trial whose start caps the soil is still scored; the fitted model is checked at the end.
         all_sim <- .quietly(.run_flow(mod, forcing, suppressWarnings(begin(mod)), flow))
+        # The peak tolerance: a simulated flow inside the rating's band scores as a perfect fit.
+        if (!is.null(band)) all_sim <- tolerate(all_sim, observed, band)
         sim <- all_sim[keep]
         val <- scoring$score(all_sim)
         if (volume_weight > 0) {
@@ -223,7 +246,7 @@ calibrate_pdm <- function(
         }
         if (!is.null(thresholds)) {
           val <- val + threshold_weight * .threshold_loss(
-            all_sim[scored], observed[scored], thresholds, threshold_score, event_settings,
+            all_sim[scored], threshold_obs[scored], thresholds, threshold_score, event_settings,
             mod@dt
           )
         }
@@ -273,7 +296,17 @@ calibrate_pdm <- function(
                                      volume_weight, scoring$name),
     method = method
   ), out[c("convergence", "message", "optim", "start_results")],
-  if (!is.null(archive)) list(trials = .trial_table(counter$trials, box, names(lower))))
+  if (!is.null(archive)) list(trials = .trial_table(counter$trials, box, names(lower))),
+  if (!is.null(mask) || !is.null(band)) {
+    # What the scores left out and how they treated the peaks, for the record of the run.
+    after <- seq_along(observed) > warmup & is.finite(observed)
+    list(scoring = list(masked_steps = if (!is.null(mask)) sum(after & !mask) else 0L,
+                        scored_steps = sum(keep),
+                        peak_tolerance = !is.null(band),
+                        band_widest = if (!is.null(band)) {
+                          c(lower = min(band$lower[after]), upper = max(band$upper[after]))
+                        }))
+  })
 }
 
 # The archive of trials as a table of score and parameter values, with each trial's position in
@@ -336,10 +369,10 @@ calibrate_pdm <- function(
 # objective scores the event windows, every other objective the kept rows.
 .objective_scorer <- function(objective, observed, keep, warmup, log_offset, events, rain,
                               model, event_weights, event_share, event_screen, time = NULL,
-                              lambda = 0.5, weights = NULL) {
+                              lambda = 0.5, weights = NULL, mask = NULL) {
   if (objective == "events") {
     return(.event_objective(events, rain, observed, warmup, model@dt, event_weights, event_share,
-                            event_screen, model@area_km2, time))
+                            event_screen, model@area_km2, time, mask))
   }
   if (objective == "boxcox") {
     score <- .boxcox_scorer(observed[keep], log_offset, lambda,

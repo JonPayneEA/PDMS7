@@ -20,7 +20,9 @@ calibrate_staged(
   log_offset = 0.01,
   start = c("flow", "soil"),
   baseflow_fraction = 0.7,
-  cores = getOption("pdmS7.cores", 1L)
+  cores = getOption("pdmS7.cores", 1L),
+  mask = NULL,
+  band = NULL
 )
 
 log_staged_calibration(
@@ -46,6 +48,10 @@ log_staged_calibration(
 \item{bounds}{Bounds table from \code{\link[=calibration_bounds]{calibration_bounds()}}.}
 
 \item{starts, seed, control, method, cores}{Passed to \code{\link[=calibrate_pdm]{calibrate_pdm()}} for every stage.}
+
+\item{mask, band}{The calibration mask (\code{\link[=calibration_mask]{calibration_mask()}}) and the peak band
+(\code{\link[=peak_band]{peak_band()}}), passed to \code{\link[=calibrate_pdm]{calibrate_pdm()}} for every stage, put on the coarse step for a
+coarse stage. A Pareto stage takes neither yet.}
 
 \item{project}{A calibration project folder.}
 

@@ -28,7 +28,9 @@ read_hydro_series(
 }
 \value{
 A \code{pdm_hydro_series}: a data frame of \code{time} (POSIXct, UTC) and \code{value}, with the
-file, the columns used and the median step in minutes as attribute \code{source}.
+file, the columns used and the median step in minutes as attribute \code{source}, and, where
+the file has a column named \code{quality} (or \code{quality_code}, \code{flag}), the codes as attribute
+\code{quality}, one a row.
 }
 \description{
 Reads one series of rain, evaporation or flow from the layouts hydrometric exports use:

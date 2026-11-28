@@ -35,7 +35,9 @@ calibrate_pdm(
   event_screen = list(),
   cores = getOption("pdmS7.cores", 1L),
   boxcox_lambda = 0.5,
-  weights = NULL
+  weights = NULL,
+  mask = NULL,
+  band = NULL
 )
 }
 \arguments{
@@ -167,6 +169,16 @@ so more than one core pays only for long records or large budgets. Defaults to t
 
 \item{weights}{For \code{objective = "boxcox"}: \code{NULL}, or one nonnegative weight for each
 observed flow, such as \code{\link[=flow_weights]{flow_weights()}} gives from rating uncertainty.}
+
+\item{mask}{\code{NULL}, or \code{TRUE} or \code{FALSE} for each observed flow, from \code{\link[=calibration_mask]{calibration_mask()}}:
+the steps to score. The model runs through every step and events are found on the whole
+record; masked steps are left out of every term of the objective, and an event whose peak
+is masked is dropped from the events objective whole.}
+
+\item{band}{\code{NULL}, or each step's \code{lower} and \code{upper} shares from \code{\link[=peak_band]{peak_band()}}: the peak
+tolerance. A simulated flow inside the band scores as a perfect fit, and one outside it as
+out by its distance from the band (\code{\link[=tolerate]{tolerate()}}). Leave it \code{NULL} when the forecasts go
+back through the same rating, as the rating's error then cancels.}
 }
 \value{
 A list of config, model, parameters, objective, convergence, message, optim
@@ -178,7 +190,9 @@ including the finite-difference gradient calls that stats::optim counts leave ou
 best (TRUE for the returned start), and one column per calibrated parameter holding the
 fitted value, which always lies within lower and upper. With \code{archive}, also \code{trials}, a
 data.table of every valid trial's \code{score} and parameter values, with the trials' positions
-in the unit search box as its \code{unit} attribute.
+in the unit search box as its \code{unit} attribute. With \code{mask} or \code{band}, also \code{scoring}:
+\code{masked_steps} (observed steps after the warm-up left out), \code{scored_steps},
+\code{peak_tolerance} (whether a band was applied) and \code{band_widest} (the band's widest shares).
 }
 \description{
 Component of the configurable Moore (2007) rainfall-runoff framework.

@@ -544,6 +544,10 @@ log_pareto_calibration <- function(project, parent, lower, upper,
   node <- .model_node(entries, parent)
   registration <- .registration(entries)
   card <- registration$scorecard
+  .check(is.null(card$mask) && is.null(card$peak_tolerance), paste(
+    "A Pareto calibration takes no mask or peak tolerance yet, and this project's data carry",
+    "one: use the single-objective stages, or register the data without them"
+  ))
   data <- .load_registration(path, registration)
   first <- card$calibration$first_row
   last <- card$calibration$last_row
