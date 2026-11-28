@@ -9,7 +9,8 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-24
 # Tier:         1
-# Modified:     2026-11-28 - calibration_inputs.yml, the hand-off to calibrate_site.R
+# Modified:     2026-11-28 - h19_season's monthly factors tested out of sample
+#               2026-11-28 - calibration_inputs.yml, the hand-off to calibrate_site.R
 #               2026-11-28 - the gauges' clocks checked against the radar over each
 #               2026-11-28 - the settings read from rain.yml, not edited in the script
 #               2026-11-27 - radar by season: why the raw radar sits apart from the gauges
@@ -40,7 +41,7 @@
 # Outputs:      A folder: summary.md, rain_ranking.csv, weights_and_error.csv, plots each with a
 #               note on how to read it, and catchment_rain/ with each average built, as CSV
 #               ready for calibrate_site.R
-# Dependencies: pdmS7 (0.55.0 or later); sf for a shapefile and the search; reach.io
+# Dependencies: pdmS7 (0.56.0 or later); sf for a shapefile and the search; reach.io
 #               to find and download the gauges; arrow (or nanoparquet) for the processed
 #               H19 extracts, ncdf4 for the daily H19 files; reach.rate to check the flow
 #               record from stage, gaugings and ratings
@@ -107,8 +108,8 @@ library(data.table)
 
 # The script is written for this pdmS7 or later: an older one lacks functions it uses, and
 # would fail part way through.
-if (utils::packageVersion("pdmS7") < "0.55.0") {
-  stop("compare_rain.R needs pdmS7 0.55.0 or later; this is ",
+if (utils::packageVersion("pdmS7") < "0.56.0") {
+  stop("compare_rain.R needs pdmS7 0.56.0 or later; this is ",
        as.character(utils::packageVersion("pdmS7")),
        ". Update it with remotes::install_github(\"JonPayneEA/PDMS7\"), then restart R.",
        call. = FALSE)
@@ -1247,6 +1248,7 @@ if ("h19_bias" %in% rain_methods && !is.null(h19_series) && !is.null(radar_at_ga
 # daily files were read (the radar over each gauge against the gauge), otherwise on the
 # catchment against a gauge average.
 season_factors <- NULL
+factor_test <- NULL
 if ("h19_season" %in% rain_methods && !is.null(h19_series)) {
   steps_a_day <- 24 / step_hours
   day_of <- as.Date(grid$time)
@@ -1258,7 +1260,8 @@ if ("h19_season" %in% rain_methods && !is.null(h19_series)) {
     g <- daily_total(gauge_rain)
     r <- daily_total(radar_rain)
     ok <- is.finite(g) & is.finite(r) & g >= 1 & r >= 1
-    data.frame(month = as.integer(format(as.Date(names(g)[ok]), "%m")),
+    data.frame(date = as.Date(names(g)[ok]),
+               month = as.integer(format(as.Date(names(g)[ok]), "%m")),
                gauge_mm = g[ok],
                radar_mm = r[ok])
   }
@@ -1282,6 +1285,15 @@ if ("h19_season" %in% rain_methods && !is.null(h19_series)) {
     fwrite(season_factors, file.path(output_folder, "radar_season_factors.csv"))
     month_of <- as.integer(format(grid$time, "%m", tz = "UTC"))
     built$h19_season <- h19_series * season_factors$factor[month_of]
+    # The factors on years they were not fitted to: alternate water years, each half's
+    # factors applied to the other half. In sample, a factor always looks good.
+    factor_test <- test_season_factors(factor_pairs, water_year_start = 10)
+    if (!is.null(factor_test$scores)) {
+      fwrite(cbind(factor_test$scores, verdict = factor_test$verdict),
+             file.path(output_folder, "radar_season_factors_test.csv"))
+      fwrite(factor_test$months, file.path(output_folder, "radar_season_factors_by_fold.csv"))
+    }
+    say("  out of sample: %s", factor_test$verdict)
   }
 }
 
@@ -3809,7 +3821,13 @@ lines <- c(
                             "system."),
                       paste(sprintf("%s %.2f", month.abb, season_factors$factor),
                             collapse = ", "),
-                      season_factors$made_from[1]))
+                      season_factors$made_from[1]),
+          if (!is.null(factor_test)) {
+            c("", sprintf("**Out of sample: %s.** %s", factor_test$verdict, factor_test$why),
+              if (!is.null(factor_test$scores)) {
+                "Tables: `radar_season_factors_test.csv`, `radar_season_factors_by_fold.csv`."
+              })
+          })
       },
       "", "Tables: `radar_by_season.csv`, `radar_by_month.csv`.")
   },
@@ -3862,6 +3880,11 @@ handoff_warnings <- c(
   if (!is.null(clocks)) {
     out <- clocks[!clocks$verdict %in% c("in step", "not enough rain"), ]
     if (nrow(out)) sprintf("Gauge %s's clock: %s. %s", out$gauge, out$verdict, out$why)
+  },
+  if ("h19_season" %in% recommended$series && !is.null(factor_test) &&
+      factor_test$verdict != "the factors hold") {
+    sprintf("h19_season's monthly factors, out of sample: %s. %s", factor_test$verdict,
+            factor_test$why)
   })
 handoff_error <- recommended$rain_error[1]
 if (!is.finite(handoff_error)) handoff_error <- fallback_error
@@ -4329,7 +4352,20 @@ blocks <- c(
                              season_factors$made_from[1], season_factors$period_from[1],
                              season_factors$period_to[1])),
          report_table(season_factors[, c("month", "days", "factor", "basis")],
-                      caption = "The monthly factors for h19_season"))
+                      caption = "The monthly factors for h19_season"),
+         if (!is.null(factor_test)) {
+           report_text(paste("Fitted to the days they are scored on, the factors always look",
+                             "good. So they were also fitted on alternate water years and",
+                             "scored on the years left out, against the raw radar."))
+         },
+         if (!is.null(factor_test)) {
+           report_alert(sprintf("Out of sample: %s. %s", factor_test$verdict, factor_test$why),
+                        factor_test$verdict == "the factors hold")
+         },
+         if (!is.null(factor_test$scores)) {
+           report_table(factor_test$scores,
+                        caption = "The radar against the gauges, by how it was scaled")
+         })
   },
 
   # Where the balance fails.

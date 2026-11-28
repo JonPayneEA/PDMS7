@@ -1,3 +1,21 @@
+# pdmS7 0.56.0
+
+- **h19_season's monthly factors tested out of sample.** Scored on the days they were fitted
+  to, the factors always look good. The new `test_season_factors()` scores them on years they
+  have not seen. It splits the water years into two alternate folds, fits the factors on each
+  with `radar_season_factors()`, and applies them to the other's days.
+
+  The scaled radar's total bias and typical daily error are set beside the raw radar's and the
+  in-sample scores. The verdict says whether the factors hold (within 10% and better than raw),
+  help but less than in sample, or do not help. Any month whose factor moves by over a quarter
+  between the folds is named.
+
+  `compare_rain.R` runs it wherever it builds `h19_season` and writes
+  `radar_season_factors_test.csv` and `radar_season_factors_by_fold.csv`, with the verdict in
+  the summary and the report. When `h19_season` is recommended and its factors do not hold,
+  the verdict also goes into `calibration_inputs.yml` as a warning. It needs a fold with 60
+  days of rain in both series, so a record of under two water years is not tested.
+
 # pdmS7 0.55.0
 
 - **The hand-off from the rain comparison to calibration.** `compare_rain.R` now ends by
