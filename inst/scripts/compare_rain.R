@@ -9,7 +9,8 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-24
 # Tier:         1
-# Modified:     2026-11-27 - radar by season: why the raw radar sits apart from the gauges
+# Modified:     2026-11-28 - the settings read from rain.yml, not edited in the script
+#               2026-11-27 - radar by season: why the raw radar sits apart from the gauges
 #               2026-11-27 - events, not floods; events missed measured against the median
 #                            series; event windows reported and plotted; plots reworked
 #               2026-11-27 - the candidate's band source by source, from
@@ -37,27 +38,31 @@
 # Outputs:      A folder: summary.md, rain_ranking.csv, weights_and_error.csv, plots each with a
 #               note on how to read it, and catchment_rain/ with each average built, as CSV
 #               ready for calibrate_site.R
-# Dependencies: pdmS7 (0.52.0 or later); sf for a shapefile and the search; reach.io
+# Dependencies: pdmS7 (0.53.0 or later); sf for a shapefile and the search; reach.io
 #               to find and download the gauges; arrow (or nanoparquet) for the processed
 #               H19 extracts, ncdf4 for the daily H19 files; reach.rate to check the flow
 #               record from stage, gaugings and ratings
 # ============================================================ #
 #
 # How to use it
-#   1. Copy the script to your own folder, so you can fill in its settings:
-#        file.copy(system.file("scripts", "compare_rain.R", package = "pdmS7"), "compare_rain.R")
-#        file.edit("compare_rain.R")
-#   2. Fill in the settings below: the catchment area, the time step, the flow and evaporation
-#      files, and the catchment boundary (a shapefile is fine).
-#   3. Run the whole script (Ctrl+Shift+S in RStudio). The first run searches the EA Hydrology
-#      API for 15-minute rain gauges around the catchment, lists them in nearby_gauges.csv
-#      with a map, nearby_gauges.png, and stops.
-#   4. Choose the gauges from the list, put their WISKI IDs in gauge_ids, and run again. Their
-#      rain is downloaded and the comparison runs. It takes a minute or two after the download.
-#   5. Read summary.md in the output folder.
-#   With gauge files of your own instead, set gauge_source to "files" and fill in the gauges
-#   table.
-#
+#   1. Copy the settings template beside your data, and fill it in:
+#        file.copy(system.file("examples", "rain.yml", package = "pdmS7"), "rain.yml")
+#        file.edit("rain.yml")
+#      Section 1 holds what every run needs: the catchment area, the time step, the flow and
+#      evaporation files, and the catchment boundary (a shapefile is fine).
+#   2. Run the script, from the folder rain.yml is in:
+#        source(system.file("scripts", "compare_rain.R", package = "pdmS7"))
+#      or read the settings first, to look at them or change them in R:
+#        rain_settings <- read_rain_settings("rain.yml")
+#      The first run searches the EA Hydrology API for 15-minute rain gauges around the
+#      catchment, lists them in nearby_gauges.csv with a map, nearby_gauges.png, and stops.
+#   3. Choose the gauges from the list, put their WISKI IDs in gauge_ids in rain.yml, and run
+#      again. Their rain is downloaded and the comparison runs. It takes a minute or two after
+#      the download.
+#   4. Read summary.md in the output folder.
+#   With gauge files of your own instead, set gauge_source to files and fill in the gauges
+#   list.
+
 # What it does
 #   First it builds the catchment averages from the gauges:
 #     thiessen      the Thiessen weights given, or worked out from the gauges' positions and
@@ -100,169 +105,46 @@ library(data.table)
 
 # The script is written for this pdmS7 or later: an older one lacks functions it uses, and
 # would fail part way through.
-if (utils::packageVersion("pdmS7") < "0.52.0") {
-  stop("compare_rain.R needs pdmS7 0.52.0 or later; this is ",
+if (utils::packageVersion("pdmS7") < "0.53.0") {
+  stop("compare_rain.R needs pdmS7 0.53.0 or later; this is ",
        as.character(utils::packageVersion("pdmS7")),
        ". Update it with remotes::install_github(\"JonPayneEA/PDMS7\"), then restart R.",
        call. = FALSE)
 }
 
-# ---- Settings: fill these in -------------------------------------------------------------
+# ---- Settings: read from rain.yml --------------------------------------------------------
 
-area_km2 <- NA            # catchment area, km2: fill in, such as 52.3
-step_hours <- 0.25        # time step: 0.25 for 15-minute data, 1 for hourly
-data_folder <- "data"     # where the files below are, relative to the working directory
-output_folder <- "rain_comparison"
-
-flow_file <- "flow.csv"   # river flow, m3/s
-pet_file <- "pet.csv"     # potential evaporation, mm per step
-
-# The catchment boundary: a shapefile (.shp, with its .dbf, .shx and .prj beside it), a
-# GeoPackage, or a CSV with columns x and y, in data_folder. A shapefile is moved onto British
-# National Grid. Its centroid is the centre of the gauge search, and it bounds the averages.
-catchment_boundary <- "catchment.shp"
-# The averaging grid, not the catchment's delineation: the spacing of the points over the
-# catchment where the surfaces (idw, the multiquadrics) are worked out and averaged. 500 m
-# suits most catchments, 250 m one under about 20 km2; finer gains nothing (the gauges are
-# kilometres apart) and is much slower.
-grid_spacing_m <- 500
-
-# A long-term average rainfall grid (optional): NetCDF in data_folder, on British National Grid,
-# mm a year, such as the Met Office's HadUK-Grid average for 1991 to 2020,
-# "rainfall_hadukgrid_uk_1km_ann-30y_199101-202012.nc". With it, the multiquadric is also fitted
-# to each gauge's rain as a share of its long-term average and scaled back by the grid
-# (multiquadric_lta), and each series' annual rain is set against the long-term average.
-lta_rain_file <- NULL
-
-# Correcting the gauges to the long-term average (optional; needs lta_rain_file). Each gauge's
-# average year over a long record, correction_from to correction_to, set against the grid at
-# the gauge, gives the gauge a factor, which then scales its rain over the period compared.
-#   "relative": each factor divided by the gauges' median factor, so the gauges keep their
-#               overall level and only how they differ from each other is corrected; the long
-#               record's own weather, wetter or drier than the grid's years, cancels.
-#   "absolute": each gauge put onto the grid's own level.
-#   "none":     the gauges as measured.
-# The gauge downloads cover both the correction record and the period compared.
-lta_correction <- "none"
-correction_from <- "2010-10-01"
-correction_to <- "2024-10-01"
-
-# The period compared: from (inclusive) to (exclusive), in UTC. Every series (flow,
-# evaporation, gauges, radar) is cut to it, and gauges are downloaded for it. A series that does
-# not cover the whole period is padded with gaps, with a warning.
-period_from <- "2015-10-01"
-period_to <- "2024-10-01"
-# The years the water balance and its plots are counted in: 1 for calendar years (January to
-# December, as H19 is stored), 10 for water years (October to September).
-year_start_month <- 1
-
-# The rain gauges, from the EA Hydrology API with reach.io (gauge_source "hydrology_api").
-#   1. Leave gauge_ids empty and run: every 15-minute rain gauge within search_radius_km of
-#      the catchment's centroid is listed in nearby_gauges.csv, nearest the catchment first,
-#      with a map, and the script stops.
-#   2. Put the WISKI IDs you choose in gauge_ids and run again: each gauge's rain is downloaded
-#      to data_folder (a file already there is used as it is; delete it to download again).
-# search_radius_km NULL searches from the centroid to the boundary's farthest point, plus
-# 10 km. The downloads cover period_from to period_to.
-gauge_source <- "hydrology_api"
-search_radius_km <- NULL
-gauge_ids <- c()               # such as c("254336TP", "SS92F014")
-
-# Gauge files of your own instead (gauge_source "files"): one file each, rain in mm per step,
-# in data_folder. x and y are each gauge's position in metres on British National Grid, for
-# the multiquadric average and the Thiessen weights from the geometry.
-gauges <- data.frame(
-  name = c("gauge_A", "gauge_B", "gauge_C"),
-  file = c("gauge_a.csv", "gauge_b.csv", "gauge_c.csv"),
-  x = c(NA, NA, NA),
-  y = c(NA, NA, NA)
-)
-
-# Thiessen weights, if you have the operational ones: each gauge's share of the catchment, by
-# the gauge's WISKI ID or its name, adding up to 1; a gauge outside the catchment has none.
-# Left empty, they are worked out from the gauges' positions and the boundary.
-thiessen_weights <- c()        # such as c("254336TP" = 0.264, SS92F014 = 0.737)
-
-# The catchment averages to build: delete any you do not want. One whose inputs are missing is
-# skipped, and the summary and the report say why.
-#   thiessen          the Thiessen weights (given, or from the gauges' positions)
-#   equal             the gauges with a Thiessen weight, weighted equally
-#   equal_all         every gauge weighted equally (when some gauge has no Thiessen weight)
-#   idw               inverse distance weighting over the catchment (boundary, positions)
-#   multiquadric      a smooth surface through the gauges (boundary, positions)
-#   multiquadric_lta  the same, shaped by the long-term average (lta_rain_file)
-#   kriging           block kriging, with each step's standard error (boundary, 3+ gauges)
-#   ked_lta           kriging with the long-term average as a drift (lta_rain_file)
-#   h19               the radar alone (radar_folder or radar_processed_folder)
-#   h19_bias          the radar scaled day by day to the gauges (radar_folder, positions)
-#   h19_season        the radar scaled to the gauges by a fixed factor for each month, ready
-#                     for a forecasting system (radar_season_factors.csv)
-#   multiquadric_h19  the gauges' surface with the radar's pattern (radar_folder, 15 minutes)
-#   ked_h19           kriging with each step's radar as the drift (radar_folder, 15 minutes)
-rain_methods <- c("thiessen", "equal", "equal_all", "idw", "multiquadric", "multiquadric_lta",
-                  "kriging", "ked_lta", "h19", "h19_bias", "h19_season", "multiquadric_h19",
-                  "ked_h19")
-
-# H19 radar (optional): the folder of daily H19 NetCDF files, with a folder for each year.
-# The files' layouts are checked first (the archive changed how it saved them part way
-# through): set radar_scan_only to TRUE to see them and stop. Then the radar over the catchment
-# joins the comparison as "h19" (with a boundary), and the radar over each gauge is set against
-# the gauge (with the gauges' positions). H19 is restricted: keep the output folder on
-# restricted storage, as the radar extracts are written there.
-radar_folder <- NULL           # such as "C:/.../04_RADAR/01_H19"
-# H19 file names: the date and time (14 digits), anything, then .nc: both the older
-# ..._1km_H19.nc names and the newer 20210401000000.nc.
-radar_pattern <- "^[0-9]{14}.*\\.nc$"
-radar_scan_only <- FALSE
-# Much faster, for a catchment Hyrad already has: the team's yearly H19 extracts for every
-# current PDM polygon (the archive's Processed_Annual folder, H19_YYYY_all_polygons.parquet,
-# made by the ProcessingNetCDF scripts). Give the folder and the polygon's ID in Hyrad, and
-# the catchment average is read in seconds, not hours. Leave radar_folder NULL then, unless
-# you also want the radar over each gauge: that still reads every daily file.
-radar_processed_folder <- NULL # such as "F:/.../04_RADAR/01_H19/Processed_Annual"
-radar_polygon_id <- NULL       # such as "02_10_Southern"
-
-# Other catchment rain series built elsewhere, to compare as well (optional), such as
-# other_rain_files <- c(multiquadric_ea = "rain_multiquadric.csv", radar = "rain_h19.csv")
-other_rain_files <- c()
-
-# Where the balance fails (optional): the rating's part of a water balance that does not close.
-# With 15-minute stage at the flow station, the reach.rate package reads the applied rating back
-# from the stage and flow and checks it (revisions, flow off the curve, flow above the top of
-# the rating and above bankfull, the flow a stage error makes, stage rising in dry weather).
-# With the gaugings and the operational ratings export too, the rating in force is tested
-# against the gaugings. Each input left NULL leaves its check out, and the report says so.
-# The gaugings and the ratings can each be a file name in data_folder or a data frame already
-# in R, as exported or as reach.rate reads it.
-stage_file <- NULL             # stage, m, in data_folder: time and value (and quality)
-flow_station_wiski <- NULL     # the flow station's WISKI ID: stage downloaded if no file
-top_stage_m <- NULL            # the rating's top: NULL takes the highest gauging, if given
-bankfull_stage_m <- NULL       # the stage above which water may bypass the section
-stage_uncertainty_m <- 0.005   # a systematic stage error to test, m
-gaugings_file <- NULL          # the station's gaugings: a file name or a data frame
-gauging_station_id <- NULL     # the station's id in the gaugings file, if it holds others
-ratings_file <- NULL           # the operational ratings export: a file name or a data frame
-rating_station_id <- NULL      # the station's id in the ratings export (its FFFSLocID)
-dry_hours <- 48                # a step is dry after this many hours of little rain...
-dry_rain_mm <- 0.5             # ...no more than this, on the rain series recommended first
-# A candidate rating fitted from the gaugings, for the hydrometry team to review (never to use
-# in place of the operational one without them). "auto" fits one when the report says the
-# gaugings call for it; "always" fits one whenever there are gaugings; "never" does not.
-candidate_rating <- "auto"
-candidate_boot <- 500          # draws for the candidate's band (100 or more); 0 for none
-# The candidate's band covers the gaugings' sampling and, with these, gauging error shared
-# between gaugings (a meter or method reading high or low for all of them), as
-# reach.rate::rating_uncertainty() reports it. NULL leaves the shared error not assessed: the
-# scripts never assume one. Random error in each gauging is already in the sampling: give only
-# the shared part.
-gauging_uncertainty <- NULL    # the shared gauging error, a fraction, such as 0.03
-gauging_group <- NULL          # a gaugings column whose values share an error, such as a method
-# The events. Their windows come from DMCA-ESR's response time; in a catchment fed by
-# groundwater that can run to days, and windows that long count later rain against each event.
-event_max_response_h <- 150    # the longest response time searched, h: lower it if the windows run on
-event_independent <- TRUE      # merge the bursts of one event into one; FALSE keeps an event per burst
-missed_share <- 0.25           # a series missed a storm below this share of the median series' rain
-missed_min_mm <- 2             # events the median series gives less rain than this are not scored
+# The settings live in a YAML file, not here: copy the template beside your data and fill it
+# in. The script takes a rain_settings object already in the session (read with
+# read_rain_settings(), perhaps changed in R), else reads settings_file, if set, else rain.yml
+# in the working directory. Each setting becomes a variable of the same name below.
+if (!exists("rain_settings")) {
+  settings_path <- if (exists("settings_file")) settings_file else "rain.yml"
+  if (!file.exists(settings_path)) {
+    stop("No settings file ", normalizePath(settings_path, mustWork = FALSE), ". Copy the ",
+         "template and fill it in:\n  file.copy(system.file(\"examples\", \"rain.yml\", ",
+         "package = \"pdmS7\"), \"rain.yml\")",
+         call. = FALSE)
+  }
+  rain_settings <- read_rain_settings(settings_path)
+} else {
+  # Settings read earlier: read the file again if it has changed since, so an edit to the file
+  # is never lost to an old copy in the session.
+  settings_path <- attr(rain_settings, "file")
+  if (!is.null(settings_path) && file.exists(settings_path) &&
+      !identical(file.mtime(settings_path), attr(rain_settings, "mtime"))) {
+    message("The settings file has changed since rain_settings was read: reading it again ",
+            "(changes made to rain_settings in R are dropped).")
+    rain_settings <- read_rain_settings(settings_path)
+  } else {
+    rain_settings <- read_rain_settings(rain_settings)
+  }
+}
+if (!is.null(attr(rain_settings, "file"))) {
+  cat("Settings from ", attr(rain_settings, "file"), "\n", sep = "")
+}
+for (setting in names(rain_settings)) assign(setting, rain_settings[[setting]])
+rm(setting)
 
 # ---- Read and line up the data ------------------------------------------------------------
 
@@ -271,14 +153,14 @@ say <- function(...) cat(sprintf(...), "\n", sep = "")
 
 # The area is left blank in the settings, so the script cannot run on a wrong default.
 if (!is.numeric(area_km2) || !is.finite(area_km2) || area_km2 <= 0) {
-  stop("Fill in area_km2 at the top of the script: the catchment area in km2.",
+  stop("Fill in area_km2 in the settings file: the catchment area in km2.",
        call. = FALSE)
 }
 if (!dir.exists(data_folder)) {
   stop("No folder ",
        normalizePath(data_folder, mustWork = FALSE),
-       ": set data_folder at the ",
-       "top of the script to the folder holding the CSV files.",
+       ": set data_folder in the settings file to the folder ",
+       "holding the CSV files.",
        call. = FALSE)
 }
 dir.create(output_folder, recursive = TRUE, showWarnings = FALSE)

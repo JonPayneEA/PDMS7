@@ -204,12 +204,15 @@ river follows each series and at what lag, and storms each missed. It also says 
 gauges' worth of rain each average uses and how much of a gauge's error survives into it.
 Given each gauge's WISKI ID it downloads the gauges itself, with reach.io; given a folder of
 H19 radar files it checks their layouts (`h19_layouts()`), adds the radar over the catchment,
-and sets the radar over each gauge against the gauge. Copy it, fill in the area, the time
-step, the gauges and the Thiessen weights at the top, and run it:
+and sets the radar over each gauge against the gauge. Its settings live in a YAML file: copy the
+template beside your data, fill in the area, the time step, the files and the boundary, and
+run the script from that folder:
 
 ```r
-file.copy(system.file("scripts", "compare_rain.R", package = "pdmS7"), "compare_rain.R")
-file.edit("compare_rain.R")
+file.copy(system.file("examples", "rain.yml", package = "pdmS7"), "rain.yml")
+file.edit("rain.yml")
+rain_settings <- read_rain_settings("rain.yml")   # checked; change any of them in R
+source(system.file("scripts", "compare_rain.R", package = "pdmS7"))
 ```
 
 To look at H19 on its own first, `inst/scripts/check_h19.R` checks a folder's layouts and plots

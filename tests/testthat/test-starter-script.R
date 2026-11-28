@@ -178,8 +178,10 @@ test_that("the rain comparison parses, stops until the area is set, and names it
   expect_true(nzchar(script))
   code <- readLines(script)
   expect_no_error(parse(text = code))
-  # The area is left blank, so the script cannot run on a wrong default.
-  expect_true(any(grepl("^area_km2 <- NA ", code)))
+  # The area is left blank in the template, so the script cannot run on a wrong default.
+  defaults <- read_rain_settings(system.file("examples", "rain.yml", package = "pdmS7"))
+  expect_identical(defaults$area_km2, NA_real_)
+  expect_true(any(grepl("Fill in area_km2 in the settings file", code, fixed = TRUE)))
   # Every HOW TO READ note names a plot the script writes: 11, four for where the balance
   # fails (balance_years, flood_ratio_vs_rain, record_curves and candidate_band), and the
   # largest events' windows (flood_windows).
@@ -204,22 +206,27 @@ test_that("the H19 check parses and names the plots it draws", {
   }
 })
 
+# The settings the script runs on by default: the template, as read_rain_settings() reads it.
+rain_defaults <- function() {
+  read_rain_settings(system.file("examples", "rain.yml", package = "pdmS7"))
+}
+
 test_that("the rain comparison finds its gauges by default, from a shapefile's centroid", {
-  code <- readLines(system.file("scripts", "compare_rain.R", package = "pdmS7"))
+  d <- rain_defaults()
   # The default way of working: a search of the Hydrology API around the catchment, the gauges
   # chosen afterwards, the boundary a shapefile, and the radius worked out from the boundary.
-  expect_true(any(grepl('^gauge_source <- "hydrology_api"', code)))
-  expect_true(any(grepl("^gauge_ids <- c\\(\\)", code)))
-  expect_true(any(grepl("^search_radius_km <- NULL", code)))
-  expect_true(any(grepl('^catchment_boundary <- "catchment.shp"', code)))
-  expect_true(any(grepl("^thiessen_weights <- c\\(\\)", code)))
+  expect_identical(d$gauge_source, "hydrology_api")
+  expect_null(d$gauge_ids)
+  expect_null(d$search_radius_km)
+  expect_identical(d$catchment_boundary, "catchment.shp")
+  expect_null(d$thiessen_weights)
 })
 
 test_that("the rain comparison has one period for everything, and both multiquadric averages", {
   code <- readLines(system.file("scripts", "compare_rain.R", package = "pdmS7"))
   # One period cuts every series and sets the downloads; the old download_ names are gone.
-  expect_true(any(grepl("^period_from <- ", code)))
-  expect_true(any(grepl("^period_to <- ", code)))
+  d <- rain_defaults()
+  expect_identical(c(d$period_from, d$period_to), c("2015-10-01", "2024-10-01"))
   expect_false(any(grepl("download_from|download_to", code)))
   # The gauges-only and gauges-with-H19 multiquadric averages are both built names.
   expect_true(any(grepl('built_names <- c("thiessen", "equal", "equal_all", "idw", "multiquadric",',
@@ -230,7 +237,7 @@ test_that("the rain comparison has one period for everything, and both multiquad
 test_that("the rain comparison can scale the multiquadric by a long-term average grid", {
   code <- readLines(system.file("scripts", "compare_rain.R", package = "pdmS7"))
   # Off by default; the grid's average is set against each series when given.
-  expect_true(any(grepl("^lta_rain_file <- NULL", code)))
+  expect_null(rain_defaults()$lta_rain_file)
   expect_true(any(grepl('"multiquadric_lta"', code, fixed = TRUE)))
   expect_true(any(grepl("long_term_average_check.csv", code, fixed = TRUE)))
 })
@@ -238,9 +245,9 @@ test_that("the rain comparison can scale the multiquadric by a long-term average
 test_that("the gauges can be corrected to the long-term average over a long record", {
   code <- readLines(system.file("scripts", "compare_rain.R", package = "pdmS7"))
   # Off by default; the correction record has its own window, and the downloads cover both.
-  expect_true(any(grepl('^lta_correction <- "none"', code)))
-  expect_true(any(grepl("^correction_from <- ", code)))
-  expect_true(any(grepl("^correction_to <- ", code)))
+  d <- rain_defaults()
+  expect_identical(d$lta_correction, "none")
+  expect_identical(c(d$correction_from, d$correction_to), c("2010-10-01", "2024-10-01"))
   expect_true(any(grepl("gauge_downloads_record.csv", code, fixed = TRUE)))
 })
 
@@ -254,12 +261,7 @@ test_that("the rain comparison is cut to the stretch every series covers", {
 test_that("the rain comparison builds the averages chosen in rain_methods", {
   code <- readLines(system.file("scripts", "compare_rain.R", package = "pdmS7"))
   # Every average is on the list by default, including the two new ones.
-  start <- grep("^rain_methods <- c\\(", code)
-  expect_length(start, 1)
-  # The list runs to the first line ending in its closing bracket, however it is wrapped.
-  end <- start - 1 + grep("\\)\\s*$", code[start:length(code)])[1]
-  default <- eval(parse(text = paste(code[start:end], collapse = "\n")))
-  expect_identical(default, c("thiessen", "equal", "equal_all", "idw", "multiquadric",
+  expect_identical(rain_defaults()$rain_methods, c("thiessen", "equal", "equal_all", "idw", "multiquadric",
                               "multiquadric_lta", "kriging", "ked_lta", "h19", "h19_bias",
                               "h19_season", "multiquadric_h19", "ked_h19"))
   # A name the script cannot build is refused, and an average whose inputs are missing is
@@ -271,7 +273,7 @@ test_that("the rain comparison builds the averages chosen in rain_methods", {
 
 test_that("the rain comparison counts its years from the month set, calendar years by default", {
   code <- readLines(system.file("scripts", "compare_rain.R", package = "pdmS7"))
-  expect_true(any(grepl("^year_start_month <- 1$", code)))
+  expect_identical(rain_defaults()$year_start_month, 1)
   expect_true(any(grepl("water_year_start = year_start_month", code, fixed = TRUE)))
 })
 
@@ -297,7 +299,8 @@ test_that("the rain comparison says how sure its order is and what to calibrate 
   expect_true(any(grepl("radar_ked_key.txt", code, fixed = TRUE)))
   # Where the balance fails: the diagnosis on the series recommended first, and the flow
   # record checked with reach.rate only when stage is given.
-  expect_true(any(grepl("^stage_file <- NULL", code)))
+  d <- rain_defaults()
+  expect_null(d$stage_file)
   expect_true(any(grepl("balance_diagnosis(grid$time,", code, fixed = TRUE)))
   expect_true(any(grepl("reach.rate::check_flow_record(record,", code, fixed = TRUE)))
   # The WISKI ID alone is enough for the stage, and the gaugings and ratings may be data frames.
@@ -311,17 +314,17 @@ test_that("the rain comparison says how sure its order is and what to calibrate 
   expect_true(any(grepl("rating_follow_up.csv", code, fixed = TRUE)))
   # The candidate rating: fitted in the script when the gaugings call for it, at the in-force
   # breakpoints, written up for review, and the balance worked out on its flow.
-  expect_true(any(grepl('^candidate_rating <- "auto"', code)))
+  expect_identical(d$candidate_rating, "auto")
   expect_true(any(grepl('breakpoint_origin = "existing_rating"', code, fixed = TRUE)))
   expect_true(any(grepl("reach.rate::rating_report(candidate,", code, fixed = TRUE)))
   expect_true(any(grepl("balance_with_candidate.csv", code, fixed = TRUE)))
   # Its bootstrap band: the flow bound in the diagnosis, and the refit test in the follow-up.
-  expect_true(any(grepl("^candidate_boot <- 500", code)))
+  expect_identical(d$candidate_boot, 500)
   expect_true(any(grepl("rating_band = rating_band_share)", code, fixed = TRUE)))
   expect_true(any(grepl("band = band)", code, fixed = TRUE)))
   # The band from reach.rate's rating_uncertainty(): combined where the shared gauging error is
   # given, sampling where not, never assumed; the bootstrap where reach.rate is older.
-  expect_true(any(grepl("^gauging_uncertainty <- NULL", code)))
+  expect_null(d$gauging_uncertainty)
   expect_true(any(grepl("reach.rate::rating_uncertainty(candidate,", code, fixed = TRUE)))
   # Radar by season: why the raw radar sits apart from the gauges.
   expect_true(any(grepl("radar_season <- radar_by_season(season_pairs,", code, fixed = TRUE)))
