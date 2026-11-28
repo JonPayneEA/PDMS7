@@ -258,7 +258,7 @@ compare_structures <- function(project, structures = NULL, overrides = NULL, exc
          scores = f$calibrated$scores, output_md5 = f$calibrated$output_md5,
          comparison = comparison, structure_name = f$name,
          comparison_validation_scores = f$validation_scores,
-         cross_validation_scores = f$reverse_scores,
+         cross_validation_scores = f$reverse_scores, scoring = f$fit$scoring,
          reasoning = paste0("Structure comparison (", f$name, "): ", reasoning))
   })
 }
