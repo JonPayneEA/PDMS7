@@ -88,7 +88,9 @@ preparation_notes <- function(x) {
 #' @param tz Time zone of the times in the file. EA telemetry is in GMT all year: `"UTC"`.
 #' @param na_strings Strings read as missing.
 #' @return A `pdm_hydro_series`: a data frame of `time` (POSIXct, UTC) and `value`, with the
-#'   file, the columns used and the median step in minutes as attribute `source`.
+#'   file, the columns used and the median step in minutes as attribute `source`, and, where
+#'   the file has a column named `quality` (or `quality_code`, `flag`), the codes as attribute
+#'   `quality`, one a row.
 #' @examples
 #' f <- tempfile(fileext = ".csv")
 #' writeLines(c("year,month,day,hour,minute,flow", "2021,3,1,9,0,1.2", "2021,3,1,9,15,1.3"), f)
@@ -113,6 +115,10 @@ read_hydro_series <- function(file, value_col = NULL, time_col = NULL,
   .check(length(value_col) == 1L && value_col %in% names(d),
          paste("No value column in", basename(file), "; name it with value_col"))
   out <- data.frame(time = read$time, value = as.numeric(d[[value_col]]))
+  # A quality code column, such as the EA's Good, Suspect and Estimated, is kept beside the
+  # values (as the attribute quality), so a calibration can leave flagged steps out if asked.
+  quality_col <- names(d)[lower %in% c("quality", "quality_code", "qualitycode", "flag")][1]
+  if (!is.na(quality_col)) out$quality <- as.character(d[[quality_col]])
   out <- out[!is.na(out$time), ]
   repeats <- sum(duplicated(out$time))
   .check(repeats <= 0.01 * nrow(out), sprintf(paste0(
@@ -122,6 +128,8 @@ read_hydro_series <- function(file, value_col = NULL, time_col = NULL,
   out <- out[!duplicated(out$time), ]
   out <- out[order(out$time), ]
   rownames(out) <- NULL
+  quality <- out$quality
+  out$quality <- NULL
   step <- if (nrow(out) > 1L) as.numeric(stats::median(diff(out$time)), units = "mins") else NA
   attr(out, "source") <- list(file = normalizePath(file, winslash = "/"),
                               time = paste(read$columns, collapse = " + "),
@@ -132,6 +140,7 @@ read_hydro_series <- function(file, value_col = NULL, time_col = NULL,
     format(max(out$time), "%Y-%m-%d %H:%M"), step, value_col
   ))
   class(out) <- c("pdm_hydro_series", "data.frame")
+  if (!is.null(quality)) attr(out, "quality") <- quality
   out
 }
 

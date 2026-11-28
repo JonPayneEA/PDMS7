@@ -34,11 +34,11 @@
 # 100% too high, at equal weights. Peak and timing follow event_scores().
 .event_objective <- function(events, rain, observed, warmup, dt,
                              weights = .default_event_weights, share = 0.5, screen = list(),
-                             area_km2 = NULL, time = NULL) {
+                             area_km2 = NULL, time = NULL, mask = NULL) {
   .check(is.numeric(weights) && setequal(names(weights), names(.default_event_weights)) &&
            all(is.finite(weights) & weights >= 0) && sum(weights) > 0,
          "event_weights must be nonnegative numbers named nse, peak and timing, not all zero")
-  terms <- .event_terms(events, rain, observed, warmup, dt, share, screen, area_km2, time)
+  terms <- .event_terms(events, rain, observed, warmup, dt, share, screen, area_km2, time, mask)
   w <- weights[names(.default_event_weights)]
   score <- function(sim) {
     t <- terms$terms(sim)
@@ -59,8 +59,9 @@
 # found, the response time and a description of which events. calibrate_pdm_multi() keeps the
 # terms as separate objectives; .event_objective() weights them into one.
 .event_terms <- function(events, rain, observed, warmup, dt, share = 0.5, screen = list(),
-                         area_km2 = NULL, time = NULL) {
-  chosen <- .event_windows(events, rain, observed, warmup, dt, share, screen, area_km2, time)
+                         area_km2 = NULL, time = NULL, mask = NULL) {
+  chosen <- .event_windows(events, rain, observed, warmup, dt, share, screen, area_km2, time,
+                           mask)
   windows <- chosen$windows
   rows <- unlist(windows)
   obs <- observed[rows]
@@ -96,7 +97,7 @@
 # observed flows, and of those the largest share by observed peak, or those whose peak reaches
 # the flow floor that share names.
 .event_windows <- function(events, rain, observed, warmup, dt, share, screen, area_km2,
-                           time = NULL) {
+                           time = NULL, mask = NULL) {
   floor <- .event_floor(share, observed, dt, time)
   if (is.null(events)) {
     .check(!is.null(rain), "The events objective needs rain in forcing, or events")
@@ -112,9 +113,17 @@
   }
   use <- if ("use" %in% names(events)) events$use else rep(TRUE, nrow(events))
   usable <- use & events$flow_start > warmup & events$flow_end <= length(observed)
+  # With a mask, the events are still found on the whole record; an event whose peak is masked
+  # is dropped whole, as its recession alone would score as if it were the flood, and one
+  # masked elsewhere keeps its unmasked steps.
   windows <- lapply(which(usable), function(e) {
     i <- seq.int(events$flow_start[e], events$flow_end[e])
-    i[is.finite(observed[i])]
+    i <- i[is.finite(observed[i])]
+    if (!is.null(mask) && length(i)) {
+      if (!mask[i[which.max(observed[i])]]) return(integer(0))
+      i <- i[mask[i]]
+    }
+    i
   })
   windows <- windows[lengths(windows) >= 2L]
   .check(length(windows) > 0, paste(

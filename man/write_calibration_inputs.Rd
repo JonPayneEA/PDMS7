@@ -11,7 +11,10 @@ write_calibration_inputs(
   step_hours,
   rain_error = NA_real_,
   warnings = character(0),
-  made_by = "pdmS7"
+  made_by = "pdmS7",
+  mask = NULL,
+  rating_band = NULL,
+  rating_band_source = NULL
 )
 }
 \arguments{
@@ -32,6 +35,15 @@ relative to the folder \code{path} is in. The first is the one to calibrate on.}
 \item{warnings}{What a calibration on these series should know, one sentence each.}
 
 \item{made_by}{What wrote the file, recorded in it.}
+
+\item{mask}{\code{NULL}, or periods a calibration on these series should leave out: a data frame
+of \code{from}, \code{to} (times, \code{to} inclusive) and \code{reason}, such as the events the first series
+missed and the flow off the applied rating.}
+
+\item{rating_band}{\code{NULL}, or the rating's band for the peak tolerance: a data frame of \code{q}
+(m3/s), \code{lower} (a share, 0 or below) and \code{upper} (0 or above).}
+
+\item{rating_band_source}{Where the band came from, recorded beside it.}
 }
 \value{
 \code{path}, invisibly.

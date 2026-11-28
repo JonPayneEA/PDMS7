@@ -76,7 +76,9 @@ register_data(
   highest_gauged_m3s = NULL,
   wettest_years = 2,
   tie_tolerance = 0.02,
-  markers = c("QMED", "Q1", "Q5")
+  markers = c("QMED", "Q1", "Q5"),
+  mask = NULL,
+  peak_tolerance = NULL
 )
 
 select_structure(project, configuration, reasoning)
@@ -224,6 +226,16 @@ validation or test data shape them: by default \code{QMED}, \code{Q1} and \code{
 so every catchment gets threshold scores and an event floor to fit to. QMED needs times
 in \code{forcing} and two complete water years, and is left out otherwise, as is any marker
 that cannot be worked out. \code{NULL} registers none.}
+
+\item{mask}{\code{NULL}, or a \code{\link[=calibration_mask]{calibration_mask()}} over the forcing's rows: flows known to be
+wrong, left out of every search's score in the project. Stored as runs of rows with their
+reasons, so the log shows what was left out and why.}
+
+\item{peak_tolerance}{\code{NULL}, or a list of \code{band} (the rating's band: \code{q}, \code{lower},
+\code{upper}, as \code{\link[=peak_band]{peak_band()}} takes it), \code{factor}, \code{cap}, and, for the record, \code{source} (where
+the band came from) and \code{reason} (why this tolerance). Every search then scores a
+simulated flow inside the band as a perfect fit. Leave it \code{NULL} when the forecasts go
+back through the same rating.}
 
 \item{configuration}{A configuration list or the path of a YAML configuration file.}
 

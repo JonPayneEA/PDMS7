@@ -206,8 +206,10 @@ compare_structures <- function(project, structures = NULL, overrides = NULL, exc
   fit_on <- function(window) {
     w <- card[[window]]
     observed <- .scoring_observed(data$observed, card, window)
+    sc <- .card_scoring(card, data$observed, w$last_row)
     calibrate_pdm(
       config, data$forcing[seq_len(w$last_row)], observed[seq_len(w$last_row)],
+      mask = sc$mask, band = sc$band,
       lower = lower, upper = upper, warmup = w$first_row - 1L, objective = settings$objective,
       log_offset = card$log_offset, control = settings$control,
       soil_fraction = card$soil_fraction, start = card$start %||% "soil",

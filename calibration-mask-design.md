@@ -1,6 +1,6 @@
 # Calibration mask and peak tolerance: design
 
-Status: draft for approval. No code is written until this is agreed.
+Status: agreed 2026-11-28, with the decisions below; built in pdmS7 0.58.0.
 
 ## The problem
 
@@ -190,10 +190,44 @@ Expected values from closed forms or hand counts, as everywhere:
   the missed-event windows are masked on the flow side only.
 - Any change to the PDM.
 
-## Open questions for you
+## Decisions
 
-1. Should Suspect and Estimated flows be masked by default, or only when asked? The draft says
-   only when asked, since reach.validate's flags vary by station.
-2. Is a quarter of the calibration window the right point to warn that too much is masked?
-3. For `hydrodynamic_own`, should the default factor be 1 times the band, or less, given that the
-   band itself is an estimate?
+Agreed on 2026-11-28:
+
+1. **Quality codes are masked only when asked** (`mask_quality`), as quality flags vary by
+   station.
+2. **The warning stays at a quarter** of the calibration window masked.
+3. **The default factor for `hydrodynamic_own` is 0.5 times the band.** The band is a 95%
+   interval, so half its width is about one standard error: errors within it are what the
+   rating's own noise would make, and those beyond it say something about the model. The full
+   band would forgive almost any peak error the rating could explain, and above the top of the
+   rating, where the band is widest, would leave the peaks nearly unscored. `peak_tolerance`
+   takes another factor for a sensitivity test.
+4. **The choice is catalogued with every run** (see below).
+
+## The catalogue: what each run records
+
+| Where | What |
+|---|---|
+| The project's data registration (`data_registered` in the calibration log) | The mask as runs of rows with their reasons; the band (flow, lower, upper), the factor, the cap, the band's source and the reason for the factor |
+| Each automatic calibration (`auto_calibration`) | `scoring`: steps masked, steps scored, whether the tolerance was applied, the band's widest shares |
+| `calibrate_site.R`'s `summary.md` | The share of the calibration window left out, by reason; the tolerance and its reason; the band's source and cap; validation NSE raw and masked |
+| `4_calibration/calibration_mask.csv` | The mask's reasons, steps and shares |
+| `calibration_inputs.yml` | The rain comparison's mask periods and band, with the band's source |
+| `rain_comparison/summary.md` and the report | What was passed to calibration to leave out, and the band's source |
+
+The reason for the factor is one of three sentences: auto for `stage` or `hydrodynamic_rated`
+(none, as the rating's error cancels), auto for `hydrodynamic_own` (half the band, about one
+standard error), or a factor given in the settings.
+
+## What is covered, and what is not yet
+
+The mask and the band reach every search a project runs: each automatic calibration stage,
+coarse stages (a coarse step is scored only if every fine step in it is, and takes their mean
+band) and the structure comparison. `calibrate_pdm()` and `calibrate_staged()` take them
+directly.
+
+Not yet: the Pareto calibration (`calibrate_pdm_multi()`, a Pareto stage) refuses a project
+whose data carry a mask or a tolerance, rather than ignore them; the Bayesian calibration, the
+split-sample test and the parameter-drift test in `calibrate_site.R` score the raw flow. Each is
+a follow-up.

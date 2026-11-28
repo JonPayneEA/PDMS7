@@ -9,7 +9,8 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-24
 # Tier:         1
-# Modified:     2026-11-28 - one product: summary.md is the report's marked blocks; the
+# Modified:     2026-11-28 - the mask periods and the rating band in calibration_inputs.yml
+#               2026-11-28 - one product: summary.md is the report's marked blocks; the
 #               settings as used written beside it; what goes to calibration reported
 #               2026-11-28 - h19_season's monthly factors tested out of sample
 #               2026-11-28 - calibration_inputs.yml, the hand-off to calibrate_site.R
@@ -43,7 +44,7 @@
 # Outputs:      A folder: summary.md, rain_ranking.csv, weights_and_error.csv, plots each with a
 #               note on how to read it, and catchment_rain/ with each average built, as CSV
 #               ready for calibrate_site.R
-# Dependencies: pdmS7 (0.57.0 or later); sf for a shapefile and the search; reach.io
+# Dependencies: pdmS7 (0.58.0 or later); sf for a shapefile and the search; reach.io
 #               to find and download the gauges; arrow (or nanoparquet) for the processed
 #               H19 extracts, ncdf4 for the daily H19 files; reach.rate to check the flow
 #               record from stage, gaugings and ratings
@@ -110,8 +111,8 @@ library(data.table)
 
 # The script is written for this pdmS7 or later: an older one lacks functions it uses, and
 # would fail part way through.
-if (utils::packageVersion("pdmS7") < "0.57.0") {
-  stop("compare_rain.R needs pdmS7 0.57.0 or later; this is ",
+if (utils::packageVersion("pdmS7") < "0.58.0") {
+  stop("compare_rain.R needs pdmS7 0.58.0 or later; this is ",
        as.character(utils::packageVersion("pdmS7")),
        ". Update it with remotes::install_github(\"JonPayneEA/PDMS7\"), then restart R.",
        call. = FALSE)
@@ -3397,6 +3398,45 @@ handoff_warnings <- c(
   })
 handoff_error <- recommended$rain_error[1]
 if (!is.finite(handoff_error)) handoff_error <- fallback_error
+# The mask: periods a calibration on the first series should leave out, never for being high.
+# The events that series missed (the model cannot make an event it was given no rain for), from
+# the start of the rain to the end of the flow; and the flow off the applied rating, from the
+# record check. Flow above the top of the rating is uncertain, not wrong, and is not masked.
+first_series <- match(recommended$series[1], names_r)
+missed_rows <- which(missed_all$missed[, first_series])
+handoff_mask <- rbind(
+  if (length(missed_rows)) {
+    data.frame(from = grid$time[floods$rain_start[missed_rows]],
+               to = grid$time[floods$flow_end[missed_rows]],
+               reason = sprintf("an event %s missed", recommended$series[1]))
+  },
+  if (!is.null(record_check) && nrow(record_check$off_curve)) {
+    data.frame(from = record_check$off_curve$start, to = record_check$off_curve$end,
+               reason = "flow off the applied rating")
+  })
+# The rating's band, as shares of the flow, for the peak tolerance: the candidate rating's band
+# from the gaugings, the best estimate here of how far the rated flow may be from the true flow.
+handoff_band <- NULL
+handoff_band_source <- NULL
+if (!is.null(band_curve)) {
+  ok <- is.finite(band_curve$median_cms) & band_curve$median_cms > 0 &
+    is.finite(band_curve$lower_cms) & is.finite(band_curve$upper_cms)
+  if (any(ok)) {
+    b <- band_curve[ok, ]
+    handoff_band <- data.frame(q = b$median_cms,
+                               lower = pmin(b$lower_cms / b$median_cms - 1, 0),
+                               upper = pmax(b$upper_cms / b$median_cms - 1, 0))
+    handoff_band <- handoff_band[!duplicated(handoff_band$q), ]
+    handoff_band <- handoff_band[order(handoff_band$q), ]
+    # Fifty flows are plenty: peak_band() interpolates between them on log flow.
+    if (nrow(handoff_band) > 50) {
+      handoff_band <- handoff_band[unique(round(seq(1, nrow(handoff_band), length.out = 50))), ]
+    }
+    handoff_band_source <- sprintf(paste("the candidate rating's 95%% band from the gaugings",
+                                         "(%s), candidate_rating/candidate_band.csv"),
+                                   band_label)
+  }
+}
 write_calibration_inputs(file.path(output_folder, "calibration_inputs.yml"),
                          rain = stats::setNames(recommended$file, recommended$series),
                          period = c(period_from, period_to),
@@ -3404,7 +3444,10 @@ write_calibration_inputs(file.path(output_folder, "calibration_inputs.yml"),
                          rain_error = if (length(handoff_error) == 1) handoff_error else NA,
                          warnings = as.character(handoff_warnings),
                          made_by = sprintf("compare_rain.R, pdmS7 %s",
-                                           utils::packageVersion("pdmS7")))
+                                           utils::packageVersion("pdmS7")),
+                         mask = handoff_mask,
+                         rating_band = handoff_band,
+                         rating_band_source = handoff_band_source)
 
 # The ranking and the weights in the console too.
 print(ranking[, c("rain", "mean_rank", "runoff_ratio", "total_apart_pct", "response_r",
@@ -4066,7 +4109,22 @@ blocks <- c(
          as.character(handoff_warnings)
        } else {
          "No warnings."
-       }))),
+       })),
+       in_summary(report_text(sprintf(paste("To leave out of calibration: %s. For the peak",
+                                            "tolerance: %s."),
+                                      if (is.null(handoff_mask) || !nrow(handoff_mask)) {
+                                        "nothing"
+                                      } else {
+                                        counts <- table(handoff_mask$reason)
+                                        paste(sprintf("%d period(s), %s", as.vector(counts),
+                                                      names(counts)),
+                                              collapse = "; ")
+                                      },
+                                      if (is.null(handoff_band)) {
+                                        "no rating band (it needs the gaugings)"
+                                      } else {
+                                        handoff_band_source
+                                      })))),
 
   # The settings this run used.
   list(report_heading("The settings"),

@@ -267,6 +267,9 @@ reference:
   - pdm_objectives
   - boxcox_flow
   - flow_weights
+  - calibration_mask
+  - peak_band
+  - tolerate
   - pdm_sensitivity
   - compare_forecasts
   - split_sample_test

@@ -286,6 +286,9 @@ pdm_stages <- function(config, overrides = NULL, exclude = NULL, polish = TRUE,
 #' @param stages Stages from [pdm_stages()], or your own.
 #' @param bounds Bounds table from [calibration_bounds()].
 #' @param starts,seed,control,method,cores Passed to [calibrate_pdm()] for every stage.
+#' @param mask,band The calibration mask ([calibration_mask()]) and the peak band
+#'   ([peak_band()]), passed to [calibrate_pdm()] for every stage, put on the coarse step for a
+#'   coarse stage. A Pareto stage takes neither yet.
 #'
 #' @return `calibrate_staged()`: a list with `config`, `model`, `parameters` (every calibrated
 #'   value), and `stages`, one [calibrate_pdm()] result per stage with its `label`.
@@ -310,7 +313,8 @@ calibrate_staged <- function(config, forcing, observed, stages = pdm_stages(conf
                              seed = NULL, control = list(maxit = 200),
                              method = c("lbfgsb", "nelder_mead", "dds"), soil_fraction = 0.5,
                              log_offset = 0.01, start = c("flow", "soil"),
-                             baseflow_fraction = 0.7, cores = getOption("pdmS7.cores", 1L)) {
+                             baseflow_fraction = 0.7, cores = getOption("pdmS7.cores", 1L),
+                             mask = NULL, band = NULL) {
   method <- match.arg(method)
   start <- match.arg(start)
   .check(is.list(stages) && length(stages) > 0, "stages must be a non-empty list")
@@ -325,6 +329,9 @@ calibrate_staged <- function(config, forcing, observed, stages = pdm_stages(conf
       "named flows"
     ))
     if (identical(stage$objective, "pareto")) {
+      .check(is.null(mask) && is.null(band), paste(
+        "A Pareto stage takes no mask or peak band yet: leave them out, or drop the Pareto stage"
+      ))
       fit <- .staged_pareto(stage, current, forcing, observed, b, warmup, starts, seed, control,
                             soil_fraction, log_offset, start, baseflow_fraction, cores)
       fit$label <- .stage_label(i, stages)
@@ -334,7 +341,8 @@ calibrate_staged <- function(config, forcing, observed, stages = pdm_stages(conf
     }
     if (!is.null(stage$coarse_dt)) {
       fit <- .staged_coarse(stage, current, forcing, observed, b, warmup, starts, seed, control,
-                            method, soil_fraction, log_offset, start, baseflow_fraction, cores)
+                            method, soil_fraction, log_offset, start, baseflow_fraction, cores,
+                            mask, band)
       fit$label <- .stage_label(i, stages)
       results[[i]] <- fit
       current <- fit$config
@@ -352,7 +360,7 @@ calibrate_staged <- function(config, forcing, observed, stages = pdm_stages(conf
       event_weights = stage$event_weights %||% .default_event_weights,
       event_share = stage$event_share %||% 0.5,
       event_screen = if ("event_screen" %in% names(stage)) stage$event_screen else list(),
-      cores = cores
+      cores = cores, mask = mask, band = band
     )
     fit$label <- .stage_label(i, stages)
     results[[i]] <- fit
@@ -370,15 +378,18 @@ calibrate_staged <- function(config, forcing, observed, stages = pdm_stages(conf
 # parameters fitted there, and the configuration put back on the model's own step. The slow
 # stores' parameters are in hours and millimetres, so they carry across unchanged.
 .staged_coarse <- function(stage, config, forcing, observed, b, warmup, starts, seed, control,
-                           method, soil_fraction, log_offset, start, baseflow_fraction, cores) {
+                           method, soil_fraction, log_offset, start, baseflow_fraction, cores,
+                           mask = NULL, band = NULL) {
   cz <- .coarse_inputs(config, forcing, observed, warmup, stage$coarse_dt)
+  n_coarse <- length(cz$observed)
   fit <- calibrate_pdm(
     cz$config, cz$forcing, cz$observed, lower = b$lower, upper = b$upper, warmup = cz$warmup,
     objective = stage$objective, control = stage$control %||% control,
     soil_fraction = soil_fraction, starts = starts, seed = seed,
     method = stage$method %||% method, log_scale = b$log_scale, log_offset = log_offset,
     volume_weight = stage$volume_weight %||% 0, start = start,
-    baseflow_fraction = baseflow_fraction, cores = cores
+    baseflow_fraction = baseflow_fraction, cores = cores,
+    mask = .coarse_mask(mask, cz$factor, n_coarse), band = .coarse_band(band, cz$factor, n_coarse)
   )
   fit$config$dt <- config$dt %||% 1
   fit$model <- pdm_from_config(fit$config)

@@ -116,7 +116,9 @@ test_that("calibration beyond the period the rain was judged over is warned of",
 test_that("forecast_use is stage by default, and only the three uses are taken", {
   s <- read_site_settings(site_with(comparison()))
   expect_identical(s$forecast_use, "stage")
-  s2 <- read_site_settings(site_with(comparison(), "forecast_use: hydrodynamic_own"))
+  # Without a band (comparison() writes none), hydrodynamic_own needs peak_tolerance: 0.
+  s2 <- read_site_settings(site_with(comparison(),
+                                     c("forecast_use: hydrodynamic_own", "peak_tolerance: 0")))
   expect_identical(s2$forecast_use, "hydrodynamic_own")
   expect_error(read_site_settings(site_with(comparison(), "forecast_use: flood_map")),
                "forecast_use must be stage, hydrodynamic_rated or hydrodynamic_own")
@@ -153,4 +155,68 @@ test_that("a site with rain gauges but no data: rain reads its rain from the com
   s <- read_site_settings(file)
   expect_identical(names(s$rain), c("thiessen", "multiquadric"))
   expect_identical(names(s$rain_gauges), "Gauge A")
+})
+
+test_that("the hand-off carries the mask periods and the rating band", {
+  folder <- tempfile("rain_comparison")
+  dir.create(file.path(folder, "catchment_rain"), recursive = TRUE)
+  file.create(file.path(folder, "catchment_rain", "thiessen.csv"))
+  write_calibration_inputs(
+    file.path(folder, "calibration_inputs.yml"), c(thiessen = "catchment_rain/thiessen.csv"),
+    period = c("2010-10-01", "2018-10-01"), step_hours = 0.25,
+    mask = data.frame(from = as.POSIXct("2015-12-05 06:00", tz = "UTC"),
+                      to = as.POSIXct("2015-12-07 18:00", tz = "UTC"),
+                      reason = "an event thiessen missed"),
+    rating_band = data.frame(q = c(1, 50), lower = c(-0.05, -0.2), upper = c(0.05, 0.3)),
+    rating_band_source = "the candidate's band")
+  ci <- read_calibration_inputs(folder)
+  expect_identical(ci$mask, data.frame(from = "2015-12-05 06:00", to = "2015-12-07 18:00",
+                                       reason = "an event thiessen missed"))
+  expect_identical(ci$rating_band, data.frame(q = c(1, 50), lower = c(-0.05, -0.2),
+                                              upper = c(0.05, 0.3)))
+  expect_identical(ci$rating_band_source, "the candidate's band")
+  expect_output(print(ci), "Mask: 1 periods")
+})
+
+# A comparison with a band and a mask, for the peak tolerance tests.
+banded <- function() {
+  folder <- tempfile("rain_comparison")
+  dir.create(file.path(folder, "catchment_rain"), recursive = TRUE)
+  file.create(file.path(folder, "catchment_rain", "thiessen.csv"))
+  write_calibration_inputs(
+    file.path(folder, "calibration_inputs.yml"), c(thiessen = "catchment_rain/thiessen.csv"),
+    period = c("2010-10-01", "2018-10-01"), step_hours = 0.25,
+    mask = data.frame(from = "2012-01-01 00:00", to = "2012-01-02 00:00", reason = "missed"),
+    rating_band = data.frame(q = c(1, 50), lower = c(-0.05, -0.2), upper = c(0.05, 0.3)),
+    rating_band_source = "a test band")
+  folder
+}
+
+test_that("peak_tolerance auto: none for stage and rated, half the band for hydrodynamic_own", {
+  folder <- banded()
+  st <- read_site_settings(site_with(folder))
+  expect_identical(st$peak_tolerance_factor, 0)
+  expect_match(st$peak_tolerance_reason, "auto, for forecast_use stage: none")
+  rated <- read_site_settings(site_with(folder, "forecast_use: hydrodynamic_rated"))
+  expect_identical(rated$peak_tolerance_factor, 0)
+  own <- read_site_settings(site_with(folder, "forecast_use: hydrodynamic_own"))
+  expect_identical(own$peak_tolerance_factor, 0.5)
+  expect_match(own$peak_tolerance_reason, "about one standard error")
+  expect_identical(own$rating_band_source, "a test band")
+  expect_identical(nrow(own$calibration_inputs$mask), 1L)
+  # A factor given wins, and says so.
+  two <- read_site_settings(site_with(folder, c("forecast_use: stage", "peak_tolerance: 2")))
+  expect_identical(two$peak_tolerance_factor, 2)
+  expect_match(two$peak_tolerance_reason, "given in the settings: 2 times")
+  expect_output(print(own), "errors within 0.5 of the rating's band forgiven")
+})
+
+test_that("a tolerance with no band to hand is refused, never assumed", {
+  # comparison() writes no band.
+  expect_error(read_site_settings(site_with(comparison(), "forecast_use: hydrodynamic_own")),
+               "peak_tolerance needs the rating's band")
+  expect_error(read_site_settings(site_with(banded(), "peak_tolerance: lots")),
+               "peak_tolerance must be auto, 0")
+  expect_error(read_site_settings(site_with(banded(), "mask_periods: [{from: x, to: y}]")),
+               "each from and to must be a date-time")
 })
