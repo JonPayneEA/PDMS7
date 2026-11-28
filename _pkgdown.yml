@@ -350,6 +350,7 @@ reference:
   contents:
   - report_blocks
   - write_report
+  - in_summary
   - read_plot_notes
   - read_boundary
   - distance_to_boundary

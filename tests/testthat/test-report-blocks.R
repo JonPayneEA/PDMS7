@@ -81,3 +81,36 @@ test_that("read_plot_notes() reads each note's description and its points", {
   shipped <- read_plot_notes(system.file("scripts", "compare_rain.R", package = "pdmS7"))
   expect_true("largest_floods_cumulative.png" %in% names(shipped))
 })
+
+test_that("the summary is the marked blocks of the report, under their headings", {
+  blocks <- list(
+    report_heading("Title", 1),
+    in_summary(report_alert("Best: A.", TRUE)),
+    report_heading("Section one"),
+    report_text("Evidence only."),
+    report_heading("Section two"),
+    report_text("More evidence."),
+    report_heading("Below two", 3),
+    in_summary(report_list(c("Do this.", "Then that."))),
+    report_heading("Section three"),
+    in_summary(report_figure("p", function() plot(1), "A plot")))
+  folder <- tempfile("report")
+  write_report(blocks, folder, "Title", summary = "summary.md")
+  s <- readLines(file.path(folder, "summary.md"))
+  # The title always; section one has nothing marked below it, so it is left out; section
+  # two is kept for the list under its subsection; section three's figure stays in the report.
+  expect_identical(s[s != ""], c("# Title", "> **Best: A.**", "## Section two",
+                                 "### Below two", "- Do this.", "- Then that.",
+                                 paste("The full report, with the evidence behind each line,",
+                                       "every table and every plot: report.html (or",
+                                       "report.md).")))
+  # Every summary line is in the report.
+  r <- readLines(file.path(folder, "report.md"))
+  expect_true(all(setdiff(s[s != ""], utils::tail(s[s != ""], 1)) %in% r))
+  expect_false(file.exists(file.path(tempfile(), "summary.md")))
+  expect_error(write_report(blocks, folder, "Title", summary = "../s.md"), "Markdown file name")
+  # A list of blocks marks each, keeping NULLs for write_report() to drop.
+  m <- in_summary(list(report_text("a"), NULL))
+  expect_true(m[[1]]$summary)
+  expect_null(m[[2]])
+})

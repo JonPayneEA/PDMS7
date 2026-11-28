@@ -1,3 +1,25 @@
+# pdmS7 0.57.0
+
+- **`compare_rain.R`: one report, and the summary is part of it.** `summary.md` used to be
+  written by its own code, apart from the report, so each check had to be written twice and
+  the two drifted. Now the report's blocks are the only source.
+  - The new `in_summary()` marks the blocks the summary carries: every alert (each is a
+    verdict), the ranking, the recommendation, the weights, the suspects, the rating's
+    findings and what to do next. `write_report(..., summary = "summary.md")` writes them,
+    under their headings, beside the report, so the summary cannot say anything the report
+    does not.
+  - What was only in the old summary is now in the report: the gauges downloaded, the note on
+    Thiessen weights worked out from the geometry, which series cannot be told apart from the
+    first, the multiquadric's shape parameter, and the advice on single gauges.
+  - Two new sections, in both: **Passed to calibration**, with the rain error and warnings
+    exactly as `calibration_inputs.yml` holds them, and **The settings**, naming the settings
+    file and pdmS7's version.
+  - The settings as used, changes made in R included, are written to
+    `rain_settings_used.yml`, which `read_rain_settings()` reads back to the same settings, so
+    a run can be repeated after `rain.yml` changes.
+
+  On the synthetic catchment every other output is byte for byte as before.
+
 # pdmS7 0.56.0
 
 - **h19_season's monthly factors tested out of sample.** Scored on the days they were fitted

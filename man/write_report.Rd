@@ -4,7 +4,7 @@
 \alias{write_report}
 \title{Write a report}
 \usage{
-write_report(blocks, folder, title)
+write_report(blocks, folder, title, summary = NULL)
 }
 \arguments{
 \item{blocks}{A list of blocks from \code{\link[=report_heading]{report_heading()}} and the like; \code{NULL} entries are
@@ -13,6 +13,9 @@ dropped, so a block can be left out with \code{if}.}
 \item{folder}{The folder to write into; made if missing.}
 
 \item{title}{The page's title.}
+
+\item{summary}{A file name for the summary in \code{folder}, such as \code{"summary.md"}, or \code{NULL}
+for none.}
 }
 \value{
 The path of \code{report.html}, invisibly.
@@ -21,7 +24,9 @@ The path of \code{report.html}, invisibly.
 Writes the blocks as \code{report.html}, one self-contained file with every figure embedded,
 and \code{report.md} beside it, in \code{folder}. Figures from \code{\link[=report_figure]{report_figure()}} are drawn into
 \verb{figures/} in the folder; images from \code{\link[=report_image]{report_image()}} are embedded from where they are.
+Given \code{summary}, the blocks marked with \code{\link[=in_summary]{in_summary()}} are also written there, as Markdown,
+with a closing line pointing to the report.
 }
 \seealso{
-\link{report_blocks}
+\link{report_blocks}, \code{\link[=in_summary]{in_summary()}}
 }

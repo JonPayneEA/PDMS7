@@ -193,6 +193,19 @@ test_that("the rain comparison parses, stops until the area is set, and names it
   }
 })
 
+test_that("the rain comparison's summary is the report's marked blocks, never written apart", {
+  code <- readLines(system.file("scripts", "compare_rain.R", package = "pdmS7"))
+  # One product: summary.md comes from the report's own blocks, so it cannot drift from them.
+  expect_true(any(grepl('summary = "summary.md")', code, fixed = TRUE)))
+  expect_false(any(grepl("writeLines(lines", code, fixed = TRUE)))
+  # Every alert is a verdict, so every alert is in the summary too.
+  expect_true(any(grepl("alert <- function(text, ok) in_summary(report_alert(text, ok))", code,
+                        fixed = TRUE)))
+  # The settings as used, and what goes to calibration, are in the report.
+  expect_true(any(grepl("rain_settings_used.yml", code, fixed = TRUE)))
+  expect_true(any(grepl('report_heading("Passed to calibration")', code, fixed = TRUE)))
+})
+
 test_that("the H19 check parses and names the plots it draws", {
   script <- system.file("scripts", "check_h19.R", package = "pdmS7")
   expect_true(nzchar(script))
@@ -261,9 +274,10 @@ test_that("the rain comparison is cut to the stretch every series covers", {
 test_that("the rain comparison builds the averages chosen in rain_methods", {
   code <- readLines(system.file("scripts", "compare_rain.R", package = "pdmS7"))
   # Every average is on the list by default, including the two new ones.
-  expect_identical(rain_defaults()$rain_methods, c("thiessen", "equal", "equal_all", "idw", "multiquadric",
-                              "multiquadric_lta", "kriging", "ked_lta", "h19", "h19_bias",
-                              "h19_season", "multiquadric_h19", "ked_h19"))
+  expect_identical(rain_defaults()$rain_methods,
+                   c("thiessen", "equal", "equal_all", "idw", "multiquadric", "multiquadric_lta",
+                     "kriging", "ked_lta", "h19", "h19_bias", "h19_season", "multiquadric_h19",
+                     "ked_h19"))
   # A name the script cannot build is refused, and an average whose inputs are missing is
   # listed as not built, with the reason.
   expect_true(any(grepl("rain_methods names averages the script cannot build", code,

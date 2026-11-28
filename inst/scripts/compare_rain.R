@@ -9,7 +9,9 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-24
 # Tier:         1
-# Modified:     2026-11-28 - h19_season's monthly factors tested out of sample
+# Modified:     2026-11-28 - one product: summary.md is the report's marked blocks; the
+#               settings as used written beside it; what goes to calibration reported
+#               2026-11-28 - h19_season's monthly factors tested out of sample
 #               2026-11-28 - calibration_inputs.yml, the hand-off to calibrate_site.R
 #               2026-11-28 - the gauges' clocks checked against the radar over each
 #               2026-11-28 - the settings read from rain.yml, not edited in the script
@@ -41,7 +43,7 @@
 # Outputs:      A folder: summary.md, rain_ranking.csv, weights_and_error.csv, plots each with a
 #               note on how to read it, and catchment_rain/ with each average built, as CSV
 #               ready for calibrate_site.R
-# Dependencies: pdmS7 (0.56.0 or later); sf for a shapefile and the search; reach.io
+# Dependencies: pdmS7 (0.57.0 or later); sf for a shapefile and the search; reach.io
 #               to find and download the gauges; arrow (or nanoparquet) for the processed
 #               H19 extracts, ncdf4 for the daily H19 files; reach.rate to check the flow
 #               record from stage, gaugings and ratings
@@ -108,8 +110,8 @@ library(data.table)
 
 # The script is written for this pdmS7 or later: an older one lacks functions it uses, and
 # would fail part way through.
-if (utils::packageVersion("pdmS7") < "0.56.0") {
-  stop("compare_rain.R needs pdmS7 0.56.0 or later; this is ",
+if (utils::packageVersion("pdmS7") < "0.57.0") {
+  stop("compare_rain.R needs pdmS7 0.57.0 or later; this is ",
        as.character(utils::packageVersion("pdmS7")),
        ". Update it with remotes::install_github(\"JonPayneEA/PDMS7\"), then restart R.",
        call. = FALSE)
@@ -3361,499 +3363,6 @@ png_of("flood_ratio_vs_rain.png", function() {
                    col = c("#1B6F80", "#B3261E", "grey40"))
 })
 
-# ---- The summary ---------------------------------------------------------------------------
-
-# summary.md, built a section at a time; a section left out is NULL, which c() drops.
-lines <- c(
-  "# Which rain series best explains the flow", "",
-  sprintf("%.1f years of %s data, %s to %s; %d rain series; %d events compared.",
-          years,
-          if (step_hours < 1) {
-            sprintf("%g-minute", step_hours * 60)
-          } else {
-            sprintf("%g-hour", step_hours)
-          },
-          compared_from,
-          compared_to,
-          length(names_r),
-          nrow(floods)),
-  if (length(limiting)) {
-    c("",
-      sprintf(paste("The period asked for was %s to %s; the comparison is cut to the stretch",
-                    "every series covers, set by %s. The averages in `catchment_rain/` cover",
-                    "the whole period."),
-              period_from,
-              period_to,
-              toString(limiting)))
-  },
-
-  # The balance and double-mass checks use only the steps where every series has a value, so
-  # a short series narrows them all.
-  if (mean(common) < 0.8) {
-    short <- names(missing_pct)[missing_pct > 20]
-    c("",
-      sprintf(paste("**Only %.0f%% of the record (%.1f years) has every series.** The water",
-                    "balance and double-mass checks use those steps alone; the event checks",
-                    "judge each series on the events it covers. The shortest: %s. Leave",
-                    "it out for a fair comparison over the whole record, or keep it to",
-                    "compare everything over its period."),
-              100 * mean(common),
-              years * mean(common),
-              paste(sprintf("%s (%.0f%% missing)", short, missing_pct[short]),
-                    collapse = ", ")),
-      "")
-  },
-  "Judged from the data alone, before any model. How to read each plot: the HOW TO READ",
-  "notes in compare_rain.R, beside the line that draws it.", "",
-
-  # The ranking.
-  sprintf("**Best by the data: %s.** The ranking, best first (mean rank over twelve", best),
-  "measures):", "",
-  sprintf(paste("%d. **%s** (mean rank %.1f; places %d to %d in 90%% of draws of the events):",
-                "runoff ratio %.2f, quick-response correlation %.2f, first for %d of %d events."),
-          seq_len(nrow(ranking)),
-          ranking$rain,
-          ranking$mean_rank,
-          ranking$place_low,
-          ranking$place_high,
-          ranking$runoff_ratio,
-          ranking$response_r,
-          ranking$event_wins,
-          sum(response$summary$event_wins)),
-
-  "",
-  sprintf(paste("The places are how sure the order is: the events drawn again at random %d",
-                "times, the record-wide measures kept. %s"),
-          draws,
-          if (any(!ranking$apart_from_best[-1])) {
-            sprintf("%s cannot be told apart from %s on this record.",
-                    toString(ranking$rain[-1][!ranking$apart_from_best[-1]]),
-                    best)
-          } else {
-            "Every other series sits clearly behind the first."
-          }),
-
-  # The averages recommended for calibration.
-  "", "## Recommended for PDM calibration", "",
-  sprintf("- **%s** (place %d, %s): %s. rain_error %s; `%s`.",
-          recommended$series,
-          recommended$place,
-          recommended$places_90pct,
-          recommended$why,
-          ifelse(is.finite(recommended$rain_error),
-                 sprintf("%.3f", recommended$rain_error),
-                 if (is.finite(fallback_error)) {
-                   sprintf("not worked out (start from %.3f)", fallback_error)
-                 } else {
-                   "not worked out"
-                 }),
-          recommended$file),
-  "",
-  paste("Calibrate on each with calibrate_site.R, into its own output folder: copy its file",
-        "into the site's data folder, set it as rain in site.yml, and set rain_error. Then",
-        "compare their validation scores on the largest events."),
-
-  # The averages built, with their weights.
-  "", "## The catchment averages built", "",
-  sprintf("- **%s**: %s.",
-          names(weights),
-          vapply(names(weights), function(n) {
-            w <- weights[[n]]
-            paste(sprintf("%s %.3f", names(w), w), collapse = ", ")
-          }, "")),
-  if (!is.null(boundary)) {
-    c(if (!is.null(built$multiquadric)) {
-        sprintf(paste("- **multiquadric**: every gauge, on a %g m grid, shape parameter c = %.0f m",
-                      "(chosen by leaving out one gauge at a time)."),
-                grid_spacing_m,
-                multiquadric_c)
-      },
-      if (!is.null(built$idw)) {
-        sprintf("- **idw**: every gauge, weighted by 1 / distance^2, on a %g m grid.",
-                grid_spacing_m)
-      },
-      if (!is.null(built$kriging)) {
-        sprintf(paste("- **kriging**: block kriging of the catchment, with the variogram of",
-                      "relative rain fitted to the gauges (nugget %.2f, sill %.2f, range %.1f",
-                      "km; `variogram.png`)."),
-                rain_variogram$nugget,
-                rain_variogram$nugget + rain_variogram$partial_sill,
-                rain_variogram$range / 1000)
-      },
-      if (!is.null(built$ked_lta)) {
-        "- **ked_lta**: the same, with the long-term average grid as the drift."
-      },
-      if (!is.null(built$h19_bias)) {
-        paste("- **h19_bias**: H19 over the catchment, scaled day by day by the gauges' total",
-              "over the radar's at the gauges (`radar_bias_factors.csv`).")
-      },
-      if (!is.null(built$multiquadric_h19)) {
-        paste("- **multiquadric_h19**: the same surface through the gauges, with H19's pattern",
-              "between them (conditional merging), on the radar's 1 km cells. A step needs",
-              "the radar over the catchment and at every gauge.")
-      } else if (!is.null(radar_folder) && step_hours != 0.25) {
-        "- multiquadric_h19: not built (it needs 15-minute data)."
-      },
-      if (!is.null(built$ked_h19)) {
-        paste("- **ked_h19**: kriging of the gauges with each step's H19 as the drift, with",
-              "the kriging's variogram, on the radar's 1 km cells (`radar_ked.csv`). A step",
-              "needs the radar over the catchment and at every gauge.")
-      },
-      "",
-      # The Thiessen weights given, against those from the geometry.
-      if (thiessen_source == "given") {
-        c(sprintf("Thiessen weights from the gauge positions and the boundary: %s. Given: %s.",
-                  paste(sprintf("%s %.3f", names(geometry_weights), geometry_weights),
-                        collapse = ", "),
-                  paste(sprintf("%s %.3f", names(thiessen_weights), thiessen_weights),
-                        collapse = ", ")),
-          if (max(abs(geometry_weights[names(thiessen_weights)] - thiessen_weights)) > 0.05) {
-            paste("**They differ by more than 0.05.** Check the gauge positions, the boundary,",
-                  "and how the given weights were made.")
-          })
-      } else {
-        paste("No Thiessen weights were given: thiessen uses those worked out from the gauge",
-              "positions and the boundary. The operational weights may differ.")
-      })
-  } else {
-    "- multiquadric: not built (no catchment_boundary given)."
-  },
-  if (length(skipped_methods)) {
-    c("", "Not built, though asked for:", "",
-      sprintf("- %s: %s.", names(skipped_methods), skipped_methods))
-  },
-  if (!is.null(built$multiquadric_lta)) {
-    sprintf(paste("- **multiquadric_lta**: each gauge's rain as a share of its long-term",
-                  "average (%s), a multiquadric surface through the shares (c = %.0f m), times",
-                  "the grid."),
-            lta_rain_file,
-            multiquadric_lta_c)
-  },
-  "", "Each is in `catchment_rain/`, as a CSV ready for calibrate_site.R.",
-  "", paste("To calibrate on them, name this folder in the site's site.yml",
-            "(`rain_comparison:`): calibrate_site.R then takes the first, its rain error and",
-            "the warnings from `calibration_inputs.yml`."),
-
-  # The downloads, with each gauge's quality flags.
-  if (!is.null(downloads)) {
-    c("",
-      sprintf(paste("Gauges downloaded from the EA Hydrology API with reach.io, %s to %s",
-                    "(`gauge_downloads.csv`):"),
-              period_from,
-              period_to),
-      "",
-      sprintf("- %s: %s, WISKI ID %s%s",
-              downloads$gauge,
-              downloads$label,
-              downloads$wiski_id,
-              ifelse(is.na(downloads$readings),
-                     ", already downloaded.",
-                     sprintf(", %d readings, %d missing; other flags: %s.",
-                             downloads$readings,
-                             downloads$missing,
-                             downloads$flags))),
-      "",
-      "Readings flagged Missing are gaps. Other flags (Suspect, Estimated, Unchecked) are kept",
-      "and only counted here: quality control belongs upstream, in reach.validate.")
-  },
-
-  # The kriging averages' own error over the events.
-  if (!is.null(kriging_error)) {
-    c("", "## The kriging error", "",
-      sprintf(paste("- **%s**: over %d events, a storm's rain is typically %.0f%% to %.0f%%",
-                    "out, by kriging's own reckoning (steps' errors independent, or wholly",
-                    "shared)."),
-              kriging_error$average,
-              kriging_error$floods,
-              100 * kriging_error$error_independent,
-              100 * kriging_error$error_shared),
-      "",
-      paste("It says how well the gauges pin the catchment's rain down, from their spacing",
-            "and the variogram; set it beside the rain_error from the weights. It does not",
-            "include gauge error the gauges share, such as undercatch."))
-  },
-
-  # The warnings, series by series.
-  "", "## Warnings", "",
-  unlist(lapply(seq_len(nrow(ranking)), function(i) {
-    w <- warnings_for(i)
-    sprintf("- %s: %s.",
-            ranking$rain[i],
-            if (length(w)) paste(w, collapse = "; ") else "none")
-  })),
-  if (diff(range(lags)) >= 1) {
-    c("",
-      sprintf(paste("The river answers to the series at lags from %g to %g hours. Series",
-                    "a whole hour or more apart often mean a clock or time-zone error in",
-                    "one."),
-              min(lags),
-              max(lags)))
-  },
-
-  # The weights and the error each average keeps.
-  if (weights_done) {
-    c("", "## Weights: how many gauges each average uses", "",
-      sprintf(paste("A single gauge's storm totals look to be up to %.0f%% out, from how much",
-                    "the gauges disagree event by event (an upper limit: real differences in"),
-              sigma),
-      "rain between sites count too). How much of that survives into each average:", "",
-      sprintf(paste("- **%s**, weights %s (%s): worth %.1f gauges; it keeps %.0f%% of a single",
-                    "gauge's random error, so about %.1f%% storm error. Suggested rain_error",
-                    "%.3f. Through the record it fell to %.1f gauges' worth or less 5%% of the",
-                    "time; %d of the 20 largest events fell while it was below 1.5."),
-              weights_table$rain,
-              weights_table$weights,
-              weights_table$source,
-              weights_table$effective_gauges,
-              100 * weights_table$error_factor,
-              sigma * weights_table$error_factor,
-              weights_table$suggested_rain_error,
-              weights_table$effective_gauges_p05,
-              weights_table$largest_events_below_1.5),
-      if (any(abs(weights_table$weights_sum - 1) > 0.02)) {
-        sprintf(paste("- Weights for %s do not add up to 1: the method scales the rain as",
-                      "well as weighting it. The balance checks will see the scaling."),
-                toString(weights_table$rain[abs(weights_table$weights_sum - 1) > 0.02]))
-      },
-      if (length(fit_r2) && any(unlist(fit_r2) < 0.95)) {
-        sprintf(paste("- The estimated weights for %s fit poorly (R2 below 0.95): the method",
-                      "is not a fixed weighting of these gauges, so read its figures with care."),
-                toString(names(fit_r2)[unlist(fit_r2) < 0.95]))
-      },
-      "- If gauges' errors are partly shared (wind on all of them), less cancels: see the",
-      "  error_factor_rho columns in `weights_and_error.csv`.")
-  },
-
-  # H19 from the processed extracts.
-  if (!is.null(radar_processed)) {
-    c("", "## H19 radar from the processed extracts", "",
-      sprintf(paste("h19 is polygon %s from the yearly extracts in %s: the area-weighted mean",
-                    "over Hyrad's polygon, which may not match catchment_boundary exactly.",
-                    "%.1f%% of its 15-minute steps are missing%s."),
-              radar_polygon_id,
-              radar_processed_folder,
-              100 * mean(is.na(radar_processed$rain)),
-              if (length(attr(radar_processed, "years_missing"))) {
-                paste0(" (no extract for ", toString(attr(radar_processed, "years_missing")), ")")
-              } else ""),
-      "", "H19 and everything made from it are restricted: keep this folder on restricted",
-      "storage.")
-  },
-
-  # H19 from the daily files: the layouts, and the radar against the gauges.
-  if (!is.null(radar_layouts)) {
-    l <- radar_layouts$layouts
-    c("", "## H19 radar", "",
-      sprintf("%d files in %d layout%s (`radar_layouts.csv`):",
-              sum(l$files),
-              nrow(l),
-              if (nrow(l) == 1) "" else "s"),
-      sprintf(paste("- Layout %d, %d files, %s to %s: `%s` in %s, stamped at the %s of each",
-                    "step%s."),
-              l$layout,
-              l$files,
-              l$first_day,
-              l$last_day,
-              l$variable,
-              l$units,
-              l$stamp,
-              ifelse(l$stamp == "end", " (moved back 15 minutes)", "")),
-      "",
-      if (radar_done) {
-        c("The radar over each gauge against the gauge, daily totals (`radar_vs_gauges.csv`):",
-          "",
-          sprintf(paste("- **%s**: radar / gauge %.2f over %d days; winter %.2f, summer %.2f",
-                        "(winter over summer %.2f)."),
-                  radar_table$gauge,
-                  radar_table$ratio_all,
-                  radar_table$days,
-                  radar_table$ratio_winter,
-                  radar_table$ratio_summer,
-                  radar_table$winter_over_summer),
-          "",
-          paste("A winter ratio clearly above the summer one points to the gauge losing rain",
-                "to wind; the same ratio all year points to the radar's own scaling. Wind",
-                "speed would separate them further."))
-      },
-      "", "H19 and everything made from it are restricted: keep this folder on restricted",
-      "storage.")
-  },
-
-  # The gauges' corrections to the long-term average.
-  if (!is.null(corrections)) {
-    c("", "## Gauges corrected to the long-term average", "",
-      sprintf(paste("Each gauge's average year over %s to %s, against %s at the gauge",
-                    "(`lta_corrections.csv`); the factors are %s:"),
-              correction_from,
-              correction_to,
-              lta_rain_file,
-              if (identical(lta_correction, "relative")) {
-                "relative (each divided by the median), so the gauges keep their overall level"
-              } else {
-                "absolute, putting each gauge on the grid's level"
-              }),
-      "",
-      sprintf(paste("- **%s**: %.0f mm a year over %.1f years (%.0f%% of the record) against",
-                    "%.0f; factor %.3f."),
-              corrections$gauge,
-              corrections$mm_per_year,
-              corrections$record_years,
-              100 * corrections$coverage,
-              corrections$lta_mm_per_year,
-              corrections$factor),
-      "",
-      paste("Every series built from the gauges, and the gauges themselves, use the corrected",
-            "rain. Readings flagged Suspect are kept in the averages."))
-  },
-
-  # Each series against the long-term average.
-  if (!is.null(lta_check)) {
-    c("", "## Against the long-term average", "",
-      sprintf(paste("The catchment's long-term average is %.0f mm a year (%s). Each series'",
-                    "annual rain over the period compared, against it (a gauge against its own",
-                    "cell's; `long_term_average_check.csv`):"),
-              lta_catchment,
-              lta_rain_file),
-      "",
-      sprintf("- **%s**: %.0f mm a year against %.0f, ratio %.2f.",
-              lta_check$rain,
-              lta_check$rain_mm_per_year,
-              lta_check$lta_mm_per_year,
-              lta_check$ratio),
-      "",
-      sprintf(paste("Over %.1f years the years' own weather moves every ratio together: read",
-                    "the differences between series, not their level. A gauge well below the",
-                    "others may undercatch. A grid made from gauges (as HadUK-Grid is) is not",
-                    "independent of them."),
-              years))
-  },
-
-  # Where the balance fails.
-  c("", "## Where the balance fails", "",
-    if (diagnosis$gap$kind == "not assessed") {
-      paste("No complete year was compared, so the water balance was not judged: over part of",
-            "a year, water going into or out of storage looks like a loss or a gain.")
-    } else {
-      sprintf(paste("On %s, a mean year of %.0f mm of rain, %.0f of flow and %.0f of potential",
-                    "evaporation; Fu's curve allows flow of %.0f to %.0f mm: %s."),
-              reference_rain,
-              diagnosis$gap$rain_mm,
-              diagnosis$gap$flow_mm,
-              diagnosis$gap$pet_mm,
-              diagnosis$gap$flow_range_low_mm,
-              diagnosis$gap$flow_range_high_mm,
-              switch(diagnosis$gap$kind,
-                     deficit = sprintf("%.0f mm short", diagnosis$gap$gap_mm),
-                     excess = sprintf("%.0f mm over", diagnosis$gap$gap_mm),
-                     closes = "inside it"))
-    },
-    "",
-    sprintf("- **%s** (%s): %s.", diagnosis$suspects$verdict, diagnosis$suspects$suspect,
-            diagnosis$suspects$evidence),
-    "",
-    sprintf("**Rating: %s.** %s", follow_up$verdict, follow_up$why),
-    "",
-    sprintf("- [%s] %s: %s; %s.", follow_up$findings$status, follow_up$findings$check,
-            follow_up$findings$finding, follow_up$findings$action),
-    if (!is.null(candidate)) {
-      c("",
-        paste("A candidate rating was fitted from the gaugings, for the hydrometry team to",
-              "review: `candidate_rating/` holds `rating_report.html`, the export, and",
-              "`candidate_vs_in_force.csv`."),
-        if (!is.null(candidate_gap)) {
-          sprintf(paste("On the flow it gives, the balance is %s (gap %.0f mm a year),",
-                        "against %s (gap %.0f mm) on the archived flow."),
-                  candidate_gap$kind, candidate_gap$gap_mm, diagnosis$gap$kind,
-                  diagnosis$gap$gap_mm)
-        },
-        candidate_note)
-    } else if (follow_up$verdict == "fit a candidate rating") {
-      c("", sprintf("No candidate rating was fitted: %s.", candidate_skip))
-    },
-    "",
-    if (is.null(record_check)) {
-      sprintf("The flow record was not checked: %s.", record_skip)
-    } else {
-      sprintf(paste("The flow record was checked with reach.rate: %d period(s), %d",
-                    "revision(s); see `record_checks.csv`."),
-              nrow(record_check$periods),
-              nrow(record_check$revisions))
-    },
-    if (!is.null(gaugings_vs_rating)) {
-      sprintf("Gaugings against the rating in force (%s): %d gaugings, %.0f%% within 10%%.",
-              gaugings_vs_rating$rating[1],
-              sum(gaugings_vs_rating$n_gaugings),
-              100 * stats::weighted.mean(gaugings_vs_rating$share_within_tol,
-                                         gaugings_vs_rating$n_gaugings, na.rm = TRUE))
-    },
-    "",
-    paste("No check proves a cause: gauges under-reading and a rating reading high at peaks",
-          "look alike in the events, and a rating reading low at every flow looks like a slow",
-          "loss. Gaugings, or a second flow gauge, separate them.")),
-
-  # The gauges' clocks.
-  if (!is.null(clocks)) {
-    out <- clocks[!clocks$verdict %in% c("in step", "not enough rain"), ]
-    c("", "## The gauges' clocks", "",
-      sprintf("Each gauge against %s, in summer time and winter time apart.", clock_reference),
-      "",
-      if (nrow(out)) {
-        sprintf("- **%s: %s.** %s", out$gauge, out$verdict, out$why)
-      } else {
-        sprintf("No gauge's clock was found out (%d in step, %d with too little rain to judge).",
-                sum(clocks$verdict == "in step"), sum(clocks$verdict == "not enough rain"))
-      },
-      "", "Table: `clock_check.csv`.")
-  },
-
-  # The radar by season.
-  if (!is.null(radar_season)) {
-    c("", "## Radar by season", "",
-      sprintf("**Radar: %s.** %s", radar_season$verdict, radar_season$why),
-      "",
-      sprintf("- %s: %d days, radar %.2f of the gauges; %d events, %.2f.",
-              radar_season$seasons$season, radar_season$seasons$days,
-              radar_season$seasons$ratio, radar_season$seasons$events,
-              radar_season$seasons$event_ratio),
-      if (!is.null(season_factors)) {
-        c("", sprintf(paste("`h19_season` scales the radar by a fixed factor a month (%s),",
-                            "from %s: `radar_season_factors.csv`, ready for a forecasting",
-                            "system."),
-                      paste(sprintf("%s %.2f", month.abb, season_factors$factor),
-                            collapse = ", "),
-                      season_factors$made_from[1]),
-          if (!is.null(factor_test)) {
-            c("", sprintf("**Out of sample: %s.** %s", factor_test$verdict, factor_test$why),
-              if (!is.null(factor_test$scores)) {
-                "Tables: `radar_season_factors_test.csv`, `radar_season_factors_by_fold.csv`."
-              })
-          })
-      },
-      "", "Tables: `radar_by_season.csv`, `radar_by_month.csv`.")
-  },
-
-  # What to do next, and the files written.
-  "", "## What next", "",
-  "- The ranking is a guide. A series that ranks well but carries a warning may still be the",
-  "  best choice once the fault is fixed (a clock corrected, a gap filled).",
-  "- A catchment average from several gauges usually beats any single gauge for events,",
-  "  because storms miss single gauges. If a single gauge ranks first, ask why: it may sit",
-  "  where the storms that drive events fall, or the averages may be built on poor gauges.",
-  "- Next, calibrate the PDM on the best two or three and compare their validation scores:",
-  "  calibrate_site.R with each as the first rain series, into separate output folders.",
-  "", "Tables: `rain_ranking.csv`, `quick_response.csv`. Plots: `rain_by_year.png`,",
-  "`runoff_ratio_by_series.png`, `double_mass_by_series.png`, `quick_response.png`,",
-  "`flood_runoff_ratios.png`.",
-  if (weights_done) {
-    paste("Weights: `weights_and_error.csv`, `gauge_pair_error.csv`,",
-          "`effective_gauges_over_time.png`.")
-  },
-  if (radar_done) {
-    paste("Radar: `radar_layouts.csv`, `radar_vs_gauges.csv`, `radar_vs_gauges_daily.csv`,",
-          "`radar_vs_gauge_by_month.png`.")
-  }
-)
-writeLines(lines, file.path(output_folder, "summary.md"))
 
 # ---- The hand-off to calibration -----------------------------------------------------------
 
@@ -3972,10 +3481,17 @@ largest_wide <- if (length(top_floods)) {
   wide
 }
 
+# The report and its summary are one product: summary.md is the blocks marked here, so it can
+# never say what the report does not. Every alert is a verdict, so every alert is in both.
+alert <- function(text, ok) in_summary(report_alert(text, ok))
+# The series that narrow the steps every series has: those over a fifth missing, or the worst.
+shortest <- names(missing_pct)[missing_pct > 20]
+if (!length(shortest)) shortest <- names(which.max(missing_pct))
+
 blocks <- c(
   list(report_heading("Which rain series best explains the flow", 1),
-       report_text(sprintf(paste("%.1f years of %s data, %s to %s; %d rain series; %d events",
-                                 "found. Every series is judged from the data alone, before",
+       in_summary(report_text(sprintf(paste("%.1f years of %s data, %s to %s; %d rain series;",
+                                 "%d events found. Every series is judged from the data alone, before",
                                  "any model, against the same flow. The water balance and",
                                  "double-mass use the steps every series has; each event test",
                                  "scores a series on the events its record covers in full and",
@@ -3988,29 +3504,35 @@ blocks <- c(
                            nrow(floods),
                            missed_min_mm,
                            min(colSums(missed_all$scored)),
-                           max(colSums(missed_all$scored))))),
+                           max(colSums(missed_all$scored)))))),
   if (length(limiting)) {
-    list(report_text(sprintf(paste("The period asked for was %s to %s; the comparison is cut",
-                                   "to the stretch every series covers, set by %s. The",
+    list(in_summary(report_text(sprintf(paste("The period asked for was %s to %s; the",
+                                   "comparison is cut to the stretch every series covers, set by %s. The",
                                    "averages in catchment_rain/ cover the whole period."),
                              period_from,
                              period_to,
-                             toString(limiting))))
+                             toString(limiting)))))
   },
   if (uses_radar) {
-    list(report_alert(paste("This report holds H19 radar and results made from it, which are",
+    list(alert(paste("This report holds H19 radar and results made from it, which are",
                             "restricted: keep it on restricted storage. Run without",
                             "radar_folder and radar_processed_folder for a version to share."),
                       FALSE))
   },
-  list(report_alert(sprintf("Best by the data: %s (mean rank %.1f over twelve measures).",
+  list(alert(sprintf("Best by the data: %s (mean rank %.1f over twelve measures).",
                             best,
                             ranking$mean_rank[1]),
                     TRUE)),
   if (mean(common) < 0.8) {
-    list(report_alert(sprintf(paste("Only %.0f%% of the record has every series: the water",
-                                    "balance and double-mass checks use those steps alone."),
-                              100 * mean(common)),
+    list(alert(sprintf(paste("Only %.0f%% of the record (%.1f years) has every series: the",
+                             "water balance and double-mass checks use those steps alone, and",
+                             "the event checks judge each series on the events it covers. The",
+                             "shortest: %s. Leave it out for a fair comparison over the whole",
+                             "record, or keep it to compare everything over its period."),
+                       100 * mean(common),
+                       years * mean(common),
+                       paste(sprintf("%s (%.0f%% missing)", shortest, missing_pct[shortest]),
+                             collapse = ", ")),
                       FALSE))
   },
 
@@ -4025,24 +3547,32 @@ blocks <- c(
                    "quick-response correlation, the events won and the storm-size",
                    "correlation. rain_ranking.csv has them all; the table shows the main",
                    "ones. A measure on which every series ties adds nothing to the order."),
-       report_table(data.frame(ranking[, c("rain", "mean_rank")],
+       in_summary(report_table(data.frame(ranking[, c("rain", "mean_rank")],
                                places_90pct = sprintf("%d to %d",
                                                       ranking$place_low,
                                                       ranking$place_high),
                                ranking[, c("runoff_ratio", "response_r", "lag_h", "event_wins",
                                            "missed_events_pct", "total_apart_pct",
                                            "double_mass_bend_pct")]),
-                    caption = "The ranking, best first"),
-       report_text(sprintf(paste("places_90pct is how sure the order is: the events drawn again",
-                                 "at random %d times and the event measures scored on each",
-                                 "draw, the measures over the whole record kept. A series'",
-                                 "range is the places it took in 90%% of the draws; ranges",
-                                 "that overlap the first's cannot be told apart from it."),
-                           draws)),
-       report_list(vapply(seq_len(nrow(ranking)), function(i) {
+                    caption = "The ranking, best first")),
+       in_summary(report_text(sprintf(paste("places_90pct is how sure the order is: the events",
+                                            "drawn again at random %d times and the event",
+                                            "measures scored on each draw, the measures over the",
+                                            "whole record kept. A series' range is the places it",
+                                            "took in 90%% of the draws. %s"),
+                                      draws,
+                                      if (any(!ranking$apart_from_best[-1])) {
+                                        level <- ranking$rain[-1][!ranking$apart_from_best[-1]]
+                                        sprintf("%s cannot be told apart from %s on this record.",
+                                                toString(level), best)
+                                      } else {
+                                        "Every other series sits clearly behind the first."
+                                      }))),
+       report_text("The warnings for each series:"),
+       in_summary(report_list(vapply(seq_len(nrow(ranking)), function(i) {
          w <- warnings_for(i)
          sprintf("%s: %s.", ranking$rain[i], if (length(w)) paste(w, collapse = "; ") else "none")
-       }, ""))),
+       }, "")))),
 
   # Recommended for calibration.
   list(report_heading("Recommended for PDM calibration"),
@@ -4052,14 +3582,14 @@ blocks <- c(
                    "above missed as few, since the model cannot make an event it was given no",
                    "rain for. Single gauges are left out: an average almost always serves the",
                    "model better."),
-       report_table(data.frame(series = recommended$series,
+       in_summary(report_table(data.frame(series = recommended$series,
                                place = recommended$place,
                                places_90pct = recommended$places_90pct,
                                rain_error = recommended$rain_error,
                                file = recommended$file,
                                why = recommended$why),
-                    caption = "Recommended for calibration"),
-       report_list(c(
+                    caption = "Recommended for calibration")),
+       in_summary(report_list(c(
          "Calibrate on each with calibrate_site.R, into its own output folder.",
          paste("The quickest way: name this folder in the site's site.yml (rain_comparison:).",
                "calibrate_site.R then reads calibration_inputs.yml, written here: the first",
@@ -4072,7 +3602,7 @@ blocks <- c(
                  "."
                }),
          paste("Compare their validation scores on the largest events: that says which rain",
-               "helps the model, not only which agrees best with the flow before any model.")))),
+               "helps the model, not only which agrees best with the flow before any model."))))),
 
   # The data.
   list(report_heading("The data"),
@@ -4084,8 +3614,30 @@ blocks <- c(
                            length(other_rain_files),
                            step_text)),
        report_table(gauge_table, caption = "The gauges"),
+       if (!is.null(downloads)) {
+         report_text(sprintf(paste("Gauges downloaded from the EA Hydrology API with reach.io, %s",
+                                   "to %s (gauge_downloads.csv):"),
+                             period_from, period_to))
+       },
+       if (!is.null(downloads)) {
+         report_list(sprintf("%s: %s, WISKI ID %s%s",
+                             downloads$gauge,
+                             downloads$label,
+                             downloads$wiski_id,
+                             ifelse(is.na(downloads$readings),
+                                    ", already downloaded.",
+                                    sprintf(", %d readings, %d missing; other flags: %s.",
+                                            downloads$readings,
+                                            downloads$missing,
+                                            downloads$flags))))
+       },
+       if (!is.null(downloads)) {
+         report_text("Readings flagged Missing are gaps. Other flags (Suspect, Estimated,",
+                     "Unchecked) are kept and only counted here: quality control belongs",
+                     "upstream, in reach.validate.")
+       },
        if (!is.null(gauge_table$km_outside) && all(gauge_table$km_outside > 0)) {
-         report_alert(sprintf(paste("Every gauge lies outside the catchment, %.1f to %.1f km",
+         alert(sprintf(paste("Every gauge lies outside the catchment, %.1f to %.1f km",
                                     "beyond its boundary: each average infers the catchment's",
                                     "rain from its edges. Storms that fall inside and miss the",
                                     "edges are what a radar-based series can catch."),
@@ -4109,7 +3661,10 @@ blocks <- c(
            "idw: each cell a mean of the gauges, weighted by 1 / distance^2."
          },
          if (!is.null(built$multiquadric)) {
-           "multiquadric: a smooth surface through every gauge, averaged over the catchment."
+           sprintf(paste("multiquadric: a smooth surface through every gauge, averaged over the",
+                         "catchment on a %g m grid, its shape parameter c = %.0f m chosen by",
+                         "leaving out one gauge at a time."),
+                   grid_spacing_m, multiquadric_c)
          },
          if (!is.null(built$kriging)) {
            paste("kriging: block kriging of the catchment from a variogram fitted to the",
@@ -4129,17 +3684,19 @@ blocks <- c(
          },
          if (!is.null(built$multiquadric_h19)) {
            paste("multiquadric_h19: the surface through the gauges, with H19's pattern between",
-                 "them (conditional merging).")
+                 "them (conditional merging), on the radar's 1 km cells. A step needs the",
+                 "radar over the catchment and at every gauge.")
          },
          if (!is.null(built$ked_h19)) {
            paste("ked_h19: kriging of the gauges with each step's radar as the drift: the",
                  "gauges set the level, the radar the pattern between them, with each step's",
-                 "standard error.")
+                 "standard error. A step needs the radar over the catchment and at every",
+                 "gauge.")
          })),
        report_text("Each is renormalised over the gauges reporting at each step: a missing",
                    "gauge's weight is shared among the rest."),
        if (length(skipped_methods)) {
-         report_alert(paste("Not built, though asked for:",
+         alert(paste("Not built, though asked for:",
                             paste(sprintf("%s (%s)", names(skipped_methods), skipped_methods),
                                   collapse = "; ")),
                       FALSE)
@@ -4148,6 +3705,18 @@ blocks <- c(
          report_text(sprintf("Thiessen weights from the gauge positions and the boundary: %s.",
                              paste(sprintf("%s %.3f", names(geometry_weights), geometry_weights),
                                    collapse = ", ")))
+       },
+       if (thiessen_source == "given" && !is.null(geometry_weights) &&
+           max(abs(geometry_weights[names(thiessen_weights)] - thiessen_weights)) > 0.05) {
+         alert(paste("The Thiessen weights given and those from the geometry differ by more",
+                     "than 0.05: check the gauge positions, the boundary, and how the given",
+                     "weights were made."),
+               FALSE)
+       },
+       if (thiessen_source != "given" && !is.null(built$thiessen)) {
+         in_summary(report_text("No Thiessen weights were given: thiessen uses those worked out",
+                                "from the gauge positions and the boundary. The operational",
+                                "weights may differ."))
        }),
   if (weights_done) {
     list(report_heading("The weights, and the error each average keeps", 3),
@@ -4157,13 +3726,15 @@ blocks <- c(
                                    "weights) gauges. A single gauge's storm totals look to be up",
                                    "to %.0f%% out here, from how much the gauges disagree event",
                                    "by event; the suggested rain_error for calibrate_site.R is",
-                                   "that times the error factor."),
+                                   "that times the error factor. If the gauges' errors are",
+                                   "partly shared (wind on all of them), less cancels: see the",
+                                   "error_factor_rho columns in weights_and_error.csv."),
                              sigma)),
-         report_table(weights_wide, caption = "Weights by gauge, and what they mean"))
+         in_summary(report_table(weights_wide, caption = "Weights by gauge, and what they mean")))
   },
   plot_blocks("effective_gauges_over_time.png", "The effective number of gauges, day by day"),
   if (length(thin_floods)) {
-    list(report_alert(sprintf(paste("%d of the 20 largest events fell while a gauge was",
+    list(alert(sprintf(paste("%d of the 20 largest events fell while a gauge was",
                                     "missing, so the averages used fewer gauges than usual:",
                                     "%s. Their rain, and their scores in calibration, rest on",
                                     "the rest."),
@@ -4182,7 +3753,7 @@ blocks <- c(
                                rain_variogram$nugget + rain_variogram$partial_sill,
                                rain_variogram$range / 1000))),
       if (length(variogram_note)) {
-        list(report_alert(paste(c(variogram_note, "Read kriging's weights and errors loosely."),
+        list(alert(paste(c(variogram_note, "Read kriging's weights and errors loosely."),
                                 collapse = " "), FALSE))
       },
       plot_blocks("variogram.png", "The variogram of the gauges' rain"),
@@ -4191,7 +3762,7 @@ blocks <- c(
                          "storm's rain, typical over the events: with the steps' errors",
                          "independent (lower) or wholly shared through the storm (upper). It",
                          "leaves out error the gauges share, such as undercatch."),
-             report_table(kriging_error, caption = "The kriging error over the events"))
+             in_summary(report_table(kriging_error, caption = "The kriging error over the events")))
       })
   },
 
@@ -4226,7 +3797,7 @@ blocks <- c(
        report_table(balance, caption = "The water balance over the record")),
   plot_blocks("rain_by_year.png", paste("Each series' rain by", year_word, "against the others")),
   if (any(year_swing > 5)) {
-    list(report_alert(paste0("Read in some years only, not as a steady scale: ",
+    list(alert(paste0("Read in some years only, not as a steady scale: ",
                              paste(sprintf("%s (%s)", names_r[year_swing > 5],
                                            unlist(year_swing_where[year_swing > 5])),
                                    collapse = "; "),
@@ -4255,7 +3826,7 @@ blocks <- c(
          stats::median(window_h$rain), max(window_h$rain) / 24)),
        if (flood_response_h > 4 * max(stats::median(response$summary$lag_h, na.rm = TRUE),
                                       step_hours)) {
-         report_alert(sprintf(paste(
+         alert(sprintf(paste(
            "The events' response time, %.1f h, is far longer than the quick response's %g h,",
            "as groundwater-fed catchments give: the windows then run on after the rise and",
            "count later rain against the event, which lowers every event ratio and hides",
@@ -4280,7 +3851,7 @@ blocks <- c(
          sum(!is.finite(flood_median_rain) | flood_median_rain < missed_min_mm))),
        report_table(flood_table, caption = "Events missed, and the spread of the event ratios"),
        if (nrow(missed_by_most)) {
-         report_alert(sprintf(paste(
+         alert(sprintf(paste(
            "%d events were missed by at least half the series scored on them: %s. An event",
            "nearly every series missed is not the rain's fault: look at the event's window,",
            "its baseflow line or the flow itself (missed_events.csv)."),
@@ -4319,14 +3890,14 @@ blocks <- c(
                                    "way, in summer time and winter time apart: a logger on",
                                    "local time is an hour late in summer only, one stamping",
                                    "the step's end a step late all year."), clock_reference)),
-         report_alert(if (nrow(out)) {
+         alert(if (nrow(out)) {
            paste(sprintf("%s: %s. %s", out$gauge, out$verdict, out$why), collapse = " ")
          } else {
            "No gauge's clock was found out."
          }, nrow(out) == 0),
-         report_table(clocks[, c("gauge", "verdict", "summer_lag_h", "winter_lag_h",
-                                 "summer_wet_steps", "winter_wet_steps")],
-                      caption = "The gauges' clocks"))
+         in_summary(report_table(clocks[, c("gauge", "verdict", "summer_lag_h", "winter_lag_h",
+                                            "summer_wet_steps", "winter_wet_steps")],
+                                 caption = "The gauges' clocks")))
   },
   if (!is.null(radar_season)) {
     list(report_heading("Radar by season", 3),
@@ -4336,10 +3907,11 @@ blocks <- c(
                                    "share of steps it is missing (%.1f%%)."),
                              if (radar_done) "each gauge's" else season_reference,
                              100 * radar_season$missing_share)),
-         report_alert(sprintf("Radar: %s. %s", radar_season$verdict, radar_season$why),
+         alert(sprintf("Radar: %s. %s", radar_season$verdict, radar_season$why),
                       radar_season$verdict == "no clear fault"),
-         report_table(radar_season$seasons,
-                      caption = "Radar over gauges, median of daily ratios and of events' ratios"))
+         in_summary(report_table(radar_season$seasons,
+                                 caption = paste("Radar over gauges, median of daily ratios and",
+                                                 "of events' ratios"))))
   },
   if (!is.null(season_factors)) {
     list(report_text(sprintf(paste("h19_season scales the radar by a fixed factor for each",
@@ -4359,7 +3931,7 @@ blocks <- c(
                              "scored on the years left out, against the raw radar."))
          },
          if (!is.null(factor_test)) {
-           report_alert(sprintf("Out of sample: %s. %s", factor_test$verdict, factor_test$why),
+           alert(sprintf("Out of sample: %s. %s", factor_test$verdict, factor_test$why),
                         factor_test$verdict == "the factors hold")
          },
          if (!is.null(factor_test$scores)) {
@@ -4382,20 +3954,23 @@ blocks <- c(
                              diagnosis$gap$flow_range_low_mm,
                              diagnosis$gap$flow_range_high_mm))
        },
-       report_alert(switch(diagnosis$gap$kind,
+       alert(switch(diagnosis$gap$kind,
                            deficit = sprintf("The flow is %.0f mm a year short of the range.",
                                              diagnosis$gap$gap_mm),
                            excess = sprintf("The flow is %.0f mm a year over the range.",
                                             diagnosis$gap$gap_mm),
                            closes = "The flow is inside the range: the balance closes.",
                            paste("No complete year was compared, so the balance was not",
-                                 "judged; the rating's evidence still was.")),
+                                 "judged: over part of a year, water going into or out of",
+                                 "storage looks like a loss or a gain. The rating's evidence",
+                                 "still was.")),
                     diagnosis$gap$kind == "closes"),
-       report_table(diagnosis$suspects, caption = "The suspects, most likely first"),
-       report_alert(sprintf("Rating: %s. %s", follow_up$verdict, follow_up$why),
+       in_summary(report_table(diagnosis$suspects, caption = "The suspects, most likely first")),
+       alert(sprintf("Rating: %s. %s", follow_up$verdict, follow_up$why),
                     !follow_up$action_needed),
-       report_table(follow_up$findings[, c("status", "check", "finding", "action")],
-                    caption = "Whether the rating needs more work: act, ask, note or fine"),
+       in_summary(report_table(follow_up$findings[, c("status", "check", "finding", "action")],
+                               caption = paste("Whether the rating needs more work: act, ask,",
+                                               "note or fine"))),
        if (!is.null(candidate)) {
          report_heading("A candidate rating from the gaugings", 3)
        },
@@ -4424,7 +3999,7 @@ blocks <- c(
        },
        if (!is.null(candidate_gap) && diagnosis$gap$kind == "deficit" &&
              candidate_gap$kind == "deficit" && candidate_gap$gap_mm > diagnosis$gap$gap_mm) {
-         report_alert(sprintf(paste(
+         alert(sprintf(paste(
            "The candidate widens the balance's deficit, from %.0f to %.0f mm a year: it gives",
            "less flow where the balance already has too little. Either the rain is too high,",
            "or the gaugings that pull the candidate down carry a bias of their own (weed at",
@@ -4432,7 +4007,7 @@ blocks <- c(
            "to the hydrometry team as evidence that the rating in force reads high."),
            diagnosis$gap$gap_mm, candidate_gap$gap_mm), FALSE)
        },
-       if (!is.null(stage_note)) report_alert(stage_note, FALSE),
+       if (!is.null(stage_note)) alert(stage_note, FALSE),
        if (!is.null(rating_band_share)) {
          report_text(sprintf(paste("Its 95%% band, %s, over the record's stage, puts a year's",
                                    "flow within %+.1f%% to %+.1f%% of the candidate's: now part",
@@ -4450,7 +4025,7 @@ blocks <- c(
        },
        if (length(candidate_note)) report_list(candidate_note),
        if (is.null(candidate) && follow_up$verdict == "fit a candidate rating") {
-         report_alert(sprintf("No candidate rating was fitted: %s.", candidate_skip), FALSE)
+         alert(sprintf("No candidate rating was fitted: %s.", candidate_skip), FALSE)
        },
        report_text("Each suspect leaves its own mark. The rain is set against the spread",
                    "between the catchment averages and gauge under-catch; the rating against",
@@ -4469,7 +4044,7 @@ blocks <- c(
              caption = "The flow record checked with reach.rate")),
       plot_blocks("record_curves.png", "The rating read back from the record"))
   } else {
-    list(report_alert(sprintf("The flow record was not checked: %s.", record_skip), FALSE))
+    list(alert(sprintf("The flow record was not checked: %s.", record_skip), FALSE))
   },
   if (!is.null(gaugings_vs_rating)) {
     list(report_table(gaugings_vs_rating[, c("rating", "limb", "lower_level", "upper_level",
@@ -4479,18 +4054,62 @@ blocks <- c(
   },
 
   # What next.
+  # What goes to calibration: calibration_inputs.yml, as written.
+  list(report_heading("Passed to calibration"),
+       in_summary(report_text("calibration_inputs.yml, read by calibrate_site.R when a site's",
+                              "site.yml names this folder (rain_comparison:): the series in",
+                              "order, the first to calibrate on, the rain error to start from",
+                              if (is.finite(handoff_error)) sprintf("(%.3f),", handoff_error)
+                              else "(none worked out),",
+                              "and these warnings, repeated at the start of the calibration.")),
+       in_summary(report_list(if (length(handoff_warnings)) {
+         as.character(handoff_warnings)
+       } else {
+         "No warnings."
+       }))),
+
+  # The settings this run used.
+  list(report_heading("The settings"),
+       in_summary(report_text(sprintf(paste("Run with compare_rain.R and pdmS7 %s on %s, from",
+                                            "%s. The settings as used, changes made in R",
+                                            "included: rain_settings_used.yml."),
+                                      utils::packageVersion("pdmS7"), format(Sys.Date()),
+                                      if (is.null(attr(rain_settings, "file"))) {
+                                        "settings made in R"
+                                      } else {
+                                        attr(rain_settings, "file")
+                                      })))),
+
   list(report_heading("What next"),
-       report_list(c(
+       in_summary(report_list(c(
          paste("Calibrate the PDM on the best two or three series with calibrate_site.R, each",
                "into its own output folder, with the suggested rain_error for each."),
          paste("Compare their validation scores on the largest events: that says which rain",
                "helps the model, not only which agrees best with the flow before any model."),
          paste("A series that ranks well but carries a warning may still be the best once the",
-               "fault is fixed (a clock corrected, a gap filled).")))),
-  list(report_text("Tables: rain_ranking.csv, quick_response.csv, largest_events.csv,",
-                   "weights_and_error.csv; the averages in catchment_rain/, ready for",
-                   "calibrate_site.R."))
+               "fault is fixed (a clock corrected, a gap filled)."),
+         paste("A catchment average from several gauges usually beats any single gauge for",
+               "events, because storms miss single gauges. If a single gauge ranks first, ask",
+               "why: it may sit where the storms that drive events fall, or the averages may be",
+               "built on poor gauges."))))),
+  list(in_summary(report_text("Tables: rain_ranking.csv, quick_response.csv, largest_events.csv,",
+                              "weights_and_error.csv; the averages in catchment_rain/, ready for",
+                              "calibrate_site.R.")))
 )
-report_file <- write_report(blocks, output_folder, "Rain comparison")
+# The settings as used, so the run can be repeated even after rain.yml changes. A data frame
+# given in R is noted, not written out.
+settings_used <- lapply(unclass(rain_settings), function(v) {
+  if (is.data.frame(v) && all(c("name", "file") %in% names(v))) {
+    lapply(seq_len(nrow(v)), function(i) as.list(v[i, , drop = FALSE]))
+  } else if (is.data.frame(v)) {
+    sprintf("(a data frame given in R, %d rows)", nrow(v))
+  } else if (!is.null(names(v)) && is.atomic(v)) {
+    as.list(v)
+  } else {
+    v
+  }
+})
+yaml::write_yaml(settings_used, file.path(output_folder, "rain_settings_used.yml"))
+report_file <- write_report(blocks, output_folder, "Rain comparison", summary = "summary.md")
 
 say("\nWritten to %s. Read report.html (or summary.md).", normalizePath(output_folder))
