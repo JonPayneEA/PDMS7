@@ -1,3 +1,18 @@
+# pdmS7 0.54.0
+
+- **The gauges' clocks.** The new `clock_check()` says whether a rain series' clock is out
+  against a reference over the same place, from the lag at which they agree best, in British
+  Summer Time and winter time apart. It tells apart:
+  - a logger on local time: an hour late in summer time only;
+  - a series stamped at the step's end: a step late all year;
+  - a fixed offset;
+  - an unsteady clock.
+
+  A lag counts only if it beats lag 0's correlation by `margin`. A period with too little rain
+  is left unjudged, and the verdict says so. `compare_rain.R` checks each gauge against the
+  radar over it, or, without the radar, against the mean of the other gauges, and writes
+  `clock_check.csv`, with the gauges found out in the summary and the report.
+
 # pdmS7 0.53.0
 
 - **`compare_rain.R` reads its settings from a YAML file.** The script is no longer edited:

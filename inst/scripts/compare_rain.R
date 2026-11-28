@@ -9,7 +9,8 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-24
 # Tier:         1
-# Modified:     2026-11-28 - the settings read from rain.yml, not edited in the script
+# Modified:     2026-11-28 - the gauges' clocks checked against the radar over each
+#               2026-11-28 - the settings read from rain.yml, not edited in the script
 #               2026-11-27 - radar by season: why the raw radar sits apart from the gauges
 #               2026-11-27 - events, not floods; events missed measured against the median
 #                            series; event windows reported and plotted; plots reworked
@@ -38,7 +39,7 @@
 # Outputs:      A folder: summary.md, rain_ranking.csv, weights_and_error.csv, plots each with a
 #               note on how to read it, and catchment_rain/ with each average built, as CSV
 #               ready for calibrate_site.R
-# Dependencies: pdmS7 (0.53.0 or later); sf for a shapefile and the search; reach.io
+# Dependencies: pdmS7 (0.54.0 or later); sf for a shapefile and the search; reach.io
 #               to find and download the gauges; arrow (or nanoparquet) for the processed
 #               H19 extracts, ncdf4 for the daily H19 files; reach.rate to check the flow
 #               record from stage, gaugings and ratings
@@ -105,8 +106,8 @@ library(data.table)
 
 # The script is written for this pdmS7 or later: an older one lacks functions it uses, and
 # would fail part way through.
-if (utils::packageVersion("pdmS7") < "0.53.0") {
-  stop("compare_rain.R needs pdmS7 0.53.0 or later; this is ",
+if (utils::packageVersion("pdmS7") < "0.54.0") {
+  stop("compare_rain.R needs pdmS7 0.54.0 or later; this is ",
        as.character(utils::packageVersion("pdmS7")),
        ". Update it with remotes::install_github(\"JonPayneEA/PDMS7\"), then restart R.",
        call. = FALSE)
@@ -2444,6 +2445,37 @@ if (!is.null(radar_at_gauges)) {
   }
 }
 
+# ---- 7b. The gauges' clocks -----------------------------------------------------------------
+
+# A logger keeping local time stamps rain an hour late through British Summer Time; one that
+# stamps each step at its end is a step late all year. Either spoils the quick response, the
+# events and any merge with the radar. Each gauge is set against the radar over it, or, without
+# the radar, against the mean of the other gauges, which only works if most of them keep UTC.
+clocks <- NULL
+clock_reference <- if (!is.null(radar_at_gauges)) "the radar over it" else "the other gauges"
+if (!is.null(radar_at_gauges) || length(gauge_names) >= 3) {
+  clocks <- do.call(rbind, lapply(gauge_names, function(n) {
+    reference <- if (!is.null(radar_at_gauges)) {
+      radar_at_gauges[, n]
+    } else {
+      rowMeans(G[, setdiff(gauge_names, n), drop = FALSE], na.rm = TRUE)
+    }
+    ck <- clock_check(grid$time, G[, n], reference)
+    data.frame(gauge = n,
+               verdict = ck$verdict,
+               summer_lag_h = ck$lags$lag_h[1],
+               winter_lag_h = ck$lags$lag_h[2],
+               summer_wet_steps = ck$lags$wet_steps[1],
+               winter_wet_steps = ck$lags$wet_steps[2],
+               why = ck$why)
+  }))
+  fwrite(clocks, file.path(output_folder, "clock_check.csv"))
+  clocks_out <- clocks[!clocks$verdict %in% c("in step", "not enough rain"), ]
+  say("  clocks against %s: %s", clock_reference,
+      if (nrow(clocks_out)) paste(sprintf("%s %s", clocks_out$gauge, clocks_out$verdict),
+                                  collapse = "; ") else "none found out")
+}
+
 # ---- The ranking ---------------------------------------------------------------------------
 
 # One row per series, every measure side by side.
@@ -3743,6 +3775,21 @@ lines <- c(
           "look alike in the events, and a rating reading low at every flow looks like a slow",
           "loss. Gaugings, or a second flow gauge, separate them.")),
 
+  # The gauges' clocks.
+  if (!is.null(clocks)) {
+    out <- clocks[!clocks$verdict %in% c("in step", "not enough rain"), ]
+    c("", "## The gauges' clocks", "",
+      sprintf("Each gauge against %s, in summer time and winter time apart.", clock_reference),
+      "",
+      if (nrow(out)) {
+        sprintf("- **%s: %s.** %s", out$gauge, out$verdict, out$why)
+      } else {
+        sprintf("No gauge's clock was found out (%d in step, %d with too little rain to judge).",
+                sum(clocks$verdict == "in step"), sum(clocks$verdict == "not enough rain"))
+      },
+      "", "Table: `clock_check.csv`.")
+  },
+
   # The radar by season.
   if (!is.null(radar_season)) {
     c("", "## Radar by season", "",
@@ -4197,6 +4244,22 @@ blocks <- c(
                        "clearly above the summer one points to the gauge losing rain to wind."),
            report_table(radar_table, caption = "Radar against each gauge")),
       plot_blocks("radar_vs_gauge_by_month.png", "Radar against each gauge, month by month"))
+  },
+  if (!is.null(clocks)) {
+    out <- clocks[!clocks$verdict %in% c("in step", "not enough rain"), ]
+    list(report_heading("The gauges' clocks", 3),
+         report_text(sprintf(paste("Each gauge against %s, at lags up to three hours either",
+                                   "way, in summer time and winter time apart: a logger on",
+                                   "local time is an hour late in summer only, one stamping",
+                                   "the step's end a step late all year."), clock_reference)),
+         report_alert(if (nrow(out)) {
+           paste(sprintf("%s: %s. %s", out$gauge, out$verdict, out$why), collapse = " ")
+         } else {
+           "No gauge's clock was found out."
+         }, nrow(out) == 0),
+         report_table(clocks[, c("gauge", "verdict", "summer_lag_h", "winter_lag_h",
+                                 "summer_wet_steps", "winter_wet_steps")],
+                      caption = "The gauges' clocks"))
   },
   if (!is.null(radar_season)) {
     list(report_heading("Radar by season", 3),
