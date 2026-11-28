@@ -19,8 +19,12 @@ frame or \code{NULL}), \code{highest_gauged_m3s}, \code{pdm_for_pcs_inp}, \code{
 \code{rain_gauges} (a named list of single-gauge files, or \code{NULL}), \code{rain_error} (the typical
 error in a storm's rain, as a fraction), \code{regional_results} (the CAMELS-GB bulk run's
 results file, or \code{NULL}), \code{bayes_generations} (the length of the Bayesian calibration
-that effort thorough runs), \code{owner}, \code{steward}, and \code{file} and \code{home}, where the settings
-came from.
+that effort thorough runs), \code{owner}, \code{steward}, \code{rain_comparison} (the rain comparison's
+folder, or \code{NULL}), \code{calibration_inputs} (what \code{\link[=read_calibration_inputs]{read_calibration_inputs()}} read there, its
+warnings included, or \code{NULL}), \code{rain_from_comparison} and \code{rain_error_from_comparison}
+(whether the rain and its error came from there), \code{forecast_use} (\code{"stage"},
+\code{"hydrodynamic_rated"} or \code{"hydrodynamic_own"}), and \code{file} and \code{home}, where the
+settings came from.
 }
 \description{
 Reads a settings file like the one in \code{system.file("examples", "site.yml", package = "pdmS7")}, checks it, fills in the defaults and makes every path absolute. Load the
@@ -36,6 +40,11 @@ source(system.file("scripts", "calibrate_site.R", package = "pdmS7"))
 
 Relative paths are taken from the folder the settings file is in; data files from the
 \code{data: folder} under it. Every problem found is reported at once, not one at a time.
+
+With \verb{rain_comparison:} naming the output folder of \code{compare_rain.R}, the rain comes from
+its \code{calibration_inputs.yml}: the series it recommends, the first to calibrate on, and its
+rain error unless \code{rain_error} is given. Give the rain that way or in \code{data: rain}, not both.
+Settings read again in R take their rain from the comparison afresh.
 }
 \examples{
 settings <- read_site_settings(system.file("examples", "site.yml", package = "pdmS7"))

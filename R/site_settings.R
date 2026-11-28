@@ -30,6 +30,11 @@
 #' Relative paths are taken from the folder the settings file is in; data files from the
 #' `data: folder` under it. Every problem found is reported at once, not one at a time.
 #'
+#' With `rain_comparison:` naming the output folder of `compare_rain.R`, the rain comes from
+#' its `calibration_inputs.yml`: the series it recommends, the first to calibrate on, and its
+#' rain error unless `rain_error` is given. Give the rain that way or in `data: rain`, not both.
+#' Settings read again in R take their rain from the comparison afresh.
+#'
 #' @param x The path to a settings file, or settings already read (checked again, so changes
 #'   made in R are checked too).
 #' @return A list of class `pdm_site_settings`: `name`, `gauge`, `area_km2`, `step_hours`,
@@ -40,8 +45,12 @@
 #'   `rain_gauges` (a named list of single-gauge files, or `NULL`), `rain_error` (the typical
 #'   error in a storm's rain, as a fraction), `regional_results` (the CAMELS-GB bulk run's
 #'   results file, or `NULL`), `bayes_generations` (the length of the Bayesian calibration
-#'   that effort thorough runs), `owner`, `steward`, and `file` and `home`, where the settings
-#'   came from.
+#'   that effort thorough runs), `owner`, `steward`, `rain_comparison` (the rain comparison's
+#'   folder, or `NULL`), `calibration_inputs` (what [read_calibration_inputs()] read there, its
+#'   warnings included, or `NULL`), `rain_from_comparison` and `rain_error_from_comparison`
+#'   (whether the rain and its error came from there), `forecast_use` (`"stage"`,
+#'   `"hydrodynamic_rated"` or `"hydrodynamic_own"`), and `file` and `home`, where the
+#'   settings came from.
 #' @export
 #' @examples
 #' settings <- read_site_settings(system.file("examples", "site.yml", package = "pdmS7"))
@@ -54,17 +63,45 @@ read_site_settings <- function(x) {
          "x must be the path to a settings file that exists")
   raw <- yaml::read_yaml(x)
   .check(is.list(raw), "The settings file holds no settings")
+  # Each setting by its exact name: `$` would partial-match, so a missing data: rain would
+  # read as data: rain_gauges.
+  pick <- function(...) {
+    v <- raw
+    for (k in c(...)) {
+      if (!is.list(v)) return(NULL)
+      v <- v[[k, exact = TRUE]]
+    }
+    v
+  }
   flat <- list(
-    name = raw$site$name, gauge = raw$site$gauge, area_km2 = raw$site$area_km2,
-    step_hours = raw$data$step_hours, folder = raw$data$folder, flow = raw$data$flow,
-    pet = raw$data$pet, rain = raw$data$rain, snow = raw$snow, temperature = raw$temperature,
-    calibration = raw$calibration, validation = raw$validation, output = raw$output,
-    stop_after_checks = raw$stop_after_checks, effort = raw$effort,
-    rainfall_factor = raw$rainfall_factor, thresholds = raw$thresholds,
-    highest_gauged_m3s = raw$highest_gauged_m3s, pdm_for_pcs_inp = raw$pdm_for_pcs_inp,
-    previous_project = raw$previous_project, owner = raw$owner, steward = raw$steward,
-    rain_gauges = raw$data$rain_gauges, rain_error = raw$rain_error,
-    regional_results = raw$regional_results, bayes_generations = raw$bayes_generations)
+    name = pick("site", "name"),
+    gauge = pick("site", "gauge"),
+    area_km2 = pick("site", "area_km2"),
+    step_hours = pick("data", "step_hours"),
+    folder = pick("data", "folder"),
+    flow = pick("data", "flow"),
+    pet = pick("data", "pet"),
+    rain = pick("data", "rain"),
+    snow = pick("snow"),
+    temperature = pick("temperature"),
+    calibration = pick("calibration"),
+    validation = pick("validation"),
+    output = pick("output"),
+    stop_after_checks = pick("stop_after_checks"),
+    effort = pick("effort"),
+    rainfall_factor = pick("rainfall_factor"),
+    thresholds = pick("thresholds"),
+    highest_gauged_m3s = pick("highest_gauged_m3s"),
+    pdm_for_pcs_inp = pick("pdm_for_pcs_inp"),
+    previous_project = pick("previous_project"),
+    owner = pick("owner"),
+    steward = pick("steward"),
+    rain_gauges = pick("data", "rain_gauges"),
+    rain_error = pick("rain_error"),
+    regional_results = pick("regional_results"),
+    bayes_generations = pick("bayes_generations"),
+    rain_comparison = pick("rain_comparison"),
+    forecast_use = pick("forecast_use"))
   path <- normalizePath(x)
   .check_site_settings(flat, path, dirname(path))
 }
@@ -117,6 +154,40 @@ read_site_settings <- function(x) {
   }
   s$flow <- existing(s$flow, "a flow file (data: flow)")
   s$pet <- existing(s$pet, "a potential evaporation file (data: pet)")
+  # The rain comparison's hand-off: its recommended series become the rain, the first to
+  # calibrate on, and its rain error the one to start from unless rain_error is given.
+  inputs <- NULL
+  if (!is.null(s$rain_comparison)) {
+    s$rain_comparison <- from(as.character(s$rain_comparison), home)
+    inputs <- tryCatch(read_calibration_inputs(s$rain_comparison), error = function(e) {
+      fail("rain_comparison: ", conditionMessage(e), ".")
+      NULL
+    })
+  }
+  if (!is.null(inputs)) {
+    if (length(s$rain) && !isTRUE(s$rain_from_comparison)) {
+      fail("Give the rain either in data: rain or by rain_comparison, not both: delete one.")
+    } else {
+      s$rain <- inputs$rain
+      s$rain_from_comparison <- TRUE
+    }
+    if (is.null(s$rain_error) && is.finite(inputs$rain_error)) {
+      s$rain_error <- inputs$rain_error
+      s$rain_error_from_comparison <- TRUE
+    }
+    if (is.finite(s$step_hours) && abs(inputs$step_hours - s$step_hours) > 1e-9) {
+      fail("rain_comparison: its rain is at ", inputs$step_hours, "-hour steps, the site's ",
+           "data at ", s$step_hours, ": run the comparison at the site's step.")
+    }
+  }
+  s$calibration_inputs <- inputs
+  s$rain_from_comparison <- isTRUE(s$rain_from_comparison) && !is.null(inputs)
+  s$rain_error_from_comparison <- isTRUE(s$rain_error_from_comparison) && !is.null(inputs)
+  s$forecast_use <- as.character(or(s$forecast_use, "stage"))
+  if (length(s$forecast_use) != 1 ||
+      !s$forecast_use %in% c("stage", "hydrodynamic_rated", "hydrodynamic_own")) {
+    fail("forecast_use must be stage, hydrodynamic_rated or hydrodynamic_own.")
+  }
   rain <- s$rain
   if (!is.null(rain) && !is.list(rain)) rain <- list(rain = rain)
   if (!length(rain)) {
@@ -156,6 +227,18 @@ read_site_settings <- function(x) {
       as.POSIXct(s$validation[1], tz = "UTC") <= as.POSIXct(s$calibration[2], tz = "UTC")) {
     fail("validation must start after calibration ends: the model is checked on years it ",
          "has not seen.")
+  }
+  # The calibration and validation windows against the period the rain was judged over.
+  if (!is.null(inputs) && length(inputs$period) == 2 && !is.null(s$calibration) &&
+      !is.null(s$validation)) {
+    judged <- as.POSIXct(inputs$period, tz = "UTC")
+    used <- as.POSIXct(c(s$calibration[1], s$validation[2]), tz = "UTC")
+    if (used[1] < judged[1] || used[2] >= judged[2]) {
+      s$calibration_inputs$warnings <- c(s$calibration_inputs$warnings, sprintf(paste(
+        "The rain comparison judged %s to %s; calibration and validation run %s to %s, so",
+        "part of them uses rain it did not judge."), inputs$period[1], inputs$period[2],
+        s$calibration[1], s$validation[2]))
+    }
   }
   s$output <- from(as.character(or(s$output, "output")), home)
   s$stop_after_checks <- !identical(s$stop_after_checks, FALSE)
@@ -238,6 +321,14 @@ print.pdm_site_settings <- function(x, ...) {
     cat(sprintf("  Rain %-9s %s%s\n", paste0(n, ":"), x$rain[[n]],
                 if (n == names(x$rain)[1] && length(x$rain) > 1) " (calibrates)" else ""))
   }
+  if (!is.null(x$calibration_inputs)) {
+    cat("  Rain from:    the rain comparison in ", dirname(x$calibration_inputs$file), "\n",
+        sep = "")
+    if (length(x$calibration_inputs$warnings)) {
+      cat("  It warns:\n")
+      cat(paste0("    - ", x$calibration_inputs$warnings), sep = "\n")
+    }
+  }
   if (length(x$rain_gauges)) {
     cat("  Rain gauges:  ", paste(names(x$rain_gauges), collapse = ", "), "\n", sep = "")
   }
@@ -247,7 +338,14 @@ print.pdm_site_settings <- function(x, ...) {
   cat("  Effort:       ", x$effort, "\n", sep = "")
   cat("  Rain factor:  ", if (is.null(x$rainfall_factor)) "fixed at 1" else
         paste("searched from", window(x$rainfall_factor)), "\n", sep = "")
-  cat("  Rain error:   storms ", round(100 * x$rain_error), "% out, typically\n", sep = "")
+  cat("  Rain error:   storms ", round(100 * x$rain_error), "% out, typically",
+      if (isTRUE(x$rain_error_from_comparison)) ", from the rain comparison", "\n", sep = "")
+  cat("  Forecasts:    ", switch(x$forecast_use,
+                                 stage = "the PDM's flow, through the rating, to stage",
+                                 hydrodynamic_rated = "into a hydrodynamic model, as rated flow",
+                                 hydrodynamic_own = paste("into a hydrodynamic model with its",
+                                                          "own hydraulics")),
+      "\n", sep = "")
   if (!is.null(x$regional_results)) {
     cat("  Regional:     ", x$regional_results, "\n", sep = "")
   }

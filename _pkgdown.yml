@@ -290,6 +290,8 @@ reference:
   - new_site
   - read_site_settings
   - read_rain_settings
+  - write_calibration_inputs
+  - read_calibration_inputs
 - title: CAMELS-GB
   desc: CAMELS-GB v2 catchments, as the Input_Analysis_Pipeline prepares them, as batch input.
   contents:

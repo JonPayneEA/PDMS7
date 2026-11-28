@@ -9,7 +9,8 @@
 # Author:       pdmS7 contributors
 # Created:      2026-11-24
 # Tier:         1
-# Modified:     2026-11-28 - the gauges' clocks checked against the radar over each
+# Modified:     2026-11-28 - calibration_inputs.yml, the hand-off to calibrate_site.R
+#               2026-11-28 - the gauges' clocks checked against the radar over each
 #               2026-11-28 - the settings read from rain.yml, not edited in the script
 #               2026-11-27 - radar by season: why the raw radar sits apart from the gauges
 #               2026-11-27 - events, not floods; events missed measured against the median
@@ -39,7 +40,7 @@
 # Outputs:      A folder: summary.md, rain_ranking.csv, weights_and_error.csv, plots each with a
 #               note on how to read it, and catchment_rain/ with each average built, as CSV
 #               ready for calibrate_site.R
-# Dependencies: pdmS7 (0.54.0 or later); sf for a shapefile and the search; reach.io
+# Dependencies: pdmS7 (0.55.0 or later); sf for a shapefile and the search; reach.io
 #               to find and download the gauges; arrow (or nanoparquet) for the processed
 #               H19 extracts, ncdf4 for the daily H19 files; reach.rate to check the flow
 #               record from stage, gaugings and ratings
@@ -106,8 +107,8 @@ library(data.table)
 
 # The script is written for this pdmS7 or later: an older one lacks functions it uses, and
 # would fail part way through.
-if (utils::packageVersion("pdmS7") < "0.54.0") {
-  stop("compare_rain.R needs pdmS7 0.54.0 or later; this is ",
+if (utils::packageVersion("pdmS7") < "0.55.0") {
+  stop("compare_rain.R needs pdmS7 0.55.0 or later; this is ",
        as.character(utils::packageVersion("pdmS7")),
        ". Update it with remotes::install_github(\"JonPayneEA/PDMS7\"), then restart R.",
        call. = FALSE)
@@ -3517,6 +3518,9 @@ lines <- c(
             multiquadric_lta_c)
   },
   "", "Each is in `catchment_rain/`, as a CSV ready for calibrate_site.R.",
+  "", paste("To calibrate on them, name this folder in the site's site.yml",
+            "(`rain_comparison:`): calibrate_site.R then takes the first, its rain error and",
+            "the warnings from `calibration_inputs.yml`."),
 
   # The downloads, with each gauge's quality flags.
   if (!is.null(downloads)) {
@@ -3833,6 +3837,43 @@ lines <- c(
 )
 writeLines(lines, file.path(output_folder, "summary.md"))
 
+# ---- The hand-off to calibration -----------------------------------------------------------
+
+# calibration_inputs.yml: the series recommended, in order, the first to calibrate on; its
+# rain error; and what a calibration on it should know. A site's site.yml names this folder
+# (rain_comparison:) and calibrate_site.R reads it, repeating the warnings at its start.
+handoff_warnings <- c(
+  {
+    i_first <- match(recommended$series[1], ranking$rain)
+    w <- warnings_for(i_first)
+    if (length(w)) sprintf("%s, the series to calibrate on: %s.", recommended$series[1],
+                           paste(w, collapse = "; "))
+  },
+  if (diagnosis$gap$kind %in% c("deficit", "excess")) {
+    likely <- diagnosis$suspects$suspect[diagnosis$suspects$verdict == "likely"]
+    sprintf(paste("The water balance does not close: a %s of %.0f mm a year%s. A rainfall",
+                  "factor may stand in for it in calibration; read the balance first."),
+            diagnosis$gap$kind, abs(diagnosis$gap$gap_mm),
+            if (length(likely)) paste0(", most likely ", paste(likely, collapse = " or ")) else "")
+  },
+  if (isTRUE(follow_up$action_needed)) {
+    sprintf("Rating: %s. %s", follow_up$verdict, follow_up$why)
+  },
+  if (!is.null(clocks)) {
+    out <- clocks[!clocks$verdict %in% c("in step", "not enough rain"), ]
+    if (nrow(out)) sprintf("Gauge %s's clock: %s. %s", out$gauge, out$verdict, out$why)
+  })
+handoff_error <- recommended$rain_error[1]
+if (!is.finite(handoff_error)) handoff_error <- fallback_error
+write_calibration_inputs(file.path(output_folder, "calibration_inputs.yml"),
+                         rain = stats::setNames(recommended$file, recommended$series),
+                         period = c(period_from, period_to),
+                         step_hours = step_hours,
+                         rain_error = if (length(handoff_error) == 1) handoff_error else NA,
+                         warnings = as.character(handoff_warnings),
+                         made_by = sprintf("compare_rain.R, pdmS7 %s",
+                                           utils::packageVersion("pdmS7")))
+
 # The ranking and the weights in the console too.
 print(ranking[, c("rain", "mean_rank", "runoff_ratio", "total_apart_pct", "response_r",
                   "lag_h", "event_wins", "missed_events_pct", "event_ratio_spread")],
@@ -3997,7 +4038,10 @@ blocks <- c(
                     caption = "Recommended for calibration"),
        report_list(c(
          "Calibrate on each with calibrate_site.R, into its own output folder.",
-         paste("Copy the series' file from catchment_rain/ into the site's data folder, set it",
+         paste("The quickest way: name this folder in the site's site.yml (rain_comparison:).",
+               "calibrate_site.R then reads calibration_inputs.yml, written here: the first",
+               "series to calibrate on, its rain error, and the warnings, repeated at its start."),
+         paste("Or copy the series' file from catchment_rain/ into the site's data folder, set it",
                "as rain in site.yml, and set rain_error to its value",
                if (is.finite(fallback_error)) {
                  sprintf("(for a radar-based series, start from %.3f).", fallback_error)

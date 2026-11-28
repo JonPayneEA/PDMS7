@@ -69,8 +69,9 @@ rainfall_factor: fixed
 
 # How far a storm's rain is typically out, as a fraction: 0.15 means 15%. Used to draw the
 # band of flows the rain's errors allow. 0.1 to 0.2 suits a catchment with several gauges; a
-# single gauge or radar alone may be out by more.
-rain_error: 0.15
+# single gauge or radar alone may be out by more. null takes the rain comparison's (section
+# 3), or 0.15 without one.
+rain_error: null
 
 # Snow. If a fair share of the precipitation falls as snow (5% or more), give a temperature
 # file (deg C, any step up to daily) and set snow: true. PACK then turns precipitation into
@@ -96,3 +97,21 @@ regional_results: null
 # Who is responsible, recorded in the calibration log.
 owner: Not recorded
 steward: Not recorded
+
+# ---- 3. From the rain comparison ---------------------------------------------------------
+
+# The output folder of compare_rain.R, which writes calibration_inputs.yml there. Given it,
+# the rain comes from the comparison: the series it recommends, the first to calibrate on,
+# with its rain error and its warnings, which the run repeats at its start. Delete the
+# rain: line under data: then, as the rain is given one way or the other, not both.
+rain_comparison: null            # e.g. ../rain_comparison
+
+# How the forecasts will be used. It is recorded now, and will set how calibration treats the
+# floods' peaks, where a rating is least sure.
+#   stage               the PDM forecasts flow, turned to stage through the same rating it was
+#                       calibrated on: errors in the rating at the peaks largely cancel
+#   hydrodynamic_rated  the flow goes into a hydrodynamic model that is itself fitted to the
+#                       rated flow
+#   hydrodynamic_own    the flow goes into a hydrodynamic model with its own hydraulics, which
+#                       needs the flow right in its own terms, peaks included
+forecast_use: stage
