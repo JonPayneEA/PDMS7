@@ -247,6 +247,7 @@ reference:
   - rating_follow_up
   - radar_by_season
   - radar_season_factors
+  - test_season_factors
   - clock_check
   - preparation_notes
 - title: Calibration

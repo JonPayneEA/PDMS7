@@ -333,6 +333,9 @@ test_that("the rain comparison says how sure its order is and what to calibrate 
   expect_true(any(grepl("season_factors <- radar_season_factors(factor_pairs)", code,
                         fixed = TRUE)))
   expect_true(any(grepl("radar_season_factors.csv", code, fixed = TRUE)))
+  # And tested out of sample, on alternate water years.
+  tested <- "factor_test <- test_season_factors(factor_pairs, water_year_start = 10)"
+  expect_true(any(grepl(tested, code, fixed = TRUE)))
   # The gauges' clocks, each against the radar over it or the other gauges.
   expect_true(any(grepl("ck <- clock_check(grid$time, G[, n], reference)", code, fixed = TRUE)))
   expect_true(any(grepl("clock_check.csv", code, fixed = TRUE)))
