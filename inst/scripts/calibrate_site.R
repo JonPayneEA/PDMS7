@@ -8,7 +8,9 @@
 # Flode Module: standalone; target reach.hydro
 # Author:       pdmS7 contributors
 # Created:      2026-11-24
-# Modified:     2026-11-24 - First version; warnings, lead time, annual maxima, seasons,
+# Modified:     2026-11-28 - the rain from the rain comparison's calibration_inputs.yml,
+#               with its warnings; forecast_use recorded
+#               2026-11-24 - First version; warnings, lead time, annual maxima, seasons,
 #               recessions, gauge response, regional context, storm-by-storm rain errors and
 #               parameter uncertainty
 # Tier:         1
@@ -16,7 +18,7 @@
 # Outputs:      An output folder: summary.md, then 1_data, 2_water_balance, 3_events,
 #               4_calibration (the calibration project and its report), 5_diagnostics and
 #               6_input_uncertainty, each with plots (PNG) and tables (CSV)
-# Dependencies: pdmS7 (0.39.0 or later); data.table; yaml
+# Dependencies: pdmS7 (0.55.0 or later); data.table; yaml
 # ============================================================ #
 #
 # How to run it
@@ -66,7 +68,7 @@ suppressPackageStartupMessages({
   library(pdmS7)
   library(data.table)
 })
-stopifnot(utils::packageVersion("pdmS7") >= "0.39.0")
+stopifnot(utils::packageVersion("pdmS7") >= "0.55.0")
 `%||%` <- function(x, y) if (is.null(x)) y else x
 say <- function(...) cat(sprintf(...), "\n", sep = "")
 listed <- function(x) if (length(x)) paste(x, collapse = ", ") else "none"
@@ -191,6 +193,34 @@ write_summary <- function() {
   write_reading_guide()
 }
 say("pdmS7 single-site calibration: %s (%s km2), effort %s", site$name, area, effort)
+
+# The rain comparison's hand-off, when the settings name it: where the rain came from, and its
+# warnings at the head of the summary, where they cannot be missed.
+if (!is.null(s$calibration_inputs)) {
+  ci <- s$calibration_inputs
+  say("Rain from the rain comparison (%s, %s): %s calibrates", ci$made_by, ci$made_on,
+      names(ci$rain)[1])
+  note("## From the rain comparison", "",
+       sprintf(paste("The rain is the comparison's in `%s` (%s, %s), judged over %s to %s:",
+                     "`%s` calibrates%s."),
+               dirname(ci$file), ci$made_by, ci$made_on, ci$period[1], ci$period[2],
+               names(ci$rain)[1],
+               if (length(ci$rain) > 1) {
+                 paste0("; also compared: ", paste0("`", names(ci$rain)[-1], "`", collapse = ", "))
+               } else {
+                 ""
+               }),
+       if (s$rain_error_from_comparison) {
+         sprintf("The rain error, %.2f, is the comparison's.", s$rain_error)
+       },
+       "")
+  if (length(ci$warnings)) {
+    say("  The rain comparison warns:")
+    for (w in ci$warnings) say("  - %s", w)
+    note("It warns:", "", paste0("- ", ci$warnings), "")
+  }
+}
+note(sprintf("Forecast use: %s.", s$forecast_use), "")
 
 # ---- 1. Data ----------------------------------------------------------------------------
 

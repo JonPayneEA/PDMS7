@@ -1,3 +1,29 @@
+# pdmS7 0.55.0
+
+- **The hand-off from the rain comparison to calibration.** `compare_rain.R` now ends by
+  writing `calibration_inputs.yml` in its output folder, with the new
+  `write_calibration_inputs()`. It records:
+  - the series it recommends, in order, the first to calibrate on;
+  - the rain error to start from;
+  - the period judged;
+  - the warnings a calibration should carry: the first series' own warnings, a water balance
+    that does not close, rating work needed, and gauges whose clocks are out.
+- **`site.yml` section 3.** `rain_comparison:` names that folder. `read_site_settings()` then
+  reads it with the new `read_calibration_inputs()`:
+  - the rain comes from the comparison, and is refused if `data: rain` is given too;
+  - the rain error comes from it too, unless `rain_error` is given;
+  - a rain step that differs from the site's is refused;
+  - calibration years outside the period judged are warned of.
+
+  `calibrate_site.R` repeats the warnings at the start of the run and at the head of its
+  summary. `forecast_use:` (`stage`, `hydrodynamic_rated` or `hydrodynamic_own`; `stage` by
+  default) records how the forecasts will be used, ready for the calibration mask. The
+  template's `rain_error` is now `null`, which still means 0.15 without a comparison.
+- **Fix: a `data:` block with `rain_gauges` and no `rain` was read as rain.**
+  `read_site_settings()` picked settings with `$`, which partial-matches names, so the rain
+  gauges' files were taken as the catchment rain without a word. Settings are now read by
+  their exact names.
+
 # pdmS7 0.54.0
 
 - **The gauges' clocks.** The new `clock_check()` says whether a rain series' clock is out
