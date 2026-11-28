@@ -106,27 +106,97 @@ report_image <- function(file, caption) {
   list(kind = "image", file = normalizePath(file), caption = caption)
 }
 
+#' Mark blocks for the summary
+#'
+#' A report has one source: its blocks. [write_report()] writes all of them as the report, and,
+#' given `summary`, the blocks marked here as a short summary beside it, so the summary can
+#' never say what the report does not. Mark the verdicts and what to do; leave the evidence
+#' unmarked. Headings need no marking: a heading goes into the summary when a block marked
+#' below it does. Figures stay in the report only.
+#'
+#' @param x A block, or a list of blocks (`NULL` entries are kept as `NULL`).
+#' @return `x`, each block marked.
+#' @examples
+#' blocks <- list(
+#'   report_heading("A short report", 1),
+#'   in_summary(report_alert("The answer is 42.", TRUE)),
+#'   report_heading("How it was worked out"),
+#'   report_text("At length.")
+#' )
+#' folder <- tempfile("report")
+#' write_report(blocks, folder, "A short report", summary = "summary.md")
+#' cat(readLines(file.path(folder, "summary.md")), sep = "\n")
+#' @seealso [write_report()], [report_blocks]
+#' @export
+in_summary <- function(x) {
+  if (is.null(x)) return(NULL)
+  if (is.list(x) && !is.null(x$kind)) {
+    x$summary <- TRUE
+    return(x)
+  }
+  .check(is.list(x), "x must be a block or a list of blocks")
+  lapply(x, in_summary)
+}
+
+# The summary's blocks: those marked, with the title and each heading that has a marked block
+# below it before the next heading of its level or above; figures and images left out.
+.summary_of <- function(blocks) {
+  marked <- vapply(blocks, function(b) isTRUE(b$summary) && !b$kind %in% c("figure", "image"),
+                   logical(1))
+  heading <- vapply(blocks, function(b) b$kind == "heading", logical(1))
+  level <- vapply(blocks, function(b) if (b$kind == "heading") b$level else NA_integer_,
+                  integer(1))
+  keep <- marked
+  for (i in which(heading)) {
+    if (level[i] == 1L) {
+      keep[i] <- TRUE
+      next
+    }
+    later <- seq_along(blocks) > i
+    stop_at <- which(later & heading & level <= level[i])
+    end <- if (length(stop_at)) stop_at[1] - 1L else length(blocks)
+    below <- if (end > i) seq.int(i + 1L, end) else integer(0)
+    keep[i] <- any(marked[below] & !heading[below])
+  }
+  blocks[keep]
+}
+
 #' Write a report
 #'
 #' Writes the blocks as `report.html`, one self-contained file with every figure embedded,
 #' and `report.md` beside it, in `folder`. Figures from [report_figure()] are drawn into
 #' `figures/` in the folder; images from [report_image()] are embedded from where they are.
+#' Given `summary`, the blocks marked with [in_summary()] are also written there, as Markdown,
+#' with a closing line pointing to the report.
 #'
 #' @param blocks A list of blocks from [report_heading()] and the like; `NULL` entries are
 #'   dropped, so a block can be left out with `if`.
 #' @param folder The folder to write into; made if missing.
 #' @param title The page's title.
+#' @param summary A file name for the summary in `folder`, such as `"summary.md"`, or `NULL`
+#'   for none.
 #' @return The path of `report.html`, invisibly.
-#' @seealso [report_blocks]
+#' @seealso [report_blocks], [in_summary()]
 #' @export
-write_report <- function(blocks, folder, title) {
+write_report <- function(blocks, folder, title, summary = NULL) {
   blocks <- Filter(Negate(is.null), blocks)
   .check(is.list(blocks) && length(blocks) > 0 &&
            all(vapply(blocks, function(b) is.list(b) && !is.null(b$kind), logical(1))),
          "blocks must be a list of report blocks")
   .check(is.character(title) && length(title) == 1, "title must be one string")
+  .check(is.null(summary) || (is.character(summary) && length(summary) == 1 &&
+                                grepl("\\.md$", summary) && basename(summary) == summary),
+         "summary must be a Markdown file name, such as summary.md, or NULL")
   dir.create(folder, recursive = TRUE, showWarnings = FALSE)
-  invisible(.render_report(blocks, folder, title))
+  html <- .render_report(blocks, folder, title)
+  if (!is.null(summary)) {
+    short <- c(.summary_of(blocks),
+               list(.blk_p(paste("The full report, with the evidence behind each line, every",
+                                 "table and every plot: report.html (or report.md)."))))
+    md <- paste(vapply(short, .md_block, character(1)), collapse = "\n\n")
+    writeBin(charToRaw(enc2utf8(paste0(md, "\n"))), file.path(folder, summary))
+  }
+  invisible(html)
 }
 
 #' Read a script's HOW TO READ notes
